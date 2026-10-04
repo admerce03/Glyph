@@ -8,20 +8,20 @@ Update this file when work lands. Do not delete rows to hide scope.
 
 | ID | Area | Requirement | Milestone | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
-| F01-01 | Application and file handling | Open files through: | M1/M9 | In Progress | Open picker + drag-drop paths present in shell |
-| F01-02 | Application and file handling | Open multiple files simultaneously. | M1/M9 | In Progress | Multiple tabs supported in shell |
+| F01-01 | Application and file handling | Open files through: | M1/M9 | In Progress | Open / Open Multiple / drag-drop in shell |
+| F01-02 | Application and file handling | Open multiple files simultaneously. | M1/M9 | In Progress | Multi-tab + multi-select open |
 | F01-03 | Application and file handling | Open multiple files: | M1/M9 | Not Started |  |
-| F01-04 | Application and file handling | Reopen recently used files. | M1/M9 | In Progress | JsonRecentFilesStore + sidebar list |
+| F01-04 | Application and file handling | Reopen recently used files. | M1/M9 | Tested | JsonRecentFilesStore covered by unit tests |
 | F01-05 | Application and file handling | Restore previously open tabs/windows after restart, optionally. | M1/M9 | Not Started |  |
-| F01-06 | Application and file handling | Native Windows file associations. | M1/M9 | Not Started |  |
-| F01-07 | Application and file handling | Configurable default associations for supported formats. | M1/M9 | Not Started |  |
+| F01-06 | Application and file handling | Native Windows file associations. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
+| F01-07 | Application and file handling | Configurable default associations for supported formats. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
 | F01-08 | Application and file handling | Drag files from Explorer into an existing application window. | M1/M9 | In Progress | Explorer → window drop opens documents |
 | F01-09 | Application and file handling | Drag files from the application into Explorer where meaningful. | M1/M9 | Not Started |  |
 | F01-10 | Application and file handling | Open files from: | M1/M9 | Not Started |  |
 | F01-11 | Application and file handling | Normal Windows long-path and Unicode filename support. | M1/M9 | Not Started |  |
 | F01-12 | Application and file handling | Read-only file detection. | M1/M9 | Not Started |  |
 | F01-13 | Application and file handling | Warn when attempting to overwrite a read-only file. | M1/M9 | Not Started |  |
-| F01-14 | Application and file handling | File → New from Clipboard. | M1/M9 | Not Started |  |
+| F01-14 | Application and file handling | File → New from Clipboard. | M1/M9 | In Progress | Menu + Ctrl+Shift+N; clipboard bitmap → temp PNG dirty tab |
 | F01-15 | Application and file handling | File → Duplicate. | M1/M9 | Not Started |  |
 | F01-16 | Application and file handling | File → Save. | M1/M9 | Not Started |  |
 | F01-17 | Application and file handling | File → Save As. | M1/M9 | Not Started |  |
@@ -36,25 +36,25 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-26 | Application and file handling | Undo/redo history. | M1/M9 | Not Started |  |
 | F01-27 | Application and file handling | Do not silently overwrite originals by default. | M1/M9 | Not Started |  |
 | F02-01 | Main window and interface | Standard Windows title bar. | M1/M9 | Not Started |  |
-| F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | Not Started |  |
+| F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | In Progress | MenuBar File/View/Window |
 | F02-03 | Main window and interface | Customizable toolbar. | M1/M9 | Not Started |  |
 | F02-04 | Main window and interface | Optional compact toolbar. | M1/M9 | Not Started |  |
 | F02-05 | Main window and interface | Hide/show toolbar. | M1/M9 | Not Started |  |
-| F02-06 | Main window and interface | Hide/show sidebar. | M1/M9 | Not Started |  |
+| F02-06 | Main window and interface | Hide/show sidebar. | M1/M9 | In Progress | Sidebar hide/show persisted |
 | F02-07 | Main window and interface | Resizable sidebar. | M1/M9 | Not Started |  |
 | F02-08 | Main window and interface | Resizable document area. | M1/M9 | Not Started |  |
 | F02-09 | Main window and interface | Full-screen mode. | M1/M9 | Not Started |  |
-| F02-10 | Main window and interface | Tabbed documents. | M1/M9 | In Progress | WinUI TabView shell present |
+| F02-10 | Main window and interface | Tabbed documents. | M1/M9 | In Progress | TabView + Ctrl+Tab navigation |
 | F02-11 | Main window and interface | Tear tab into separate window. | M1/M9 | Not Started |  |
 | F02-12 | Main window and interface | Move tabs between windows. | M1/M9 | Not Started |  |
 | F02-13 | Main window and interface | Reorder tabs. | M1/M9 | Not Started |  |
 | F02-14 | Main window and interface | Context menus throughout. | M1/M9 | Not Started |  |
-| F02-15 | Main window and interface | Dark mode. | M1/M9 | Not Started |  |
-| F02-16 | Main window and interface | Light mode. | M1/M9 | Not Started |  |
-| F02-17 | Main window and interface | Follow Windows system theme. | M1/M9 | Not Started |  |
-| F02-18 | Main window and interface | High-DPI scaling. | M1/M9 | Not Started |  |
+| F02-15 | Main window and interface | Dark mode. | M1/M9 | In Progress | Theme preference Dark |
+| F02-16 | Main window and interface | Light mode. | M1/M9 | In Progress | Theme preference Light |
+| F02-17 | Main window and interface | Follow Windows system theme. | M1/M9 | In Progress | Theme preference System → ElementTheme.Default |
+| F02-18 | Main window and interface | High-DPI scaling. | M1/M9 | In Progress | PerMonitorV2 declared in app.manifest |
 | F02-19 | Main window and interface | Multi-monitor support. | M1/M9 | Not Started |  |
-| F02-20 | Main window and interface | Per-monitor DPI awareness. | M1/M9 | Not Started |  |
+| F02-20 | Main window and interface | Per-monitor DPI awareness. | M1/M9 | In Progress | PerMonitorV2 declared in app.manifest |
 | F02-21 | Main window and interface | Mouse support. | M1/M9 | Not Started |  |
 | F02-22 | Main window and interface | Precision touchpad gesture support where useful. | M1/M9 | Not Started |  |
 | F02-23 | Main window and interface | Keyboard-first operation. | M1/M9 | Not Started |  |
@@ -610,7 +610,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F40-05 | Clipboard integration | recognized OCR text → text | M1/M5 | Not Started |  |
 | F40-06 | Clipboard integration | annotation where possible | M1/M5 | Not Started |  |
 | F40-07 | Clipboard integration | image from clipboard into image document | M1/M5 | Not Started |  |
-| F40-08 | Clipboard integration | image clipboard → create new image | M1/M5 | Not Started |  |
+| F40-08 | Clipboard integration | image clipboard → create new image | M1/M5 | In Progress | New from Clipboard creates image document |
 | F40-09 | Clipboard integration | text into annotation/text field | M1/M5 | Not Started |  |
 | F40-10 | Clipboard integration | file paths where appropriate | M1/M5 | Not Started |  |
 | F41-00 | Screenshot workflow | (see FEATURES.md §41) | M1/M5 | Not Started | |
@@ -765,7 +765,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F54-18 | Toolbar customization | default toolbar | M1/M9 | Not Started |  |
 | F54-19 | Toolbar customization | reset toolbar | M1/M9 | Not Started |  |
 | F54-20 | Toolbar customization | compact icon mode | M1/M9 | Not Started |  |
-| F55-01 | Preferences | theme | M1/M9 | Not Started |  |
+| F55-01 | Preferences | theme | M1/M9 | In Progress | Theme setting persisted in settings.json |
 | F55-02 | Preferences | restore previous session | M1/M9 | Not Started |  |
 | F55-03 | Preferences | recent file count | M1/M9 | Not Started |  |
 | F55-04 | Preferences | check for updates | M1/M9 | Not Started |  |
