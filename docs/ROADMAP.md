@@ -156,8 +156,13 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - `PageSelection` models Ctrl/Shift thumbnail multi-select; viewer wires rotate/delete/move ↑↓/blank/dup/extract.
 - Thumbnail drag-reorder within a document landed (`PageReorder` + thumb CanDrag/Drop).
 - Snapshot undo/redo for page edits (`PdfPageEditHistory` + Ctrl+Z/Y).
+<<<<<<< HEAD
 - Explorer PDF → thumbnail insert, cross-tab page DnD (`PageDragPayload` / `PdfPageDragRegistry`), and drag-out extract via deferred StorageItems.
 - Next: CropBox, merge/split UX, multi-window DnD proof / screen recording.
+=======
+- Merge / split APIs + toolbar (`MergeDocumentsAsync` / `SplitDocumentAsync`).
+- Next: Explorer/cross-doc DnD, CropBox (parallel PRs), visual crop handles, §11 demo recording.
+>>>>>>> 0c79b07 (Milestone 3: merge and split PDF operations)
 
 ---
 
