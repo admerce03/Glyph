@@ -1,8 +1,12 @@
+using Glyph.App.Views;
 using Glyph.Core.Documents;
 using Glyph.Core.IO;
 using Glyph.Core.Workspace;
 using Glyph.Infrastructure.RecentFiles;
 using Glyph.Infrastructure.Settings;
+using Glyph.Pdf.Abstractions;
+using Glyph.Pdf.Rendering;
+using Glyph.Pdf.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -26,17 +30,30 @@ public sealed partial class MainWindow : Window
     private readonly WorkspaceState _workspace;
     private readonly IRecentFilesStore _recentFiles;
     private readonly ISettingsStore _settingsStore;
+    private readonly IPdfDocumentFactory _pdfFactory;
+    private readonly IPdfRenderer _pdfRenderer;
+    private readonly IPdfTextSearchService _pdfSearch;
+    private readonly PageRenderCache _pageCache;
     private readonly ILogger<MainWindow> _logger;
+    private readonly Dictionary<DocumentId, IAsyncDisposable> _openEngines = new();
 
     public MainWindow(
         WorkspaceState workspace,
         IRecentFilesStore recentFiles,
         ISettingsStore settingsStore,
+        IPdfDocumentFactory pdfFactory,
+        IPdfRenderer pdfRenderer,
+        IPdfTextSearchService pdfSearch,
+        PageRenderCache pageCache,
         ILogger<MainWindow> logger)
     {
         _workspace = workspace;
         _recentFiles = recentFiles;
         _settingsStore = settingsStore;
+        _pdfFactory = pdfFactory;
+        _pdfRenderer = pdfRenderer;
+        _pdfSearch = pdfSearch;
+        _pageCache = pageCache;
         _logger = logger;
 
         InitializeComponent();
@@ -278,12 +295,13 @@ public sealed partial class MainWindow : Window
 
             if (existing is null)
             {
+                var content = await CreateDocumentContentAsync(session);
                 var tab = new TabViewItem
                 {
                     Header = displayName,
                     Tag = session.Id,
                     IsClosable = true,
-                    Content = CreatePlaceholderContent(session),
+                    Content = content,
                 };
                 DocumentTabs.TabItems.Add(tab);
             }
@@ -296,7 +314,7 @@ public sealed partial class MainWindow : Window
             StatusText.Text = existing is null
                 ? kind switch
                 {
-                    DocumentKind.Pdf => $"Opened PDF (viewer arrives in Milestone 2): {displayName}",
+                    DocumentKind.Pdf => $"Opened PDF: {displayName}",
                     DocumentKind.Image => $"Opened image (viewer arrives in Milestone 5): {displayName}",
                     _ => $"Opened {displayName}",
                 }
@@ -309,6 +327,19 @@ public sealed partial class MainWindow : Window
             _logger.LogError(ex, "Failed to open {Path}", path);
             StatusText.Text = "Failed to open file.";
         }
+    }
+
+    private async Task<FrameworkElement> CreateDocumentContentAsync(DocumentSession session)
+    {
+        if (session.Kind == DocumentKind.Pdf && session.Path is not null)
+        {
+            var pdf = await _pdfFactory.OpenAsync(session.Path);
+            _openEngines[session.Id] = pdf;
+            SidebarStatus.Text = $"{pdf.PageCount} pages — thumbnails and search in the document pane.";
+            return new PdfDocumentView(pdf, _pdfRenderer, _pageCache, _pdfSearch);
+        }
+
+        return CreatePlaceholderContent(session);
     }
 
     private static FrameworkElement CreatePlaceholderContent(DocumentSession session)
@@ -392,6 +423,11 @@ public sealed partial class MainWindow : Window
             {
                 return false;
             }
+        }
+
+        if (_openEngines.Remove(id, out var engine))
+        {
+            await engine.DisposeAsync();
         }
 
         _workspace.Close(id);

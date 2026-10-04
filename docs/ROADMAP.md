@@ -18,8 +18,8 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | Milestone | Name | Status | Depends on |
 | --- | --- | --- | --- |
 | M0 | Architecture and engineering foundation | **Tested** | — |
-| M1 | Application shell and basic file opening | **In Progress** | M0 |
-| M2 | Core PDF viewer | Not Started | M1 |
+| M1 | Application shell and basic file opening | **Implemented** (CI green; interactive screenshot pending) | M0 |
+| M2 | Core PDF viewer | **In Progress** | M1 |
 | M3 | Core PDF page manipulation | Not Started | M2 |
 | M4 | PDF markup and editing | Not Started | M2 (forms/security touch M7) |
 | M5 | Image viewer/editor | Not Started | M1 (shares shell/DnD with M3) |
@@ -92,7 +92,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 2 — Core PDF viewer
 
-**Status:** Not Started · Depends on M1
+**Status:** In Progress · Depends on M1
 
 ### Scope (`FEATURES.md` §3–7, §57–58 PDF parts)
 
@@ -113,6 +113,12 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Search finds and navigates matches
 - Tests for page model, search, and cache eviction behavior
 - Screenshots: continuous view, thumbnails, search hits
+
+### Progress notes
+
+- PDFium open/render + LRU cache + continuous viewer + bitmap thumbnails landed (PR #4).
+- Offline Find hardened: async/cancelable PdfPig adapter behind `IPdfTextSearchService`, coordinator cancels in-flight queries, automated coverage for multi-page/multi-hit/empty/case/phrase/punctuation/Unicode/imperfect extraction/image-only/encrypted/large-doc/cancel cases.
+- Still outstanding for M2 completion: layout modes (single/two-page), fit page/actual size, Ctrl+wheel/pinch zoom, text selection/copy, on-page highlights, TOC/links/history, password prompt UI, page/zoom restore.
 
 ---
 
