@@ -196,8 +196,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F10-13 | PDF page manipulation | Insert at arbitrary position. | M3 | Tested | Insert index parameter |
 | F10-14 | PDF page manipulation | Extract selected pages. | M3 | Tested | `ExtractPagesAsync` returns new `IPdfDocument` |
 | F10-15 | PDF page manipulation | Save extracted pages as new PDF. | M3 | Tested | `SaveAsync` + Extract save picker |
-| F10-16 | PDF page manipulation | Split PDF. | M3 | Not Started |  |
-| F10-17 | PDF page manipulation | Merge PDFs. | M3 | Not Started |  |
+| F10-16 | PDF page manipulation | Split PDF. | M3 | Tested | `SplitDocumentAsync` + Split toolbar → folder |
+| F10-17 | PDF page manipulation | Merge PDFs. | M3 | Tested | `MergeDocumentsAsync` + Merge file picker |
 | F10-18 | PDF page manipulation | Rotate selected pages left. | M3 | Tested | Toolbar ⟲ → `-90°` |
 | F10-19 | PDF page manipulation | Rotate selected pages right. | M3 | Tested | Toolbar ⟳ → `+90°` |
 | F10-20 | PDF page manipulation | Batch rotation. | M3 | Tested | Multi-select rotate uses same editor path |
