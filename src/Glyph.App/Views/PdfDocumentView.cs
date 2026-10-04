@@ -219,6 +219,7 @@ public sealed class PdfDocumentView : UserControl
         var insertBlank = new Button { Content = "Blank" };
         var duplicate = new Button { Content = "Dup" };
         var extract = new Button { Content = "Extract" };
+        var crop = new Button { Content = "Crop" };
         var undoEdit = new Button { Content = "Undo" };
         var redoEdit = new Button { Content = "Redo" };
         ToolTipService.SetToolTip(rotateLeft, "Rotate selected pages left");
@@ -229,6 +230,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(insertBlank, "Insert blank page after selection");
         ToolTipService.SetToolTip(duplicate, "Duplicate selected pages");
         ToolTipService.SetToolTip(extract, "Extract selected pages to a new PDF file");
+        ToolTipService.SetToolTip(crop, "Crop selected pages (non-destructive CropBox)");
         ToolTipService.SetToolTip(undoEdit, "Undo last page edit (Ctrl+Z)");
         ToolTipService.SetToolTip(redoEdit, "Redo page edit (Ctrl+Y)");
 
@@ -268,6 +270,7 @@ public sealed class PdfDocumentView : UserControl
         insertBlank.Click += async (_, _) => await InsertBlankAfterSelectionAsync();
         duplicate.Click += async (_, _) => await DuplicateSelectedAsync();
         extract.Click += async (_, _) => await ExtractSelectedAsync();
+        crop.Click += async (_, _) => await CropSelectedAsync();
         undoEdit.Click += async (_, _) => await UndoPageEditAsync();
         redoEdit.Click += async (_, _) => await RedoPageEditAsync();
 
@@ -281,7 +284,7 @@ public sealed class PdfDocumentView : UserControl
                 first, prev, _gotoBox, next, last, back, forward,
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
-                rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract,
+                rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, crop,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -1684,6 +1687,77 @@ public sealed class PdfDocumentView : UserControl
         await using var extracted = await _pageEditor.ExtractPagesAsync(_document, indexes);
         await _pageEditor.SaveAsync(extracted, file.Path);
         _status.Text = $"Extracted {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")} to {file.Name}.";
+    }
+
+    private async Task CropSelectedAsync()
+    {
+        var indexes = SelectedOrCurrentPages();
+        if (indexes.Count == 0)
+        {
+            return;
+        }
+
+        var leftBox = new NumberBox { Header = "Left (pt)", Value = 36, Minimum = 0, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline };
+        var topBox = new NumberBox { Header = "Top (pt)", Value = 36, Minimum = 0, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline };
+        var rightBox = new NumberBox { Header = "Right (pt)", Value = 36, Minimum = 0, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline };
+        var bottomBox = new NumberBox { Header = "Bottom (pt)", Value = 36, Minimum = 0, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline };
+        var allPages = new CheckBox
+        {
+            Content = "Apply to all pages",
+            IsChecked = false,
+        };
+        var note = new TextBlock
+        {
+            Text = "Non-destructive CropBox inset from each page MediaBox. Undo with Ctrl+Z.",
+            TextWrapping = TextWrapping.WrapWholeWords,
+            Opacity = 0.75,
+            FontSize = 12,
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = indexes.Count == 1 ? "Crop page" : $"Crop {indexes.Count} pages",
+            PrimaryButtonText = "Crop",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+            Content = new StackPanel
+            {
+                Spacing = 8,
+                Children = { leftBox, topBox, rightBox, bottomBox, allPages, note },
+            },
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            _status.Text = "Crop cancelled.";
+            return;
+        }
+
+        if (allPages.IsChecked == true)
+        {
+            indexes = Enumerable.Range(0, _document.PageCount).ToList();
+        }
+
+        var margins = new PdfCropMargins(
+            leftBox.Value,
+            topBox.Value,
+            rightBox.Value,
+            bottomBox.Value);
+
+        try
+        {
+            _status.Text = "Cropping…";
+            await RunPageEditAsync(() => _pageEditor.CropPagesAsync(_document, indexes, margins));
+            await ReloadAfterPageEditAsync();
+            _status.Text = indexes.Count == 1
+                ? "Cropped 1 page."
+                : $"Cropped {indexes.Count} pages.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Crop failed: " + ex.Message;
+        }
     }
 
     private async Task ReloadAfterPageEditAsync()

@@ -289,6 +289,130 @@ public sealed class PdfiumPageEditor : IPdfPageEditor
             cancellationToken);
     }
 
+    public Task CropPagesAsync(
+        IPdfDocument document,
+        IReadOnlyList<int> pageIndexes,
+        PdfCropMargins margins,
+        CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        ValidateIndexes(pdfium, pageIndexes);
+        if (pageIndexes.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (margins.LeftPoints < 0 || margins.TopPoints < 0 || margins.RightPoints < 0 || margins.BottomPoints < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(margins), "Crop margins cannot be negative.");
+        }
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    foreach (var index in pageIndexes.Distinct().OrderBy(i => i))
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var page = fpdfview.FPDF_LoadPage(pdfium.Handle, index);
+                        if (page is null)
+                        {
+                            throw new InvalidOperationException($"Failed to load page {index} for crop.");
+                        }
+
+                        try
+                        {
+                            var box = ReadMediaOrCropBox(page);
+                            var cropped = new PdfCropBox(
+                                box.Left + margins.LeftPoints,
+                                box.Bottom + margins.BottomPoints,
+                                box.Right - margins.RightPoints,
+                                box.Top - margins.TopPoints);
+                            if (!cropped.IsValid)
+                            {
+                                throw new InvalidOperationException(
+                                    $"Crop margins leave no area on page {index}.");
+                            }
+
+                            fpdf_transformpage.FPDFPageSetCropBox(
+                                page,
+                                (float)cropped.Left,
+                                (float)cropped.Bottom,
+                                (float)cropped.Right,
+                                (float)cropped.Top);
+                        }
+                        finally
+                        {
+                            fpdfview.FPDF_ClosePage(page);
+                        }
+                    }
+
+                    pdfium.RebuildPages();
+                }
+            },
+            cancellationToken);
+    }
+
+    public Task SetCropBoxAsync(
+        IPdfDocument document,
+        IReadOnlyList<int> pageIndexes,
+        PdfCropBox cropBox,
+        CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        ValidateIndexes(pdfium, pageIndexes);
+        if (!cropBox.IsValid)
+        {
+            throw new ArgumentException("Crop box must have positive width and height.", nameof(cropBox));
+        }
+
+        if (pageIndexes.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    foreach (var index in pageIndexes.Distinct().OrderBy(i => i))
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var page = fpdfview.FPDF_LoadPage(pdfium.Handle, index);
+                        if (page is null)
+                        {
+                            throw new InvalidOperationException($"Failed to load page {index} for crop.");
+                        }
+
+                        try
+                        {
+                            fpdf_transformpage.FPDFPageSetCropBox(
+                                page,
+                                (float)cropBox.Left,
+                                (float)cropBox.Bottom,
+                                (float)cropBox.Right,
+                                (float)cropBox.Top);
+                        }
+                        finally
+                        {
+                            fpdfview.FPDF_ClosePage(page);
+                        }
+                    }
+
+                    pdfium.RebuildPages();
+                }
+            },
+            cancellationToken);
+    }
+
     public Task SaveAsync(IPdfDocument document, string path, CancellationToken cancellationToken = default)
     {
         var pdfium = RequirePdfium(document);
@@ -385,5 +509,28 @@ public sealed class PdfiumPageEditor : IPdfPageEditor
                 throw new ArgumentOutOfRangeException(nameof(pageIndexes), index, "Page index out of range.");
             }
         }
+    }
+
+    private static PdfCropBox ReadMediaOrCropBox(FpdfPageT page)
+    {
+        float left = 0, bottom = 0, right = 0, top = 0;
+        if (fpdf_transformpage.FPDFPageGetMediaBox(page, ref left, ref bottom, ref right, ref top) != 0
+            && right > left
+            && top > bottom)
+        {
+            return new PdfCropBox(left, bottom, right, top);
+        }
+
+        if (fpdf_transformpage.FPDFPageGetCropBox(page, ref left, ref bottom, ref right, ref top) != 0
+            && right > left
+            && top > bottom)
+        {
+            return new PdfCropBox(left, bottom, right, top);
+        }
+
+        // Last resort: page size as origin-based box.
+        var width = fpdfview.FPDF_GetPageWidth(page);
+        var height = fpdfview.FPDF_GetPageHeight(page);
+        return new PdfCropBox(0, 0, width, height);
     }
 }
