@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main, cursor/**]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows build & test
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore ./Glyph.sln
+
+      - name: Build
+        run: ./scripts/build.ps1 -Configuration Release
+        shell: pwsh
+
+      - name: Test
+        run: ./scripts/test.ps1 -Configuration Release
+        shell: pwsh
+
+      - name: Format verify
+        run: ./scripts/format.ps1 -Verify
+        shell: pwsh
+
+  core-linux:
+    name: Core libraries on Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Build core
+        run: ./scripts/build.sh --core-only --configuration Release
+
+      - name: Test core
+        run: ./scripts/test.sh --core-only --configuration Release

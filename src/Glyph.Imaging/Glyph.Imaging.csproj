@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Description>Image abstractions and codec adapters for Glyph.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Glyph.Core\Glyph.Core.csproj" />
+  </ItemGroup>
+</Project>
