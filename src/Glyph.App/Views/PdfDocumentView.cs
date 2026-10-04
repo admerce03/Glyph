@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.Core.Documents;
 using Glyph.Pdf.Abstractions;
+using Glyph.Pdf.Editing;
 using Glyph.Pdf.Rendering;
 using Glyph.Pdf.Text;
 using Microsoft.UI;
@@ -32,6 +33,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfPageEditor _pageEditor;
     private readonly DocumentViewState _viewState;
     private readonly DocumentNavigationHistory _history = new();
+    private readonly PdfPageEditHistory _editHistory = new();
     private readonly PageSelection _pageSelection = new();
     private readonly string _documentKey;
     private readonly string _thumbnailKey;
@@ -207,6 +209,8 @@ public sealed class PdfDocumentView : UserControl
         var insertBlank = new Button { Content = "Blank" };
         var duplicate = new Button { Content = "Dup" };
         var extract = new Button { Content = "Extract" };
+        var undoEdit = new Button { Content = "Undo" };
+        var redoEdit = new Button { Content = "Redo" };
         ToolTipService.SetToolTip(rotateLeft, "Rotate selected pages left");
         ToolTipService.SetToolTip(rotateRight, "Rotate selected pages right");
         ToolTipService.SetToolTip(deletePages, "Delete selected pages");
@@ -215,6 +219,8 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(insertBlank, "Insert blank page after selection");
         ToolTipService.SetToolTip(duplicate, "Duplicate selected pages");
         ToolTipService.SetToolTip(extract, "Extract selected pages to a new PDF file");
+        ToolTipService.SetToolTip(undoEdit, "Undo last page edit (Ctrl+Z)");
+        ToolTipService.SetToolTip(redoEdit, "Redo page edit (Ctrl+Y)");
 
         first.Click += async (_, _) => await GoToPageAsync(0, recordHistory: true);
         last.Click += async (_, _) => await GoToPageAsync(_document.PageCount - 1, recordHistory: true);
@@ -252,6 +258,8 @@ public sealed class PdfDocumentView : UserControl
         insertBlank.Click += async (_, _) => await InsertBlankAfterSelectionAsync();
         duplicate.Click += async (_, _) => await DuplicateSelectedAsync();
         extract.Click += async (_, _) => await ExtractSelectedAsync();
+        undoEdit.Click += async (_, _) => await UndoPageEditAsync();
+        redoEdit.Click += async (_, _) => await RedoPageEditAsync();
 
         var toolbar = new StackPanel
         {
@@ -262,6 +270,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 first, prev, _gotoBox, next, last, back, forward,
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
+                undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
@@ -597,7 +606,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _status.Text = "Reordering…";
-        await _pageEditor.ReorderPagesAsync(_document, order);
+        await RunPageEditAsync(() => _pageEditor.ReorderPagesAsync(_document, order));
 
         var remap = new Dictionary<int, int>();
         for (var newIndex = 0; newIndex < order.Count; newIndex++)
@@ -656,6 +665,20 @@ public sealed class PdfDocumentView : UserControl
         if (ctrlDown && e.Key == VirtualKey.C)
         {
             await CopyTextAsync();
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrlDown && e.Key == VirtualKey.Z)
+        {
+            await UndoPageEditAsync();
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrlDown && e.Key == VirtualKey.Y)
+        {
+            await RedoPageEditAsync();
             e.Handled = true;
             return;
         }
@@ -1233,7 +1256,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _status.Text = "Rotating…";
-        await _pageEditor.RotatePagesAsync(_document, indexes, deltaDegrees);
+        await RunPageEditAsync(() => _pageEditor.RotatePagesAsync(_document, indexes, deltaDegrees));
         await ReloadAfterPageEditAsync();
         _status.Text = $"Rotated {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")}.";
     }
@@ -1253,7 +1276,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _status.Text = "Deleting…";
-        await _pageEditor.DeletePagesAsync(_document, indexes);
+        await RunPageEditAsync(() => _pageEditor.DeletePagesAsync(_document, indexes));
         await ReloadAfterPageEditAsync();
         _status.Text = $"Deleted {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")}.";
     }
@@ -1300,7 +1323,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _status.Text = "Reordering…";
-        await _pageEditor.ReorderPagesAsync(_document, order);
+        await RunPageEditAsync(() => _pageEditor.ReorderPagesAsync(_document, order));
         // Remap selection to new indexes.
         var remap = new Dictionary<int, int>();
         for (var newIndex = 0; newIndex < order.Count; newIndex++)
@@ -1339,11 +1362,11 @@ public sealed class PdfDocumentView : UserControl
         var insertAt = SelectedOrCurrentPages().DefaultIfEmpty(CurrentPageIndex).Max() + 1;
         var template = _document.GetPage(Math.Clamp(CurrentPageIndex, 0, _document.PageCount - 1));
         _status.Text = "Inserting blank page…";
-        await _pageEditor.InsertBlankPageAsync(
+        await RunPageEditAsync(() => _pageEditor.InsertBlankPageAsync(
             _document,
             insertAt,
             template.WidthPoints,
-            template.HeightPoints);
+            template.HeightPoints));
         _pageSelection.SelectOnly(insertAt);
         await ReloadAfterPageEditAsync();
         await GoToPageAsync(insertAt, recordHistory: true);
@@ -1359,9 +1382,42 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _status.Text = "Duplicating…";
-        await _pageEditor.DuplicatePagesAsync(_document, indexes);
+        await RunPageEditAsync(() => _pageEditor.DuplicatePagesAsync(_document, indexes));
         await ReloadAfterPageEditAsync();
         _status.Text = $"Duplicated {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")}.";
+    }
+
+    private async Task RunPageEditAsync(Func<Task> mutation)
+    {
+        await _editHistory.ExecuteAsync(_document, _pageEditor, mutation);
+    }
+
+    private async Task UndoPageEditAsync()
+    {
+        if (!_editHistory.CanUndo)
+        {
+            _status.Text = "Nothing to undo.";
+            return;
+        }
+
+        _status.Text = "Undoing…";
+        await _editHistory.UndoAsync(_document, _pageEditor);
+        await ReloadAfterPageEditAsync();
+        _status.Text = "Undid page edit.";
+    }
+
+    private async Task RedoPageEditAsync()
+    {
+        if (!_editHistory.CanRedo)
+        {
+            _status.Text = "Nothing to redo.";
+            return;
+        }
+
+        _status.Text = "Redoing…";
+        await _editHistory.RedoAsync(_document, _pageEditor);
+        await ReloadAfterPageEditAsync();
+        _status.Text = "Redid page edit.";
     }
 
     private async Task ExtractSelectedAsync()
