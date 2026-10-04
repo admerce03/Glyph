@@ -182,6 +182,12 @@ public sealed partial class MainWindow : Window
 
     private void DropHost_DragOver(object sender, DragEventArgs e)
     {
+        // Thumbnail sidebars handle page-insert drops themselves; shell opens files.
+        if (e.DataView.Contains(StandardDataFormats.Text))
+        {
+            return;
+        }
+
         if (e.DataView.Contains(StandardDataFormats.StorageItems))
         {
             e.AcceptedOperation = DataPackageOperation.Copy;
@@ -191,6 +197,28 @@ public sealed partial class MainWindow : Window
 
     private async void DropHost_Drop(object sender, DragEventArgs e)
     {
+        if (e.Handled)
+        {
+            return;
+        }
+
+        // In-app page drags carry Glyph text payloads; those belong to thumbnail drop targets.
+        if (e.DataView.Contains(StandardDataFormats.Text))
+        {
+            try
+            {
+                var text = await e.DataView.GetTextAsync();
+                if (PageDragPayload.TryParse(text, out _))
+                {
+                    return;
+                }
+            }
+            catch
+            {
+                // Fall through to storage-item open.
+            }
+        }
+
         if (!e.DataView.Contains(StandardDataFormats.StorageItems))
         {
             return;
@@ -383,6 +411,7 @@ public sealed partial class MainWindow : Window
                 _pdfOutlines,
                 _pdfLinks,
                 _pdfPageEditor,
+                _pdfFactory,
                 session.ViewState);
         }
 
