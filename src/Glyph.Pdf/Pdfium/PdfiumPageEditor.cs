@@ -163,6 +163,152 @@ public sealed class PdfiumPageEditor : IPdfPageEditor
             cancellationToken);
     }
 
+    public Task InsertBlankPageAsync(
+        IPdfDocument document,
+        int insertIndex,
+        double widthPoints = 612,
+        double heightPoints = 792,
+        CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        if (insertIndex < 0 || insertIndex > pdfium.PageCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(insertIndex));
+        }
+
+        if (widthPoints <= 0 || heightPoints <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(widthPoints), "Page size must be positive.");
+        }
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    var page = fpdf_edit.FPDFPageNew(pdfium.Handle, insertIndex, widthPoints, heightPoints);
+                    if (page is null)
+                    {
+                        throw new InvalidOperationException("Failed to insert a blank page.");
+                    }
+
+                    fpdfview.FPDF_ClosePage(page);
+                    pdfium.RebuildPages();
+                }
+            },
+            cancellationToken);
+    }
+
+    public Task DuplicatePagesAsync(
+        IPdfDocument document,
+        IReadOnlyList<int> pageIndexes,
+        CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        ValidateIndexes(pdfium, pageIndexes);
+        if (pageIndexes.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    // Copy via a temporary document — PDFium rejects same-handle ImportPages.
+                    foreach (var index in pageIndexes.Distinct().OrderByDescending(i => i))
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var temp = BuildDocumentFromPages(pdfium.Handle, [index]);
+                        try
+                        {
+                            var ok = fpdf_ppo.FPDF_ImportPages(pdfium.Handle, temp, "1", index + 1);
+                            if (ok == 0)
+                            {
+                                throw new InvalidOperationException($"Failed to duplicate page {index}.");
+                            }
+                        }
+                        finally
+                        {
+                            fpdfview.FPDF_CloseDocument(temp);
+                        }
+                    }
+
+                    pdfium.RebuildPages();
+                }
+            },
+            cancellationToken);
+    }
+
+    public Task InsertPagesAsync(
+        IPdfDocument document,
+        IPdfDocument source,
+        IReadOnlyList<int> sourcePageIndexes,
+        int insertIndex,
+        CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        var sourceDoc = RequirePdfium(source);
+        ValidateIndexes(sourceDoc, sourcePageIndexes);
+        if (sourcePageIndexes.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (insertIndex < 0 || insertIndex > pdfium.PageCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(insertIndex));
+        }
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    sourceDoc.ThrowIfDisposed();
+                    var range = PdfiumPageCatalog.ToPageRange(sourcePageIndexes);
+                    var ok = fpdf_ppo.FPDF_ImportPages(pdfium.Handle, sourceDoc.Handle, range, insertIndex);
+                    if (ok == 0)
+                    {
+                        throw new InvalidOperationException($"Failed to insert pages with range '{range}'.");
+                    }
+
+                    pdfium.RebuildPages();
+                }
+            },
+            cancellationToken);
+    }
+
+    public Task SaveAsync(IPdfDocument document, string path, CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    PdfiumDocumentSaver.SaveToPath(pdfium.Handle, path);
+                    pdfium.Path = path;
+                }
+            },
+            cancellationToken);
+    }
+
     private static FpdfDocumentT BuildDocumentFromPages(FpdfDocumentT source, IReadOnlyList<int> zeroBasedOrder)
     {
         var dest = fpdf_edit.FPDF_CreateNewDocument();

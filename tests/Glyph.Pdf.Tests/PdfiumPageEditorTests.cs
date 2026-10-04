@@ -124,6 +124,94 @@ public class PdfiumPageEditorTests
         }
     }
 
+    [Fact]
+    public async Task Insert_blank_page_increases_count()
+    {
+        var path = CreateMultiPagePdf(pageCount: 2);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var editor = new PdfiumPageEditor();
+            await using var document = await factory.OpenAsync(path);
+
+            await editor.InsertBlankPageAsync(document, insertIndex: 1);
+            document.PageCount.Should().Be(3);
+            document.GetPage(1).WidthPoints.Should().BeApproximately(612, 0.5);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task Duplicate_pages_inserts_copies_after_sources()
+    {
+        var path = CreateMultiPagePdf(pageCount: 2);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var editor = new PdfiumPageEditor();
+            await using var document = await factory.OpenAsync(path);
+
+            await editor.DuplicatePagesAsync(document, [0]);
+            document.PageCount.Should().Be(3);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task Insert_pages_from_another_document()
+    {
+        var destPath = CreateMultiPagePdf(pageCount: 2);
+        var srcPath = CreateMultiPagePdf(pageCount: 3);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var editor = new PdfiumPageEditor();
+            await using var dest = await factory.OpenAsync(destPath);
+            await using var src = await factory.OpenAsync(srcPath);
+
+            await editor.InsertPagesAsync(dest, src, [0, 2], insertIndex: 1);
+            dest.PageCount.Should().Be(4);
+        }
+        finally
+        {
+            File.Delete(destPath);
+            File.Delete(srcPath);
+        }
+    }
+
+    [Fact]
+    public async Task Extract_and_save_round_trips_to_disk()
+    {
+        var path = CreateMultiPagePdf(pageCount: 3);
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-extract-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var editor = new PdfiumPageEditor();
+            await using var document = await factory.OpenAsync(path);
+            await using var extracted = await editor.ExtractPagesAsync(document, [0, 2]);
+            await editor.SaveAsync(extracted, outPath);
+
+            File.Exists(outPath).Should().BeTrue();
+            await using var reopened = await factory.OpenAsync(outPath);
+            reopened.PageCount.Should().Be(2);
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
     private static string CreateMultiPagePdf(int pageCount)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-edit-" + Guid.NewGuid().ToString("N") + ".pdf");

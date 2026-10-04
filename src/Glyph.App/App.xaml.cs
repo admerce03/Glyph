@@ -28,6 +28,8 @@ public partial class App : Application
 
     public static App CurrentApp => (App)Current;
 
+    public MainWindow? MainWindowInstance => _window;
+
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
         var settingsStore = Services.GetRequiredService<ISettingsStore>();
