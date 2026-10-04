@@ -437,8 +437,10 @@ public sealed class PdfDocumentView : UserControl
 
     private async void PdfDocumentView_KeyDown(object sender, KeyRoutedEventArgs e)
     {
-        var ctrl = e.KeyModifiers.HasFlag(VirtualKeyModifiers.Control);
-        if (ctrl && e.Key == VirtualKey.C)
+        var ctrlDown = Microsoft.UI.Input.InputKeyboardSource
+            .GetKeyStateForCurrentThread(VirtualKey.Control)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        if (ctrlDown && e.Key == VirtualKey.C)
         {
             await CopyTextAsync();
             e.Handled = true;
