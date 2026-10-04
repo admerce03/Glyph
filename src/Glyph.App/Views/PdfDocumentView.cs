@@ -501,8 +501,13 @@ public sealed class PdfDocumentView : UserControl
                 Padding = new Thickness(2),
                 Child = stack,
                 Tag = i,
+                CanDrag = true,
+                AllowDrop = true,
             };
             border.PointerPressed += Thumbnail_PointerPressed;
+            border.DragStarting += Thumbnail_DragStarting;
+            border.DragOver += Thumbnail_DragOver;
+            border.Drop += Thumbnail_Drop;
             _thumbnailBorders[i] = border;
             _thumbnailHost.Children.Add(border);
         }
@@ -525,6 +530,94 @@ public sealed class PdfDocumentView : UserControl
         _pageSelection.ApplyClick(index, ctrlOrMeta: ctrl, shift: shift);
         RefreshThumbnailSelectionChrome();
         await GoToPageAsync(index, recordHistory: true);
+        e.Handled = true;
+    }
+
+    private void Thumbnail_DragStarting(UIElement sender, DragStartingEventArgs args)
+    {
+        if (sender is not Border { Tag: int index })
+        {
+            args.Cancel = true;
+            return;
+        }
+
+        if (!_pageSelection.Contains(index))
+        {
+            _pageSelection.SelectOnly(index);
+            RefreshThumbnailSelectionChrome();
+        }
+
+        args.Data.SetText("glyph-page-reorder:" + string.Join(',', _pageSelection.SelectedIndexes.OrderBy(i => i)));
+        args.Data.RequestedOperation = DataPackageOperation.Move;
+    }
+
+    private void Thumbnail_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.DataView.Contains(StandardDataFormats.Text))
+        {
+            e.AcceptedOperation = DataPackageOperation.Move;
+            e.Handled = true;
+        }
+    }
+
+    private async void Thumbnail_Drop(object sender, DragEventArgs e)
+    {
+        if (sender is not Border { Tag: int dropIndex })
+        {
+            return;
+        }
+
+        if (!e.DataView.Contains(StandardDataFormats.Text))
+        {
+            return;
+        }
+
+        var payload = await e.DataView.GetTextAsync();
+        const string prefix = "glyph-page-reorder:";
+        if (!payload.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var selected = payload[prefix.Length..]
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(int.Parse)
+            .ToList();
+
+        // Drop onto a thumbnail inserts before that page; drop on lower half inserts after.
+        var position = e.GetPosition((UIElement)sender);
+        var insertBefore = position.Y > ((FrameworkElement)sender).ActualHeight / 2
+            ? dropIndex + 1
+            : dropIndex;
+
+        var order = PageReorder.MoveSelection(_document.PageCount, selected, insertBefore);
+        if (order.Select((value, i) => value == i).All(x => x))
+        {
+            return;
+        }
+
+        _status.Text = "Reordering…";
+        await _pageEditor.ReorderPagesAsync(_document, order);
+
+        var remap = new Dictionary<int, int>();
+        for (var newIndex = 0; newIndex < order.Count; newIndex++)
+        {
+            remap[order[newIndex]] = newIndex;
+        }
+
+        _pageSelection.Clear();
+        foreach (var oldIndex in selected.OrderBy(i => i))
+        {
+            _pageSelection.Toggle(remap[oldIndex]);
+        }
+
+        await ReloadAfterPageEditAsync();
+        if (_pageSelection.Count > 0)
+        {
+            await GoToPageAsync(_pageSelection.SelectedIndexes.Min(), recordHistory: false);
+        }
+
+        _status.Text = "Pages reordered.";
         e.Handled = true;
     }
 

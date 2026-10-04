@@ -251,18 +251,21 @@ public sealed class PdfSearchCoordinatorTests
     [Fact]
     public async Task Starting_new_search_cancels_in_progress_search()
     {
-        var slow = new SlowSearchService(delayPerCall: TimeSpan.FromMilliseconds(400));
-        using var coordinator = new PdfSearchCoordinator(slow);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var gated = new GatedSearchService(entered, release);
+        using var coordinator = new PdfSearchCoordinator(gated);
 
         var first = coordinator.SearchAsync("doc.pdf", "one");
-        // Give the first search a moment to start.
-        await Task.Delay(50);
-        var second = await coordinator.SearchAsync("doc.pdf", "two");
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var second = coordinator.SearchAsync("doc.pdf", "two");
+        release.SetResult();
 
-        second.Status.Should().Be(PdfSearchStatus.Success);
-        second.Hits.Should().ContainSingle(h => h.Snippet == "two");
+        var secondResult = await second.WaitAsync(TimeSpan.FromSeconds(2));
+        secondResult.Status.Should().Be(PdfSearchStatus.Success);
+        secondResult.Hits.Should().ContainSingle(h => h.Snippet == "two");
 
-        var firstResult = await first;
+        var firstResult = await first.WaitAsync(TimeSpan.FromSeconds(2));
         firstResult.Status.Should().Be(PdfSearchStatus.Cancelled);
     }
 
@@ -280,11 +283,16 @@ public sealed class PdfSearchCoordinatorTests
         b.Hits.Should().NotContain(h => h.Snippet == "alpha");
     }
 
-    private sealed class SlowSearchService : IPdfTextSearchService
+    private sealed class GatedSearchService : IPdfTextSearchService
     {
-        private readonly TimeSpan _delayPerCall;
+        private readonly TaskCompletionSource _entered;
+        private readonly TaskCompletionSource _release;
 
-        public SlowSearchService(TimeSpan delayPerCall) => _delayPerCall = delayPerCall;
+        public GatedSearchService(TaskCompletionSource entered, TaskCompletionSource release)
+        {
+            _entered = entered;
+            _release = release;
+        }
 
         public async Task<PdfSearchResult> SearchAsync(
             string path,
@@ -292,7 +300,9 @@ public sealed class PdfSearchCoordinatorTests
             PdfSearchOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            await Task.Delay(_delayPerCall, cancellationToken);
+            _entered.TrySetResult();
+            await _release.Task.WaitAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             return PdfSearchResult.Success(
             [
                 new PdfSearchHit(0, query, 0, query.Length),
