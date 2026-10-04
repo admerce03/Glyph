@@ -59,16 +59,16 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-22 | Main window and interface | Precision touchpad gesture support where useful. | M1/M9 | Not Started |  |
 | F02-23 | Main window and interface | Keyboard-first operation. | M1/M9 | Not Started |  |
 | F02-24 | Main window and interface | Accessibility through Windows UI Automation. | M1/M9 | Not Started |  |
-| F03-01 | Sidebar modes | Page thumbnails | M2-M5 | Not Started |  |
-| F03-02 | Sidebar modes | Table of contents | M2-M5 | Not Started |  |
-| F03-03 | Sidebar modes | Search results | M2-M5 | Not Started |  |
+| F03-01 | Sidebar modes | Page thumbnails | M2-M5 | Implemented | Thumbnail strip in PDF viewer sidebar |
+| F03-02 | Sidebar modes | Table of contents | M2-M5 | Implemented | Outline TreeView when bookmarks present |
+| F03-03 | Sidebar modes | Search results | M2-M5 | Implemented | Find hits list under Search header |
 | F03-04 | Sidebar modes | Bookmarks | M2-M5 | Not Started |  |
 | F03-05 | Sidebar modes | Highlights and annotations | M2-M5 | Not Started |  |
 | F03-06 | Sidebar modes | Image list | M2-M5 | Not Started |  |
 | F03-07 | Sidebar modes | Contact sheet | M2-M5 | Not Started |  |
 | F03-08 | Sidebar modes | Document attachments, if supported | M2-M5 | Not Started |  |
 | F03-09 | Sidebar modes | Metadata/properties where useful | M2-M5 | Not Started |  |
-| F03-10 | Sidebar modes | Switch sidebar mode without opening another window. | M2-M5 | Not Started |  |
+| F03-10 | Sidebar modes | Switch sidebar mode without opening another window. | M2-M5 | In Progress | Thumbs/TOC/search coexist in one panel; dedicated mode switcher later |
 | F03-11 | Sidebar modes | Resize thumbnail size. | M2-M5 | Not Started |  |
 | F03-12 | Sidebar modes | Multi-select sidebar items. | M2-M5 | Not Started |  |
 | F03-13 | Sidebar modes | Shift-click range selection. | M2-M5 | Not Started |  |
@@ -82,7 +82,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-03 | PDF viewing | Render embedded images. | M2 | Implemented | Via PDFium rasterization |
 | F04-04 | PDF viewing | Render embedded fonts. | M2 | Implemented | Via PDFium rasterization |
 | F04-05 | PDF viewing | Support transparency. | M2 | Implemented | Via PDFium rasterization |
-| F04-06 | PDF viewing | Support rotated pages. | M2 | In Progress | Page model stores rotation; viewer uses page size |
+| F04-06 | PDF viewing | Support rotated pages. | M2 | Tested | `FPDFPageGetRotation` + size swap; Pdf.Tests cover /Rotate 90 |
 | F04-07 | PDF viewing | Support PDFs containing different page sizes. | M2 | Implemented | Per-page size from PDFium |
 | F04-08 | PDF viewing | Password-protected PDF opening. | M2 | Tested | `PdfPasswordRequiredException` + ContentDialog prompt |
 | F04-09 | PDF viewing | Continuous scrolling. | M2 | Implemented | Continuous scroll with windowed page virtualization |
@@ -105,9 +105,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-26 | PDF viewing | Zoom in/out. | M2 | Implemented | Zoom +/- controls |
 | F04-27 | PDF viewing | Ctrl+mouse wheel zoom. | M2 | Implemented | Ctrl+wheel → zoom steps |
 | F04-28 | PDF viewing | Pinch-to-zoom on supported precision touchpads. | M2 | Implemented | Ctrl+wheel + Manipulation Scale pinch |
-| F04-29 | PDF viewing | Rectangular zoom-to-area. | M2 | Not Started |  |
-| F04-30 | PDF viewing | Magnifier/loupe tool. | M2 | Not Started |  |
-| F04-31 | PDF viewing | Presentation/slideshow mode. | M2 | Not Started |  |
+| F04-29 | PDF viewing | Rectangular zoom-to-area. | M2 | Deferred | ADR-014: post-core polish; not required for M2 minimum viewer |
+| F04-30 | PDF viewing | Magnifier/loupe tool. | M2 | Deferred | ADR-014: post-core polish; not required for M2 minimum viewer |
+| F04-31 | PDF viewing | Presentation/slideshow mode. | M2 | Deferred | ADR-014: post-core polish; not required for M2 minimum viewer |
 | F04-32 | PDF viewing | Remember last viewed page, optionally. | M2 | Tested | `IDocumentViewStateStore` persists page on close/reopen |
 | F04-33 | PDF viewing | Remember zoom/layout per document, optionally. | M2 | Tested | Persists zoom + layout with page index |
 | F05-01 | PDF table of contents and navigation | Read embedded PDF outlines/bookmarks. | M2 | Tested | `IPdfOutlineService` / PDFium bookmarks |
@@ -133,7 +133,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F06-12 | PDF search | Sort results by: | M2/M6 | Implemented | Page order (document scan order); relevance sort deferred |
 | F06-13 | PDF search | Next match. | M2/M6 | Implemented | Toolbar next-match control |
 | F06-14 | PDF search | Previous match. | M2/M6 | Implemented | Toolbar previous-match control |
-| F06-15 | PDF search | Clear search. | M2/M6 | In Progress | Empty query clears results; dedicated clear control TBD |
+| F06-15 | PDF search | Clear search. | M2/M6 | Implemented | Clear button + Escape; cancels in-flight search and overlays |
 | F06-16 | PDF search | Click result to jump to it. | M2/M6 | Tested | Selection jumps to hit page index |
 | F06-17 | PDF search | Search OCR text where OCR has been generated. | M2/M6 | Not Started | Image-only PDFs report OCR required |
 | F07-01 | PDF text interaction | Text selection. | M2/M6 | Implemented | Click near glyphs selects word-ish run via PDFium text |

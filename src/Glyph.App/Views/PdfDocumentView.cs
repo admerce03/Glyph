@@ -127,6 +127,9 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(_caseSensitiveBox, "Match case");
         var searchButton = new Button { Content = "Find" };
         searchButton.Click += async (_, _) => await RunSearchAsync();
+        var clearSearch = new Button { Content = "Clear" };
+        ToolTipService.SetToolTip(clearSearch, "Clear search results");
+        clearSearch.Click += async (_, _) => await ClearSearchAsync();
         var prevMatch = new Button { Content = "◁" };
         var nextMatch = new Button { Content = "▷" };
         ToolTipService.SetToolTip(prevMatch, "Previous match");
@@ -230,7 +233,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 first, prev, _gotoBox, next, last, back, forward,
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
-                _searchBox, _caseSensitiveBox, searchButton, prevMatch, nextMatch, _status,
+                _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
 
@@ -488,6 +491,12 @@ public sealed class PdfDocumentView : UserControl
         if (e.Key == VirtualKey.Enter)
         {
             await RunSearchAsync();
+            e.Handled = true;
+        }
+        else if (e.Key == VirtualKey.Escape)
+        {
+            await ClearSearchAsync();
+            e.Handled = true;
         }
     }
 
@@ -932,8 +941,21 @@ public sealed class PdfDocumentView : UserControl
         _searchCoordinator.Cancel();
         _hits = [];
         _activeHitIndex = -1;
+        _searchQuery = string.Empty;
         _searchResults.ItemsSource = null;
         _status.Text = status;
+    }
+
+    private async Task ClearSearchAsync()
+    {
+        _searchBox.Text = string.Empty;
+        ClearSearchResults("Search cleared.");
+        foreach (var overlay in _pageOverlays.Values)
+        {
+            overlay.Children.Clear();
+        }
+
+        await Task.CompletedTask;
     }
 
     private async Task GoToHitAsync(int hitIndex)

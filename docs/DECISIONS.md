@@ -235,6 +235,26 @@ Use `Directory.Packages.props` + `Directory.Build.props` for shared TFM/nullable
 
 ---
 
+## ADR-014 — Defer loupe, rectangular zoom, and presentation mode
+
+**Status:** Accepted (Milestone 2)  
+**Date:** 2026-10-04
+
+### Context
+
+`FEATURES.md` §4 includes rectangular zoom-to-area, magnifier/loupe, and presentation/slideshow mode. The Milestone 2 completion bar for Glyph’s Core PDF Viewer (open/render/virtualize/navigate/layouts/zoom/text/Find/TOC/links/history/persistence/password) does not require those three tools to be demonstrably usable.
+
+### Decision
+
+Defer F04-29/F04-30/F04-31 until post-core polish (likely M9 or a focused M2.1 slice). Ship Fit/Width/Actual/arbitrary zoom, Ctrl+wheel, and precision-touchpad pinch first.
+
+### Consequences
+
+- Core viewer can be marked complete without loupe/rect/slideshow
+- Matrix rows stay Deferred with this ADR as the reason rather than silent Not Started
+
+---
+
 ## ADR-013 — PDF text search behind `IPdfTextSearchService`
 
 **Status:** Accepted (Milestone 2)  
