@@ -1,6 +1,7 @@
 using Glyph.Core.Workspace;
 using Glyph.Infrastructure.Paths;
 using Glyph.Infrastructure.RecentFiles;
+using Glyph.Infrastructure.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -19,8 +20,12 @@ internal static class AppServices
         });
 
         services.AddSingleton<WorkspaceState>();
-        services.AddSingleton<IRecentFilesStore>(_ =>
-            new JsonRecentFilesStore(GlyphPaths.RecentFilesFile));
+        services.AddSingleton<ISettingsStore>(_ => new JsonSettingsStore(GlyphPaths.SettingsFile));
+        services.AddSingleton<IRecentFilesStore>(sp =>
+        {
+            var settings = sp.GetRequiredService<ISettingsStore>().Current;
+            return new JsonRecentFilesStore(GlyphPaths.RecentFilesFile, settings.RecentFileCapacity);
+        });
         services.AddSingleton<MainWindow>();
 
         return services.BuildServiceProvider();

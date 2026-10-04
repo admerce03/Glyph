@@ -1,4 +1,5 @@
 using Glyph.App.Hosting;
+using Glyph.Infrastructure.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
@@ -7,7 +8,7 @@ namespace Glyph.App;
 
 public partial class App : Application
 {
-    private Window? _window;
+    private MainWindow? _window;
 
     public App()
     {
@@ -25,9 +26,20 @@ public partial class App : Application
 
     public static IServiceProvider Services { get; private set; } = null!;
 
-    protected override void OnLaunched(LaunchActivatedEventArgs args)
+    public static App CurrentApp => (App)Current;
+
+    protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
+        var settingsStore = Services.GetRequiredService<ISettingsStore>();
+        await settingsStore.LoadAsync();
+
         _window = Services.GetRequiredService<MainWindow>();
+        _window.ApplyThemePreference(settingsStore.Current.Theme);
         _window.Activate();
+    }
+
+    public void ApplyThemePreference(ThemePreference preference)
+    {
+        _window?.ApplyThemePreference(preference);
     }
 }

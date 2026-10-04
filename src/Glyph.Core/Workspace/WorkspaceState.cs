@@ -15,10 +15,29 @@ public sealed class WorkspaceState
 
     public DocumentSession Open(DocumentKind kind, string displayName, string? path = null)
     {
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            var existing = FindByPath(path);
+            if (existing is not null)
+            {
+                ActiveDocument = existing;
+                return existing;
+            }
+        }
+
         var session = new DocumentSession(kind, displayName, path);
         _documents.Add(session);
         ActiveDocument = session;
         return session;
+    }
+
+    public DocumentSession? FindByPath(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var fullPath = System.IO.Path.GetFullPath(path);
+        return _documents.FirstOrDefault(d =>
+            d.Path is not null &&
+            string.Equals(System.IO.Path.GetFullPath(d.Path), fullPath, StringComparison.OrdinalIgnoreCase));
     }
 
     public bool Activate(DocumentId id)
@@ -30,6 +49,40 @@ public sealed class WorkspaceState
         }
 
         ActiveDocument = match;
+        return true;
+    }
+
+    public bool ActivateNext()
+    {
+        if (_documents.Count == 0 || ActiveDocument is null)
+        {
+            return false;
+        }
+
+        var index = _documents.FindIndex(d => d.Id.Equals(ActiveDocument.Id));
+        if (index < 0)
+        {
+            return false;
+        }
+
+        ActiveDocument = _documents[(index + 1) % _documents.Count];
+        return true;
+    }
+
+    public bool ActivatePrevious()
+    {
+        if (_documents.Count == 0 || ActiveDocument is null)
+        {
+            return false;
+        }
+
+        var index = _documents.FindIndex(d => d.Id.Equals(ActiveDocument.Id));
+        if (index < 0)
+        {
+            return false;
+        }
+
+        ActiveDocument = _documents[(index - 1 + _documents.Count) % _documents.Count];
         return true;
     }
 
@@ -52,5 +105,13 @@ public sealed class WorkspaceState
         }
 
         return true;
+    }
+
+    public IReadOnlyList<DocumentId> CloseAll()
+    {
+        var ids = _documents.Select(d => d.Id).ToList();
+        _documents.Clear();
+        ActiveDocument = null;
+        return ids;
     }
 }
