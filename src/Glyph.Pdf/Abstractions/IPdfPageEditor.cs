@@ -58,6 +58,26 @@ public interface IPdfPageEditor
         IReadOnlyList<int> splitBeforeIndexes,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Sets a non-destructive CropBox on each selected page by insetting
+    /// <paramref name="margins"/> from the page MediaBox (falling back to the current CropBox).
+    /// Underlying page content is preserved.
+    /// </summary>
+    Task CropPagesAsync(
+        IPdfDocument document,
+        IReadOnlyList<int> pageIndexes,
+        PdfCropMargins margins,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sets an absolute CropBox on each selected page (PDF user space points).
+    /// </summary>
+    Task SetCropBoxAsync(
+        IPdfDocument document,
+        IReadOnlyList<int> pageIndexes,
+        PdfCropBox cropBox,
+        CancellationToken cancellationToken = default);
+
     Task SaveAsync(IPdfDocument document, string path, CancellationToken cancellationToken = default);
 
     Task<byte[]> SaveToBytesAsync(IPdfDocument document, CancellationToken cancellationToken = default);

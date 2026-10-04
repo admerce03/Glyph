@@ -91,7 +91,7 @@ Key abstractions:
 - `IPdfDocumentFactory` / `IPdfDocument`
 - `IPdfPage` (size, rotation, boxes, text runs, links)
 - `IPdfRenderer` (page → bitmap tile/surface at a scale)
-- `IPdfPageEditor` (insert/delete/reorder/rotate/extract/merge/split)
+- `IPdfPageEditor` (insert/delete/reorder/rotate/extract/merge/split/crop)
 - `IPdfAnnotationStore`
 - `IPdfFormStore`
 - `IPdfSecurityService`
