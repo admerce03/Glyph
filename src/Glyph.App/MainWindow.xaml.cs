@@ -2,6 +2,7 @@ using Glyph.Core.Documents;
 using Glyph.Core.IO;
 using Glyph.Core.Workspace;
 using Glyph.Infrastructure.RecentFiles;
+using Glyph.Infrastructure.Settings;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -10,23 +11,32 @@ using Windows.ApplicationModel.DataTransfer;
 using Windows.Graphics;
 using Windows.Storage;
 using Windows.Storage.Pickers;
+using Windows.Storage.Streams;
 using WinRT.Interop;
 
 namespace Glyph.App;
 
 public sealed partial class MainWindow : Window
 {
+    private static readonly string[] SupportedExtensions =
+    [
+        ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tif", ".tiff", ".webp",
+    ];
+
     private readonly WorkspaceState _workspace;
     private readonly IRecentFilesStore _recentFiles;
+    private readonly ISettingsStore _settingsStore;
     private readonly ILogger<MainWindow> _logger;
 
     public MainWindow(
         WorkspaceState workspace,
         IRecentFilesStore recentFiles,
+        ISettingsStore settingsStore,
         ILogger<MainWindow> logger)
     {
         _workspace = workspace;
         _recentFiles = recentFiles;
+        _settingsStore = settingsStore;
         _logger = logger;
 
         InitializeComponent();
@@ -34,55 +44,88 @@ public sealed partial class MainWindow : Window
         RootGrid.Loaded += RootGrid_Loaded;
     }
 
+    public void ApplyThemePreference(ThemePreference preference)
+    {
+        RootGrid.RequestedTheme = preference switch
+        {
+            ThemePreference.Light => ElementTheme.Light,
+            ThemePreference.Dark => ElementTheme.Dark,
+            _ => ElementTheme.Default,
+        };
+
+        ThemeSystemItem.IsChecked = preference == ThemePreference.System;
+        ThemeLightItem.IsChecked = preference == ThemePreference.Light;
+        ThemeDarkItem.IsChecked = preference == ThemePreference.Dark;
+    }
+
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
+        ApplyThemePreference(_settingsStore.Current.Theme);
+        ApplySidebarVisibility(_settingsStore.Current.SidebarVisible);
         RefreshRecentList();
         UpdateEmptyState();
-        StatusText.Text = "Ready — drop files or use Open";
+        StatusText.Text = "Ready — File → Open or drop files here";
         await Task.CompletedTask;
     }
 
-    private async void OpenButton_Click(object sender, RoutedEventArgs e)
-    {
-        var picker = new FileOpenPicker();
-        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
-        picker.FileTypeFilter.Add(".pdf");
-        picker.FileTypeFilter.Add(".png");
-        picker.FileTypeFilter.Add(".jpg");
-        picker.FileTypeFilter.Add(".jpeg");
-        picker.FileTypeFilter.Add(".gif");
-        picker.FileTypeFilter.Add(".bmp");
-        picker.FileTypeFilter.Add(".tif");
-        picker.FileTypeFilter.Add(".tiff");
-        picker.FileTypeFilter.Add(".webp");
-        picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+    private async void OpenMenuItem_Click(object sender, RoutedEventArgs e) => await OpenWithPickerAsync(allowMultiple: false);
 
-        var file = await picker.PickSingleFileAsync();
-        if (file is not null)
+    private async void OpenMultipleMenuItem_Click(object sender, RoutedEventArgs e) => await OpenWithPickerAsync(allowMultiple: true);
+
+    private async void NewFromClipboardMenuItem_Click(object sender, RoutedEventArgs e) => await NewFromClipboardAsync();
+
+    private async void CloseTabMenuItem_Click(object sender, RoutedEventArgs e) => await CloseActiveTabAsync();
+
+    private async void CloseAllMenuItem_Click(object sender, RoutedEventArgs e) => await CloseAllAsync();
+
+    private async void ClearRecentMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        await _recentFiles.ClearAsync();
+        RefreshRecentList();
+        StatusText.Text = "Recent files cleared.";
+    }
+
+    private void ExitMenuItem_Click(object sender, RoutedEventArgs e) => Close();
+
+    private async void ToggleSidebarMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        var visible = SidebarBorder.Visibility != Visibility.Visible;
+        ApplySidebarVisibility(visible);
+        var settings = _settingsStore.Current;
+        settings.SidebarVisible = visible;
+        await _settingsStore.SaveAsync(settings);
+    }
+
+    private async void ThemeSystemItem_Click(object sender, RoutedEventArgs e) => await SetThemeAsync(ThemePreference.System);
+
+    private async void ThemeLightItem_Click(object sender, RoutedEventArgs e) => await SetThemeAsync(ThemePreference.Light);
+
+    private async void ThemeDarkItem_Click(object sender, RoutedEventArgs e) => await SetThemeAsync(ThemePreference.Dark);
+
+    private void NextTabMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_workspace.ActivateNext())
         {
-            await OpenPathAsync(file.Path);
+            SelectTabForActiveDocument();
         }
     }
 
-    private async void CloseTabButton_Click(object sender, RoutedEventArgs e)
+    private void PreviousTabMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        await CloseActiveTabAsync();
+        if (_workspace.ActivatePrevious())
+        {
+            SelectTabForActiveDocument();
+        }
     }
 
-    private async void DocumentTabs_AddTabButtonClick(TabView sender, object args)
-    {
-        OpenButton_Click(sender, new RoutedEventArgs());
-        await Task.CompletedTask;
-    }
+    private async void DocumentTabs_AddTabButtonClick(TabView sender, object args) => await OpenWithPickerAsync(allowMultiple: false);
 
     private async void DocumentTabs_TabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
     {
         if (args.Tab.Tag is DocumentId id)
         {
-            CloseDocument(id);
+            await CloseDocumentAsync(id);
         }
-
-        await Task.CompletedTask;
     }
 
     private void DocumentTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -127,6 +170,91 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private async Task NewFromClipboardAsync()
+    {
+        try
+        {
+            var content = Clipboard.GetContent();
+            if (!content.Contains(StandardDataFormats.Bitmap))
+            {
+                StatusText.Text = "Clipboard does not contain an image.";
+                return;
+            }
+
+            var bitmapRef = await content.GetBitmapAsync();
+            using var stream = await bitmapRef.OpenReadAsync();
+            var folder = await StorageFolder.GetFolderFromPathAsync(
+                System.IO.Path.GetTempPath());
+            var fileName = $"Clipboard-{DateTime.Now:yyyyMMdd-HHmmss}.png";
+            var file = await folder.CreateFileAsync(fileName, CreationCollisionOption.GenerateUniqueName);
+
+            using (var outStream = await file.OpenAsync(FileAccessMode.ReadWrite))
+            {
+                await RandomAccessStream.CopyAndCloseAsync(stream.GetInputStreamAt(0), outStream.GetOutputStreamAt(0));
+            }
+
+            var existing = _workspace.FindByPath(file.Path);
+            var session = _workspace.Open(DocumentKind.Image, file.Name, file.Path);
+            session.MarkDirty();
+
+            if (existing is null)
+            {
+                var tab = new TabViewItem
+                {
+                    Header = file.Name + "*",
+                    Tag = session.Id,
+                    IsClosable = true,
+                    Content = CreatePlaceholderContent(session),
+                };
+                DocumentTabs.TabItems.Add(tab);
+            }
+
+            SelectTabForActiveDocument();
+            UpdateEmptyState();
+            StatusText.Text = $"Created image from clipboard: {file.Name}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "New from Clipboard failed");
+            StatusText.Text = "Could not create image from clipboard.";
+        }
+    }
+
+    private async Task OpenWithPickerAsync(bool allowMultiple)
+    {
+        if (allowMultiple)
+        {
+            var multiPicker = new FileOpenPicker();
+            InitializePicker(multiPicker);
+            var pickedFiles = await multiPicker.PickMultipleFilesAsync();
+            foreach (var pickedFile in pickedFiles)
+            {
+                await OpenPathAsync(pickedFile.Path);
+            }
+
+            return;
+        }
+
+        var picker = new FileOpenPicker();
+        InitializePicker(picker);
+        var singleFile = await picker.PickSingleFileAsync();
+        if (singleFile is not null)
+        {
+            await OpenPathAsync(singleFile.Path);
+        }
+    }
+
+    private void InitializePicker(FileOpenPicker picker)
+    {
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+        foreach (var extension in SupportedExtensions)
+        {
+            picker.FileTypeFilter.Add(extension);
+        }
+
+        picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+    }
+
     private async Task OpenPathAsync(string path)
     {
         try
@@ -145,29 +273,34 @@ public sealed partial class MainWindow : Window
 
             var kind = FileFormatDetector.DetectKind(path);
             var displayName = System.IO.Path.GetFileName(path);
+            var existing = _workspace.FindByPath(path);
             var session = _workspace.Open(kind, displayName, path);
 
-            var tab = new TabViewItem
+            if (existing is null)
             {
-                Header = displayName,
-                Tag = session.Id,
-                IsClosable = true,
-                Content = CreatePlaceholderContent(session),
-            };
+                var tab = new TabViewItem
+                {
+                    Header = displayName,
+                    Tag = session.Id,
+                    IsClosable = true,
+                    Content = CreatePlaceholderContent(session),
+                };
+                DocumentTabs.TabItems.Add(tab);
+            }
 
-            DocumentTabs.TabItems.Add(tab);
-            DocumentTabs.SelectedItem = tab;
-
+            SelectTabForActiveDocument();
             await _recentFiles.AddAsync(path);
             RefreshRecentList();
             UpdateEmptyState();
 
-            StatusText.Text = kind switch
-            {
-                DocumentKind.Pdf => $"Opened PDF (viewer arrives in Milestone 2): {displayName}",
-                DocumentKind.Image => $"Opened image (viewer arrives in Milestone 5): {displayName}",
-                _ => $"Opened {displayName}",
-            };
+            StatusText.Text = existing is null
+                ? kind switch
+                {
+                    DocumentKind.Pdf => $"Opened PDF (viewer arrives in Milestone 2): {displayName}",
+                    DocumentKind.Image => $"Opened image (viewer arrives in Milestone 5): {displayName}",
+                    _ => $"Opened {displayName}",
+                }
+                : $"Activated {displayName}";
 
             _logger.LogInformation("Opened {Kind} document {Path}", kind, path);
         }
@@ -216,37 +349,99 @@ public sealed partial class MainWindow : Window
 
     private async Task CloseActiveTabAsync()
     {
-        if (DocumentTabs.SelectedItem is TabViewItem { Tag: DocumentId id })
+        if (_workspace.ActiveDocument is { } active)
         {
-            CloseDocument(id);
+            await CloseDocumentAsync(active.Id);
         }
-
-        await Task.CompletedTask;
     }
 
-    private void CloseDocument(DocumentId id)
+    private async Task CloseAllAsync()
     {
-        _workspace.Close(id);
+        var ids = _workspace.Documents.Select(d => d.Id).ToList();
+        foreach (var id in ids)
+        {
+            if (!await CloseDocumentAsync(id))
+            {
+                break;
+            }
+        }
+    }
 
+    private async Task<bool> CloseDocumentAsync(DocumentId id)
+    {
+        var session = _workspace.Documents.FirstOrDefault(d => d.Id.Equals(id));
+        if (session is null)
+        {
+            return true;
+        }
+
+        if (session.IsDirty)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "Unsaved changes",
+                Content = $"“{session.DisplayName}” has unsaved changes. Close anyway?",
+                PrimaryButtonText = "Close",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = RootGrid.XamlRoot,
+            };
+
+            var result = await dialog.ShowAsync();
+            if (result != ContentDialogResult.Primary)
+            {
+                return false;
+            }
+        }
+
+        _workspace.Close(id);
         var tab = DocumentTabs.TabItems.OfType<TabViewItem>().FirstOrDefault(t => t.Tag is DocumentId d && d.Equals(id));
         if (tab is not null)
         {
             DocumentTabs.TabItems.Remove(tab);
         }
 
+        SelectTabForActiveDocument();
         UpdateEmptyState();
         StatusText.Text = _workspace.ActiveDocument is null ? "Ready" : $"Active: {_workspace.ActiveDocument.DisplayName}";
+        return true;
     }
 
-    private void RefreshRecentList()
+    private void SelectTabForActiveDocument()
     {
-        RecentList.ItemsSource = _recentFiles.GetRecent();
+        if (_workspace.ActiveDocument is null)
+        {
+            return;
+        }
+
+        var tab = DocumentTabs.TabItems.OfType<TabViewItem>()
+            .FirstOrDefault(t => t.Tag is DocumentId d && d.Equals(_workspace.ActiveDocument.Id));
+        if (tab is not null)
+        {
+            DocumentTabs.SelectedItem = tab;
+        }
     }
 
-    private void UpdateEmptyState()
+    private async Task SetThemeAsync(ThemePreference preference)
     {
+        ApplyThemePreference(preference);
+        var settings = _settingsStore.Current;
+        settings.Theme = preference;
+        await _settingsStore.SaveAsync(settings);
+        StatusText.Text = $"Theme: {preference}";
+    }
+
+    private void ApplySidebarVisibility(bool visible)
+    {
+        SidebarBorder.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        ContentGrid.ColumnDefinitions[0].Width = visible ? new GridLength(220) : new GridLength(0);
+        ToggleSidebarMenuItem.Text = visible ? "Hide Sidebar" : "Show Sidebar";
+    }
+
+    private void RefreshRecentList() => RecentList.ItemsSource = _recentFiles.GetRecent();
+
+    private void UpdateEmptyState() =>
         EmptyState.Visibility = DocumentTabs.TabItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-    }
 
     private void ResizeAndCenter(int width, int height)
     {

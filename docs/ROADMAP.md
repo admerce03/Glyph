@@ -17,8 +17,8 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 
 | Milestone | Name | Status | Depends on |
 | --- | --- | --- | --- |
-| M0 | Architecture and engineering foundation | **In Progress** | — |
-| M1 | Application shell and basic file opening | Not Started | M0 |
+| M0 | Architecture and engineering foundation | **Tested** | — |
+| M1 | Application shell and basic file opening | **In Progress** | M0 |
 | M2 | Core PDF viewer | Not Started | M1 |
 | M3 | Core PDF page manipulation | Not Started | M2 |
 | M4 | PDF markup and editing | Not Started | M2 (forms/security touch M7) |
@@ -61,7 +61,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 1 — Application shell and basic file opening
 
-**Status:** Not Started · Depends on M0
+**Status:** In Progress · Depends on M0
 
 ### Scope (`FEATURES.md` §1–2, parts of §40–41, §52)
 
@@ -77,11 +77,16 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Completion criteria
 
-- Open PDF and common images into tabs (viewers may still be placeholders until M2/M5)
-- Drop files onto the window to open
-- Recent files list persists across restarts
-- Automated tests for recent-files store and open routing
-- Screenshot of shell with tabs
+- [x] Open PDF and common images into tabs (viewers may still be placeholders until M2/M5)
+- [x] Drop files onto the window to open
+- [x] Recent files list persists across restarts
+- [x] Automated tests for recent-files store, settings, and open routing
+- [ ] Screenshot of shell with tabs (requires Windows interactive run)
+- [x] Menu bar + keyboard accelerators (Open/Close/Exit/Next/Previous tab)
+- [x] Theme preference (System/Light/Dark) persisted
+- [x] Sidebar show/hide persisted
+- [ ] File associations (deferred to packaging/MSIX — see ADR-012)
+- [x] New from Clipboard baseline (image bitmap → dirty tab)
 
 ---
 
