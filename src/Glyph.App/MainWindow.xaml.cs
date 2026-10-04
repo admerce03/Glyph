@@ -2,6 +2,7 @@ using Glyph.App.Views;
 using Glyph.Core.Documents;
 using Glyph.Core.IO;
 using Glyph.Core.Workspace;
+using Glyph.Infrastructure.Documents;
 using Glyph.Infrastructure.RecentFiles;
 using Glyph.Infrastructure.Settings;
 using Glyph.Pdf.Abstractions;
@@ -29,10 +30,14 @@ public sealed partial class MainWindow : Window
 
     private readonly WorkspaceState _workspace;
     private readonly IRecentFilesStore _recentFiles;
+    private readonly IDocumentViewStateStore _viewStateStore;
     private readonly ISettingsStore _settingsStore;
     private readonly IPdfDocumentFactory _pdfFactory;
     private readonly IPdfRenderer _pdfRenderer;
     private readonly IPdfTextSearchService _pdfSearch;
+    private readonly IPdfTextExtractor _pdfText;
+    private readonly IPdfOutlineService _pdfOutlines;
+    private readonly IPdfLinkService _pdfLinks;
     private readonly PageRenderCache _pageCache;
     private readonly ILogger<MainWindow> _logger;
     private readonly Dictionary<DocumentId, IAsyncDisposable> _openEngines = new();
@@ -40,19 +45,27 @@ public sealed partial class MainWindow : Window
     public MainWindow(
         WorkspaceState workspace,
         IRecentFilesStore recentFiles,
+        IDocumentViewStateStore viewStateStore,
         ISettingsStore settingsStore,
         IPdfDocumentFactory pdfFactory,
         IPdfRenderer pdfRenderer,
         IPdfTextSearchService pdfSearch,
+        IPdfTextExtractor pdfText,
+        IPdfOutlineService pdfOutlines,
+        IPdfLinkService pdfLinks,
         PageRenderCache pageCache,
         ILogger<MainWindow> logger)
     {
         _workspace = workspace;
         _recentFiles = recentFiles;
+        _viewStateStore = viewStateStore;
         _settingsStore = settingsStore;
         _pdfFactory = pdfFactory;
         _pdfRenderer = pdfRenderer;
         _pdfSearch = pdfSearch;
+        _pdfText = pdfText;
+        _pdfOutlines = pdfOutlines;
+        _pdfLinks = pdfLinks;
         _pageCache = pageCache;
         _logger = logger;
 
@@ -345,9 +358,28 @@ public sealed partial class MainWindow : Window
                 return null;
             }
 
+            var saved = await _viewStateStore.TryLoadAsync(session.Path);
+            if (saved is not null)
+            {
+                session.ViewState.Zoom = saved.Zoom;
+                session.ViewState.PageLayout = saved.PageLayout;
+                session.ViewState.CurrentPageIndex = Math.Clamp(
+                    saved.CurrentPageIndex,
+                    0,
+                    Math.Max(0, pdf.PageCount - 1));
+            }
+
             _openEngines[session.Id] = pdf;
             SidebarStatus.Text = $"{pdf.PageCount} pages — thumbnails and search in the document pane.";
-            return new PdfDocumentView(pdf, _pdfRenderer, _pageCache, _pdfSearch, session.ViewState);
+            return new PdfDocumentView(
+                pdf,
+                _pdfRenderer,
+                _pageCache,
+                _pdfSearch,
+                _pdfText,
+                _pdfOutlines,
+                _pdfLinks,
+                session.ViewState);
         }
 
         return CreatePlaceholderContent(session);
@@ -503,6 +535,18 @@ public sealed partial class MainWindow : Window
             if (result != ContentDialogResult.Primary)
             {
                 return false;
+            }
+        }
+
+        if (session.Kind == DocumentKind.Pdf && session.Path is not null)
+        {
+            try
+            {
+                await _viewStateStore.SaveAsync(session.Path, session.ViewState);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to persist view state for {Path}", session.Path);
             }
         }
 

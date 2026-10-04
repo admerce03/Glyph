@@ -49,8 +49,26 @@ public sealed class PdfiumDocumentFactory : IPdfDocumentFactory
                         cancellationToken.ThrowIfCancellationRequested();
                         double width = 0;
                         double height = 0;
+                        // Size already reflects the page's /Rotate value.
                         fpdfview.FPDF_GetPageSizeByIndex(handle, i, ref width, ref height);
-                        pages.Add(new PdfiumPage(document, i, width, height, rotationDegrees: 0));
+
+                        var rotationDegrees = 0;
+                        var page = fpdfview.FPDF_LoadPage(handle, i);
+                        if (page is not null)
+                        {
+                            try
+                            {
+                                // PDFium returns 0–3 for 0°/90°/180°/270°.
+                                var rotationQuarterTurns = fpdf_edit.FPDFPageGetRotation(page);
+                                rotationDegrees = Math.Clamp(rotationQuarterTurns, 0, 3) * 90;
+                            }
+                            finally
+                            {
+                                fpdfview.FPDF_ClosePage(page);
+                            }
+                        }
+
+                        pages.Add(new PdfiumPage(document, i, width, height, rotationDegrees));
                     }
 
                     return (IPdfDocument)document;

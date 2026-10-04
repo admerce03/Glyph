@@ -1,4 +1,5 @@
 using Glyph.Core.Workspace;
+using Glyph.Infrastructure.Documents;
 using Glyph.Infrastructure.Paths;
 using Glyph.Infrastructure.RecentFiles;
 using Glyph.Infrastructure.Settings;
@@ -30,8 +31,13 @@ internal static class AppServices
             var settings = sp.GetRequiredService<ISettingsStore>().Current;
             return new JsonRecentFilesStore(GlyphPaths.RecentFilesFile, settings.RecentFileCapacity);
         });
+        services.AddSingleton<IDocumentViewStateStore>(_ =>
+            new JsonDocumentViewStateStore(GlyphPaths.DocumentViewStateFile));
         services.AddSingleton<IPdfDocumentFactory, PdfiumDocumentFactory>();
         services.AddSingleton<IPdfRenderer, PdfiumRenderer>();
+        services.AddSingleton<IPdfTextExtractor, PdfiumTextExtractor>();
+        services.AddSingleton<IPdfOutlineService, PdfiumOutlineService>();
+        services.AddSingleton<IPdfLinkService, PdfiumLinkService>();
         services.AddSingleton<IPdfTextSearchService, PdfPigTextSearchService>();
         services.AddSingleton<PageRenderCache>(_ => new PageRenderCache(capacity: 48));
         services.AddSingleton<MainWindow>();

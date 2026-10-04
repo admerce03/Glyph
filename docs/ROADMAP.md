@@ -19,7 +19,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | --- | --- | --- | --- |
 | M0 | Architecture and engineering foundation | **Tested** | — |
 | M1 | Application shell and basic file opening | **Implemented** (CI green; interactive screenshot pending) | M0 |
-| M2 | Core PDF viewer | **In Progress** | M1 |
+| M2 | Core PDF viewer | **Implemented** (CI green on PR #7; merge blocked on agent GitHub auth) | M1 |
 | M3 | Core PDF page manipulation | Not Started | M2 |
 | M4 | PDF markup and editing | Not Started | M2 (forms/security touch M7) |
 | M5 | Image viewer/editor | Not Started | M1 (shares shell/DnD with M3) |
@@ -92,7 +92,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 2 — Core PDF viewer
 
-**Status:** In Progress · Depends on M1
+**Status:** Implemented · Depends on M1
 
 ### Scope (`FEATURES.md` §3–7, §57–58 PDF parts)
 
@@ -118,8 +118,14 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 - PDFium open/render + LRU cache + continuous viewer + bitmap thumbnails landed (landing PR #6).
 - Offline Find hardened: async/cancelable PdfPig adapter behind `IPdfTextSearchService`, coordinator cancels in-flight queries, automated coverage for multi-page/multi-hit/empty/case/phrase/punctuation/Unicode/imperfect extraction/image-only/encrypted/large-doc/cancel cases.
-- Viewer chrome: single/two-page layouts, fit page/width/100%, Ctrl+wheel zoom, First/Last/goto/PageUp/Down, in-document back/forward history, password-open prompt + typed `PdfPasswordRequiredException`.
-- Still outstanding for M2 completion: text selection/copy, on-page search highlights, TOC/internal links, pinch zoom, cover-page two-page option, durable page/zoom persistence.
+- Viewer chrome: single/two-page layouts (incl. cover), fit page/width/100%, Ctrl+wheel + pinch zoom, First/Last/goto/PageUp/Down, in-document back/forward history, password-open prompt + typed `PdfPasswordRequiredException`.
+- Text extraction/selection/copy, TOC outlines, and internal link navigation landed behind PDFium abstractions with tests.
+- Durable page/zoom/layout persistence via `IDocumentViewStateStore`; drag text selection + on-page Find highlights.
+- Continuous mode uses windowed page virtualization (`ContinuousPageWindow`) so large docs do not materialize every page control.
+- Page `/Rotate` metadata read via PDFium; Find Clear + Escape clears results/overlays.
+- Deferred (ADR-014): rectangular zoom, loupe, presentation mode.
+- Optional stretch still open: search-all-open-PDFs, richer multi-line/column selection.
+- PR #7 carries the M2 completion stack; Windows CI green on `28febb9` — merge pending restored GitHub credentials in the agent VM.
 
 ---
 
@@ -278,13 +284,13 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 | Area | FEATURES.md | Milestone | Status |
 | --- | --- | --- | --- |
-| App/file handling | §1 | M1, M9 | Not Started |
-| Main window/UI chrome | §2 | M1, M9 | Not Started |
-| Sidebar modes | §3 | M2–M5 | Not Started |
-| PDF viewing | §4 | M2 | Not Started |
-| PDF TOC/links | §5 | M2 | Not Started |
-| PDF search | §6 | M2, M6 | Not Started |
-| PDF text interaction | §7 | M2, M6 | Not Started |
+| App/file handling | §1 | M1, M9 | In Progress |
+| Main window/UI chrome | §2 | M1, M9 | In Progress |
+| Sidebar modes | §3 | M2–M5 | In Progress |
+| PDF viewing | §4 | M2 | Implemented |
+| PDF TOC/links | §5 | M2 | Implemented |
+| PDF search | §6 | M2, M6 | Implemented |
+| PDF text interaction | §7 | M2, M6 | Implemented |
 | OCR / Live Text | §8 | M6 | Not Started |
 | User bookmarks | §9 | M2/M4 | Not Started |
 | PDF page manipulation | §10–12 | M3 | Not Started |
@@ -306,7 +312,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Undo/autosave/snapshots | §49–51 | M1–M4, M9 | Not Started |
 | Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Not Started |
 | Accessibility | §56 | M9 | Not Started |
-| Performance/large docs | §57–58 | M2+, M9 | Not Started |
+| Performance/large docs | §57–58 | M2+, M9 | In Progress |
 | Multi-doc workflows | §59–60 | M1, M3 | Not Started |
 | Non-destructive editing | §61 | M3–M5 | Not Started |
 | Output formats | §62 | M5, M7 | Not Started |
