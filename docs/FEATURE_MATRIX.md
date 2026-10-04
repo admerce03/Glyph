@@ -215,7 +215,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F11-08 | Preview-style PDF drag-and-drop workflows | different windows | M3 | In Progress | Same-process registry; multi-window shell later |
 | F11-09 | Preview-style PDF drag-and-drop workflows | different tabs | M3 | Implemented | Cross-tab insert via `PdfPageDragRegistry` |
 | F12-01 | PDF crop | Rectangular page crop. | M3 | Implemented | CropBox rectangle via margins / absolute box |
-| F12-02 | PDF crop | Visual crop handles. | M3 | In Progress | Interactive overlay handles |
+| F12-02 | PDF crop | Visual crop handles. | M3 | Implemented | Interactive overlay handles + Apply/Cancel chrome |
 | F12-03 | PDF crop | Numeric crop dimensions. | M3 | Implemented | L/T/R/B inset dialog |
 | F12-04 | PDF crop | Units: | M3 | Implemented | pt / in / cm / mm via `PdfLengthUnits` |
 | F12-05 | PDF crop | Apply to current page. | M3 | Implemented | Selection defaults to current page |
