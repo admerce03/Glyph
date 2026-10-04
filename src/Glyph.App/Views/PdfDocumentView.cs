@@ -107,6 +107,9 @@ public sealed class PdfDocumentView : UserControl
         };
         _scrollViewer.ViewChanged += ScrollViewer_ViewChanged;
         _scrollViewer.PointerWheelChanged += ScrollViewer_PointerWheelChanged;
+        // Precision-touchpad pinch often arrives as Ctrl+wheel; Manipulation Scale covers direct pinch.
+        _scrollViewer.ManipulationMode = ManipulationModes.Scale;
+        _scrollViewer.ManipulationDelta += ScrollViewer_ManipulationDelta;
 
         _thumbnailHost = new StackPanel { Spacing = 8, Padding = new Thickness(8) };
         _thumbnailScroll = new ScrollViewer
@@ -169,9 +172,9 @@ public sealed class PdfDocumentView : UserControl
         _gotoBox.KeyDown += GotoBox_KeyDown;
         _layoutBox = new ComboBox
         {
-            Width = 120,
-            ItemsSource = new[] { "Continuous", "Single", "Two-page" },
-            SelectedIndex = (int)_layoutMode,
+            Width = 150,
+            ItemsSource = new[] { "Continuous", "Single", "Two-page", "Two-page + cover" },
+            SelectedIndex = LayoutToComboIndex(_layoutMode),
         };
         _layoutBox.SelectionChanged += async (_, _) => await SetLayoutModeAsync(SelectedLayout());
 
@@ -293,12 +296,26 @@ public sealed class PdfDocumentView : UserControl
     {
         1 => PageLayoutMode.SinglePage,
         2 => PageLayoutMode.TwoPage,
+        3 => PageLayoutMode.TwoPageWithCover,
         _ => PageLayoutMode.Continuous,
+    };
+
+    private static int LayoutToComboIndex(PageLayoutMode mode) => mode switch
+    {
+        PageLayoutMode.SinglePage => 1,
+        PageLayoutMode.TwoPage => 2,
+        PageLayoutMode.TwoPageWithCover => 3,
+        _ => 0,
     };
 
     private async Task SetLayoutModeAsync(PageLayoutMode mode)
     {
         _layoutMode = mode;
+        if (_layoutBox.SelectedIndex != LayoutToComboIndex(mode))
+        {
+            _layoutBox.SelectedIndex = LayoutToComboIndex(mode);
+        }
+
         CurrentPageIndex = PageLayoutCalculator.NormalizePageIndex(mode, CurrentPageIndex, _document.PageCount);
         _scrollViewer.Content = mode == PageLayoutMode.Continuous ? _continuousHost : _spreadHost;
         BuildPagePlaceholders();
@@ -787,6 +804,17 @@ public sealed class PdfDocumentView : UserControl
 
         var delta = e.GetCurrentPoint(_scrollViewer).Properties.MouseWheelDelta;
         await SetScaleAsync(PdfZoomCalculator.ApplyWheelZoom(_scale, delta));
+        e.Handled = true;
+    }
+
+    private async void ScrollViewer_ManipulationDelta(object sender, ManipulationDeltaRoutedEventArgs e)
+    {
+        if (Math.Abs(e.Delta.Scale - 1.0) < 0.001)
+        {
+            return;
+        }
+
+        await SetScaleAsync(_scale * e.Delta.Scale);
         e.Handled = true;
     }
 

@@ -87,8 +87,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-08 | PDF viewing | Password-protected PDF opening. | M2 | Tested | `PdfPasswordRequiredException` + ContentDialog prompt |
 | F04-09 | PDF viewing | Continuous scrolling. | M2 | Implemented | Continuous scrolling page stack |
 | F04-10 | PDF viewing | Single-page mode. | M2 | Implemented | Layout combo → SinglePage |
-| F04-11 | PDF viewing | Two-page/facing-page mode. | M2 | Implemented | Even/odd spreads; cover mode TBD |
-| F04-12 | PDF viewing | Optional cover-page behavior for facing pages. | M2 | Not Started |  |
+| F04-11 | PDF viewing | Two-page/facing-page mode. | M2 | Implemented | Even/odd spreads |
+| F04-12 | PDF viewing | Optional cover-page behavior for facing pages. | M2 | Tested | `TwoPageWithCover` layout + calculator tests |
 | F04-13 | PDF viewing | Page thumbnails. | M2 | Implemented | Bitmap thumbnails at low scale |
 | F04-14 | PDF viewing | Page number navigation. | M2 | Implemented | Status + goto box + thumbs |
 | F04-15 | PDF viewing | Go to page. | M2 | Implemented | Goto box (# + Enter) |
@@ -104,7 +104,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-25 | PDF viewing | Custom zoom percentage. | M2 | Implemented | Zoom percentage shown in status |
 | F04-26 | PDF viewing | Zoom in/out. | M2 | Implemented | Zoom +/- controls |
 | F04-27 | PDF viewing | Ctrl+mouse wheel zoom. | M2 | Implemented | Ctrl+wheel → zoom steps |
-| F04-28 | PDF viewing | Pinch-to-zoom on supported precision touchpads. | M2 | Not Started |  |
+| F04-28 | PDF viewing | Pinch-to-zoom on supported precision touchpads. | M2 | Implemented | Ctrl+wheel + Manipulation Scale pinch |
 | F04-29 | PDF viewing | Rectangular zoom-to-area. | M2 | Not Started |  |
 | F04-30 | PDF viewing | Magnifier/loupe tool. | M2 | Not Started |  |
 | F04-31 | PDF viewing | Presentation/slideshow mode. | M2 | Not Started |  |
