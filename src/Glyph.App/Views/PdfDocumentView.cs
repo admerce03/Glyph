@@ -4,30 +4,38 @@ using Glyph.Pdf.Rendering;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace Glyph.App.Views;
 
 /// <summary>
-/// Minimal Milestone 2 PDF viewer: continuous page stack, zoom, page nav, thumbnails.
+/// Milestone 2 PDF viewer: continuous page stack, zoom, page nav, bitmap thumbnails.
 /// Pages are rendered on demand; distant bitmaps are not retained beyond the cache.
 /// </summary>
 public sealed class PdfDocumentView : UserControl
 {
+    private const double ThumbnailWidth = 108;
+
     private readonly IPdfDocument _document;
     private readonly IPdfRenderer _renderer;
     private readonly PageRenderCache _cache;
     private readonly string _documentKey;
+    private readonly string _thumbnailKey;
     private readonly ScrollViewer _scrollViewer;
     private readonly StackPanel _pageHost;
-    private readonly ListView _thumbnailList;
+    private readonly StackPanel _thumbnailHost;
+    private readonly ScrollViewer _thumbnailScroll;
     private readonly TextBlock _status;
     private readonly Dictionary<int, Image> _pageImages = new();
+    private readonly Dictionary<int, Image> _thumbnailImages = new();
+    private readonly Dictionary<int, Border> _thumbnailBorders = new();
     private readonly SemaphoreSlim _renderGate = new(1, 1);
     private double _scale = 1.25;
     private int _renderGeneration;
     private bool _loaded;
+    private bool _suppressThumbnailNav;
 
     public PdfDocumentView(IPdfDocument document, IPdfRenderer renderer, PageRenderCache cache)
     {
@@ -35,6 +43,7 @@ public sealed class PdfDocumentView : UserControl
         _renderer = renderer;
         _cache = cache;
         _documentKey = document.Path ?? document.GetHashCode().ToString("X");
+        _thumbnailKey = _documentKey + "|thumb";
 
         _pageHost = new StackPanel { Spacing = 12, Padding = new Thickness(12) };
         _scrollViewer = new ScrollViewer
@@ -46,12 +55,14 @@ public sealed class PdfDocumentView : UserControl
         };
         _scrollViewer.ViewChanged += ScrollViewer_ViewChanged;
 
-        _thumbnailList = new ListView
+        _thumbnailHost = new StackPanel { Spacing = 8, Padding = new Thickness(8) };
+        _thumbnailScroll = new ScrollViewer
         {
-            SelectionMode = ListViewSelectionMode.Single,
+            Content = _thumbnailHost,
             Width = 140,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
         };
-        _thumbnailList.SelectionChanged += ThumbnailList_SelectionChanged;
 
         _status = new TextBlock { Opacity = 0.75, FontSize = 12, Margin = new Thickness(8, 0, 8, 0) };
 
@@ -74,12 +85,26 @@ public sealed class PdfDocumentView : UserControl
             Children = { prev, next, zoomOut, zoomIn, fitWidth, _status },
         };
 
-        var body = new Grid { ColumnDefinitions = { new ColumnDefinition { Width = new GridLength(150) }, new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) } } };
-        body.Children.Add(_thumbnailList);
+        var body = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition { Width = new GridLength(150) },
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+            },
+        };
+        body.Children.Add(_thumbnailScroll);
         Grid.SetColumn(_scrollViewer, 1);
         body.Children.Add(_scrollViewer);
 
-        var root = new Grid { RowDefinitions = { new RowDefinition { Height = GridLength.Auto }, new RowDefinition { Height = new GridLength(1, GridUnitType.Star) } } };
+        var root = new Grid
+        {
+            RowDefinitions =
+            {
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
+            },
+        };
         root.Children.Add(toolbar);
         Grid.SetRow(body, 1);
         root.Children.Add(body);
@@ -100,14 +125,17 @@ public sealed class PdfDocumentView : UserControl
 
         _loaded = true;
         BuildPagePlaceholders();
-        PopulateThumbnailLabels();
+        BuildThumbnailPlaceholders();
         UpdateStatus();
+        HighlightThumbnail(CurrentPageIndex);
         await RenderVisibleAsync();
+        _ = RenderThumbnailsAsync();
     }
 
     private void PdfDocumentView_Unloaded(object sender, RoutedEventArgs e)
     {
         _cache.ClearDocument(_documentKey);
+        _cache.ClearDocument(_thumbnailKey);
     }
 
     private void BuildPagePlaceholders()
@@ -139,12 +167,52 @@ public sealed class PdfDocumentView : UserControl
         }
     }
 
-    private void PopulateThumbnailLabels()
+    private void BuildThumbnailPlaceholders()
     {
-        _thumbnailList.Items.Clear();
+        _thumbnailHost.Children.Clear();
+        _thumbnailImages.Clear();
+        _thumbnailBorders.Clear();
+
         for (var i = 0; i < _document.PageCount; i++)
         {
-            _thumbnailList.Items.Add($"Page {i + 1}");
+            var page = _document.GetPage(i);
+            var thumbScale = ThumbnailWidth / Math.Max(1, page.WidthPoints);
+            var image = new Image
+            {
+                Width = ThumbnailWidth,
+                Height = Math.Max(1, page.HeightPoints * thumbScale),
+                Stretch = Stretch.Uniform,
+            };
+            _thumbnailImages[i] = image;
+
+            var label = new TextBlock
+            {
+                Text = $"{i + 1}",
+                FontSize = 11,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Opacity = 0.75,
+            };
+
+            var stack = new StackPanel { Spacing = 2, Children = { image, label } };
+            var border = new Border
+            {
+                BorderBrush = new SolidColorBrush(Colors.Transparent),
+                BorderThickness = new Thickness(2),
+                Padding = new Thickness(2),
+                Child = stack,
+                Tag = i,
+            };
+            border.PointerPressed += Thumbnail_PointerPressed;
+            _thumbnailBorders[i] = border;
+            _thumbnailHost.Children.Add(border);
+        }
+    }
+
+    private async void Thumbnail_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is Border { Tag: int index })
+        {
+            await GoToPageAsync(index);
         }
     }
 
@@ -177,7 +245,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         CurrentPageIndex = pageIndex;
-        _thumbnailList.SelectedIndex = pageIndex;
+        HighlightThumbnail(pageIndex);
         if (_pageHost.Children[pageIndex] is FrameworkElement element)
         {
             element.StartBringIntoView();
@@ -187,11 +255,24 @@ public sealed class PdfDocumentView : UserControl
         await RenderVisibleAsync();
     }
 
-    private async void ThumbnailList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void HighlightThumbnail(int pageIndex)
     {
-        if (_thumbnailList.SelectedIndex >= 0)
+        _suppressThumbnailNav = true;
+        try
         {
-            await GoToPageAsync(_thumbnailList.SelectedIndex);
+            foreach (var (index, border) in _thumbnailBorders)
+            {
+                border.BorderBrush = new SolidColorBrush(index == pageIndex ? Colors.DodgerBlue : Colors.Transparent);
+            }
+
+            if (_thumbnailBorders.TryGetValue(pageIndex, out var selected))
+            {
+                selected.StartBringIntoView();
+            }
+        }
+        finally
+        {
+            _suppressThumbnailNav = false;
         }
     }
 
@@ -206,6 +287,11 @@ public sealed class PdfDocumentView : UserControl
 
     private void UpdateCurrentPageFromScroll()
     {
+        if (_suppressThumbnailNav)
+        {
+            return;
+        }
+
         var offset = _scrollViewer.VerticalOffset;
         double accumulated = 0;
         for (var i = 0; i < _pageHost.Children.Count; i++)
@@ -215,13 +301,13 @@ public sealed class PdfDocumentView : UserControl
                 var next = accumulated + fe.ActualHeight + 12;
                 if (offset < next || i == _pageHost.Children.Count - 1)
                 {
-                    CurrentPageIndex = i;
-                    if (_thumbnailList.SelectedIndex != i)
+                    if (CurrentPageIndex != i)
                     {
-                        _thumbnailList.SelectedIndex = i;
+                        CurrentPageIndex = i;
+                        HighlightThumbnail(i);
+                        UpdateStatus();
                     }
 
-                    UpdateStatus();
                     return;
                 }
 
@@ -260,6 +346,21 @@ public sealed class PdfDocumentView : UserControl
         }
     }
 
+    private async Task RenderThumbnailsAsync()
+    {
+        for (var i = 0; i < _document.PageCount; i++)
+        {
+            try
+            {
+                await RenderThumbnailAsync(i);
+            }
+            catch
+            {
+                // Thumbnail failures must not break viewing.
+            }
+        }
+    }
+
     private async Task RenderPageAsync(int pageIndex)
     {
         if (!_pageImages.TryGetValue(pageIndex, out var image))
@@ -281,6 +382,31 @@ public sealed class PdfDocumentView : UserControl
         _cache.Set(_documentKey, pageIndex, _scale, result);
         image.Width = result.Width;
         image.Height = result.Height;
+        image.Source = await ToWriteableBitmapAsync(result);
+    }
+
+    private async Task RenderThumbnailAsync(int pageIndex)
+    {
+        if (!_thumbnailImages.TryGetValue(pageIndex, out var image))
+        {
+            return;
+        }
+
+        var page = _document.GetPage(pageIndex);
+        var thumbScale = ThumbnailWidth / Math.Max(1, page.WidthPoints);
+
+        if (_cache.TryGet(_thumbnailKey, pageIndex, thumbScale, out var cached) && cached is not null)
+        {
+            image.Source = await ToWriteableBitmapAsync(cached);
+            return;
+        }
+
+        var result = await _renderer.RenderPageAsync(
+            _document,
+            pageIndex,
+            new PdfRenderRequest(thumbScale, MaxWidthPixels: (int)ThumbnailWidth));
+
+        _cache.Set(_thumbnailKey, pageIndex, thumbScale, result);
         image.Source = await ToWriteableBitmapAsync(result);
     }
 
