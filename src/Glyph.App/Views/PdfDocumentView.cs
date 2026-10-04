@@ -332,54 +332,106 @@ public sealed class PdfDocumentView : UserControl
         _pageImages.Clear();
         _pageOverlays.Clear();
 
-        var host = _layoutMode == PageLayoutMode.Continuous ? _continuousHost : _spreadHost;
-        var (first, last) = PageLayoutCalculator.VisibleRange(_layoutMode, CurrentPageIndex, _document.PageCount);
+        if (_layoutMode == PageLayoutMode.Continuous)
+        {
+            BuildContinuousWindow();
+        }
+        else
+        {
+            var (first, last) = PageLayoutCalculator.VisibleRange(_layoutMode, CurrentPageIndex, _document.PageCount);
+            for (var i = first; i <= last; i++)
+            {
+                _spreadHost.Children.Add(CreatePageVisual(i));
+            }
+        }
+
+        _ = RefreshSearchHighlightsAsync();
+    }
+
+    private void BuildContinuousWindow()
+    {
+        var (first, last) = ContinuousPageWindow.Around(CurrentPageIndex, _document.PageCount);
         if (last < first)
         {
             return;
         }
 
-        for (var i = first; i <= last; i++)
+        if (first > 0)
         {
-            var page = _document.GetPage(i);
-            var width = Math.Max(1, page.WidthPoints * _scale);
-            var height = Math.Max(1, page.HeightPoints * _scale);
-            var image = new Image
-            {
-                Width = width,
-                Height = height,
-                Stretch = Stretch.Uniform,
-            };
-            _pageImages[i] = image;
-
-            var overlay = new Canvas
-            {
-                Width = width,
-                Height = height,
-                IsHitTestVisible = false,
-            };
-            _pageOverlays[i] = overlay;
-
-            var layer = new Grid { Width = width, Height = height };
-            layer.Children.Add(image);
-            layer.Children.Add(overlay);
-
-            var border = new Border
-            {
-                BorderBrush = new SolidColorBrush(Colors.Gray),
-                BorderThickness = new Thickness(1),
-                Child = layer,
-                Tag = i,
-                Background = new SolidColorBrush(Colors.Transparent),
-            };
-            border.PointerPressed += PageBorder_PointerPressed;
-            border.PointerMoved += PageBorder_PointerMoved;
-            border.PointerReleased += PageBorder_PointerReleased;
-            border.PointerCaptureLost += (_, _) => _dragSelecting = false;
-            host.Children.Add(border);
+            _continuousHost.Children.Add(CreateSpacer(EstimateHeight(0, first - 1), tag: "spacer-before"));
         }
 
-        _ = RefreshSearchHighlightsAsync();
+        for (var i = first; i <= last; i++)
+        {
+            _continuousHost.Children.Add(CreatePageVisual(i));
+        }
+
+        if (last < _document.PageCount - 1)
+        {
+            _continuousHost.Children.Add(CreateSpacer(EstimateHeight(last + 1, _document.PageCount - 1), tag: "spacer-after"));
+        }
+    }
+
+    private double EstimateHeight(int startInclusive, int endInclusive)
+    {
+        double total = 0;
+        for (var i = startInclusive; i <= endInclusive; i++)
+        {
+            var page = _document.GetPage(i);
+            total += Math.Max(1, page.HeightPoints * _scale) + 12;
+        }
+
+        return Math.Max(1, total);
+    }
+
+    private static Border CreateSpacer(double height, string tag) =>
+        new()
+        {
+            Height = height,
+            Width = 1,
+            Tag = tag,
+            Opacity = 0,
+            IsHitTestVisible = false,
+        };
+
+    private Border CreatePageVisual(int pageIndex)
+    {
+        var page = _document.GetPage(pageIndex);
+        var width = Math.Max(1, page.WidthPoints * _scale);
+        var height = Math.Max(1, page.HeightPoints * _scale);
+        var image = new Image
+        {
+            Width = width,
+            Height = height,
+            Stretch = Stretch.Uniform,
+        };
+        _pageImages[pageIndex] = image;
+
+        var overlay = new Canvas
+        {
+            Width = width,
+            Height = height,
+            IsHitTestVisible = false,
+        };
+        _pageOverlays[pageIndex] = overlay;
+
+        var layer = new Grid { Width = width, Height = height };
+        layer.Children.Add(image);
+        layer.Children.Add(overlay);
+
+        var border = new Border
+        {
+            BorderBrush = new SolidColorBrush(Colors.Gray),
+            BorderThickness = new Thickness(1),
+            Child = layer,
+            Tag = pageIndex,
+            Background = new SolidColorBrush(Colors.Transparent),
+        };
+        border.PointerPressed += PageBorder_PointerPressed;
+        border.PointerMoved += PageBorder_PointerMoved;
+        border.PointerReleased += PageBorder_PointerReleased;
+        border.PointerCaptureLost += (_, _) => _dragSelecting = false;
+        return border;
     }
 
     private void BuildThumbnailPlaceholders()
@@ -965,15 +1017,16 @@ public sealed class PdfDocumentView : UserControl
             _history.NavigateTo(pageIndex);
         }
 
-        if (_layoutMode != PageLayoutMode.Continuous)
+        // Rebuild when the target page is outside the materialized continuous window
+        // or whenever facing/single layouts need a new spread.
+        if (_layoutMode != PageLayoutMode.Continuous || !_pageImages.ContainsKey(pageIndex))
         {
             BuildPagePlaceholders();
         }
-        else if (_pageImages.TryGetValue(pageIndex, out _)
-                 && _continuousHost.Children.OfType<FrameworkElement>().FirstOrDefault(fe => fe.Tag is int tag && tag == pageIndex) is { } element)
-        {
-            element.StartBringIntoView();
-        }
+
+        var target = _continuousHost.Children.OfType<FrameworkElement>().FirstOrDefault(fe => fe.Tag is int tag && tag == pageIndex)
+            ?? _spreadHost.Children.OfType<FrameworkElement>().FirstOrDefault(fe => fe.Tag is int tag && tag == pageIndex);
+        target?.StartBringIntoView();
 
         HighlightThumbnail(pageIndex);
         SyncViewState();
@@ -1020,26 +1073,44 @@ public sealed class PdfDocumentView : UserControl
 
         var offset = _scrollViewer.VerticalOffset;
         double accumulated = 0;
+        var nearestPage = CurrentPageIndex;
         for (var i = 0; i < _continuousHost.Children.Count; i++)
         {
-            if (_continuousHost.Children[i] is FrameworkElement fe)
+            if (_continuousHost.Children[i] is not FrameworkElement fe)
             {
-                var next = accumulated + fe.ActualHeight + 12;
-                if (offset < next || i == _continuousHost.Children.Count - 1)
-                {
-                    if (CurrentPageIndex != i)
-                    {
-                        CurrentPageIndex = i;
-                        HighlightThumbnail(i);
-                        SyncViewState();
-                        UpdateStatus();
-                    }
-
-                    return;
-                }
-
-                accumulated = next;
+                continue;
             }
+
+            var next = accumulated + fe.ActualHeight + 12;
+            if (fe.Tag is int pageIndex && offset < next)
+            {
+                nearestPage = pageIndex;
+                break;
+            }
+
+            if (fe.Tag is int stillPage)
+            {
+                nearestPage = stillPage;
+            }
+
+            accumulated = next;
+        }
+
+        if (CurrentPageIndex == nearestPage)
+        {
+            return;
+        }
+
+        CurrentPageIndex = nearestPage;
+        HighlightThumbnail(nearestPage);
+        SyncViewState();
+        UpdateStatus();
+
+        // If we scrolled near the edge of the materialized window, rebuild around the new page.
+        var (start, end) = ContinuousPageWindow.Around(CurrentPageIndex, _document.PageCount);
+        if (!_pageImages.ContainsKey(start) || !_pageImages.ContainsKey(end) || !_pageImages.ContainsKey(CurrentPageIndex))
+        {
+            BuildPagePlaceholders();
         }
     }
 

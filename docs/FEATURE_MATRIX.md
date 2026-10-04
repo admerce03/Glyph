@@ -85,7 +85,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-06 | PDF viewing | Support rotated pages. | M2 | In Progress | Page model stores rotation; viewer uses page size |
 | F04-07 | PDF viewing | Support PDFs containing different page sizes. | M2 | Implemented | Per-page size from PDFium |
 | F04-08 | PDF viewing | Password-protected PDF opening. | M2 | Tested | `PdfPasswordRequiredException` + ContentDialog prompt |
-| F04-09 | PDF viewing | Continuous scrolling. | M2 | Implemented | Continuous scrolling page stack |
+| F04-09 | PDF viewing | Continuous scrolling. | M2 | Implemented | Continuous scroll with windowed page virtualization |
 | F04-10 | PDF viewing | Single-page mode. | M2 | Implemented | Layout combo → SinglePage |
 | F04-11 | PDF viewing | Two-page/facing-page mode. | M2 | Implemented | Even/odd spreads |
 | F04-12 | PDF viewing | Optional cover-page behavior for facing pages. | M2 | Tested | `TwoPageWithCover` layout + calculator tests |
