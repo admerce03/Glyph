@@ -196,13 +196,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F10-13 | PDF page manipulation | Insert at arbitrary position. | M3 | Tested | Insert index parameter |
 | F10-14 | PDF page manipulation | Extract selected pages. | M3 | Tested | `ExtractPagesAsync` returns new `IPdfDocument` |
 | F10-15 | PDF page manipulation | Save extracted pages as new PDF. | M3 | Tested | `SaveAsync` + Extract save picker |
-| F10-16 | PDF page manipulation | Split PDF. | M3 | Not Started |  |
-| F10-17 | PDF page manipulation | Merge PDFs. | M3 | Not Started |  |
+| F10-16 | PDF page manipulation | Split PDF. | M3 | Tested | `SplitDocumentAsync` + Split toolbar → folder |
+| F10-17 | PDF page manipulation | Merge PDFs. | M3 | Tested | `MergeDocumentsAsync` + Merge file picker |
 | F10-18 | PDF page manipulation | Rotate selected pages left. | M3 | Tested | Toolbar ⟲ → `-90°` |
 | F10-19 | PDF page manipulation | Rotate selected pages right. | M3 | Tested | Toolbar ⟳ → `+90°` |
 | F10-20 | PDF page manipulation | Batch rotation. | M3 | Tested | Multi-select rotate uses same editor path |
-| F10-21 | PDF page manipulation | Crop selected page. | M3 | Not Started |  |
-| F10-22 | PDF page manipulation | Apply same crop to multiple pages. | M3 | Not Started |  |
+| F10-21 | PDF page manipulation | Crop selected page. | M3 | Tested | `CropPagesAsync` / Crop toolbar dialog |
+| F10-22 | PDF page manipulation | Apply same crop to multiple pages. | M3 | Tested | Multi-select + SetCropBox / apply-all |
 | F10-23 | PDF page manipulation | Change page order. | M3 | Implemented | `ReorderPagesAsync` + Move ↑/↓ |
 | F10-24 | PDF page manipulation | Copy/paste pages between documents. | M3 | Implemented | Cross-doc thumbnail DnD via `PageDragPayload` + registry |
 | F11-01 | Preview-style PDF drag-and-drop workflows | one page | M3 | Implemented | Thumbnail CanDrag + page payload |
@@ -214,15 +214,15 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F11-07 | Preview-style PDF drag-and-drop workflows | create a new PDF containing those selected pages. | M3 | Implemented | Deferred StorageItems extract on drag-out |
 | F11-08 | Preview-style PDF drag-and-drop workflows | different windows | M3 | In Progress | Same-process registry; multi-window shell later |
 | F11-09 | Preview-style PDF drag-and-drop workflows | different tabs | M3 | Implemented | Cross-tab insert via `PdfPageDragRegistry` |
-| F12-01 | PDF crop | Rectangular page crop. | M3 | Not Started |  |
-| F12-02 | PDF crop | Visual crop handles. | M3 | Not Started |  |
-| F12-03 | PDF crop | Numeric crop dimensions. | M3 | Not Started |  |
-| F12-04 | PDF crop | Units: | M3 | Not Started |  |
-| F12-05 | PDF crop | Apply to current page. | M3 | Not Started |  |
-| F12-06 | PDF crop | Apply to selected pages. | M3 | Not Started |  |
-| F12-07 | PDF crop | Apply to all pages. | M3 | Not Started |  |
-| F12-08 | PDF crop | Undo crop. | M3 | Not Started |  |
-| F12-09 | PDF crop | Preserve underlying PDF content if using non-destructive CropBox changes. | M3 | Not Started |  |
+| F12-01 | PDF crop | Rectangular page crop. | M3 | Implemented | CropBox rectangle via margins / absolute box |
+| F12-02 | PDF crop | Visual crop handles. | M3 | Not Started | Numeric dialog first; interactive handles next |
+| F12-03 | PDF crop | Numeric crop dimensions. | M3 | Implemented | Points inset dialog (L/T/R/B) |
+| F12-04 | PDF crop | Units: | M3 | In Progress | PDF points shipped; other units next |
+| F12-05 | PDF crop | Apply to current page. | M3 | Implemented | Selection defaults to current page |
+| F12-06 | PDF crop | Apply to selected pages. | M3 | Tested | Multi-select crop |
+| F12-07 | PDF crop | Apply to all pages. | M3 | Implemented | Dialog checkbox |
+| F12-08 | PDF crop | Undo crop. | M3 | Implemented | Via `PdfPageEditHistory` snapshots |
+| F12-09 | PDF crop | Preserve underlying PDF content if using non-destructive CropBox changes. | M3 | Tested | Sets CropBox only |
 | F12-10 | PDF crop | Optional permanent crop/export function. | M3 | Not Started |  |
 | F13-01 | PDF annotations | Highlight | M4 | Not Started |  |
 | F13-02 | PDF annotations | Underline | M4 | Not Started |  |
@@ -842,7 +842,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F60-09 | Context-sensitive commands | Copy | M1/M3 | Not Started |  |
 | F61-01 | Non-destructive editing where practical | PDF annotations | M3-M5 | Not Started |  |
 | F61-02 | Non-destructive editing where practical | image markup | M3-M5 | Not Started |  |
-| F61-03 | Non-destructive editing where practical | crops | M3-M5 | Not Started |  |
+| F61-03 | Non-destructive editing where practical | crops | M3-M5 | Implemented | PDF CropBox crop preserves page content |
 | F61-04 | Non-destructive editing where practical | adjustments | M3-M5 | Not Started |  |
 | F61-05 | Non-destructive editing where practical | signatures | M3-M5 | Not Started |  |
 | F61-06 | Non-destructive editing where practical | shapes | M3-M5 | Not Started |  |
