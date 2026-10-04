@@ -51,9 +51,9 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 ### Completion criteria
 
 - [x] Architecture and dependency strategy documented
-- [ ] Solution builds on Windows CI
-- [x] Core unit tests pass locally (CI pending first Windows run)
-- [x] Unpackaged WinUI app project exists with shell UI (Windows launch validation via CI/manual)
+- [x] Solution builds on Windows CI
+- [x] Core unit tests pass in CI (Windows + Linux)
+- [x] Unpackaged WinUI app project exists with shell UI (Windows CI build validated; interactive launch still manual)
 - [x] Agents have persistent instructions in `AGENTS.md`
 - [x] Feature matrix exists with every `FEATURES.md` section represented
 
