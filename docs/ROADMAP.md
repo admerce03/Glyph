@@ -19,7 +19,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | --- | --- | --- | --- |
 | M0 | Architecture and engineering foundation | **Tested** | — |
 | M1 | Application shell and basic file opening | **Implemented** (CI green; interactive screenshot pending) | M0 |
-| M2 | Core PDF viewer | **Implemented** (CI green on PR #7; merge blocked on agent GitHub auth) | M1 |
+| M2 | Core PDF viewer | **Implemented** (landed via PR #7 → `33deca2`) | M1 |
 | M3 | Core PDF page manipulation | Not Started | M2 |
 | M4 | PDF markup and editing | Not Started | M2 (forms/security touch M7) |
 | M5 | Image viewer/editor | Not Started | M1 (shares shell/DnD with M3) |
@@ -125,7 +125,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Page `/Rotate` metadata read via PDFium; Find Clear + Escape clears results/overlays.
 - Deferred (ADR-014): rectangular zoom, loupe, presentation mode.
 - Optional stretch still open: search-all-open-PDFs, richer multi-line/column selection.
-- PR #7 carries the M2 completion stack; Windows CI green on `28febb9` — merge pending restored GitHub credentials in the agent VM.
+- PR #7 squash-merged to `main` (`33deca2`) with Windows + Linux CI green on head `0074671`.
 
 ---
 
