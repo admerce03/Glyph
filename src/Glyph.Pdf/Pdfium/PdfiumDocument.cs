@@ -5,10 +5,10 @@ namespace Glyph.Pdf.Pdfium;
 
 internal sealed class PdfiumDocument : IPdfDocument
 {
-    private readonly IReadOnlyList<PdfiumPage> _pages;
+    private List<PdfiumPage> _pages;
     private bool _disposed;
 
-    public PdfiumDocument(string? path, FpdfDocumentT handle, IReadOnlyList<PdfiumPage> pages, bool isEncrypted)
+    public PdfiumDocument(string? path, FpdfDocumentT handle, List<PdfiumPage> pages, bool isEncrypted)
     {
         Path = path;
         Handle = handle;
@@ -16,13 +16,15 @@ internal sealed class PdfiumDocument : IPdfDocument
         IsEncrypted = isEncrypted;
     }
 
-    public string? Path { get; }
+    public string? Path { get; set; }
 
     public int PageCount => _pages.Count;
 
     public bool IsEncrypted { get; }
 
-    internal FpdfDocumentT Handle { get; }
+    public event EventHandler? PagesChanged;
+
+    internal FpdfDocumentT Handle { get; private set; }
 
     public IPdfPage GetPage(int pageIndex)
     {
@@ -30,6 +32,28 @@ internal sealed class PdfiumDocument : IPdfDocument
         ArgumentOutOfRangeException.ThrowIfNegative(pageIndex);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(pageIndex, _pages.Count);
         return _pages[pageIndex];
+    }
+
+    internal void RebuildPages()
+    {
+        ThrowIfDisposed();
+        _pages = PdfiumPageCatalog.Build(this, Handle);
+        PagesChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    internal void ReplaceHandle(FpdfDocumentT newHandle)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(newHandle);
+
+        var old = Handle;
+        Handle = newHandle;
+        if (!ReferenceEquals(old, newHandle))
+        {
+            fpdfview.FPDF_CloseDocument(old);
+        }
+
+        RebuildPages();
     }
 
     internal void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
