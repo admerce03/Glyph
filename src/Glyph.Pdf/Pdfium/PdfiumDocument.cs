@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Glyph.Pdf.Abstractions;
 using PDFiumCore;
 
@@ -6,6 +7,8 @@ namespace Glyph.Pdf.Pdfium;
 internal sealed class PdfiumDocument : IPdfDocument
 {
     private List<PdfiumPage> _pages;
+    private GCHandle _memoryPin;
+    private byte[]? _memoryOwner;
     private bool _disposed;
 
     public PdfiumDocument(string? path, FpdfDocumentT handle, List<PdfiumPage> pages, bool isEncrypted)
@@ -56,6 +59,43 @@ internal sealed class PdfiumDocument : IPdfDocument
         RebuildPages();
     }
 
+    internal void ReplaceFromBytes(byte[] pdfBytes)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(pdfBytes);
+        if (pdfBytes.Length == 0)
+        {
+            throw new ArgumentException("PDF byte buffer is empty.", nameof(pdfBytes));
+        }
+
+        var pin = GCHandle.Alloc(pdfBytes, GCHandleType.Pinned);
+        FpdfDocumentT? handle;
+        try
+        {
+            handle = fpdfview.FPDF_LoadMemDocument(pin.AddrOfPinnedObject(), pdfBytes.Length, null);
+        }
+        catch
+        {
+            pin.Free();
+            throw;
+        }
+
+        if (handle is null)
+        {
+            pin.Free();
+            throw new InvalidOperationException("Failed to reload PDF from memory snapshot.");
+        }
+
+        ReplaceHandle(handle);
+        if (_memoryPin.IsAllocated)
+        {
+            _memoryPin.Free();
+        }
+
+        _memoryPin = pin;
+        _memoryOwner = pdfBytes;
+    }
+
     internal void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
 
     public void Dispose()
@@ -73,6 +113,12 @@ internal sealed class PdfiumDocument : IPdfDocument
             }
 
             fpdfview.FPDF_CloseDocument(Handle);
+            if (_memoryPin.IsAllocated)
+            {
+                _memoryPin.Free();
+            }
+
+            _memoryOwner = null;
             _disposed = true;
         }
     }

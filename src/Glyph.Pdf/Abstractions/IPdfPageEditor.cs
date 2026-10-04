@@ -40,4 +40,11 @@ public interface IPdfPageEditor
         CancellationToken cancellationToken = default);
 
     Task SaveAsync(IPdfDocument document, string path, CancellationToken cancellationToken = default);
+
+    Task<byte[]> SaveToBytesAsync(IPdfDocument document, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Replaces the in-memory page tree with a prior PDF snapshot (used for undo/redo).
+    /// </summary>
+    Task RestoreAsync(IPdfDocument document, byte[] pdfBytes, CancellationToken cancellationToken = default);
 }

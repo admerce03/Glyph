@@ -33,7 +33,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-23 | Application and file handling | Unsaved-change prompt where appropriate. | M1/M9 | Not Started |  |
 | F01-24 | Application and file handling | Optional autosave. | M1/M9 | Not Started |  |
 | F01-25 | Application and file handling | Crash-recovery copy. | M1/M9 | Not Started |  |
-| F01-26 | Application and file handling | Undo/redo history. | M1/M9 | Not Started |  |
+| F01-26 | Application and file handling | Undo/redo history. | M1/M9 | In Progress | Page-edit snapshot undo via `PdfPageEditHistory`; app-wide stack later |
 | F01-27 | Application and file handling | Do not silently overwrite originals by default. | M1/M9 | Not Started |  |
 | F02-01 | Main window and interface | Standard Windows title bar. | M1/M9 | Not Started |  |
 | F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | In Progress | MenuBar File/View/Window |

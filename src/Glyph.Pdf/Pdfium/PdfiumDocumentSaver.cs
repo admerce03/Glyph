@@ -11,6 +11,20 @@ internal static class PdfiumDocumentSaver
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
         using var stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
+        Write(handle, stream);
+        stream.Flush();
+    }
+
+    public static byte[] SaveToBytes(FpdfDocumentT handle)
+    {
+        ArgumentNullException.ThrowIfNull(handle);
+        using var stream = new MemoryStream();
+        Write(handle, stream);
+        return stream.ToArray();
+    }
+
+    private static void Write(FpdfDocumentT handle, Stream stream)
+    {
         using var writer = new FPDF_FILEWRITE_();
         writer.Version = 1;
         writer.WriteBlock = (_, data, size) =>
@@ -29,9 +43,7 @@ internal static class PdfiumDocumentSaver
         var ok = fpdf_save.FPDF_SaveAsCopy(handle, writer, 0);
         if (ok == 0)
         {
-            throw new InvalidOperationException($"Failed to save PDF to '{path}'.");
+            throw new InvalidOperationException("Failed to serialize PDF document.");
         }
-
-        stream.Flush();
     }
 }

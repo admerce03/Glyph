@@ -309,6 +309,42 @@ public sealed class PdfiumPageEditor : IPdfPageEditor
             cancellationToken);
     }
 
+    public Task<byte[]> SaveToBytesAsync(IPdfDocument document, CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    return PdfiumDocumentSaver.SaveToBytes(pdfium.Handle);
+                }
+            },
+            cancellationToken);
+    }
+
+    public Task RestoreAsync(IPdfDocument document, byte[] pdfBytes, CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        ArgumentNullException.ThrowIfNull(pdfBytes);
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    pdfium.ReplaceFromBytes(pdfBytes);
+                }
+            },
+            cancellationToken);
+    }
+
     private static FpdfDocumentT BuildDocumentFromPages(FpdfDocumentT source, IReadOnlyList<int> zeroBasedOrder)
     {
         var dest = fpdf_edit.FPDF_CreateNewDocument();
