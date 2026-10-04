@@ -264,6 +264,40 @@ public class PdfiumPageEditorTests
         }
     }
 
+    [Fact]
+    public async Task Permanent_crop_sets_mediabox_to_cropbox_and_round_trips()
+    {
+        var path = CreateMultiPagePdf(pageCount: 1);
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-perm-crop-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var editor = new PdfiumPageEditor();
+            await using var document = await factory.OpenAsync(path);
+
+            await editor.CropPagesAsync(document, [0], new PdfCropMargins(36, 36, 36, 36));
+            var croppedWidth = document.GetPage(0).WidthPoints;
+            var croppedHeight = document.GetPage(0).HeightPoints;
+
+            await using var extracted = await editor.ExtractPagesAsync(document, [0]);
+            await editor.PermanentCropPagesAsync(extracted, [0]);
+            await editor.SaveAsync(extracted, outPath);
+
+            await using var reopened = await factory.OpenAsync(outPath);
+            reopened.PageCount.Should().Be(1);
+            reopened.GetPage(0).WidthPoints.Should().BeApproximately(croppedWidth, 1.0);
+            reopened.GetPage(0).HeightPoints.Should().BeApproximately(croppedHeight, 1.0);
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
     private static string CreateMultiPagePdf(int pageCount)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-edit-" + Guid.NewGuid().ToString("N") + ".pdf");

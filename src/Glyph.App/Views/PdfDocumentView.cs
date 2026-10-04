@@ -1799,9 +1799,12 @@ public sealed class PdfDocumentView : UserControl
         var apply = new Button { Content = "Apply crop" };
         var cancel = new Button { Content = "Cancel" };
         var numeric = new Button { Content = "Numeric…" };
+        var exportCropped = new Button { Content = "Export cropped…" };
         apply.Click += async (_, _) => await ApplyCropModeAsync();
         cancel.Click += (_, _) => CancelCropMode();
         numeric.Click += async (_, _) => await CropNumericDialogAsync();
+        exportCropped.Click += async (_, _) => await ExportCroppedAsync();
+        ToolTipService.SetToolTip(exportCropped, "Export selected pages with a permanent MediaBox crop");
         _cropChrome = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -1818,6 +1821,7 @@ public sealed class PdfDocumentView : UserControl
                 apply,
                 cancel,
                 numeric,
+                exportCropped,
             },
         };
 
@@ -1880,6 +1884,68 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Crop failed: " + ex.Message;
+        }
+    }
+
+    private async Task ExportCroppedAsync()
+    {
+        var indexes = SelectedOrCurrentPages();
+        if (indexes.Count == 0)
+        {
+            return;
+        }
+
+        if (_cropMode && _cropPageIndex >= 0 && !indexes.Contains(_cropPageIndex))
+        {
+            indexes = indexes.Append(_cropPageIndex).OrderBy(i => i).ToList();
+        }
+
+        var window = App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+        var picker = new Windows.Storage.Pickers.FileSavePicker();
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+        picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+        picker.SuggestedFileName = "Cropped pages";
+        picker.FileTypeChoices.Add("PDF", [".pdf"]);
+
+        var file = await picker.PickSaveFileAsync();
+        if (file is null)
+        {
+            _status.Text = "Export cancelled.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Exporting permanently cropped PDF…";
+            await using var extracted = await _pageEditor.ExtractPagesAsync(_document, indexes);
+
+            // Stamp in-progress visual margins onto the exported copy without mutating the open doc.
+            if (_cropMode && _cropPageIndex >= 0)
+            {
+                var local = indexes.IndexOf(_cropPageIndex);
+                if (local >= 0)
+                {
+                    await _pageEditor.CropPagesAsync(
+                        extracted,
+                        [local],
+                        new PdfCropMargins(
+                            _cropMarginLeftPt,
+                            _cropMarginTopPt,
+                            _cropMarginRightPt,
+                            _cropMarginBottomPt));
+                }
+            }
+
+            var partIndexes = Enumerable.Range(0, extracted.PageCount).ToList();
+            await _pageEditor.PermanentCropPagesAsync(extracted, partIndexes);
+            await _pageEditor.SaveAsync(extracted, file.Path);
+            _status.Text = $"Exported cropped PDF to {file.Name}.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Export failed: " + ex.Message;
         }
     }
 

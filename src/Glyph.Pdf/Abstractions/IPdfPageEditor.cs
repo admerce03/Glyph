@@ -59,6 +59,15 @@ public interface IPdfPageEditor
         PdfCropBox cropBox,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Makes the current CropBox permanent by setting each page's MediaBox (and CropBox)
+    /// to the visible crop rectangle. Use for export of a hard-cropped PDF.
+    /// </summary>
+    Task PermanentCropPagesAsync(
+        IPdfDocument document,
+        IReadOnlyList<int> pageIndexes,
+        CancellationToken cancellationToken = default);
+
     Task SaveAsync(IPdfDocument document, string path, CancellationToken cancellationToken = default);
 
     Task<byte[]> SaveToBytesAsync(IPdfDocument document, CancellationToken cancellationToken = default);
