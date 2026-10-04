@@ -89,7 +89,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-10 | PDF viewing | Single-page mode. | M2 | Not Started |  |
 | F04-11 | PDF viewing | Two-page/facing-page mode. | M2 | Not Started |  |
 | F04-12 | PDF viewing | Optional cover-page behavior for facing pages. | M2 | Not Started |  |
-| F04-13 | PDF viewing | Page thumbnails. | M2 | In Progress | Page list in viewer; bitmap thumbnails follow-up |
+| F04-13 | PDF viewing | Page thumbnails. | M2 | In Progress | Bitmap thumbnails rendered at low scale in viewer sidebar |
 | F04-14 | PDF viewing | Page number navigation. | M2 | In Progress | Page status + list selection navigates |
 | F04-15 | PDF viewing | Go to page. | M2 | In Progress | Status shows page N / count |
 | F04-16 | PDF viewing | Previous page. | M2 | In Progress | Prev button |
