@@ -33,6 +33,9 @@ public sealed partial class MainWindow : Window
     private readonly IPdfDocumentFactory _pdfFactory;
     private readonly IPdfRenderer _pdfRenderer;
     private readonly IPdfTextSearchService _pdfSearch;
+    private readonly IPdfTextExtractor _pdfText;
+    private readonly IPdfOutlineService _pdfOutlines;
+    private readonly IPdfLinkService _pdfLinks;
     private readonly PageRenderCache _pageCache;
     private readonly ILogger<MainWindow> _logger;
     private readonly Dictionary<DocumentId, IAsyncDisposable> _openEngines = new();
@@ -44,6 +47,9 @@ public sealed partial class MainWindow : Window
         IPdfDocumentFactory pdfFactory,
         IPdfRenderer pdfRenderer,
         IPdfTextSearchService pdfSearch,
+        IPdfTextExtractor pdfText,
+        IPdfOutlineService pdfOutlines,
+        IPdfLinkService pdfLinks,
         PageRenderCache pageCache,
         ILogger<MainWindow> logger)
     {
@@ -53,6 +59,9 @@ public sealed partial class MainWindow : Window
         _pdfFactory = pdfFactory;
         _pdfRenderer = pdfRenderer;
         _pdfSearch = pdfSearch;
+        _pdfText = pdfText;
+        _pdfOutlines = pdfOutlines;
+        _pdfLinks = pdfLinks;
         _pageCache = pageCache;
         _logger = logger;
 
@@ -347,7 +356,15 @@ public sealed partial class MainWindow : Window
 
             _openEngines[session.Id] = pdf;
             SidebarStatus.Text = $"{pdf.PageCount} pages — thumbnails and search in the document pane.";
-            return new PdfDocumentView(pdf, _pdfRenderer, _pageCache, _pdfSearch, session.ViewState);
+            return new PdfDocumentView(
+                pdf,
+                _pdfRenderer,
+                _pageCache,
+                _pdfSearch,
+                _pdfText,
+                _pdfOutlines,
+                _pdfLinks,
+                session.ViewState);
         }
 
         return CreatePlaceholderContent(session);

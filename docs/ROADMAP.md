@@ -119,7 +119,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - PDFium open/render + LRU cache + continuous viewer + bitmap thumbnails landed (landing PR #6).
 - Offline Find hardened: async/cancelable PdfPig adapter behind `IPdfTextSearchService`, coordinator cancels in-flight queries, automated coverage for multi-page/multi-hit/empty/case/phrase/punctuation/Unicode/imperfect extraction/image-only/encrypted/large-doc/cancel cases.
 - Viewer chrome: single/two-page layouts, fit page/width/100%, Ctrl+wheel zoom, First/Last/goto/PageUp/Down, in-document back/forward history, password-open prompt + typed `PdfPasswordRequiredException`.
-- Still outstanding for M2 completion: text selection/copy, on-page search highlights, TOC/internal links, pinch zoom, cover-page two-page option, durable page/zoom persistence.
+- Text extraction/selection/copy, TOC outlines, and internal link navigation landed behind PDFium abstractions with tests.
+- Still outstanding for M2 completion: drag selection polish, on-page search highlights, pinch zoom, cover-page two-page option, durable page/zoom persistence across restarts.
 
 ---
 

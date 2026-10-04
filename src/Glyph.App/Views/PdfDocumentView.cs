@@ -9,6 +9,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 
 namespace Glyph.App.Views;
@@ -25,6 +26,9 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfRenderer _renderer;
     private readonly PageRenderCache _cache;
     private readonly PdfSearchCoordinator _searchCoordinator;
+    private readonly IPdfTextExtractor _textExtractor;
+    private readonly IPdfOutlineService _outlineService;
+    private readonly IPdfLinkService _linkService;
     private readonly DocumentViewState _viewState;
     private readonly DocumentNavigationHistory _history = new();
     private readonly string _documentKey;
@@ -34,12 +38,16 @@ public sealed class PdfDocumentView : UserControl
     private readonly StackPanel _spreadHost;
     private readonly StackPanel _thumbnailHost;
     private readonly ScrollViewer _thumbnailScroll;
+    private readonly TreeView _outlineTree;
     private readonly ListView _searchResults;
     private readonly TextBox _searchBox;
     private readonly TextBox _gotoBox;
     private readonly CheckBox _caseSensitiveBox;
     private readonly ComboBox _layoutBox;
     private readonly TextBlock _status;
+    private readonly Dictionary<int, IReadOnlyList<PdfTextChar>> _pageChars = new();
+    private readonly Dictionary<int, IReadOnlyList<PdfLink>> _pageLinks = new();
+    private string _selectedText = string.Empty;
     private readonly Dictionary<int, Image> _pageImages = new();
     private readonly Dictionary<int, Image> _thumbnailImages = new();
     private readonly Dictionary<int, Border> _thumbnailBorders = new();
@@ -57,12 +65,18 @@ public sealed class PdfDocumentView : UserControl
         IPdfRenderer renderer,
         PageRenderCache cache,
         IPdfTextSearchService searchService,
+        IPdfTextExtractor textExtractor,
+        IPdfOutlineService outlineService,
+        IPdfLinkService linkService,
         DocumentViewState? viewState = null)
     {
         _document = document;
         _renderer = renderer;
         _cache = cache;
         _searchCoordinator = new PdfSearchCoordinator(searchService);
+        _textExtractor = textExtractor;
+        _outlineService = outlineService;
+        _linkService = linkService;
         _viewState = viewState ?? new DocumentViewState();
         _scale = PdfZoomCalculator.Clamp(_viewState.Zoom <= 0 ? 1.25 : _viewState.Zoom);
         _layoutMode = _viewState.PageLayout;
@@ -95,6 +109,8 @@ public sealed class PdfDocumentView : UserControl
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
         };
+        _outlineTree = new TreeView { SelectionMode = TreeViewSelectionMode.Single };
+        _outlineTree.ItemInvoked += OutlineTree_ItemInvoked;
 
         _searchBox = new TextBox { PlaceholderText = "Find in document", Width = 160 };
         _searchBox.KeyDown += SearchBox_KeyDown;
@@ -117,22 +133,29 @@ public sealed class PdfDocumentView : UserControl
 
         var sidePanel = new Grid
         {
-            Width = 160,
+            Width = 180,
             RowDefinitions =
             {
                 new RowDefinition { Height = GridLength.Auto },
                 new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
                 new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(160) },
+                new RowDefinition { Height = new GridLength(120) },
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(140) },
             },
         };
         sidePanel.Children.Add(new TextBlock { Text = "Pages", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(8, 8, 8, 4) });
         Grid.SetRow(_thumbnailScroll, 1);
         sidePanel.Children.Add(_thumbnailScroll);
+        var tocHeader = new TextBlock { Text = "Contents", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(8, 8, 8, 4) };
+        Grid.SetRow(tocHeader, 2);
+        sidePanel.Children.Add(tocHeader);
+        Grid.SetRow(_outlineTree, 3);
+        sidePanel.Children.Add(_outlineTree);
         var searchHeader = new TextBlock { Text = "Search", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(8, 8, 8, 4) };
-        Grid.SetRow(searchHeader, 2);
+        Grid.SetRow(searchHeader, 4);
         sidePanel.Children.Add(searchHeader);
-        Grid.SetRow(_searchResults, 3);
+        Grid.SetRow(_searchResults, 5);
         sidePanel.Children.Add(_searchResults);
 
         _status = new TextBlock { Opacity = 0.75, FontSize = 12, Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
@@ -157,6 +180,8 @@ public sealed class PdfDocumentView : UserControl
         var fitWidth = new Button { Content = "Fit width" };
         var fitPage = new Button { Content = "Fit page" };
         var actual = new Button { Content = "100%" };
+        var copy = new Button { Content = "Copy" };
+        ToolTipService.SetToolTip(copy, "Copy selected text, or the current page text if nothing is selected");
 
         first.Click += async (_, _) => await GoToPageAsync(0, recordHistory: true);
         last.Click += async (_, _) => await GoToPageAsync(_document.PageCount - 1, recordHistory: true);
@@ -185,6 +210,7 @@ public sealed class PdfDocumentView : UserControl
         fitWidth.Click += async (_, _) => await FitWidthAsync();
         fitPage.Click += async (_, _) => await FitPageAsync();
         actual.Click += async (_, _) => await SetScaleAsync(PdfZoomCalculator.ActualSize());
+        copy.Click += async (_, _) => await CopyTextAsync();
 
         var toolbar = new StackPanel
         {
@@ -194,7 +220,7 @@ public sealed class PdfDocumentView : UserControl
             Children =
             {
                 first, prev, _gotoBox, next, last, back, forward,
-                zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox,
+                zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 _searchBox, _caseSensitiveBox, searchButton, prevMatch, nextMatch, _status,
             },
         };
@@ -247,6 +273,7 @@ public sealed class PdfDocumentView : UserControl
         HighlightThumbnail(CurrentPageIndex);
         await RenderVisibleAsync();
         _ = RenderThumbnailsAsync();
+        _ = LoadOutlineAsync();
     }
 
     private void PdfDocumentView_Unloaded(object sender, RoutedEventArgs e)
@@ -307,7 +334,9 @@ public sealed class PdfDocumentView : UserControl
                 BorderThickness = new Thickness(1),
                 Child = image,
                 Tag = i,
+                Background = new SolidColorBrush(Colors.Transparent),
             };
+            border.PointerReleased += PageBorder_PointerReleased;
             host.Children.Add(border);
         }
     }
@@ -384,6 +413,14 @@ public sealed class PdfDocumentView : UserControl
 
     private async void PdfDocumentView_KeyDown(object sender, KeyRoutedEventArgs e)
     {
+        var ctrl = e.KeyModifiers.HasFlag(VirtualKeyModifiers.Control);
+        if (ctrl && e.Key == VirtualKey.C)
+        {
+            await CopyTextAsync();
+            e.Handled = true;
+            return;
+        }
+
         switch (e.Key)
         {
             case VirtualKey.PageDown:
@@ -407,6 +444,148 @@ public sealed class PdfDocumentView : UserControl
                 e.Handled = true;
                 break;
         }
+    }
+
+    private async Task LoadOutlineAsync()
+    {
+        try
+        {
+            var nodes = await _outlineService.GetOutlineAsync(_document);
+            var roots = new List<TreeViewNode>();
+            foreach (var node in nodes)
+            {
+                roots.Add(ToTreeNode(node));
+            }
+
+            _outlineTree.RootNodes.Clear();
+            foreach (var root in roots)
+            {
+                _outlineTree.RootNodes.Add(root);
+            }
+        }
+        catch
+        {
+            // Outline is optional; viewing must continue without it.
+        }
+    }
+
+    private static TreeViewNode ToTreeNode(PdfOutlineNode node)
+    {
+        var tree = new TreeViewNode
+        {
+            Content = new OutlineItem(node.Title, node.DestinationPageIndex),
+            IsExpanded = true,
+        };
+        foreach (var child in node.Children)
+        {
+            tree.Children.Add(ToTreeNode(child));
+        }
+
+        return tree;
+    }
+
+    private async void OutlineTree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
+    {
+        OutlineItem? item = args.InvokedItem switch
+        {
+            OutlineItem direct => direct,
+            TreeViewNode { Content: OutlineItem nested } => nested,
+            _ => null,
+        };
+
+        if (item?.PageIndex is int page)
+        {
+            await GoToPageAsync(page, recordHistory: true);
+        }
+    }
+
+    private async Task CopyTextAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedText))
+        {
+            _selectedText = await _textExtractor.GetTextAsync(_document, CurrentPageIndex);
+        }
+
+        if (string.IsNullOrEmpty(_selectedText))
+        {
+            _status.Text = "No extractable text to copy.";
+            return;
+        }
+
+        var package = new DataPackage();
+        package.SetText(_selectedText);
+        Clipboard.SetContent(package);
+        _status.Text = $"Copied {_selectedText.Length} characters.";
+    }
+
+    private async void PageBorder_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is not Border { Tag: int pageIndex } border)
+        {
+            return;
+        }
+
+        var point = e.GetCurrentPoint(border);
+        var page = _document.GetPage(pageIndex);
+        var pdfX = point.Position.X / _scale;
+        var pdfY = page.HeightPoints - (point.Position.Y / _scale);
+
+        if (!_pageLinks.ContainsKey(pageIndex))
+        {
+            _pageLinks[pageIndex] = await _linkService.GetPageLinksAsync(_document, pageIndex);
+        }
+
+        var link = _pageLinks[pageIndex].FirstOrDefault(l => l.Bounds.ContainsPoint(pdfX, pdfY));
+        if (link?.DestinationPageIndex is int dest)
+        {
+            await GoToPageAsync(dest, recordHistory: true);
+            _status.Text = $"Followed link to page {dest + 1}.";
+            return;
+        }
+
+        if (!_pageChars.ContainsKey(pageIndex))
+        {
+            _pageChars[pageIndex] = await _textExtractor.GetCharsAsync(_document, pageIndex);
+        }
+
+        // Click selects nearest character word-ish: expand to nearby chars on the same line.
+        var chars = _pageChars[pageIndex];
+        var hit = chars
+            .Select((c, idx) => (c, idx, dist: Math.Abs(c.Bounds.Left - pdfX) + Math.Abs(c.Bounds.Bottom - pdfY)))
+            .OrderBy(x => x.dist)
+            .FirstOrDefault();
+        if (hit.c is null)
+        {
+            return;
+        }
+
+        var start = hit.idx;
+        var end = hit.idx;
+        while (start > 0 && !char.IsWhiteSpace(chars[start - 1].Value.FirstOrDefault()))
+        {
+            start--;
+        }
+
+        while (end + 1 < chars.Count && !char.IsWhiteSpace(chars[end + 1].Value.FirstOrDefault()))
+        {
+            end++;
+        }
+
+        _selectedText = PdfTextSelection.CopyText(chars, start, end);
+        _status.Text = string.IsNullOrEmpty(_selectedText)
+            ? $"Page {pageIndex + 1}"
+            : $"Selected “{TrimForStatus(_selectedText)}”";
+    }
+
+    private static string TrimForStatus(string text)
+    {
+        var flat = text.Replace('\n', ' ').Replace('\r', ' ').Trim();
+        return flat.Length <= 42 ? flat : flat[..42] + "…";
+    }
+
+    private sealed record OutlineItem(string Title, int? PageIndex)
+    {
+        public override string ToString() => Title;
     }
 
     private async void ScrollViewer_PointerWheelChanged(object sender, PointerRoutedEventArgs e)

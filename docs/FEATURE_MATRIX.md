@@ -110,15 +110,18 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-31 | PDF viewing | Presentation/slideshow mode. | M2 | Not Started |  |
 | F04-32 | PDF viewing | Remember last viewed page, optionally. | M2 | In Progress | Synced to `DocumentViewState` in-session |
 | F04-33 | PDF viewing | Remember zoom/layout per document, optionally. | M2 | In Progress | Synced to `DocumentViewState` in-session; disk persistence TBD |
-| F05-01 | PDF table of contents and navigation | Read embedded PDF outlines/bookmarks. | M2 | Not Started |  |
-| F05-02 | PDF table of contents and navigation | Hierarchical table of contents. | M2 | Not Started |  |
-| F05-03 | PDF table of contents and navigation | Expand/collapse outline nodes. | M2 | Not Started |  |
-| F05-04 | PDF table of contents and navigation | Click outline entry to navigate. | M2 | Not Started |  |
+| F05-01 | PDF table of contents and navigation | Read embedded PDF outlines/bookmarks. | M2 | Tested | `IPdfOutlineService` / PDFium bookmarks |
+| F05-02 | PDF table of contents and navigation | Hierarchical table of contents. | M2 | Implemented | Nested `PdfOutlineNode` tree |
+| F05-03 | PDF table of contents and navigation | Expand/collapse outline nodes. | M2 | Implemented | TreeView expand/collapse |
+| F05-04 | PDF table of contents and navigation | Click outline entry to navigate. | M2 | Implemented | Outline invoke → GoToPage |
 | F05-05 | PDF table of contents and navigation | Keyboard navigation. | M2 | In Progress | Page Up/Down/Home/End in viewer |
-| F05-06 | PDF table of contents and navigation | Preserve embedded outline while editing when possible. | M2 | Not Started |  |
-| F05-07 | PDF table of contents and navigation | Show internal PDF links. | M2 | Not Started |  |
-| F05-08 | PDF table of contents and navigation | Support clickable: | M2 | Not Started |  |
+| F05-06 | PDF table of contents and navigation | Preserve embedded outline while editing when possible. | M2 | Not Started | Editing arrives in later milestones |
+| F05-07 | PDF table of contents and navigation | Show internal PDF links. | M2 | Tested | `IPdfLinkService` enumerates page links |
+| F05-08 | PDF table of contents and navigation | Support clickable: | M2 | Implemented | Click link rect → internal page jump |
 | F05-09 | PDF table of contents and navigation | Back/forward navigation history within the document. | M2 | Tested | `DocumentNavigationHistory` + Back/Fwd buttons |
+| F07-01 | PDF text interaction | Text selection. | M2/M6 | Implemented | Click near glyphs selects word-ish run |
+| F07-02 | PDF text interaction | Copy text. | M2/M6 | Implemented | Copy button / Ctrl+C |
+| F07-07 | PDF text interaction | Copy. | M2/M6 | Implemented | Clipboard text package |
 | F06-01 | PDF search | Full-text search. | M2/M6 | Tested | `IPdfTextSearchService` + PdfPig adapter; covered by Pdf.Tests |
 | F06-02 | PDF search | Case-insensitive search. | M2/M6 | Tested | Default `OrdinalIgnoreCase` |
 | F06-03 | PDF search | Optional case-sensitive search. | M2/M6 | Tested | `PdfSearchOptions.CaseSensitive` + UI toggle |
