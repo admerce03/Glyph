@@ -49,6 +49,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly Dictionary<int, IReadOnlyList<PdfLink>> _pageLinks = new();
     private string _selectedText = string.Empty;
     private readonly Dictionary<int, Image> _pageImages = new();
+    private readonly Dictionary<int, Canvas> _pageOverlays = new();
     private readonly Dictionary<int, Image> _thumbnailImages = new();
     private readonly Dictionary<int, Border> _thumbnailBorders = new();
     private readonly SemaphoreSlim _renderGate = new(1, 1);
@@ -59,6 +60,11 @@ public sealed class PdfDocumentView : UserControl
     private bool _suppressThumbnailNav;
     private IReadOnlyList<PdfSearchHit> _hits = [];
     private int _activeHitIndex = -1;
+    private bool _dragSelecting;
+    private Windows.Foundation.Point _dragStart;
+    private int _dragPageIndex = -1;
+    private string _searchQuery = string.Empty;
+    private bool _searchCaseSensitive;
 
     public PdfDocumentView(
         IPdfDocument document,
@@ -307,6 +313,7 @@ public sealed class PdfDocumentView : UserControl
         _continuousHost.Children.Clear();
         _spreadHost.Children.Clear();
         _pageImages.Clear();
+        _pageOverlays.Clear();
 
         var host = _layoutMode == PageLayoutMode.Continuous ? _continuousHost : _spreadHost;
         var (first, last) = PageLayoutCalculator.VisibleRange(_layoutMode, CurrentPageIndex, _document.PageCount);
@@ -328,17 +335,34 @@ public sealed class PdfDocumentView : UserControl
             };
             _pageImages[i] = image;
 
+            var overlay = new Canvas
+            {
+                Width = width,
+                Height = height,
+                IsHitTestVisible = false,
+            };
+            _pageOverlays[i] = overlay;
+
+            var layer = new Grid { Width = width, Height = height };
+            layer.Children.Add(image);
+            layer.Children.Add(overlay);
+
             var border = new Border
             {
                 BorderBrush = new SolidColorBrush(Colors.Gray),
                 BorderThickness = new Thickness(1),
-                Child = image,
+                Child = layer,
                 Tag = i,
                 Background = new SolidColorBrush(Colors.Transparent),
             };
+            border.PointerPressed += PageBorder_PointerPressed;
+            border.PointerMoved += PageBorder_PointerMoved;
             border.PointerReleased += PageBorder_PointerReleased;
+            border.PointerCaptureLost += (_, _) => _dragSelecting = false;
             host.Children.Add(border);
         }
+
+        _ = RefreshSearchHighlightsAsync();
     }
 
     private void BuildThumbnailPlaceholders()
@@ -518,6 +542,55 @@ public sealed class PdfDocumentView : UserControl
         _status.Text = $"Copied {_selectedText.Length} characters.";
     }
 
+    private void PageBorder_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is not Border { Tag: int pageIndex } border)
+        {
+            return;
+        }
+
+        _dragSelecting = true;
+        _dragPageIndex = pageIndex;
+        _dragStart = e.GetCurrentPoint(border).Position;
+        border.CapturePointer(e.Pointer);
+    }
+
+    private void PageBorder_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_dragSelecting || sender is not Border { Tag: int pageIndex } border || pageIndex != _dragPageIndex)
+        {
+            return;
+        }
+
+        if (!_pageOverlays.TryGetValue(pageIndex, out var overlay))
+        {
+            return;
+        }
+
+        var current = e.GetCurrentPoint(border).Position;
+        overlay.Children.Clear();
+        var left = Math.Min(_dragStart.X, current.X);
+        var top = Math.Min(_dragStart.Y, current.Y);
+        var width = Math.Abs(current.X - _dragStart.X);
+        var height = Math.Abs(current.Y - _dragStart.Y);
+        if (width < 2 || height < 2)
+        {
+            return;
+        }
+
+        var rect = new Microsoft.UI.Xaml.Shapes.Rectangle
+        {
+            Width = width,
+            Height = height,
+            Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(60, 30, 144, 255)),
+            Stroke = new SolidColorBrush(Colors.DodgerBlue),
+            StrokeThickness = 1,
+        };
+        Canvas.SetLeft(rect, left);
+        Canvas.SetTop(rect, top);
+        overlay.Children.Add(rect);
+    }
+
     private async void PageBorder_PointerReleased(object sender, PointerRoutedEventArgs e)
     {
         if (sender is not Border { Tag: int pageIndex } border)
@@ -527,6 +600,11 @@ public sealed class PdfDocumentView : UserControl
 
         var point = e.GetCurrentPoint(border);
         var page = _document.GetPage(pageIndex);
+        var wasDragging = _dragSelecting;
+        var dragStart = _dragStart;
+        _dragSelecting = false;
+        border.ReleasePointerCapture(e.Pointer);
+
         var pdfX = point.Position.X / _scale;
         var pdfY = page.HeightPoints - (point.Position.Y / _scale);
 
@@ -535,12 +613,16 @@ public sealed class PdfDocumentView : UserControl
             _pageLinks[pageIndex] = await _linkService.GetPageLinksAsync(_document, pageIndex);
         }
 
-        var link = _pageLinks[pageIndex].FirstOrDefault(l => l.Bounds.ContainsPoint(pdfX, pdfY));
-        if (link?.DestinationPageIndex is int dest)
+        var dragDistance = Math.Abs(point.Position.X - dragStart.X) + Math.Abs(point.Position.Y - dragStart.Y);
+        if (!wasDragging || dragDistance < 4)
         {
-            await GoToPageAsync(dest, recordHistory: true);
-            _status.Text = $"Followed link to page {dest + 1}.";
-            return;
+            var link = _pageLinks[pageIndex].FirstOrDefault(l => l.Bounds.ContainsPoint(pdfX, pdfY));
+            if (link?.DestinationPageIndex is int dest)
+            {
+                await GoToPageAsync(dest, recordHistory: true);
+                _status.Text = $"Followed link to page {dest + 1}.";
+                return;
+            }
         }
 
         if (!_pageChars.ContainsKey(pageIndex))
@@ -548,8 +630,26 @@ public sealed class PdfDocumentView : UserControl
             _pageChars[pageIndex] = await _textExtractor.GetCharsAsync(_document, pageIndex);
         }
 
-        // Click selects nearest character word-ish: expand to nearby chars on the same line.
         var chars = _pageChars[pageIndex];
+        if (wasDragging && dragDistance >= 4)
+        {
+            var left = Math.Min(dragStart.X, point.Position.X) / _scale;
+            var right = Math.Max(dragStart.X, point.Position.X) / _scale;
+            var topUi = Math.Min(dragStart.Y, point.Position.Y);
+            var bottomUi = Math.Max(dragStart.Y, point.Position.Y);
+            var top = page.HeightPoints - (bottomUi / _scale);
+            var bottom = page.HeightPoints - (topUi / _scale);
+            var selection = new PdfRect(left, bottom, right, top);
+            _selectedText = PdfTextSelection.CopyCharsInRect(chars, selection);
+            await RefreshSearchHighlightsAsync();
+            DrawSelectionOverlay(pageIndex, chars, selection);
+            _status.Text = string.IsNullOrEmpty(_selectedText)
+                ? "No text in selection."
+                : $"Selected “{TrimForStatus(_selectedText)}”";
+            return;
+        }
+
+        // Click selects nearest character word-ish: expand to nearby chars on the same line.
         var hit = chars
             .Select((c, idx) => (c, idx, dist: Math.Abs(c.Bounds.Left - pdfX) + Math.Abs(c.Bounds.Bottom - pdfY)))
             .OrderBy(x => x.dist)
@@ -572,9 +672,97 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _selectedText = PdfTextSelection.CopyText(chars, start, end);
+        await RefreshSearchHighlightsAsync();
+        if (start <= end)
+        {
+            var union = chars[start].Bounds;
+            for (var i = start; i <= end; i++)
+            {
+                var b = chars[i].Bounds;
+                union = new PdfRect(
+                    Math.Min(union.Left, b.Left),
+                    Math.Min(union.Bottom, b.Bottom),
+                    Math.Max(union.Right, b.Right),
+                    Math.Max(union.Top, b.Top));
+            }
+
+            DrawSelectionOverlay(pageIndex, chars, union);
+        }
+
         _status.Text = string.IsNullOrEmpty(_selectedText)
             ? $"Page {pageIndex + 1}"
             : $"Selected “{TrimForStatus(_selectedText)}”";
+    }
+
+    private void DrawSelectionOverlay(int pageIndex, IReadOnlyList<PdfTextChar> chars, PdfRect selection)
+    {
+        if (!_pageOverlays.TryGetValue(pageIndex, out var overlay))
+        {
+            return;
+        }
+
+        var page = _document.GetPage(pageIndex);
+        foreach (var ch in PdfTextSelection.CharsInRect(chars, selection))
+        {
+            AddHighlightRect(overlay, page.HeightPoints, ch.Bounds, Windows.UI.Color.FromArgb(70, 30, 144, 255));
+        }
+    }
+
+    private async Task RefreshSearchHighlightsAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            return;
+        }
+
+        foreach (var (pageIndex, overlay) in _pageOverlays)
+        {
+            overlay.Children.Clear();
+            if (!_pageChars.ContainsKey(pageIndex))
+            {
+                _pageChars[pageIndex] = await _textExtractor.GetCharsAsync(_document, pageIndex);
+            }
+
+            var chars = _pageChars[pageIndex];
+            var pageText = string.Concat(chars.Select(c => c.Value));
+            var comparison = _searchCaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+            var searchFrom = 0;
+            var page = _document.GetPage(pageIndex);
+            while (searchFrom < pageText.Length)
+            {
+                var found = pageText.IndexOf(_searchQuery, searchFrom, comparison);
+                if (found < 0)
+                {
+                    break;
+                }
+
+                var end = Math.Min(chars.Count - 1, found + _searchQuery.Length - 1);
+                for (var i = found; i <= end && i < chars.Count; i++)
+                {
+                    AddHighlightRect(overlay, page.HeightPoints, chars[i].Bounds, Windows.UI.Color.FromArgb(90, 255, 215, 0));
+                }
+
+                searchFrom = found + Math.Max(1, _searchQuery.Length);
+            }
+        }
+    }
+
+    private void AddHighlightRect(Canvas overlay, double pageHeightPoints, PdfRect bounds, Windows.UI.Color color)
+    {
+        var left = bounds.Left * _scale;
+        var width = Math.Max(1, bounds.Width * _scale);
+        var height = Math.Max(1, bounds.Height * _scale);
+        var top = (pageHeightPoints - bounds.Top) * _scale;
+        var rect = new Microsoft.UI.Xaml.Shapes.Rectangle
+        {
+            Width = width,
+            Height = height,
+            Fill = new SolidColorBrush(color),
+            IsHitTestVisible = false,
+        };
+        Canvas.SetLeft(rect, left);
+        Canvas.SetTop(rect, top);
+        overlay.Children.Add(rect);
     }
 
     private static string TrimForStatus(string text)
@@ -610,9 +798,11 @@ public sealed class PdfDocumentView : UserControl
 
         var query = _searchBox.Text ?? string.Empty;
         _status.Text = "Searching…";
+        _searchQuery = query.Trim();
+        _searchCaseSensitive = _caseSensitiveBox.IsChecked == true;
 
         var options = new PdfSearchOptions(
-            CaseSensitive: _caseSensitiveBox.IsChecked == true,
+            CaseSensitive: _searchCaseSensitive,
             ExactPhrase: true);
 
         var result = await _searchCoordinator.SearchAsync(_document.Path, query, options);
@@ -623,6 +813,14 @@ public sealed class PdfDocumentView : UserControl
 
         _hits = result.Hits;
         _activeHitIndex = _hits.Count > 0 ? 0 : -1;
+        if (result.Status is PdfSearchStatus.EmptyQuery or PdfSearchStatus.NoMatches)
+        {
+            _searchQuery = string.Empty;
+            foreach (var overlay in _pageOverlays.Values)
+            {
+                overlay.Children.Clear();
+            }
+        }
         _searchResults.ItemsSource = _hits
             .Select(h => $"p.{h.PageIndex + 1}: {h.Snippet}")
             .ToList();
@@ -643,6 +841,8 @@ public sealed class PdfDocumentView : UserControl
             _searchResults.SelectedIndex = _activeHitIndex;
             await GoToPageAsync(_hits[_activeHitIndex].PageIndex, recordHistory: true);
         }
+
+        await RefreshSearchHighlightsAsync();
     }
 
     private void ClearSearchResults(string status)

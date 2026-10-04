@@ -108,8 +108,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-29 | PDF viewing | Rectangular zoom-to-area. | M2 | Not Started |  |
 | F04-30 | PDF viewing | Magnifier/loupe tool. | M2 | Not Started |  |
 | F04-31 | PDF viewing | Presentation/slideshow mode. | M2 | Not Started |  |
-| F04-32 | PDF viewing | Remember last viewed page, optionally. | M2 | In Progress | Synced to `DocumentViewState` in-session |
-| F04-33 | PDF viewing | Remember zoom/layout per document, optionally. | M2 | In Progress | Synced to `DocumentViewState` in-session; disk persistence TBD |
+| F04-32 | PDF viewing | Remember last viewed page, optionally. | M2 | Tested | `IDocumentViewStateStore` persists page on close/reopen |
+| F04-33 | PDF viewing | Remember zoom/layout per document, optionally. | M2 | Tested | Persists zoom + layout with page index |
 | F05-01 | PDF table of contents and navigation | Read embedded PDF outlines/bookmarks. | M2 | Tested | `IPdfOutlineService` / PDFium bookmarks |
 | F05-02 | PDF table of contents and navigation | Hierarchical table of contents. | M2 | Implemented | Nested `PdfOutlineNode` tree |
 | F05-03 | PDF table of contents and navigation | Expand/collapse outline nodes. | M2 | Implemented | TreeView expand/collapse |
@@ -119,9 +119,6 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F05-07 | PDF table of contents and navigation | Show internal PDF links. | M2 | Tested | `IPdfLinkService` enumerates page links |
 | F05-08 | PDF table of contents and navigation | Support clickable: | M2 | Implemented | Click link rect → internal page jump |
 | F05-09 | PDF table of contents and navigation | Back/forward navigation history within the document. | M2 | Tested | `DocumentNavigationHistory` + Back/Fwd buttons |
-| F07-01 | PDF text interaction | Text selection. | M2/M6 | Implemented | Click near glyphs selects word-ish run |
-| F07-02 | PDF text interaction | Copy text. | M2/M6 | Implemented | Copy button / Ctrl+C |
-| F07-07 | PDF text interaction | Copy. | M2/M6 | Implemented | Clipboard text package |
 | F06-01 | PDF search | Full-text search. | M2/M6 | Tested | `IPdfTextSearchService` + PdfPig adapter; covered by Pdf.Tests |
 | F06-02 | PDF search | Case-insensitive search. | M2/M6 | Tested | Default `OrdinalIgnoreCase` |
 | F06-03 | PDF search | Optional case-sensitive search. | M2/M6 | Tested | `PdfSearchOptions.CaseSensitive` + UI toggle |
@@ -130,7 +127,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F06-06 | PDF search | Search all occurrences. | M2/M6 | Tested | Collects every hit per page |
 | F06-07 | PDF search | Search current PDF. | M2/M6 | Tested | Current document path |
 | F06-08 | PDF search | Search all open PDFs. | M2/M6 | Not Started |  |
-| F06-09 | PDF search | Highlight matches on pages. | M2/M6 | Not Started |  |
+| F06-09 | PDF search | Highlight matches on pages. | M2/M6 | Implemented | Gold overlays from PDFium char boxes |
 | F06-10 | PDF search | Results sidebar. | M2/M6 | Implemented | Results list in viewer sidebar |
 | F06-11 | PDF search | Show contextual snippets around matches. | M2/M6 | Tested | Snippet around match |
 | F06-12 | PDF search | Sort results by: | M2/M6 | Implemented | Page order (document scan order); relevance sort deferred |
@@ -139,13 +136,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F06-15 | PDF search | Clear search. | M2/M6 | In Progress | Empty query clears results; dedicated clear control TBD |
 | F06-16 | PDF search | Click result to jump to it. | M2/M6 | Tested | Selection jumps to hit page index |
 | F06-17 | PDF search | Search OCR text where OCR has been generated. | M2/M6 | Not Started | Image-only PDFs report OCR required |
-| F07-01 | PDF text interaction | Text selection. | M2/M6 | Not Started |  |
-| F07-02 | PDF text interaction | Copy text. | M2/M6 | Not Started |  |
+| F07-01 | PDF text interaction | Text selection. | M2/M6 | Implemented | Click near glyphs selects word-ish run via PDFium text |
+| F07-02 | PDF text interaction | Copy text. | M2/M6 | Implemented | Copy button / Ctrl+C |
 | F07-03 | PDF text interaction | Select across lines. | M2/M6 | Not Started |  |
 | F07-04 | PDF text interaction | Select columns where practical. | M2/M6 | Not Started |  |
-| F07-05 | PDF text interaction | Select all text on page/document. | M2/M6 | Not Started |  |
+| F07-05 | PDF text interaction | Select all text on page/document. | M2/M6 | In Progress | Copy falls back to full page text |
 | F07-06 | PDF text interaction | Right-click selected text. | M2/M6 | Not Started |  |
-| F07-07 | PDF text interaction | Copy. | M2/M6 | Not Started |  |
+| F07-07 | PDF text interaction | Copy. | M2/M6 | Implemented | Clipboard text package |
 | F07-08 | PDF text interaction | Search selected text. | M2/M6 | Not Started |  |
 | F07-09 | PDF text interaction | OCR fallback on scanned PDFs. | M2/M6 | Not Started |  |
 | F07-10 | PDF text interaction | Preserve reasonable reading order during copy. | M2/M6 | Not Started |  |
