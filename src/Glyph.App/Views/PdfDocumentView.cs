@@ -204,11 +204,17 @@ public sealed class PdfDocumentView : UserControl
         var deletePages = new Button { Content = "Delete" };
         var moveUp = new Button { Content = "↑" };
         var moveDown = new Button { Content = "↓" };
+        var insertBlank = new Button { Content = "Blank" };
+        var duplicate = new Button { Content = "Dup" };
+        var extract = new Button { Content = "Extract" };
         ToolTipService.SetToolTip(rotateLeft, "Rotate selected pages left");
         ToolTipService.SetToolTip(rotateRight, "Rotate selected pages right");
         ToolTipService.SetToolTip(deletePages, "Delete selected pages");
         ToolTipService.SetToolTip(moveUp, "Move selected pages earlier");
         ToolTipService.SetToolTip(moveDown, "Move selected pages later");
+        ToolTipService.SetToolTip(insertBlank, "Insert blank page after selection");
+        ToolTipService.SetToolTip(duplicate, "Duplicate selected pages");
+        ToolTipService.SetToolTip(extract, "Extract selected pages to a new PDF file");
 
         first.Click += async (_, _) => await GoToPageAsync(0, recordHistory: true);
         last.Click += async (_, _) => await GoToPageAsync(_document.PageCount - 1, recordHistory: true);
@@ -243,6 +249,9 @@ public sealed class PdfDocumentView : UserControl
         deletePages.Click += async (_, _) => await DeleteSelectedAsync();
         moveUp.Click += async (_, _) => await MoveSelectedAsync(delta: -1);
         moveDown.Click += async (_, _) => await MoveSelectedAsync(delta: 1);
+        insertBlank.Click += async (_, _) => await InsertBlankAfterSelectionAsync();
+        duplicate.Click += async (_, _) => await DuplicateSelectedAsync();
+        extract.Click += async (_, _) => await ExtractSelectedAsync();
 
         var toolbar = new StackPanel
         {
@@ -253,7 +262,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 first, prev, _gotoBox, next, last, back, forward,
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
-                rotateLeft, rotateRight, deletePages, moveUp, moveDown,
+                rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -1230,6 +1239,66 @@ public sealed class PdfDocumentView : UserControl
         }
 
         return [CurrentPageIndex];
+    }
+
+    private async Task InsertBlankAfterSelectionAsync()
+    {
+        var insertAt = SelectedOrCurrentPages().DefaultIfEmpty(CurrentPageIndex).Max() + 1;
+        var template = _document.GetPage(Math.Clamp(CurrentPageIndex, 0, _document.PageCount - 1));
+        _status.Text = "Inserting blank page…";
+        await _pageEditor.InsertBlankPageAsync(
+            _document,
+            insertAt,
+            template.WidthPoints,
+            template.HeightPoints);
+        _pageSelection.SelectOnly(insertAt);
+        await ReloadAfterPageEditAsync();
+        await GoToPageAsync(insertAt, recordHistory: true);
+        _status.Text = "Inserted blank page.";
+    }
+
+    private async Task DuplicateSelectedAsync()
+    {
+        var indexes = SelectedOrCurrentPages();
+        if (indexes.Count == 0)
+        {
+            return;
+        }
+
+        _status.Text = "Duplicating…";
+        await _pageEditor.DuplicatePagesAsync(_document, indexes);
+        await ReloadAfterPageEditAsync();
+        _status.Text = $"Duplicated {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")}.";
+    }
+
+    private async Task ExtractSelectedAsync()
+    {
+        var indexes = SelectedOrCurrentPages();
+        if (indexes.Count == 0)
+        {
+            return;
+        }
+
+        var window = App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+        var picker = new Windows.Storage.Pickers.FileSavePicker();
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+        picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+        picker.SuggestedFileName = "Extracted pages";
+        picker.FileTypeChoices.Add("PDF", [".pdf"]);
+
+        var file = await picker.PickSaveFileAsync();
+        if (file is null)
+        {
+            _status.Text = "Extract cancelled.";
+            return;
+        }
+
+        _status.Text = "Extracting…";
+        await using var extracted = await _pageEditor.ExtractPagesAsync(_document, indexes);
+        await _pageEditor.SaveAsync(extracted, file.Path);
+        _status.Text = $"Extracted {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")} to {file.Name}.";
     }
 
     private async Task ReloadAfterPageEditAsync()

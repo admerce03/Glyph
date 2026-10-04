@@ -187,15 +187,15 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F10-04 | PDF page manipulation | Reorder pages by dragging thumbnails. | M3 | In Progress | Move ↑/↓ for selection; drag DnD next |
 | F10-05 | PDF page manipulation | Move multiple pages as one selection. | M3 | Implemented | Move ↑/↓ shifts contiguous selection |
 | F10-06 | PDF page manipulation | Delete pages. | M3 | Tested | `IPdfPageEditor.DeletePagesAsync` + toolbar |
-| F10-07 | PDF page manipulation | Duplicate pages. | M3 | Not Started |  |
-| F10-08 | PDF page manipulation | Insert blank page. | M3 | Not Started |  |
-| F10-09 | PDF page manipulation | Insert PDF file. | M3 | Not Started |  |
-| F10-10 | PDF page manipulation | Insert pages from another PDF. | M3 | Not Started |  |
-| F10-11 | PDF page manipulation | Append PDF. | M3 | Not Started |  |
-| F10-12 | PDF page manipulation | Prepend PDF. | M3 | Not Started |  |
-| F10-13 | PDF page manipulation | Insert at arbitrary position. | M3 | Not Started |  |
+| F10-07 | PDF page manipulation | Duplicate pages. | M3 | Tested | `DuplicatePagesAsync` + Dup toolbar |
+| F10-08 | PDF page manipulation | Insert blank page. | M3 | Tested | `InsertBlankPageAsync` + Blank toolbar |
+| F10-09 | PDF page manipulation | Insert PDF file. | M3 | In Progress | `InsertPagesAsync` ready; Explorer drop UI next |
+| F10-10 | PDF page manipulation | Insert pages from another PDF. | M3 | Tested | `InsertPagesAsync` covered by Pdf.Tests |
+| F10-11 | PDF page manipulation | Append PDF. | M3 | Implemented | Insert at `PageCount` |
+| F10-12 | PDF page manipulation | Prepend PDF. | M3 | Implemented | Insert at index 0 |
+| F10-13 | PDF page manipulation | Insert at arbitrary position. | M3 | Tested | Insert index parameter |
 | F10-14 | PDF page manipulation | Extract selected pages. | M3 | Tested | `ExtractPagesAsync` returns new `IPdfDocument` |
-| F10-15 | PDF page manipulation | Save extracted pages as new PDF. | M3 | Not Started | Extract works in-memory; save path next |
+| F10-15 | PDF page manipulation | Save extracted pages as new PDF. | M3 | Tested | `SaveAsync` + Extract save picker |
 | F10-16 | PDF page manipulation | Split PDF. | M3 | Not Started |  |
 | F10-17 | PDF page manipulation | Merge PDFs. | M3 | Not Started |  |
 | F10-18 | PDF page manipulation | Rotate selected pages left. | M3 | Tested | Toolbar ⟲ → `-90°` |
