@@ -1,0 +1,301 @@
+# Glyph Roadmap
+
+Status legend for milestone/feature areas: **Not Started** · **In Progress** · **Implemented** · **Tested** · **Deferred**.
+
+Product requirements source: [`FEATURES.md`](FEATURES.md).  
+Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
+
+## Guiding principles
+
+1. Vertical slices over disconnected infrastructure.
+2. A minimal usable Glyph app early, then expand.
+3. Do not mark features complete because they compile; require behavior tests and, for UI, visual proof when practical.
+4. Prefer small reviewable PRs.
+5. Adjust milestone order only for clear architectural dependencies; document the reason in [`DECISIONS.md`](DECISIONS.md).
+
+## Milestone overview
+
+| Milestone | Name | Status | Depends on |
+| --- | --- | --- | --- |
+| M0 | Architecture and engineering foundation | **In Progress** | — |
+| M1 | Application shell and basic file opening | Not Started | M0 |
+| M2 | Core PDF viewer | Not Started | M1 |
+| M3 | Core PDF page manipulation | Not Started | M2 |
+| M4 | PDF markup and editing | Not Started | M2 (forms/security touch M7) |
+| M5 | Image viewer/editor | Not Started | M1 (shares shell/DnD with M3) |
+| M6 | OCR and scanned-document capabilities | Not Started | M2, M5 |
+| M7 | Redaction, PDF security, optimization, metadata | Not Started | M2–M4 |
+| M8 | Batch ops, scanner, color management, advanced | Not Started | M5–M7 |
+| M9 | Performance, polish, a11y, installer, audit | Not Started | M1–M8 core paths |
+
+M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behind separate interfaces. M3 remains the highest-priority Preview-differentiator after viewing works.
+
+---
+
+## Milestone 0 — Architecture and engineering foundation
+
+**Status:** In Progress
+
+### Scope
+
+- Read and treat `FEATURES.md` as authoritative scope
+- Choose native Windows stack (C# / .NET 10 / WinUI / Windows App SDK)
+- Investigate PDF/image/OCR dependencies and licensing
+- Author `ARCHITECTURE.md`, `ROADMAP.md`, `DECISIONS.md`, `AGENTS.md`, `FEATURE_MATRIX.md`
+- Create solution/project structure
+- Build scripts, test projects, formatting/analyzers
+- Windows GitHub Actions CI
+- Minimal runnable application shell
+- Repeatable local build/test commands
+
+### Completion criteria
+
+- [x] Architecture and dependency strategy documented
+- [x] Solution builds on Windows CI
+- [x] Core unit tests pass in CI (Windows + Linux)
+- [x] Unpackaged WinUI app project exists with shell UI (Windows CI build validated; interactive launch still manual)
+- [x] Agents have persistent instructions in `AGENTS.md`
+- [x] Feature matrix exists with every `FEATURES.md` section represented
+
+---
+
+## Milestone 1 — Application shell and basic file opening
+
+**Status:** Not Started · Depends on M0
+
+### Scope (`FEATURES.md` §1–2, parts of §40–41, §52)
+
+- Native window, menu/command bar, toolbar host
+- Tabs (open multiple documents)
+- Drag-and-drop opening onto the window
+- File → Open / Close / Exit
+- Recent files
+- File associations where practical (unpackaged progressive enhancement / later MSIX)
+- New from Clipboard (image) baseline
+- Theme follows system (light/dark)
+- High-DPI / multi-monitor basics via WinUI + manifest
+
+### Completion criteria
+
+- Open PDF and common images into tabs (viewers may still be placeholders until M2/M5)
+- Drop files onto the window to open
+- Recent files list persists across restarts
+- Automated tests for recent-files store and open routing
+- Screenshot of shell with tabs
+
+---
+
+## Milestone 2 — Core PDF viewer
+
+**Status:** Not Started · Depends on M1
+
+### Scope (`FEATURES.md` §3–7, §57–58 PDF parts)
+
+- PDFium-backed rendering behind `IPdfRenderer`
+- Page virtualization and LRU cache
+- Thumbnail sidebar
+- Page navigation (goto/prev/next/first/last, wheel, Page Up/Down)
+- Zoom (fit page/width/actual/custom, Ctrl+wheel, touchpad pinch where available)
+- Continuous / single / two-page layouts
+- Text selection + copy
+- Search with results sidebar
+- Password prompt for encrypted PDFs (open path)
+
+### Completion criteria
+
+- Open multi-hundred-page PDF without rasterizing all pages
+- Memory stays bounded while scrolling
+- Search finds and navigates matches
+- Tests for page model, search, and cache eviction behavior
+- Screenshots: continuous view, thumbnails, search hits
+
+---
+
+## Milestone 3 — Core PDF page manipulation
+
+**Status:** Not Started · Depends on M2
+
+### Scope (`FEATURES.md` §10–12, §59 PDF DnD)
+
+- Page selection (multi, range, keyboard)
+- Reorder / rotate / delete / insert / duplicate
+- Merge / split / extract
+- Drag pages between documents/windows/tabs
+- Drag PDFs from Explorer into thumbnail sidebar
+- Drag pages out to Explorer as a new PDF
+- Non-destructive CropBox crop
+
+### Completion criteria
+
+- All first-class DnD workflows in §11 work
+- Undo/redo for page ops
+- Round-trip tests on sample PDFs
+- Screen recording of cross-document page drag
+
+---
+
+## Milestone 4 — PDF markup and editing
+
+**Status:** Not Started · Depends on M2
+
+### Scope (`FEATURES.md` §13–20, §22)
+
+- Highlights / underline / strikethrough
+- Notes, text boxes, callouts
+- Shapes and freehand mouse drawing
+- Signatures (mouse / image import; webcam later)
+- AcroForm fill + overlay form mode
+- Annotation sidebar
+- Flatten annotations
+
+### Completion criteria
+
+- Markup survives save/reopen
+- Flatten produces non-editable visuals
+- Form field tab order works on sample AcroForms
+- Tests for annotation model serialization
+
+---
+
+## Milestone 5 — Image viewer/editor
+
+**Status:** Not Started · Depends on M1
+
+### Scope (`FEATURES.md` §26–35, §37–38, §61 image parts)
+
+- Major formats via WIC + Magick.NET adapter
+- Navigation, zoom/pan, image list sidebar
+- Crop / resize / rotate / flip
+- Conversion + color adjustments
+- Markup layer (shared tool model with PDF where practical)
+- Metadata/EXIF/GPS inspector basics
+
+### Completion criteria
+
+- Open large images without mandatory full decode
+- Round-trip edit tests for crop/resize/rotate
+- Screenshots of viewer and crop UI
+
+---
+
+## Milestone 6 — OCR and scanned-document capabilities
+
+**Status:** Not Started · Depends on M2, M5
+
+### Scope (`FEATURES.md` §8, search OCR hooks in §6)
+
+- Detect/select text on images and scanned PDF pages
+- OCR page / selection / document
+- Optional embed OCR text layer into PDF
+- Actionable entities (URL/email/phone/address/date) with contextual actions
+- Fully offline path
+
+### Completion criteria
+
+- OCR works without network
+- Search includes OCR text when present
+- Cancelable OCR jobs with progress
+
+---
+
+## Milestone 7 — Redaction, PDF security, optimization, metadata
+
+**Status:** Not Started · Depends on M2–M4
+
+### Scope (`FEATURES.md` §21, §23–25)
+
+- True redaction (content removal)
+- Password open/protect/permissions UI with honest warnings
+- Optimization presets + custom controls
+- Metadata view/edit
+
+### Completion criteria
+
+- Redacted text not extractable after apply
+- Optimization size estimate within reasonable tolerance
+- Tests for security round-trips and metadata edits
+
+---
+
+## Milestone 8 — Batch operations, scanner, color management, advanced
+
+**Status:** Not Started · Depends on M5–M7
+
+### Scope (`FEATURES.md` §27, §29, §36, §39, §42–48 advanced)
+
+- Batch image ops
+- Scanner support (Windows APIs)
+- Webcam capture for signatures/docs
+- Color management / soft proof
+- Animated image controls
+- Smart selection / background removal (local)
+- Printing polish, Share UI, inspector completeness
+
+### Completion criteria
+
+- Batch job progress/cancel
+- At least one scanner path validated on hardware when available (emulated tests otherwise)
+- Color-managed display path documented and tested with profiled sample
+
+---
+
+## Milestone 9 — Performance, polish, accessibility, installer, audit
+
+**Status:** Not Started · Depends on prior milestones’ core paths
+
+### Scope (`FEATURES.md` §52–56, §57–60 remaining, distribution)
+
+- Startup and large-doc performance pass
+- Accessibility (UIA, keyboard, high contrast, text scaling)
+- Shortcut customization
+- Toolbar customization polish
+- Installer / MSIX / file associations finalize
+- Complete feature-spec audit against `FEATURE_MATRIX.md`
+- No silent drops: every requirement Implemented/Tested or Deferred with reason
+
+### Completion criteria
+
+- Matrix has no blank/unknown rows
+- Installer produces a clean-machine runnable build
+- Accessibility smoke pass
+- Performance checklist signed off for representative large PDF/image fixtures
+
+---
+
+## Feature-area status board
+
+| Area | FEATURES.md | Milestone | Status |
+| --- | --- | --- | --- |
+| App/file handling | §1 | M1, M9 | Not Started |
+| Main window/UI chrome | §2 | M1, M9 | Not Started |
+| Sidebar modes | §3 | M2–M5 | Not Started |
+| PDF viewing | §4 | M2 | Not Started |
+| PDF TOC/links | §5 | M2 | Not Started |
+| PDF search | §6 | M2, M6 | Not Started |
+| PDF text interaction | §7 | M2, M6 | Not Started |
+| OCR / Live Text | §8 | M6 | Not Started |
+| User bookmarks | §9 | M2/M4 | Not Started |
+| PDF page manipulation | §10–12 | M3 | Not Started |
+| PDF annotations/markup | §13–19 | M4 | Not Started |
+| PDF forms | §20 | M4 | Not Started |
+| Redaction | §21 | M7 | Not Started |
+| Flattening | §22 | M4 | Not Started |
+| PDF security | §23 | M7 | Not Started |
+| Optimization | §24 | M7 | Not Started |
+| PDF metadata | §25 | M7 | Not Started |
+| Image viewing/editing | §26–35 | M5 | Not Started |
+| Batch images | §36 | M8 | Not Started |
+| Image metadata/GPS | §37–38 | M5, M8 | Not Started |
+| Color management | §39 | M8 | Not Started |
+| Clipboard/screenshots | §40–41 | M1, M5 | Not Started |
+| Scanner/webcam | §42–43 | M8 | Not Started |
+| Printing | §44 | M8 | Not Started |
+| Export/share/integration | §45–48 | M5–M9 | Not Started |
+| Undo/autosave/snapshots | §49–51 | M1–M4, M9 | Not Started |
+| Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Not Started |
+| Accessibility | §56 | M9 | Not Started |
+| Performance/large docs | §57–58 | M2+, M9 | Not Started |
+| Multi-doc workflows | §59–60 | M1, M3 | Not Started |
+| Non-destructive editing | §61 | M3–M5 | Not Started |
+| Output formats | §62 | M5, M7 | Not Started |
+| Explicit exclusions | §63 | — | Documented (out of scope) |
