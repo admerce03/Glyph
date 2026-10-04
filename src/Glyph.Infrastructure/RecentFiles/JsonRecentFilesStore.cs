@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Glyph.Core.Documents;
 using Glyph.Core.IO;
 
 namespace Glyph.Infrastructure.RecentFiles;
