@@ -21,4 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Glyph.Pdf\Glyph.Pdf.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

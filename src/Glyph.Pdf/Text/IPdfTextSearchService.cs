@@ -1,10 +1,15 @@
 namespace Glyph.Pdf.Text;
 
+/// <summary>
+/// Offline PDF text-layer search. Implementations must stay behind this
+/// abstraction so Glyph.App / Glyph.Core never depend on a specific extractor
+/// (PdfPig today; replaceable later).
+/// </summary>
 public interface IPdfTextSearchService
 {
-    Task<IReadOnlyList<PdfSearchHit>> SearchAsync(
+    Task<PdfSearchResult> SearchAsync(
         string path,
         string query,
-        bool caseSensitive = false,
+        PdfSearchOptions? options = null,
         CancellationToken cancellationToken = default);
 }

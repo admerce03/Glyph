@@ -114,6 +114,12 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Tests for page model, search, and cache eviction behavior
 - Screenshots: continuous view, thumbnails, search hits
 
+### Progress notes
+
+- PDFium open/render + LRU cache + continuous viewer + bitmap thumbnails landed (PR #4).
+- Offline Find hardened: async/cancelable PdfPig adapter behind `IPdfTextSearchService`, coordinator cancels in-flight queries, automated coverage for multi-page/multi-hit/empty/case/phrase/punctuation/Unicode/imperfect extraction/image-only/encrypted/large-doc/cancel cases.
+- Still outstanding for M2 completion: layout modes (single/two-page), fit page/actual size, Ctrl+wheel/pinch zoom, text selection/copy, on-page highlights, TOC/links/history, password prompt UI, page/zoom restore.
+
 ---
 
 ## Milestone 3 — Core PDF page manipulation

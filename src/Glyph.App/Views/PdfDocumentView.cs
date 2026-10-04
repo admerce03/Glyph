@@ -22,7 +22,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfDocument _document;
     private readonly IPdfRenderer _renderer;
     private readonly PageRenderCache _cache;
-    private readonly IPdfTextSearchService _searchService;
+    private readonly PdfSearchCoordinator _searchCoordinator;
     private readonly string _documentKey;
     private readonly string _thumbnailKey;
     private readonly ScrollViewer _scrollViewer;
@@ -31,6 +31,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly ScrollViewer _thumbnailScroll;
     private readonly ListView _searchResults;
     private readonly TextBox _searchBox;
+    private readonly CheckBox _caseSensitiveBox;
     private readonly TextBlock _status;
     private readonly Dictionary<int, Image> _pageImages = new();
     private readonly Dictionary<int, Image> _thumbnailImages = new();
@@ -41,6 +42,7 @@ public sealed class PdfDocumentView : UserControl
     private bool _loaded;
     private bool _suppressThumbnailNav;
     private IReadOnlyList<PdfSearchHit> _hits = [];
+    private int _activeHitIndex = -1;
 
     public PdfDocumentView(
         IPdfDocument document,
@@ -51,7 +53,7 @@ public sealed class PdfDocumentView : UserControl
         _document = document;
         _renderer = renderer;
         _cache = cache;
-        _searchService = searchService;
+        _searchCoordinator = new PdfSearchCoordinator(searchService);
         _documentKey = document.Path ?? document.GetHashCode().ToString("X");
         _thumbnailKey = _documentKey + "|thumb";
 
@@ -73,10 +75,18 @@ public sealed class PdfDocumentView : UserControl
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
         };
 
-        _searchBox = new TextBox { PlaceholderText = "Find in document", Width = 220 };
+        _searchBox = new TextBox { PlaceholderText = "Find in document", Width = 200 };
         _searchBox.KeyDown += SearchBox_KeyDown;
+        _caseSensitiveBox = new CheckBox { Content = "Aa", VerticalAlignment = VerticalAlignment.Center };
+        ToolTipService.SetToolTip(_caseSensitiveBox, "Match case");
         var searchButton = new Button { Content = "Find" };
         searchButton.Click += async (_, _) => await RunSearchAsync();
+        var prevMatch = new Button { Content = "◁" };
+        var nextMatch = new Button { Content = "▷" };
+        ToolTipService.SetToolTip(prevMatch, "Previous match");
+        ToolTipService.SetToolTip(nextMatch, "Next match");
+        prevMatch.Click += async (_, _) => await GoToHitAsync(_activeHitIndex - 1);
+        nextMatch.Click += async (_, _) => await GoToHitAsync(_activeHitIndex + 1);
         _searchResults = new ListView
         {
             SelectionMode = ListViewSelectionMode.Single,
@@ -122,7 +132,11 @@ public sealed class PdfDocumentView : UserControl
             Orientation = Orientation.Horizontal,
             Spacing = 8,
             Padding = new Thickness(8),
-            Children = { prev, next, zoomOut, zoomIn, fitWidth, _searchBox, searchButton, _status },
+            Children =
+            {
+                prev, next, zoomOut, zoomIn, fitWidth,
+                _searchBox, _caseSensitiveBox, searchButton, prevMatch, nextMatch, _status,
+            },
         };
 
         var body = new Grid
@@ -174,6 +188,8 @@ public sealed class PdfDocumentView : UserControl
 
     private void PdfDocumentView_Unloaded(object sender, RoutedEventArgs e)
     {
+        // Cancel in-flight Find work; keep the coordinator alive in case WinUI reloads the visual tree.
+        _searchCoordinator.Cancel();
         _cache.ClearDocument(_documentKey);
         _cache.ClearDocument(_thumbnailKey);
     }
@@ -266,35 +282,79 @@ public sealed class PdfDocumentView : UserControl
 
     private async Task RunSearchAsync()
     {
-        var query = _searchBox.Text?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(query) || _document.Path is null)
+        if (_document.Path is null)
         {
-            _hits = [];
-            _searchResults.ItemsSource = null;
-            _status.Text = "Enter search text.";
+            ClearSearchResults("Document path is unavailable for search.");
             return;
         }
 
+        var query = _searchBox.Text ?? string.Empty;
         _status.Text = "Searching…";
-        _hits = await _searchService.SearchAsync(_document.Path, query);
+
+        var options = new PdfSearchOptions(
+            CaseSensitive: _caseSensitiveBox.IsChecked == true,
+            ExactPhrase: true);
+
+        // New queries cancel any in-flight search via the coordinator.
+        var result = await _searchCoordinator.SearchAsync(_document.Path, query, options);
+        if (result.Status == PdfSearchStatus.Cancelled)
+        {
+            return;
+        }
+
+        _hits = result.Hits;
+        _activeHitIndex = _hits.Count > 0 ? 0 : -1;
         _searchResults.ItemsSource = _hits
             .Select(h => $"p.{h.PageIndex + 1}: {h.Snippet}")
             .ToList();
-        _status.Text = _hits.Count == 0
-            ? "No matches."
-            : $"{_hits.Count} match{(_hits.Count == 1 ? string.Empty : "es")}";
 
-        if (_hits.Count > 0)
+        _status.Text = result.Status switch
         {
-            await GoToPageAsync(_hits[0].PageIndex);
+            PdfSearchStatus.EmptyQuery => result.Message ?? "Enter search text.",
+            PdfSearchStatus.NoMatches => result.Message ?? "No matches.",
+            PdfSearchStatus.NoExtractableText => result.Message ?? "OCR required.",
+            PdfSearchStatus.DocumentEncrypted => result.Message ?? "Password required.",
+            PdfSearchStatus.Failed => result.Message ?? "Search failed.",
+            PdfSearchStatus.Success => $"{_hits.Count} match{(_hits.Count == 1 ? string.Empty : "es")}",
+            _ => result.Message ?? _status.Text,
+        };
+
+        if (_activeHitIndex >= 0)
+        {
+            _searchResults.SelectedIndex = _activeHitIndex;
+            await GoToPageAsync(_hits[_activeHitIndex].PageIndex);
         }
+    }
+
+    private void ClearSearchResults(string status)
+    {
+        _searchCoordinator.Cancel();
+        _hits = [];
+        _activeHitIndex = -1;
+        _searchResults.ItemsSource = null;
+        _status.Text = status;
+    }
+
+    private async Task GoToHitAsync(int hitIndex)
+    {
+        if (_hits.Count == 0)
+        {
+            return;
+        }
+
+        var wrapped = (hitIndex % _hits.Count + _hits.Count) % _hits.Count;
+        _activeHitIndex = wrapped;
+        _searchResults.SelectedIndex = wrapped;
+        await GoToPageAsync(_hits[wrapped].PageIndex);
+        _status.Text = $"Match {wrapped + 1} / {_hits.Count} · p.{_hits[wrapped].PageIndex + 1}";
     }
 
     private async void SearchResults_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_searchResults.SelectedIndex >= 0 && _searchResults.SelectedIndex < _hits.Count)
         {
-            await GoToPageAsync(_hits[_searchResults.SelectedIndex].PageIndex);
+            _activeHitIndex = _searchResults.SelectedIndex;
+            await GoToPageAsync(_hits[_activeHitIndex].PageIndex);
         }
     }
 

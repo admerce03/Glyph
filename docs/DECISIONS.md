@@ -235,6 +235,31 @@ Use `Directory.Packages.props` + `Directory.Build.props` for shared TFM/nullable
 
 ---
 
+## ADR-013 — PDF text search behind `IPdfTextSearchService`
+
+**Status:** Accepted (Milestone 2)  
+**Date:** 2026-10-04
+
+### Context
+
+Glyph needs offline Find across PDF text layers. PdfPig is a strong managed extractor, but rendering already uses PDFium, and the text stack may later incorporate PDFium text APIs and/or OCR layers.
+
+### Decision
+
+1. Expose search only through `IPdfTextSearchService` / `PdfSearchResult` in `Glyph.Pdf.Text`.
+2. Keep PdfPig confined to `PdfPigTextSearchService` (and test fixture generation). `Glyph.App` and `Glyph.Core` must not reference PdfPig types.
+3. Run extraction/search on a thread-pool thread with cooperative cancellation between pages.
+4. Use `PdfSearchCoordinator` so a new query cancels any in-flight search (no stale results).
+5. Distinguish empty query, no matches, no extractable text (OCR required), and encrypted documents in `PdfSearchStatus` rather than throwing for expected user-facing cases.
+
+### Consequences
+
+- Find remains replaceable without UI churn
+- Image-only/scanned PDFs fail clearly until M6 OCR wiring
+- Passworded PDFs need an open/search password path before their text layer is searchable
+
+---
+
 ## ADR-012 — File associations deferred to packaging
 
 **Status:** Accepted (Milestone 1)  

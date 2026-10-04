@@ -1,57 +1,217 @@
 using UglyToad.PdfPig;
+using UglyToad.PdfPig.Exceptions;
 
 namespace Glyph.Pdf.Text;
 
 /// <summary>
 /// Offline full-text search over PDF text layers using PdfPig.
-/// Does not require rasterizing pages.
+/// Runs on a thread-pool thread and honors cancellation between pages.
+/// Does not require rasterizing pages. Glyph.App must depend only on
+/// <see cref="IPdfTextSearchService"/>, never on PdfPig types directly.
 /// </summary>
 public sealed class PdfPigTextSearchService : IPdfTextSearchService
 {
-    public Task<IReadOnlyList<PdfSearchHit>> SearchAsync(
+    public Task<PdfSearchResult> SearchAsync(
         string path,
         string query,
-        bool caseSensitive = false,
+        PdfSearchOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        ArgumentException.ThrowIfNullOrWhiteSpace(query);
+        options ??= new PdfSearchOptions();
+
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return Task.FromResult(PdfSearchResult.EmptyQuery());
+        }
 
         return Task.Run(
-            () =>
+            () => SearchCore(path, query, options, cancellationToken),
+            cancellationToken);
+    }
+
+    private static PdfSearchResult SearchCore(
+        string path,
+        string query,
+        PdfSearchOptions options,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        try
+        {
+            using var document = PdfDocument.Open(path);
+            var comparison = options.CaseSensitive
+                ? StringComparison.Ordinal
+                : StringComparison.OrdinalIgnoreCase;
+
+            var needle = options.ExactPhrase
+                ? NormalizeForSearch(query)
+                : NormalizeForSearch(query);
+            var hits = new List<PdfSearchHit>();
+            var sawAnyText = false;
+
+            for (var pageIndex = 0; pageIndex < document.NumberOfPages; pageIndex++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-                var hits = new List<PdfSearchHit>();
-
-                using var document = PdfDocument.Open(path);
-                for (var pageIndex = 0; pageIndex < document.NumberOfPages; pageIndex++)
+                var page = document.GetPage(pageIndex + 1);
+                var raw = page.Text ?? string.Empty;
+                if (raw.Length > 0)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var page = document.GetPage(pageIndex + 1);
-                    var text = page.Text ?? string.Empty;
-                    var searchFrom = 0;
-                    while (searchFrom < text.Length)
-                    {
-                        var found = text.IndexOf(query, searchFrom, comparison);
-                        if (found < 0)
-                        {
-                            break;
-                        }
-
-                        hits.Add(new PdfSearchHit(
-                            PageIndex: pageIndex,
-                            Snippet: BuildSnippet(text, found, query.Length),
-                            MatchStart: found,
-                            MatchLength: query.Length));
-
-                        searchFrom = found + Math.Max(1, query.Length);
-                    }
+                    sawAnyText = true;
                 }
 
-                return (IReadOnlyList<PdfSearchHit>)hits;
-            },
-            cancellationToken);
+                var haystack = NormalizeForSearch(raw);
+                if (haystack.Length == 0 || needle.Length == 0)
+                {
+                    continue;
+                }
+
+                if (options.ExactPhrase)
+                {
+                    CollectPhraseHits(hits, pageIndex, haystack, raw, needle, comparison);
+                }
+                else
+                {
+                    // Any-word: each whitespace-separated token is a match candidate.
+                    foreach (var token in needle.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                    {
+                        CollectPhraseHits(hits, pageIndex, haystack, raw, token, comparison);
+                    }
+                }
+            }
+
+            if (hits.Count > 0)
+            {
+                return PdfSearchResult.Success(hits);
+            }
+
+            if (!sawAnyText && document.NumberOfPages > 0)
+            {
+                return PdfSearchResult.NoExtractableText();
+            }
+
+            return PdfSearchResult.NoMatches();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (PdfDocumentEncryptedException ex)
+        {
+            return PdfSearchResult.DocumentEncrypted(ex.Message);
+        }
+        catch (Exception ex) when (IsLikelyEncryptionFailure(ex))
+        {
+            return PdfSearchResult.DocumentEncrypted(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return PdfSearchResult.Failed(ex.Message);
+        }
+    }
+
+    private static void CollectPhraseHits(
+        List<PdfSearchHit> hits,
+        int pageIndex,
+        string haystack,
+        string rawText,
+        string needle,
+        StringComparison comparison)
+    {
+        var before = hits.Count;
+        CollectSubstringHits(hits, pageIndex, haystack, rawText, needle, comparison);
+
+        // Imperfect extractors often drop spaces ("helloworld" for "hello world").
+        // Fall back to a whitespace-insensitive scan when the spaced phrase missed.
+        if (hits.Count == before && needle.Contains(' '))
+        {
+            var compactHaystack = RemoveAllWhitespace(haystack);
+            var compactNeedle = RemoveAllWhitespace(needle);
+            if (compactNeedle.Length > 0)
+            {
+                CollectSubstringHits(hits, pageIndex, compactHaystack, rawText, compactNeedle, comparison);
+            }
+        }
+    }
+
+    private static void CollectSubstringHits(
+        List<PdfSearchHit> hits,
+        int pageIndex,
+        string haystack,
+        string rawText,
+        string needle,
+        StringComparison comparison)
+    {
+        var searchFrom = 0;
+        while (searchFrom < haystack.Length)
+        {
+            var found = haystack.IndexOf(needle, searchFrom, comparison);
+            if (found < 0)
+            {
+                break;
+            }
+
+            // Map normalized index back approximately into the raw snippet source.
+            var snippetSource = rawText.Length > 0 ? rawText : haystack;
+            var snippetStart = Math.Min(found, Math.Max(0, snippetSource.Length - 1));
+            hits.Add(new PdfSearchHit(
+                PageIndex: pageIndex,
+                Snippet: BuildSnippet(snippetSource, snippetStart, needle.Length),
+                MatchStart: found,
+                MatchLength: needle.Length));
+
+            searchFrom = found + Math.Max(1, needle.Length);
+        }
+    }
+
+    private static string RemoveAllWhitespace(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return string.Empty;
+        }
+
+        return string.Concat(text.Where(c => !char.IsWhiteSpace(c)));
+    }
+
+    /// <summary>
+    /// Collapse runs of whitespace so imperfect extraction order that injects
+    /// extra spaces/newlines still matches ordinary phrases.
+    /// </summary>
+    public static string NormalizeForSearch(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return string.Empty;
+        }
+
+        var chars = new char[text.Length];
+        var length = 0;
+        var previousWasSpace = false;
+        foreach (var ch in text)
+        {
+            if (char.IsWhiteSpace(ch))
+            {
+                if (!previousWasSpace && length > 0)
+                {
+                    chars[length++] = ' ';
+                    previousWasSpace = true;
+                }
+
+                continue;
+            }
+
+            chars[length++] = ch;
+            previousWasSpace = false;
+        }
+
+        if (length > 0 && chars[length - 1] == ' ')
+        {
+            length--;
+        }
+
+        return new string(chars, 0, length);
     }
 
     private static string BuildSnippet(string text, int matchStart, int matchLength)
@@ -59,6 +219,11 @@ public sealed class PdfPigTextSearchService : IPdfTextSearchService
         const int pad = 28;
         var start = Math.Max(0, matchStart - pad);
         var end = Math.Min(text.Length, matchStart + matchLength + pad);
+        if (start >= end || text.Length == 0)
+        {
+            return string.Empty;
+        }
+
         var snippet = text[start..end].Replace('\n', ' ').Replace('\r', ' ');
         if (start > 0)
         {
@@ -71,5 +236,13 @@ public sealed class PdfPigTextSearchService : IPdfTextSearchService
         }
 
         return snippet.Trim();
+    }
+
+    private static bool IsLikelyEncryptionFailure(Exception ex)
+    {
+        var message = ex.Message ?? string.Empty;
+        return message.Contains("password", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("encrypt", StringComparison.OrdinalIgnoreCase)
+            || ex.GetType().Name.Contains("Encrypt", StringComparison.OrdinalIgnoreCase);
     }
 }
