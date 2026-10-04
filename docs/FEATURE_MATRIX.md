@@ -16,7 +16,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-06 | Application and file handling | Native Windows file associations. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
 | F01-07 | Application and file handling | Configurable default associations for supported formats. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
 | F01-08 | Application and file handling | Drag files from Explorer into an existing application window. | M1/M9 | In Progress | Explorer → window drop opens documents |
-| F01-09 | Application and file handling | Drag files from the application into Explorer where meaningful. | M1/M9 | Not Started |  |
+| F01-09 | Application and file handling | Drag files from the application into Explorer where meaningful. | M1/M9 | In Progress | Thumbnail drag exposes extracted PDF via deferred StorageItems |
 | F01-10 | Application and file handling | Open files from: | M1/M9 | Not Started |  |
 | F01-11 | Application and file handling | Normal Windows long-path and Unicode filename support. | M1/M9 | Not Started |  |
 | F01-12 | Application and file handling | Read-only file detection. | M1/M9 | Not Started |  |
@@ -189,7 +189,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F10-06 | PDF page manipulation | Delete pages. | M3 | Tested | `IPdfPageEditor.DeletePagesAsync` + toolbar |
 | F10-07 | PDF page manipulation | Duplicate pages. | M3 | Tested | `DuplicatePagesAsync` + Dup toolbar |
 | F10-08 | PDF page manipulation | Insert blank page. | M3 | Tested | `InsertBlankPageAsync` + Blank toolbar |
-| F10-09 | PDF page manipulation | Insert PDF file. | M3 | In Progress | `InsertPagesAsync` ready; Explorer drop UI next |
+| F10-09 | PDF page manipulation | Insert PDF file. | M3 | Implemented | Explorer PDF → thumbnail sidebar calls `InsertPagesAsync` |
 | F10-10 | PDF page manipulation | Insert pages from another PDF. | M3 | Tested | `InsertPagesAsync` covered by Pdf.Tests |
 | F10-11 | PDF page manipulation | Append PDF. | M3 | Implemented | Insert at `PageCount` |
 | F10-12 | PDF page manipulation | Prepend PDF. | M3 | Implemented | Insert at index 0 |
@@ -204,16 +204,16 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F10-21 | PDF page manipulation | Crop selected page. | M3 | Not Started |  |
 | F10-22 | PDF page manipulation | Apply same crop to multiple pages. | M3 | Not Started |  |
 | F10-23 | PDF page manipulation | Change page order. | M3 | Implemented | `ReorderPagesAsync` + Move ↑/↓ |
-| F10-24 | PDF page manipulation | Copy/paste pages between documents. | M3 | Not Started |  |
-| F11-01 | Preview-style PDF drag-and-drop workflows | one page | M3 | Not Started |  |
-| F11-02 | Preview-style PDF drag-and-drop workflows | multiple contiguous pages | M3 | Not Started |  |
-| F11-03 | Preview-style PDF drag-and-drop workflows | multiple noncontiguous pages | M3 | Not Started |  |
-| F11-04 | Preview-style PDF drag-and-drop workflows | insertion before/after any page | M3 | Not Started |  |
-| F11-05 | Preview-style PDF drag-and-drop workflows | visible insertion indicator | M3 | Not Started |  |
-| F11-06 | Preview-style PDF drag-and-drop workflows | insert entire PDF at drop location. | M3 | Not Started |  |
-| F11-07 | Preview-style PDF drag-and-drop workflows | create a new PDF containing those selected pages. | M3 | Not Started |  |
-| F11-08 | Preview-style PDF drag-and-drop workflows | different windows | M3 | Not Started |  |
-| F11-09 | Preview-style PDF drag-and-drop workflows | different tabs | M3 | Not Started |  |
+| F10-24 | PDF page manipulation | Copy/paste pages between documents. | M3 | Implemented | Cross-doc thumbnail DnD via `PageDragPayload` + registry |
+| F11-01 | Preview-style PDF drag-and-drop workflows | one page | M3 | Implemented | Thumbnail CanDrag + page payload |
+| F11-02 | Preview-style PDF drag-and-drop workflows | multiple contiguous pages | M3 | Implemented | Multi-select drag uses selection set |
+| F11-03 | Preview-style PDF drag-and-drop workflows | multiple noncontiguous pages | M3 | Implemented | Noncontiguous selection preserved in payload |
+| F11-04 | Preview-style PDF drag-and-drop workflows | insertion before/after any page | M3 | Implemented | Drop Y half chooses before/after |
+| F11-05 | Preview-style PDF drag-and-drop workflows | visible insertion indicator | M3 | Implemented | Orange before/after border highlight |
+| F11-06 | Preview-style PDF drag-and-drop workflows | insert entire PDF at drop location. | M3 | Implemented | Explorer `.pdf` StorageItems → insert |
+| F11-07 | Preview-style PDF drag-and-drop workflows | create a new PDF containing those selected pages. | M3 | Implemented | Deferred StorageItems extract on drag-out |
+| F11-08 | Preview-style PDF drag-and-drop workflows | different windows | M3 | In Progress | Same-process registry; multi-window shell later |
+| F11-09 | Preview-style PDF drag-and-drop workflows | different tabs | M3 | Implemented | Cross-tab insert via `PdfPageDragRegistry` |
 | F12-01 | PDF crop | Rectangular page crop. | M3 | Not Started |  |
 | F12-02 | PDF crop | Visual crop handles. | M3 | Not Started |  |
 | F12-03 | PDF crop | Numeric crop dimensions. | M3 | Not Started |  |

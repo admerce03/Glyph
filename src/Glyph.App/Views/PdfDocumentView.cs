@@ -11,6 +11,8 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.ApplicationModel.DataTransfer.DragDrop;
+using Windows.Storage;
 using Windows.System;
 
 namespace Glyph.App.Views;
@@ -31,12 +33,14 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfOutlineService _outlineService;
     private readonly IPdfLinkService _linkService;
     private readonly IPdfPageEditor _pageEditor;
+    private readonly IPdfDocumentFactory _documentFactory;
     private readonly DocumentViewState _viewState;
     private readonly DocumentNavigationHistory _history = new();
     private readonly PdfPageEditHistory _editHistory = new();
     private readonly PageSelection _pageSelection = new();
     private readonly string _documentKey;
     private readonly string _thumbnailKey;
+    private Border? _dropHighlightBorder;
     private readonly ScrollViewer _scrollViewer;
     private readonly StackPanel _continuousHost;
     private readonly StackPanel _spreadHost;
@@ -79,6 +83,7 @@ public sealed class PdfDocumentView : UserControl
         IPdfOutlineService outlineService,
         IPdfLinkService linkService,
         IPdfPageEditor pageEditor,
+        IPdfDocumentFactory documentFactory,
         DocumentViewState? viewState = null)
     {
         _document = document;
@@ -89,6 +94,7 @@ public sealed class PdfDocumentView : UserControl
         _outlineService = outlineService;
         _linkService = linkService;
         _pageEditor = pageEditor;
+        _documentFactory = documentFactory;
         _viewState = viewState ?? new DocumentViewState();
         _scale = PdfZoomCalculator.Clamp(_viewState.Zoom <= 0 ? 1.25 : _viewState.Zoom);
         _layoutMode = _viewState.PageLayout;
@@ -124,7 +130,11 @@ public sealed class PdfDocumentView : UserControl
             Content = _thumbnailHost,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            AllowDrop = true,
         };
+        _thumbnailScroll.DragOver += ThumbnailHost_DragOver;
+        _thumbnailScroll.DragLeave += ThumbnailHost_DragLeave;
+        _thumbnailScroll.Drop += ThumbnailHost_Drop;
         _outlineTree = new TreeView { SelectionMode = TreeViewSelectionMode.Single };
         _outlineTree.ItemInvoked += OutlineTree_ItemInvoked;
 
@@ -304,6 +314,7 @@ public sealed class PdfDocumentView : UserControl
         KeyDown += PdfDocumentView_KeyDown;
         Loaded += PdfDocumentView_Loaded;
         Unloaded += PdfDocumentView_Unloaded;
+        PdfPageDragRegistry.Register(_documentKey, _document);
         _history.NavigateTo(CurrentPageIndex);
     }
 
@@ -329,6 +340,8 @@ public sealed class PdfDocumentView : UserControl
 
     private void PdfDocumentView_Unloaded(object sender, RoutedEventArgs e)
     {
+        PdfPageDragRegistry.Unregister(_documentKey);
+        ClearDropHighlight();
         _searchCoordinator.Cancel();
         _cache.ClearDocument(_documentKey);
         _cache.ClearDocument(_thumbnailKey);
@@ -516,6 +529,7 @@ public sealed class PdfDocumentView : UserControl
             border.PointerPressed += Thumbnail_PointerPressed;
             border.DragStarting += Thumbnail_DragStarting;
             border.DragOver += Thumbnail_DragOver;
+            border.DragLeave += ThumbnailHost_DragLeave;
             border.Drop += Thumbnail_Drop;
             _thumbnailBorders[i] = border;
             _thumbnailHost.Children.Add(border);
@@ -556,18 +570,87 @@ public sealed class PdfDocumentView : UserControl
             RefreshThumbnailSelectionChrome();
         }
 
-        args.Data.SetText("glyph-page-reorder:" + string.Join(',', _pageSelection.SelectedIndexes.OrderBy(i => i)));
-        args.Data.RequestedOperation = DataPackageOperation.Move;
+        var indexes = _pageSelection.SelectedIndexes.OrderBy(i => i).ToList();
+        var payload = new PageDragPayload(_documentKey, indexes);
+        args.Data.SetText(payload.Format());
+        args.Data.RequestedOperation = DataPackageOperation.Copy | DataPackageOperation.Move;
+        args.Data.Properties.Title = indexes.Count == 1
+            ? "PDF page"
+            : $"{indexes.Count} PDF pages";
+
+        // Deferred StorageItems so Explorer (and other apps) receive an extracted PDF on drop.
+        var pageIndexes = indexes;
+        args.Data.SetDataProvider(StandardDataFormats.StorageItems, request =>
+        {
+            ProvideExtractedPagesAsync(request, pageIndexes);
+        });
+    }
+
+    private async void ProvideExtractedPagesAsync(DataProviderRequest request, IReadOnlyList<int> pageIndexes)
+    {
+        var deferral = request.GetDeferral();
+        try
+        {
+            var tempPath = Path.Combine(
+                Path.GetTempPath(),
+                "Glyph-pages-" + Guid.NewGuid().ToString("N") + ".pdf");
+            await using (var extracted = await _pageEditor.ExtractPagesAsync(_document, pageIndexes))
+            {
+                await _pageEditor.SaveAsync(extracted, tempPath);
+            }
+
+            var file = await StorageFile.GetFileFromPathAsync(tempPath);
+            request.SetData(new List<IStorageItem> { file });
+        }
+        catch (Exception)
+        {
+            // Drag target may cancel; leave package empty.
+        }
+        finally
+        {
+            deferral.Complete();
+        }
     }
 
     private void Thumbnail_DragOver(object sender, DragEventArgs e)
     {
-        if (e.DataView.Contains(StandardDataFormats.Text))
+        if (!CanAcceptPageDrop(e.DataView))
         {
-            e.AcceptedOperation = DataPackageOperation.Move;
-            e.Handled = true;
+            return;
+        }
+
+        e.AcceptedOperation = PreferredDropOperation(e);
+        e.DragUIOverride.IsGlyphVisible = true;
+        e.DragUIOverride.Caption = DropCaption(e.DataView);
+        e.Handled = true;
+
+        if (sender is Border border)
+        {
+            var insertAfter = e.GetPosition(border).Y > border.ActualHeight / 2;
+            ShowDropHighlight(border, insertAfter);
         }
     }
+
+    private void ThumbnailHost_DragOver(object sender, DragEventArgs e)
+    {
+        if (!CanAcceptPageDrop(e.DataView))
+        {
+            return;
+        }
+
+        e.AcceptedOperation = PreferredDropOperation(e);
+        e.DragUIOverride.Caption = DropCaption(e.DataView);
+        e.Handled = true;
+
+        // Dropping on empty sidebar area appends after the last page.
+        if (_thumbnailBorders.Count > 0 &&
+            _thumbnailBorders.TryGetValue(_document.PageCount - 1, out var last))
+        {
+            ShowDropHighlight(last, insertAfter: true);
+        }
+    }
+
+    private void ThumbnailHost_DragLeave(object sender, DragEventArgs e) => ClearDropHighlight();
 
     private async void Thumbnail_Drop(object sender, DragEventArgs e)
     {
@@ -576,29 +659,118 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (!e.DataView.Contains(StandardDataFormats.Text))
-        {
-            return;
-        }
-
-        var payload = await e.DataView.GetTextAsync();
-        const string prefix = "glyph-page-reorder:";
-        if (!payload.StartsWith(prefix, StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        var selected = payload[prefix.Length..]
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(int.Parse)
-            .ToList();
-
-        // Drop onto a thumbnail inserts before that page; drop on lower half inserts after.
-        var position = e.GetPosition((UIElement)sender);
-        var insertBefore = position.Y > ((FrameworkElement)sender).ActualHeight / 2
+        var insertBefore = e.GetPosition((UIElement)sender).Y > ((FrameworkElement)sender).ActualHeight / 2
             ? dropIndex + 1
             : dropIndex;
+        await HandleThumbnailDropAsync(e, insertBefore);
+    }
 
+    private async void ThumbnailHost_Drop(object sender, DragEventArgs e)
+    {
+        await HandleThumbnailDropAsync(e, insertBefore: _document.PageCount);
+    }
+
+    private async Task HandleThumbnailDropAsync(DragEventArgs e, int insertBefore)
+    {
+        ClearDropHighlight();
+        insertBefore = Math.Clamp(insertBefore, 0, _document.PageCount);
+
+        try
+        {
+            if (e.DataView.Contains(StandardDataFormats.Text))
+            {
+                var text = await e.DataView.GetTextAsync();
+                if (PageDragPayload.TryParse(text, out var payload) && payload is not null)
+                {
+                    var sameDocument = string.IsNullOrEmpty(payload.DocumentKey)
+                        || string.Equals(payload.DocumentKey, _documentKey, StringComparison.Ordinal);
+                    if (sameDocument)
+                    {
+                        await ReorderFromDragAsync(payload.PageIndexes.ToList(), insertBefore);
+                        e.Handled = true;
+                        return;
+                    }
+
+                    if (PdfPageDragRegistry.TryGet(payload.DocumentKey, out var source) && source is not null)
+                    {
+                        await InsertPagesFromDocumentAsync(source, payload.PageIndexes, insertBefore);
+                        e.Handled = true;
+                        return;
+                    }
+                }
+            }
+
+            if (e.DataView.Contains(StandardDataFormats.StorageItems))
+            {
+                var items = await e.DataView.GetStorageItemsAsync();
+                var pdfFiles = items
+                    .OfType<StorageFile>()
+                    .Where(f => f.FileType.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                if (pdfFiles.Count > 0)
+                {
+                    await InsertPdfFilesAsync(pdfFiles, insertBefore);
+                    e.Handled = true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Drop failed: " + ex.Message;
+        }
+    }
+
+    private static bool CanAcceptPageDrop(DataPackageView data) =>
+        data.Contains(StandardDataFormats.Text) || data.Contains(StandardDataFormats.StorageItems);
+
+    private static DataPackageOperation PreferredDropOperation(DragEventArgs e)
+    {
+        if (e.Modifiers.HasFlag(DragDropModifiers.Control))
+        {
+            return DataPackageOperation.Copy;
+        }
+
+        if (e.DataView.Contains(StandardDataFormats.StorageItems) && !e.DataView.Contains(StandardDataFormats.Text))
+        {
+            return DataPackageOperation.Copy;
+        }
+
+        return DataPackageOperation.Move | DataPackageOperation.Copy;
+    }
+
+    private static string DropCaption(DataPackageView data) =>
+        data.Contains(StandardDataFormats.StorageItems) && !data.Contains(StandardDataFormats.Text)
+            ? "Insert PDF pages"
+            : "Move or copy pages here";
+
+    private void ShowDropHighlight(Border border, bool insertAfter)
+    {
+        if (!ReferenceEquals(_dropHighlightBorder, border))
+        {
+            ClearDropHighlight();
+            _dropHighlightBorder = border;
+        }
+
+        border.BorderBrush = new SolidColorBrush(Colors.Orange);
+        border.BorderThickness = insertAfter
+            ? new Thickness(2, 2, 2, 5)
+            : new Thickness(2, 5, 2, 2);
+    }
+
+    private void ClearDropHighlight()
+    {
+        if (_dropHighlightBorder is null)
+        {
+            return;
+        }
+
+        _dropHighlightBorder.BorderThickness = new Thickness(2);
+        _dropHighlightBorder = null;
+        RefreshThumbnailSelectionChrome();
+    }
+
+    private async Task ReorderFromDragAsync(List<int> selected, int insertBefore)
+    {
         var order = PageReorder.MoveSelection(_document.PageCount, selected, insertBefore);
         if (order.Select((value, i) => value == i).All(x => x))
         {
@@ -627,7 +799,71 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _status.Text = "Pages reordered.";
-        e.Handled = true;
+    }
+
+    private async Task InsertPagesFromDocumentAsync(
+        IPdfDocument source,
+        IReadOnlyList<int> sourceIndexes,
+        int insertBefore)
+    {
+        if (ReferenceEquals(source, _document))
+        {
+            await ReorderFromDragAsync(sourceIndexes.ToList(), insertBefore);
+            return;
+        }
+
+        var count = sourceIndexes.Count;
+        _status.Text = count == 1 ? "Inserting page…" : $"Inserting {count} pages…";
+        await RunPageEditAsync(() => _pageEditor.InsertPagesAsync(_document, source, sourceIndexes, insertBefore));
+
+        _pageSelection.Clear();
+        for (var i = 0; i < count; i++)
+        {
+            _pageSelection.Toggle(insertBefore + i);
+        }
+
+        await ReloadAfterPageEditAsync();
+        await GoToPageAsync(insertBefore, recordHistory: true);
+        _status.Text = count == 1 ? "Inserted 1 page." : $"Inserted {count} pages.";
+    }
+
+    private async Task InsertPdfFilesAsync(IReadOnlyList<StorageFile> pdfFiles, int insertBefore)
+    {
+        var cursor = insertBefore;
+        var totalInserted = 0;
+        foreach (var file in pdfFiles)
+        {
+            _status.Text = $"Inserting {file.Name}…";
+            await using var source = await _documentFactory.OpenAsync(file.Path);
+            var indexes = Enumerable.Range(0, source.PageCount).ToList();
+            if (indexes.Count == 0)
+            {
+                continue;
+            }
+
+            var insertAt = cursor;
+            await RunPageEditAsync(() => _pageEditor.InsertPagesAsync(_document, source, indexes, insertAt));
+            cursor += indexes.Count;
+            totalInserted += indexes.Count;
+        }
+
+        if (totalInserted == 0)
+        {
+            _status.Text = "No pages to insert.";
+            return;
+        }
+
+        _pageSelection.Clear();
+        for (var i = 0; i < totalInserted; i++)
+        {
+            _pageSelection.Toggle(insertBefore + i);
+        }
+
+        await ReloadAfterPageEditAsync();
+        await GoToPageAsync(insertBefore, recordHistory: true);
+        _status.Text = totalInserted == 1
+            ? "Inserted 1 page from file."
+            : $"Inserted {totalInserted} pages from file{(pdfFiles.Count == 1 ? string.Empty : "s")}.";
     }
 
     private async void SearchBox_KeyDown(object sender, KeyRoutedEventArgs e)
