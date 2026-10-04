@@ -224,13 +224,12 @@ public sealed partial class MainWindow : Window
     {
         if (allowMultiple)
         {
-            var multi = new FileOpenPicker();
-            InitializePicker(multi);
-            // FileOpenPicker only supports single in WinUI; use PickMultipleFilesAsync when available via same API.
-            var files = await multi.PickMultipleFilesAsync();
-            foreach (var file in files)
+            var multiPicker = new FileOpenPicker();
+            InitializePicker(multiPicker);
+            var pickedFiles = await multiPicker.PickMultipleFilesAsync();
+            foreach (var pickedFile in pickedFiles)
             {
-                await OpenPathAsync(file.Path);
+                await OpenPathAsync(pickedFile.Path);
             }
 
             return;
@@ -238,10 +237,10 @@ public sealed partial class MainWindow : Window
 
         var picker = new FileOpenPicker();
         InitializePicker(picker);
-        var file = await picker.PickSingleFileAsync();
-        if (file is not null)
+        var singleFile = await picker.PickSingleFileAsync();
+        if (singleFile is not null)
         {
-            await OpenPathAsync(file.Path);
+            await OpenPathAsync(singleFile.Path);
         }
     }
 
