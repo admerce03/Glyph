@@ -77,32 +77,32 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-16 | Sidebar modes | Drag selected items. | M2-M5 | Not Started |  |
 | F03-17 | Sidebar modes | Context menus. | M2-M5 | Not Started |  |
 | F03-18 | Sidebar modes | Sidebar selection controls the scope of many editing commands. | M2-M5 | Not Started |  |
-| F04-01 | PDF viewing | Open standard PDF files quickly. | M2 | Not Started |  |
-| F04-02 | PDF viewing | Render vector content accurately. | M2 | Not Started |  |
+| F04-01 | PDF viewing | Open standard PDF files quickly. | M2 | In Progress | PDFium open+render wired in shell |
+| F04-02 | PDF viewing | Render vector content accurately. | M2 | In Progress | PDFium vector render path |
 | F04-03 | PDF viewing | Render embedded images. | M2 | Not Started |  |
 | F04-04 | PDF viewing | Render embedded fonts. | M2 | Not Started |  |
 | F04-05 | PDF viewing | Support transparency. | M2 | Not Started |  |
 | F04-06 | PDF viewing | Support rotated pages. | M2 | Not Started |  |
 | F04-07 | PDF viewing | Support PDFs containing different page sizes. | M2 | Not Started |  |
 | F04-08 | PDF viewing | Password-protected PDF opening. | M2 | Not Started |  |
-| F04-09 | PDF viewing | Continuous scrolling. | M2 | Not Started |  |
+| F04-09 | PDF viewing | Continuous scrolling. | M2 | In Progress | Continuous scrolling page stack |
 | F04-10 | PDF viewing | Single-page mode. | M2 | Not Started |  |
 | F04-11 | PDF viewing | Two-page/facing-page mode. | M2 | Not Started |  |
 | F04-12 | PDF viewing | Optional cover-page behavior for facing pages. | M2 | Not Started |  |
-| F04-13 | PDF viewing | Page thumbnails. | M2 | Not Started |  |
-| F04-14 | PDF viewing | Page number navigation. | M2 | Not Started |  |
-| F04-15 | PDF viewing | Go to page. | M2 | Not Started |  |
-| F04-16 | PDF viewing | Previous page. | M2 | Not Started |  |
-| F04-17 | PDF viewing | Next page. | M2 | Not Started |  |
+| F04-13 | PDF viewing | Page thumbnails. | M2 | In Progress | Page list in viewer; bitmap thumbnails follow-up |
+| F04-14 | PDF viewing | Page number navigation. | M2 | In Progress | Page status + list selection navigates |
+| F04-15 | PDF viewing | Go to page. | M2 | In Progress | Status shows page N / count |
+| F04-16 | PDF viewing | Previous page. | M2 | In Progress | Prev button |
+| F04-17 | PDF viewing | Next page. | M2 | In Progress | Next button |
 | F04-18 | PDF viewing | First page. | M2 | Not Started |  |
 | F04-19 | PDF viewing | Last page. | M2 | Not Started |  |
-| F04-20 | PDF viewing | Mouse-wheel scrolling. | M2 | Not Started |  |
+| F04-20 | PDF viewing | Mouse-wheel scrolling. | M2 | In Progress | ScrollViewer wheel scrolling |
 | F04-21 | PDF viewing | Page Up/Page Down navigation. | M2 | Not Started |  |
 | F04-22 | PDF viewing | Fit page. | M2 | Not Started |  |
-| F04-23 | PDF viewing | Fit width. | M2 | Not Started |  |
+| F04-23 | PDF viewing | Fit width. | M2 | In Progress | Fit width control |
 | F04-24 | PDF viewing | Actual size / 100%. | M2 | Not Started |  |
-| F04-25 | PDF viewing | Custom zoom percentage. | M2 | Not Started |  |
-| F04-26 | PDF viewing | Zoom in/out. | M2 | Not Started |  |
+| F04-25 | PDF viewing | Custom zoom percentage. | M2 | In Progress | Zoom percentage shown in status |
+| F04-26 | PDF viewing | Zoom in/out. | M2 | In Progress | Zoom +/- controls |
 | F04-27 | PDF viewing | Ctrl+mouse wheel zoom. | M2 | Not Started |  |
 | F04-28 | PDF viewing | Pinch-to-zoom on supported precision touchpads. | M2 | Not Started |  |
 | F04-29 | PDF viewing | Rectangular zoom-to-area. | M2 | Not Started |  |
@@ -803,7 +803,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F56-11 | Accessibility | Zoom without breaking UI layout. | M9 | Not Started |  |
 | F57-01 | Performance behavior | very fast startup | M2+/M9 | Not Started |  |
 | F57-02 | Performance behavior | fast first-page PDF display | M2+/M9 | Not Started |  |
-| F57-03 | Performance behavior | render visible pages before off-screen pages | M2+/M9 | Not Started |  |
+| F57-03 | Performance behavior | render visible pages before off-screen pages | M2+/M9 | In Progress | Visible-page biased render + LRU cache |
 | F57-04 | Performance behavior | asynchronous thumbnail generation | M2+/M9 | Not Started |  |
 | F57-05 | Performance behavior | background text indexing | M2+/M9 | Not Started |  |
 | F57-06 | Performance behavior | lazy OCR | M2+/M9 | Not Started |  |
@@ -814,7 +814,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F57-11 | Performance behavior | unload distant PDF pages | M2+/M9 | Not Started |  |
 | F57-12 | Performance behavior | cancel long-running operations | M2+/M9 | Not Started |  |
 | F57-13 | Performance behavior | progress indicator for: | M2+/M9 | Not Started |  |
-| F58-01 | Large-document handling | PDFs with thousands of pages. | M2+/M9 | Not Started |  |
+| F58-01 | Large-document handling | PDFs with thousands of pages. | M2+/M9 | In Progress | Page virtualization via on-demand render + cache |
 | F58-02 | Large-document handling | Very large raster images. | M2+/M9 | Not Started |  |
 | F58-03 | Large-document handling | Progressive rendering. | M2+/M9 | Not Started |  |
 | F58-04 | Large-document handling | Avoid loading entire PDF rasterized into memory. | M2+/M9 | Not Started |  |

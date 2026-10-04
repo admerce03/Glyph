@@ -92,7 +92,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 2 — Core PDF viewer
 
-**Status:** Not Started · Depends on M1
+**Status:** In Progress · Depends on M1
 
 ### Scope (`FEATURES.md` §3–7, §57–58 PDF parts)
 
