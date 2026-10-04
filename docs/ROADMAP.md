@@ -154,7 +154,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 - `IPdfPageEditor` / `PdfiumPageEditor`: rotate, delete, reorder, extract, insert blank, duplicate, insert-from, save behind PDFium.
 - `PageSelection` models Ctrl/Shift thumbnail multi-select; viewer wires rotate/delete/move ↑↓/blank/dup/extract.
-- Next: thumbnail drag reorder, Explorer/cross-doc DnD, undo commands, CropBox.
+- Thumbnail drag-reorder within a document landed (`PageReorder` + thumb CanDrag/Drop).
+- Next: Explorer/cross-doc DnD, undo commands, CropBox, merge/split UX.
 
 ---
 
