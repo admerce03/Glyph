@@ -235,6 +235,21 @@ Use `Directory.Packages.props` + `Directory.Build.props` for shared TFM/nullable
 
 ---
 
+## ADR-012 — File associations deferred to packaging
+
+**Status:** Accepted (Milestone 1)  
+**Date:** 2026-10-04
+
+### Context
+
+Native Explorer double-click / Open With associations are most reliable with MSIX (or a sparse package) identity. Glyph is unpackaged-first for development (ADR-006).
+
+### Decision
+
+Defer durable file-association registration to installer/MSIX work (Milestone 9), while Milestone 1 continues to support Open, drag-drop, and recent files. Document the gap in the feature matrix as Deferred with this reason.
+
+---
+
 ## ADR-011 — FluentAssertions 7.x (not 8.x)
 
 **Status:** Accepted (Phase 0)  

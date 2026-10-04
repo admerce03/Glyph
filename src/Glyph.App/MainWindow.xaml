@@ -4,9 +4,9 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="Glyph">
 
-    <Grid x:Name="RootGrid" RowDefinitions="Auto,*,Auto" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <Grid x:Name="RootGrid" RowDefinitions="Auto,Auto,*,Auto" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-        <Grid Grid.Row="0" Padding="16,12,16,8" ColumnDefinitions="*,Auto">
+        <Grid Grid.Row="0" Padding="16,12,16,4" ColumnDefinitions="*,Auto">
             <StackPanel Orientation="Vertical" Spacing="2">
                 <TextBlock Text="Glyph"
                            FontSize="28"
@@ -16,39 +16,92 @@
                            Opacity="0.7"
                            FontSize="12" />
             </StackPanel>
-
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <Button x:Name="OpenButton" Content="Open…" Click="OpenButton_Click" />
-                <Button x:Name="CloseTabButton" Content="Close tab" Click="CloseTabButton_Click" />
-            </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="1" ColumnDefinitions="220,*" Margin="12,0,12,12" ColumnSpacing="12">
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+        <MenuBar Grid.Row="1" Margin="8,0,8,4">
+            <MenuBarItem Title="File">
+                <MenuFlyoutItem x:Name="OpenMenuItem" Text="Open…" Click="OpenMenuItem_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="O" Modifiers="Control" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="OpenMultipleMenuItem" Text="Open Multiple…" Click="OpenMultipleMenuItem_Click" />
+                <MenuFlyoutItem x:Name="NewFromClipboardMenuItem" Text="New from Clipboard" Click="NewFromClipboardMenuItem_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="N" Modifiers="Control,Shift" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem x:Name="CloseTabMenuItem" Text="Close Tab" Click="CloseTabMenuItem_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="W" Modifiers="Control" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="CloseAllMenuItem" Text="Close All" Click="CloseAllMenuItem_Click" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem x:Name="ClearRecentMenuItem" Text="Clear Recent Files" Click="ClearRecentMenuItem_Click" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem x:Name="ExitMenuItem" Text="Exit" Click="ExitMenuItem_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="Q" Modifiers="Control" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+            </MenuBarItem>
+
+            <MenuBarItem Title="View">
+                <MenuFlyoutItem x:Name="ToggleSidebarMenuItem" Text="Hide Sidebar" Click="ToggleSidebarMenuItem_Click" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutSubItem Text="Theme">
+                    <RadioMenuFlyoutItem x:Name="ThemeSystemItem" Text="System" GroupName="Theme" Click="ThemeSystemItem_Click" />
+                    <RadioMenuFlyoutItem x:Name="ThemeLightItem" Text="Light" GroupName="Theme" Click="ThemeLightItem_Click" />
+                    <RadioMenuFlyoutItem x:Name="ThemeDarkItem" Text="Dark" GroupName="Theme" Click="ThemeDarkItem_Click" />
+                </MenuFlyoutSubItem>
+            </MenuBarItem>
+
+            <MenuBarItem Title="Window">
+                <MenuFlyoutItem x:Name="NextTabMenuItem" Text="Next Tab" Click="NextTabMenuItem_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="Tab" Modifiers="Control" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="PreviousTabMenuItem" Text="Previous Tab" Click="PreviousTabMenuItem_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="Tab" Modifiers="Control,Shift" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+            </MenuBarItem>
+        </MenuBar>
+
+        <Grid x:Name="ContentGrid" Grid.Row="2" ColumnDefinitions="220,*" Margin="12,0,12,12" ColumnSpacing="12">
+            <Border x:Name="SidebarBorder"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     CornerRadius="8"
                     Padding="12">
-                <StackPanel Spacing="8">
+                <Grid RowDefinitions="Auto,Auto,*,Auto">
                     <TextBlock Text="Sidebar" FontWeight="SemiBold" />
-                    <TextBlock x:Name="SidebarStatus"
+                    <TextBlock Grid.Row="1"
+                               x:Name="SidebarStatus"
                                Text="Thumbnails and document tools will appear here."
                                TextWrapping="WrapWholeWords"
                                Opacity="0.75"
-                               FontSize="12" />
-                    <TextBlock Text="Recent" FontWeight="SemiBold" Margin="0,12,0,0" />
-                    <ListView x:Name="RecentList"
-                              SelectionMode="None"
-                              IsItemClickEnabled="True"
-                              ItemClick="RecentList_ItemClick"
-                              Height="220">
-                        <ListView.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding DisplayName}"
-                                           ToolTipService.ToolTip="{Binding Path}"
-                                           TextTrimming="CharacterEllipsis" />
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
-                </StackPanel>
+                               FontSize="12"
+                               Margin="0,8,0,0" />
+                    <StackPanel Grid.Row="2" Margin="0,16,0,0">
+                        <TextBlock Text="Recent" FontWeight="SemiBold" Margin="0,0,0,8" />
+                        <ListView x:Name="RecentList"
+                                  SelectionMode="None"
+                                  IsItemClickEnabled="True"
+                                  ItemClick="RecentList_ItemClick">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding DisplayName}"
+                                               ToolTipService.ToolTip="{Binding Path}"
+                                               TextTrimming="CharacterEllipsis" />
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </StackPanel>
+                </Grid>
             </Border>
 
             <Border Grid.Column="1"
@@ -82,10 +135,10 @@
             </Border>
         </Grid>
 
-        <Grid Grid.Row="2" Padding="16,8" ColumnDefinitions="*,Auto">
+        <Grid Grid.Row="3" Padding="16,8" ColumnDefinitions="*,Auto">
             <TextBlock x:Name="StatusText" Text="Ready" Opacity="0.75" FontSize="12" />
             <TextBlock Grid.Column="1"
-                       Text="Milestone 0 foundation"
+                       Text="Milestone 1 shell"
                        Opacity="0.55"
                        FontSize="12" />
         </Grid>
