@@ -38,6 +38,7 @@ internal static class AppServices
         services.AddSingleton<IPdfTextExtractor, PdfiumTextExtractor>();
         services.AddSingleton<IPdfOutlineService, PdfiumOutlineService>();
         services.AddSingleton<IPdfLinkService, PdfiumLinkService>();
+        services.AddSingleton<IPdfPageEditor, PdfiumPageEditor>();
         services.AddSingleton<IPdfTextSearchService, PdfPigTextSearchService>();
         services.AddSingleton<PageRenderCache>(_ => new PageRenderCache(capacity: 48));
         services.AddSingleton<MainWindow>();

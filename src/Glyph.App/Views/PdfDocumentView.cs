@@ -15,7 +15,7 @@ using Windows.System;
 namespace Glyph.App.Views;
 
 /// <summary>
-/// Milestone 2 PDF viewer: layout modes, zoom, page nav, bitmap thumbnails, Find.
+/// PDF viewer: layout modes, zoom, page nav, bitmap thumbnails, Find, and page edits.
 /// Visible pages render on demand; distant bitmaps stay outside the LRU cache.
 /// </summary>
 public sealed class PdfDocumentView : UserControl
@@ -29,8 +29,10 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfTextExtractor _textExtractor;
     private readonly IPdfOutlineService _outlineService;
     private readonly IPdfLinkService _linkService;
+    private readonly IPdfPageEditor _pageEditor;
     private readonly DocumentViewState _viewState;
     private readonly DocumentNavigationHistory _history = new();
+    private readonly PageSelection _pageSelection = new();
     private readonly string _documentKey;
     private readonly string _thumbnailKey;
     private readonly ScrollViewer _scrollViewer;
@@ -74,6 +76,7 @@ public sealed class PdfDocumentView : UserControl
         IPdfTextExtractor textExtractor,
         IPdfOutlineService outlineService,
         IPdfLinkService linkService,
+        IPdfPageEditor pageEditor,
         DocumentViewState? viewState = null)
     {
         _document = document;
@@ -83,10 +86,12 @@ public sealed class PdfDocumentView : UserControl
         _textExtractor = textExtractor;
         _outlineService = outlineService;
         _linkService = linkService;
+        _pageEditor = pageEditor;
         _viewState = viewState ?? new DocumentViewState();
         _scale = PdfZoomCalculator.Clamp(_viewState.Zoom <= 0 ? 1.25 : _viewState.Zoom);
         _layoutMode = _viewState.PageLayout;
         CurrentPageIndex = Math.Clamp(_viewState.CurrentPageIndex, 0, Math.Max(0, document.PageCount - 1));
+        _pageSelection.SelectOnly(CurrentPageIndex);
         _documentKey = document.Path ?? document.GetHashCode().ToString("X");
         _thumbnailKey = _documentKey + "|thumb";
 
@@ -194,6 +199,16 @@ public sealed class PdfDocumentView : UserControl
         var actual = new Button { Content = "100%" };
         var copy = new Button { Content = "Copy" };
         ToolTipService.SetToolTip(copy, "Copy selected text, or the current page text if nothing is selected");
+        var rotateLeft = new Button { Content = "⟲" };
+        var rotateRight = new Button { Content = "⟳" };
+        var deletePages = new Button { Content = "Delete" };
+        var moveUp = new Button { Content = "↑" };
+        var moveDown = new Button { Content = "↓" };
+        ToolTipService.SetToolTip(rotateLeft, "Rotate selected pages left");
+        ToolTipService.SetToolTip(rotateRight, "Rotate selected pages right");
+        ToolTipService.SetToolTip(deletePages, "Delete selected pages");
+        ToolTipService.SetToolTip(moveUp, "Move selected pages earlier");
+        ToolTipService.SetToolTip(moveDown, "Move selected pages later");
 
         first.Click += async (_, _) => await GoToPageAsync(0, recordHistory: true);
         last.Click += async (_, _) => await GoToPageAsync(_document.PageCount - 1, recordHistory: true);
@@ -223,6 +238,11 @@ public sealed class PdfDocumentView : UserControl
         fitPage.Click += async (_, _) => await FitPageAsync();
         actual.Click += async (_, _) => await SetScaleAsync(PdfZoomCalculator.ActualSize());
         copy.Click += async (_, _) => await CopyTextAsync();
+        rotateLeft.Click += async (_, _) => await RotateSelectedAsync(-90);
+        rotateRight.Click += async (_, _) => await RotateSelectedAsync(90);
+        deletePages.Click += async (_, _) => await DeleteSelectedAsync();
+        moveUp.Click += async (_, _) => await MoveSelectedAsync(delta: -1);
+        moveDown.Click += async (_, _) => await MoveSelectedAsync(delta: 1);
 
         var toolbar = new StackPanel
         {
@@ -233,6 +253,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 first, prev, _gotoBox, next, last, back, forward,
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
+                rotateLeft, rotateRight, deletePages, moveUp, moveDown,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -480,10 +501,22 @@ public sealed class PdfDocumentView : UserControl
 
     private async void Thumbnail_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        if (sender is Border { Tag: int index })
+        if (sender is not Border { Tag: int index })
         {
-            await GoToPageAsync(index, recordHistory: true);
+            return;
         }
+
+        var ctrl = Microsoft.UI.Input.InputKeyboardSource
+            .GetKeyStateForCurrentThread(VirtualKey.Control)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        var shift = Microsoft.UI.Input.InputKeyboardSource
+            .GetKeyStateForCurrentThread(VirtualKey.Shift)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+        _pageSelection.ApplyClick(index, ctrlOrMeta: ctrl, shift: shift);
+        RefreshThumbnailSelectionChrome();
+        await GoToPageAsync(index, recordHistory: true);
+        e.Handled = true;
     }
 
     private async void SearchBox_KeyDown(object sender, KeyRoutedEventArgs e)
@@ -1058,23 +1091,178 @@ public sealed class PdfDocumentView : UserControl
 
     private void HighlightThumbnail(int pageIndex)
     {
+        if (_pageSelection.Count == 0 || !_pageSelection.Contains(pageIndex))
+        {
+            _pageSelection.SelectOnly(pageIndex);
+        }
+
+        RefreshThumbnailSelectionChrome();
+        if (_thumbnailBorders.TryGetValue(pageIndex, out var selected))
+        {
+            selected.StartBringIntoView();
+        }
+    }
+
+    private void RefreshThumbnailSelectionChrome()
+    {
         _suppressThumbnailNav = true;
         try
         {
             foreach (var (index, border) in _thumbnailBorders)
             {
-                border.BorderBrush = new SolidColorBrush(index == pageIndex ? Colors.DodgerBlue : Colors.Transparent);
-            }
-
-            if (_thumbnailBorders.TryGetValue(pageIndex, out var selected))
-            {
-                selected.StartBringIntoView();
+                var isSelected = _pageSelection.Contains(index);
+                var isCurrent = index == CurrentPageIndex;
+                border.BorderBrush = new SolidColorBrush(
+                    isSelected ? Colors.DodgerBlue : isCurrent ? Colors.SteelBlue : Colors.Transparent);
             }
         }
         finally
         {
             _suppressThumbnailNav = false;
         }
+    }
+
+    private async Task RotateSelectedAsync(int deltaDegrees)
+    {
+        var indexes = SelectedOrCurrentPages();
+        if (indexes.Count == 0)
+        {
+            return;
+        }
+
+        _status.Text = "Rotating…";
+        await _pageEditor.RotatePagesAsync(_document, indexes, deltaDegrees);
+        await ReloadAfterPageEditAsync();
+        _status.Text = $"Rotated {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")}.";
+    }
+
+    private async Task DeleteSelectedAsync()
+    {
+        var indexes = SelectedOrCurrentPages();
+        if (indexes.Count == 0)
+        {
+            return;
+        }
+
+        if (indexes.Count >= _document.PageCount)
+        {
+            _status.Text = "Cannot delete every page.";
+            return;
+        }
+
+        _status.Text = "Deleting…";
+        await _pageEditor.DeletePagesAsync(_document, indexes);
+        await ReloadAfterPageEditAsync();
+        _status.Text = $"Deleted {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")}.";
+    }
+
+    private async Task MoveSelectedAsync(int delta)
+    {
+        var selected = SelectedOrCurrentPages().OrderBy(i => i).ToList();
+        if (selected.Count == 0)
+        {
+            return;
+        }
+
+        var order = Enumerable.Range(0, _document.PageCount).ToList();
+        if (delta < 0)
+        {
+            for (var i = 0; i < selected.Count; i++)
+            {
+                var index = selected[i];
+                if (index == 0 || selected.Contains(index - 1))
+                {
+                    continue;
+                }
+
+                (order[index - 1], order[index]) = (order[index], order[index - 1]);
+            }
+        }
+        else
+        {
+            for (var i = selected.Count - 1; i >= 0; i--)
+            {
+                var index = selected[i];
+                if (index >= order.Count - 1 || selected.Contains(index + 1))
+                {
+                    continue;
+                }
+
+                (order[index + 1], order[index]) = (order[index], order[index + 1]);
+            }
+        }
+
+        if (order.Select((value, index) => value == index).All(x => x))
+        {
+            return;
+        }
+
+        _status.Text = "Reordering…";
+        await _pageEditor.ReorderPagesAsync(_document, order);
+        // Remap selection to new indexes.
+        var remap = new Dictionary<int, int>();
+        for (var newIndex = 0; newIndex < order.Count; newIndex++)
+        {
+            remap[order[newIndex]] = newIndex;
+        }
+
+        var moved = selected.Select(i => remap[i]).OrderBy(i => i).ToList();
+        _pageSelection.Clear();
+        foreach (var index in moved)
+        {
+            _pageSelection.Toggle(index);
+        }
+
+        await ReloadAfterPageEditAsync();
+        if (moved.Count > 0)
+        {
+            await GoToPageAsync(moved[0], recordHistory: false);
+        }
+
+        _status.Text = "Pages reordered.";
+    }
+
+    private List<int> SelectedOrCurrentPages()
+    {
+        if (_pageSelection.Count > 0)
+        {
+            return _pageSelection.SelectedIndexes.OrderBy(i => i).ToList();
+        }
+
+        return [CurrentPageIndex];
+    }
+
+    private async Task ReloadAfterPageEditAsync()
+    {
+        _cache.ClearDocument(_documentKey);
+        _cache.ClearDocument(_thumbnailKey);
+        _pageChars.Clear();
+        _pageLinks.Clear();
+        _pageImages.Clear();
+        _pageOverlays.Clear();
+        CurrentPageIndex = Math.Clamp(CurrentPageIndex, 0, Math.Max(0, _document.PageCount - 1));
+
+        var stillValid = _pageSelection.SelectedIndexes.Where(i => i < _document.PageCount).ToList();
+        _pageSelection.Clear();
+        if (stillValid.Count == 0)
+        {
+            _pageSelection.SelectOnly(CurrentPageIndex);
+        }
+        else
+        {
+            foreach (var index in stillValid)
+            {
+                _pageSelection.Toggle(index);
+            }
+        }
+
+        BuildPagePlaceholders();
+        BuildThumbnailPlaceholders();
+        RefreshThumbnailSelectionChrome();
+        SyncViewState();
+        UpdateStatus();
+        await RenderVisibleAsync();
+        _ = RenderThumbnailsAsync();
     }
 
     private async void ScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)

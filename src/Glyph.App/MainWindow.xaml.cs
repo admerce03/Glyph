@@ -38,6 +38,7 @@ public sealed partial class MainWindow : Window
     private readonly IPdfTextExtractor _pdfText;
     private readonly IPdfOutlineService _pdfOutlines;
     private readonly IPdfLinkService _pdfLinks;
+    private readonly IPdfPageEditor _pdfPageEditor;
     private readonly PageRenderCache _pageCache;
     private readonly ILogger<MainWindow> _logger;
     private readonly Dictionary<DocumentId, IAsyncDisposable> _openEngines = new();
@@ -53,6 +54,7 @@ public sealed partial class MainWindow : Window
         IPdfTextExtractor pdfText,
         IPdfOutlineService pdfOutlines,
         IPdfLinkService pdfLinks,
+        IPdfPageEditor pdfPageEditor,
         PageRenderCache pageCache,
         ILogger<MainWindow> logger)
     {
@@ -66,6 +68,7 @@ public sealed partial class MainWindow : Window
         _pdfText = pdfText;
         _pdfOutlines = pdfOutlines;
         _pdfLinks = pdfLinks;
+        _pdfPageEditor = pdfPageEditor;
         _pageCache = pageCache;
         _logger = logger;
 
@@ -379,6 +382,7 @@ public sealed partial class MainWindow : Window
                 _pdfText,
                 _pdfOutlines,
                 _pdfLinks,
+                _pdfPageEditor,
                 session.ViewState);
         }
 

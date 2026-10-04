@@ -12,5 +12,10 @@ public interface IPdfDocument : IAsyncDisposable, IDisposable
 
     bool IsEncrypted { get; }
 
+    /// <summary>
+    /// Raised after page-tree mutations (rotate/delete/reorder/insert) so viewers can refresh.
+    /// </summary>
+    event EventHandler? PagesChanged;
+
     IPdfPage GetPage(int pageIndex);
 }

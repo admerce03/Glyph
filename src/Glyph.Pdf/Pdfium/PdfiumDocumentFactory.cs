@@ -40,37 +40,10 @@ public sealed class PdfiumDocumentFactory : IPdfDocumentFactory
                                 : $"Failed to open PDF (error {error}): {path}");
                     }
 
-                    var pageCount = fpdfview.FPDF_GetPageCount(handle);
-                    var pages = new List<PdfiumPage>(pageCount);
+                    var pages = new List<PdfiumPage>();
                     var document = new PdfiumDocument(path, handle, pages, isEncrypted: password is not null);
-
-                    for (var i = 0; i < pageCount; i++)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        double width = 0;
-                        double height = 0;
-                        // Size already reflects the page's /Rotate value.
-                        fpdfview.FPDF_GetPageSizeByIndex(handle, i, ref width, ref height);
-
-                        var rotationDegrees = 0;
-                        var page = fpdfview.FPDF_LoadPage(handle, i);
-                        if (page is not null)
-                        {
-                            try
-                            {
-                                // PDFium returns 0–3 for 0°/90°/180°/270°.
-                                var rotationQuarterTurns = fpdf_edit.FPDFPageGetRotation(page);
-                                rotationDegrees = Math.Clamp(rotationQuarterTurns, 0, 3) * 90;
-                            }
-                            finally
-                            {
-                                fpdfview.FPDF_ClosePage(page);
-                            }
-                        }
-
-                        pages.Add(new PdfiumPage(document, i, width, height, rotationDegrees));
-                    }
-
+                    pages.AddRange(PdfiumPageCatalog.Build(document, handle));
+                    cancellationToken.ThrowIfCancellationRequested();
                     return (IPdfDocument)document;
                 }
             },

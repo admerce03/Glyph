@@ -20,7 +20,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M0 | Architecture and engineering foundation | **Tested** | — |
 | M1 | Application shell and basic file opening | **Implemented** (CI green; interactive screenshot pending) | M0 |
 | M2 | Core PDF viewer | **Implemented** (landed via PR #7 → `33deca2`) | M1 |
-| M3 | Core PDF page manipulation | Not Started | M2 |
+| M3 | Core PDF page manipulation | **In Progress** | M2 |
 | M4 | PDF markup and editing | Not Started | M2 (forms/security touch M7) |
 | M5 | Image viewer/editor | Not Started | M1 (shares shell/DnD with M3) |
 | M6 | OCR and scanned-document capabilities | Not Started | M2, M5 |
@@ -131,7 +131,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 3 — Core PDF page manipulation
 
-**Status:** Not Started · Depends on M2
+**Status:** In Progress · Depends on M2
 
 ### Scope (`FEATURES.md` §10–12, §59 PDF DnD)
 
@@ -149,6 +149,12 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Undo/redo for page ops
 - Round-trip tests on sample PDFs
 - Screen recording of cross-document page drag
+
+### Progress notes
+
+- `IPdfPageEditor` / `PdfiumPageEditor`: rotate, delete, reorder, extract behind PDFium (`FPDFPageSetRotation` / `FPDFPageDelete` / `FPDF_ImportPages`).
+- `PageSelection` models Ctrl/Shift thumbnail multi-select; viewer wires rotate/delete/move ↑↓.
+- Next: insert/duplicate, save/extract-to-file, thumbnail drag reorder, cross-doc DnD, undo commands, CropBox.
 
 ---
 
@@ -293,7 +299,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | PDF text interaction | §7 | M2, M6 | Implemented |
 | OCR / Live Text | §8 | M6 | Not Started |
 | User bookmarks | §9 | M2/M4 | Not Started |
-| PDF page manipulation | §10–12 | M3 | Not Started |
+| PDF page manipulation | §10–12 | M3 | In Progress |
 | PDF annotations/markup | §13–19 | M4 | Not Started |
 | PDF forms | §20 | M4 | Not Started |
 | Redaction | §21 | M7 | Not Started |

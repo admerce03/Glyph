@@ -181,12 +181,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F09-06 | PDF bookmarks | Click to navigate. | M2/M4 | Not Started |  |
 | F09-07 | PDF bookmarks | Preserve bookmarks when saving. | M2/M4 | Not Started |  |
 | F09-08 | PDF bookmarks | Export them as standard PDF bookmarks where compatible. | M2/M4 | Not Started |  |
-| F10-01 | PDF page manipulation | Select page thumbnails. | M3 | Not Started |  |
-| F10-02 | PDF page manipulation | Multi-select pages. | M3 | Not Started |  |
-| F10-03 | PDF page manipulation | Select ranges. | M3 | Not Started |  |
-| F10-04 | PDF page manipulation | Reorder pages by dragging thumbnails. | M3 | Not Started |  |
-| F10-05 | PDF page manipulation | Move multiple pages as one selection. | M3 | Not Started |  |
-| F10-06 | PDF page manipulation | Delete pages. | M3 | Not Started |  |
+| F10-01 | PDF page manipulation | Select page thumbnails. | M3 | Implemented | Click thumbnails; chrome shows selection |
+| F10-02 | PDF page manipulation | Multi-select pages. | M3 | Tested | Ctrl+click via `PageSelection` |
+| F10-03 | PDF page manipulation | Select ranges. | M3 | Tested | Shift+click via `PageSelection` |
+| F10-04 | PDF page manipulation | Reorder pages by dragging thumbnails. | M3 | In Progress | Move ↑/↓ for selection; drag DnD next |
+| F10-05 | PDF page manipulation | Move multiple pages as one selection. | M3 | Implemented | Move ↑/↓ shifts contiguous selection |
+| F10-06 | PDF page manipulation | Delete pages. | M3 | Tested | `IPdfPageEditor.DeletePagesAsync` + toolbar |
 | F10-07 | PDF page manipulation | Duplicate pages. | M3 | Not Started |  |
 | F10-08 | PDF page manipulation | Insert blank page. | M3 | Not Started |  |
 | F10-09 | PDF page manipulation | Insert PDF file. | M3 | Not Started |  |
@@ -194,16 +194,16 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F10-11 | PDF page manipulation | Append PDF. | M3 | Not Started |  |
 | F10-12 | PDF page manipulation | Prepend PDF. | M3 | Not Started |  |
 | F10-13 | PDF page manipulation | Insert at arbitrary position. | M3 | Not Started |  |
-| F10-14 | PDF page manipulation | Extract selected pages. | M3 | Not Started |  |
-| F10-15 | PDF page manipulation | Save extracted pages as new PDF. | M3 | Not Started |  |
+| F10-14 | PDF page manipulation | Extract selected pages. | M3 | Tested | `ExtractPagesAsync` returns new `IPdfDocument` |
+| F10-15 | PDF page manipulation | Save extracted pages as new PDF. | M3 | Not Started | Extract works in-memory; save path next |
 | F10-16 | PDF page manipulation | Split PDF. | M3 | Not Started |  |
 | F10-17 | PDF page manipulation | Merge PDFs. | M3 | Not Started |  |
-| F10-18 | PDF page manipulation | Rotate selected pages left. | M3 | Not Started |  |
-| F10-19 | PDF page manipulation | Rotate selected pages right. | M3 | Not Started |  |
-| F10-20 | PDF page manipulation | Batch rotation. | M3 | Not Started |  |
+| F10-18 | PDF page manipulation | Rotate selected pages left. | M3 | Tested | Toolbar ⟲ → `-90°` |
+| F10-19 | PDF page manipulation | Rotate selected pages right. | M3 | Tested | Toolbar ⟳ → `+90°` |
+| F10-20 | PDF page manipulation | Batch rotation. | M3 | Tested | Multi-select rotate uses same editor path |
 | F10-21 | PDF page manipulation | Crop selected page. | M3 | Not Started |  |
 | F10-22 | PDF page manipulation | Apply same crop to multiple pages. | M3 | Not Started |  |
-| F10-23 | PDF page manipulation | Change page order. | M3 | Not Started |  |
+| F10-23 | PDF page manipulation | Change page order. | M3 | Implemented | `ReorderPagesAsync` + Move ↑/↓ |
 | F10-24 | PDF page manipulation | Copy/paste pages between documents. | M3 | Not Started |  |
 | F11-01 | Preview-style PDF drag-and-drop workflows | one page | M3 | Not Started |  |
 | F11-02 | Preview-style PDF drag-and-drop workflows | multiple contiguous pages | M3 | Not Started |  |
