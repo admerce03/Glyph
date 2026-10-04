@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices.WindowsRuntime;
+using Glyph.Core.Documents;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Rendering;
 using Glyph.Pdf.Text;
@@ -8,12 +9,13 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.System;
 
 namespace Glyph.App.Views;
 
 /// <summary>
-/// Milestone 2 PDF viewer: continuous page stack, zoom, page nav, bitmap thumbnails.
-/// Pages are rendered on demand; distant bitmaps are not retained beyond the cache.
+/// Milestone 2 PDF viewer: layout modes, zoom, page nav, bitmap thumbnails, Find.
+/// Visible pages render on demand; distant bitmaps stay outside the LRU cache.
 /// </summary>
 public sealed class PdfDocumentView : UserControl
 {
@@ -23,21 +25,27 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfRenderer _renderer;
     private readonly PageRenderCache _cache;
     private readonly PdfSearchCoordinator _searchCoordinator;
+    private readonly DocumentViewState _viewState;
+    private readonly DocumentNavigationHistory _history = new();
     private readonly string _documentKey;
     private readonly string _thumbnailKey;
     private readonly ScrollViewer _scrollViewer;
-    private readonly StackPanel _pageHost;
+    private readonly StackPanel _continuousHost;
+    private readonly StackPanel _spreadHost;
     private readonly StackPanel _thumbnailHost;
     private readonly ScrollViewer _thumbnailScroll;
     private readonly ListView _searchResults;
     private readonly TextBox _searchBox;
+    private readonly TextBox _gotoBox;
     private readonly CheckBox _caseSensitiveBox;
+    private readonly ComboBox _layoutBox;
     private readonly TextBlock _status;
     private readonly Dictionary<int, Image> _pageImages = new();
     private readonly Dictionary<int, Image> _thumbnailImages = new();
     private readonly Dictionary<int, Border> _thumbnailBorders = new();
     private readonly SemaphoreSlim _renderGate = new(1, 1);
     private double _scale = 1.25;
+    private PageLayoutMode _layoutMode = PageLayoutMode.Continuous;
     private int _renderGeneration;
     private bool _loaded;
     private bool _suppressThumbnailNav;
@@ -48,24 +56,37 @@ public sealed class PdfDocumentView : UserControl
         IPdfDocument document,
         IPdfRenderer renderer,
         PageRenderCache cache,
-        IPdfTextSearchService searchService)
+        IPdfTextSearchService searchService,
+        DocumentViewState? viewState = null)
     {
         _document = document;
         _renderer = renderer;
         _cache = cache;
         _searchCoordinator = new PdfSearchCoordinator(searchService);
+        _viewState = viewState ?? new DocumentViewState();
+        _scale = PdfZoomCalculator.Clamp(_viewState.Zoom <= 0 ? 1.25 : _viewState.Zoom);
+        _layoutMode = _viewState.PageLayout;
+        CurrentPageIndex = Math.Clamp(_viewState.CurrentPageIndex, 0, Math.Max(0, document.PageCount - 1));
         _documentKey = document.Path ?? document.GetHashCode().ToString("X");
         _thumbnailKey = _documentKey + "|thumb";
 
-        _pageHost = new StackPanel { Spacing = 12, Padding = new Thickness(12) };
+        _continuousHost = new StackPanel { Spacing = 12, Padding = new Thickness(12) };
+        _spreadHost = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 12,
+            Padding = new Thickness(12),
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
         _scrollViewer = new ScrollViewer
         {
-            Content = _pageHost,
+            Content = _continuousHost,
             ZoomMode = ZoomMode.Disabled,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
         };
         _scrollViewer.ViewChanged += ScrollViewer_ViewChanged;
+        _scrollViewer.PointerWheelChanged += ScrollViewer_PointerWheelChanged;
 
         _thumbnailHost = new StackPanel { Spacing = 8, Padding = new Thickness(8) };
         _thumbnailScroll = new ScrollViewer
@@ -75,7 +96,7 @@ public sealed class PdfDocumentView : UserControl
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
         };
 
-        _searchBox = new TextBox { PlaceholderText = "Find in document", Width = 200 };
+        _searchBox = new TextBox { PlaceholderText = "Find in document", Width = 160 };
         _searchBox.KeyDown += SearchBox_KeyDown;
         _caseSensitiveBox = new CheckBox { Content = "Aa", VerticalAlignment = VerticalAlignment.Center };
         ToolTipService.SetToolTip(_caseSensitiveBox, "Match case");
@@ -114,27 +135,66 @@ public sealed class PdfDocumentView : UserControl
         Grid.SetRow(_searchResults, 3);
         sidePanel.Children.Add(_searchResults);
 
-        _status = new TextBlock { Opacity = 0.75, FontSize = 12, Margin = new Thickness(8, 0, 8, 0) };
+        _status = new TextBlock { Opacity = 0.75, FontSize = 12, Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+        _gotoBox = new TextBox { PlaceholderText = "#", Width = 48 };
+        _gotoBox.KeyDown += GotoBox_KeyDown;
+        _layoutBox = new ComboBox
+        {
+            Width = 120,
+            ItemsSource = new[] { "Continuous", "Single", "Two-page" },
+            SelectedIndex = (int)_layoutMode,
+        };
+        _layoutBox.SelectionChanged += async (_, _) => await SetLayoutModeAsync(SelectedLayout());
 
+        var first = new Button { Content = "First" };
+        var prev = new Button { Content = "Prev" };
+        var next = new Button { Content = "Next" };
+        var last = new Button { Content = "Last" };
+        var back = new Button { Content = "Back" };
+        var forward = new Button { Content = "Fwd" };
         var zoomOut = new Button { Content = "−", Width = 36 };
         var zoomIn = new Button { Content = "+", Width = 36 };
         var fitWidth = new Button { Content = "Fit width" };
-        var prev = new Button { Content = "Prev" };
-        var next = new Button { Content = "Next" };
-        zoomOut.Click += async (_, _) => await SetScaleAsync(_scale / 1.25);
-        zoomIn.Click += async (_, _) => await SetScaleAsync(_scale * 1.25);
+        var fitPage = new Button { Content = "Fit page" };
+        var actual = new Button { Content = "100%" };
+
+        first.Click += async (_, _) => await GoToPageAsync(0, recordHistory: true);
+        last.Click += async (_, _) => await GoToPageAsync(_document.PageCount - 1, recordHistory: true);
+        prev.Click += async (_, _) => await GoToPageAsync(
+            PageLayoutCalculator.PreviousPageIndex(_layoutMode, CurrentPageIndex, _document.PageCount),
+            recordHistory: true);
+        next.Click += async (_, _) => await GoToPageAsync(
+            PageLayoutCalculator.NextPageIndex(_layoutMode, CurrentPageIndex, _document.PageCount),
+            recordHistory: true);
+        back.Click += async (_, _) =>
+        {
+            if (_history.GoBack() is int page)
+            {
+                await GoToPageAsync(page, recordHistory: false);
+            }
+        };
+        forward.Click += async (_, _) =>
+        {
+            if (_history.GoForward() is int page)
+            {
+                await GoToPageAsync(page, recordHistory: false);
+            }
+        };
+        zoomOut.Click += async (_, _) => await SetScaleAsync(PdfZoomCalculator.ZoomOut(_scale));
+        zoomIn.Click += async (_, _) => await SetScaleAsync(PdfZoomCalculator.ZoomIn(_scale));
         fitWidth.Click += async (_, _) => await FitWidthAsync();
-        prev.Click += async (_, _) => await GoToPageAsync(CurrentPageIndex - 1);
-        next.Click += async (_, _) => await GoToPageAsync(CurrentPageIndex + 1);
+        fitPage.Click += async (_, _) => await FitPageAsync();
+        actual.Click += async (_, _) => await SetScaleAsync(PdfZoomCalculator.ActualSize());
 
         var toolbar = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 8,
+            Spacing = 6,
             Padding = new Thickness(8),
             Children =
             {
-                prev, next, zoomOut, zoomIn, fitWidth,
+                first, prev, _gotoBox, next, last, back, forward,
+                zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox,
                 _searchBox, _caseSensitiveBox, searchButton, prevMatch, nextMatch, _status,
             },
         };
@@ -164,8 +224,10 @@ public sealed class PdfDocumentView : UserControl
         root.Children.Add(body);
         Content = root;
 
+        KeyDown += PdfDocumentView_KeyDown;
         Loaded += PdfDocumentView_Loaded;
         Unloaded += PdfDocumentView_Unloaded;
+        _history.NavigateTo(CurrentPageIndex);
     }
 
     public int CurrentPageIndex { get; private set; }
@@ -180,6 +242,7 @@ public sealed class PdfDocumentView : UserControl
         _loaded = true;
         BuildPagePlaceholders();
         BuildThumbnailPlaceholders();
+        SyncViewState();
         UpdateStatus();
         HighlightThumbnail(CurrentPageIndex);
         await RenderVisibleAsync();
@@ -188,18 +251,44 @@ public sealed class PdfDocumentView : UserControl
 
     private void PdfDocumentView_Unloaded(object sender, RoutedEventArgs e)
     {
-        // Cancel in-flight Find work; keep the coordinator alive in case WinUI reloads the visual tree.
         _searchCoordinator.Cancel();
         _cache.ClearDocument(_documentKey);
         _cache.ClearDocument(_thumbnailKey);
     }
 
+    private PageLayoutMode SelectedLayout() => _layoutBox.SelectedIndex switch
+    {
+        1 => PageLayoutMode.SinglePage,
+        2 => PageLayoutMode.TwoPage,
+        _ => PageLayoutMode.Continuous,
+    };
+
+    private async Task SetLayoutModeAsync(PageLayoutMode mode)
+    {
+        _layoutMode = mode;
+        CurrentPageIndex = PageLayoutCalculator.NormalizePageIndex(mode, CurrentPageIndex, _document.PageCount);
+        _scrollViewer.Content = mode == PageLayoutMode.Continuous ? _continuousHost : _spreadHost;
+        BuildPagePlaceholders();
+        SyncViewState();
+        UpdateStatus();
+        HighlightThumbnail(CurrentPageIndex);
+        await RenderVisibleAsync();
+    }
+
     private void BuildPagePlaceholders()
     {
-        _pageHost.Children.Clear();
+        _continuousHost.Children.Clear();
+        _spreadHost.Children.Clear();
         _pageImages.Clear();
 
-        for (var i = 0; i < _document.PageCount; i++)
+        var host = _layoutMode == PageLayoutMode.Continuous ? _continuousHost : _spreadHost;
+        var (first, last) = PageLayoutCalculator.VisibleRange(_layoutMode, CurrentPageIndex, _document.PageCount);
+        if (last < first)
+        {
+            return;
+        }
+
+        for (var i = first; i <= last; i++)
         {
             var page = _document.GetPage(i);
             var width = Math.Max(1, page.WidthPoints * _scale);
@@ -219,7 +308,7 @@ public sealed class PdfDocumentView : UserControl
                 Child = image,
                 Tag = i,
             };
-            _pageHost.Children.Add(border);
+            host.Children.Add(border);
         }
     }
 
@@ -268,16 +357,68 @@ public sealed class PdfDocumentView : UserControl
     {
         if (sender is Border { Tag: int index })
         {
-            await GoToPageAsync(index);
+            await GoToPageAsync(index, recordHistory: true);
         }
     }
 
     private async void SearchBox_KeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (e.Key == Windows.System.VirtualKey.Enter)
+        if (e.Key == VirtualKey.Enter)
         {
             await RunSearchAsync();
         }
+    }
+
+    private async void GotoBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key != VirtualKey.Enter)
+        {
+            return;
+        }
+
+        if (int.TryParse(_gotoBox.Text, out var pageNumber))
+        {
+            await GoToPageAsync(pageNumber - 1, recordHistory: true);
+        }
+    }
+
+    private async void PdfDocumentView_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case VirtualKey.PageDown:
+                await GoToPageAsync(
+                    PageLayoutCalculator.NextPageIndex(_layoutMode, CurrentPageIndex, _document.PageCount),
+                    recordHistory: true);
+                e.Handled = true;
+                break;
+            case VirtualKey.PageUp:
+                await GoToPageAsync(
+                    PageLayoutCalculator.PreviousPageIndex(_layoutMode, CurrentPageIndex, _document.PageCount),
+                    recordHistory: true);
+                e.Handled = true;
+                break;
+            case VirtualKey.Home:
+                await GoToPageAsync(0, recordHistory: true);
+                e.Handled = true;
+                break;
+            case VirtualKey.End:
+                await GoToPageAsync(_document.PageCount - 1, recordHistory: true);
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private async void ScrollViewer_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
+    {
+        if (!e.KeyModifiers.HasFlag(VirtualKeyModifiers.Control))
+        {
+            return;
+        }
+
+        var delta = e.GetCurrentPoint(_scrollViewer).Properties.MouseWheelDelta;
+        await SetScaleAsync(PdfZoomCalculator.ApplyWheelZoom(_scale, delta));
+        e.Handled = true;
     }
 
     private async Task RunSearchAsync()
@@ -295,7 +436,6 @@ public sealed class PdfDocumentView : UserControl
             CaseSensitive: _caseSensitiveBox.IsChecked == true,
             ExactPhrase: true);
 
-        // New queries cancel any in-flight search via the coordinator.
         var result = await _searchCoordinator.SearchAsync(_document.Path, query, options);
         if (result.Status == PdfSearchStatus.Cancelled)
         {
@@ -322,7 +462,7 @@ public sealed class PdfDocumentView : UserControl
         if (_activeHitIndex >= 0)
         {
             _searchResults.SelectedIndex = _activeHitIndex;
-            await GoToPageAsync(_hits[_activeHitIndex].PageIndex);
+            await GoToPageAsync(_hits[_activeHitIndex].PageIndex, recordHistory: true);
         }
     }
 
@@ -345,7 +485,7 @@ public sealed class PdfDocumentView : UserControl
         var wrapped = (hitIndex % _hits.Count + _hits.Count) % _hits.Count;
         _activeHitIndex = wrapped;
         _searchResults.SelectedIndex = wrapped;
-        await GoToPageAsync(_hits[wrapped].PageIndex);
+        await GoToPageAsync(_hits[wrapped].PageIndex, recordHistory: true);
         _status.Text = $"Match {wrapped + 1} / {_hits.Count} · p.{_hits[wrapped].PageIndex + 1}";
     }
 
@@ -354,15 +494,16 @@ public sealed class PdfDocumentView : UserControl
         if (_searchResults.SelectedIndex >= 0 && _searchResults.SelectedIndex < _hits.Count)
         {
             _activeHitIndex = _searchResults.SelectedIndex;
-            await GoToPageAsync(_hits[_activeHitIndex].PageIndex);
+            await GoToPageAsync(_hits[_activeHitIndex].PageIndex, recordHistory: true);
         }
     }
 
     private async Task SetScaleAsync(double scale)
     {
-        _scale = Math.Clamp(scale, 0.25, 4.0);
+        _scale = PdfZoomCalculator.Clamp(scale);
         _cache.ClearDocument(_documentKey);
         BuildPagePlaceholders();
+        SyncViewState();
         UpdateStatus();
         await RenderVisibleAsync();
     }
@@ -374,25 +515,59 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var viewportWidth = Math.Max(100, _scrollViewer.ViewportWidth - 24);
-        var pageWidth = _document.GetPage(CurrentPageIndex).WidthPoints;
-        await SetScaleAsync(viewportWidth / pageWidth);
+        var page = _document.GetPage(CurrentPageIndex);
+        var scale = PdfZoomCalculator.FitWidth(_scrollViewer.ViewportWidth, page.WidthPoints);
+        await SetScaleAsync(scale);
     }
 
-    private async Task GoToPageAsync(int pageIndex)
+    private async Task FitPageAsync()
     {
+        if (_document.PageCount == 0)
+        {
+            return;
+        }
+
+        var page = _document.GetPage(CurrentPageIndex);
+        var scale = PdfZoomCalculator.FitPage(
+            _scrollViewer.ViewportWidth,
+            _scrollViewer.ViewportHeight,
+            page.WidthPoints,
+            page.HeightPoints);
+        await SetScaleAsync(scale);
+    }
+
+    private async Task GoToPageAsync(int pageIndex, bool recordHistory)
+    {
+        if (_document.PageCount == 0)
+        {
+            return;
+        }
+
+        pageIndex = PageLayoutCalculator.NormalizePageIndex(_layoutMode, pageIndex, _document.PageCount);
         if (pageIndex < 0 || pageIndex >= _document.PageCount)
         {
             return;
         }
 
+        var pageChanged = pageIndex != CurrentPageIndex;
         CurrentPageIndex = pageIndex;
-        HighlightThumbnail(pageIndex);
-        if (_pageHost.Children[pageIndex] is FrameworkElement element)
+        if (recordHistory && pageChanged)
+        {
+            _history.NavigateTo(pageIndex);
+        }
+
+        if (_layoutMode != PageLayoutMode.Continuous)
+        {
+            BuildPagePlaceholders();
+        }
+        else if (_pageImages.TryGetValue(pageIndex, out _)
+                 && _continuousHost.Children.OfType<FrameworkElement>().FirstOrDefault(fe => fe.Tag is int tag && tag == pageIndex) is { } element)
         {
             element.StartBringIntoView();
         }
 
+        HighlightThumbnail(pageIndex);
+        SyncViewState();
         UpdateStatus();
         await RenderVisibleAsync();
     }
@@ -420,7 +595,7 @@ public sealed class PdfDocumentView : UserControl
 
     private async void ScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
-        if (!e.IsIntermediate)
+        if (!e.IsIntermediate && _layoutMode == PageLayoutMode.Continuous)
         {
             UpdateCurrentPageFromScroll();
             await RenderVisibleAsync();
@@ -436,17 +611,18 @@ public sealed class PdfDocumentView : UserControl
 
         var offset = _scrollViewer.VerticalOffset;
         double accumulated = 0;
-        for (var i = 0; i < _pageHost.Children.Count; i++)
+        for (var i = 0; i < _continuousHost.Children.Count; i++)
         {
-            if (_pageHost.Children[i] is FrameworkElement fe)
+            if (_continuousHost.Children[i] is FrameworkElement fe)
             {
                 var next = accumulated + fe.ActualHeight + 12;
-                if (offset < next || i == _pageHost.Children.Count - 1)
+                if (offset < next || i == _continuousHost.Children.Count - 1)
                 {
                     if (CurrentPageIndex != i)
                     {
                         CurrentPageIndex = i;
                         HighlightThumbnail(i);
+                        SyncViewState();
                         UpdateStatus();
                     }
 
@@ -469,8 +645,9 @@ public sealed class PdfDocumentView : UserControl
                 return;
             }
 
-            var first = Math.Max(0, CurrentPageIndex - 1);
-            var last = Math.Min(_document.PageCount - 1, CurrentPageIndex + 2);
+            var (first, last) = _layoutMode == PageLayoutMode.Continuous
+                ? (Math.Max(0, CurrentPageIndex - 1), Math.Min(_document.PageCount - 1, CurrentPageIndex + 2))
+                : PageLayoutCalculator.VisibleRange(_layoutMode, CurrentPageIndex, _document.PageCount);
 
             for (var i = first; i <= last; i++)
             {
@@ -565,8 +742,17 @@ public sealed class PdfDocumentView : UserControl
         return bitmap;
     }
 
+    private void SyncViewState()
+    {
+        _viewState.Zoom = _scale;
+        _viewState.CurrentPageIndex = CurrentPageIndex;
+        _viewState.PageLayout = _layoutMode;
+    }
+
     private void UpdateStatus()
     {
-        _status.Text = $"Page {CurrentPageIndex + 1} / {_document.PageCount}    Zoom {(int)Math.Round(_scale * 100)}%";
+        _gotoBox.Text = (CurrentPageIndex + 1).ToString();
+        _status.Text =
+            $"Page {CurrentPageIndex + 1} / {_document.PageCount}    Zoom {(int)Math.Round(_scale * 100)}%    {_layoutMode}";
     }
 }

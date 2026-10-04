@@ -44,6 +44,27 @@ public class PdfiumOpenRenderTests
         }
     }
 
+    [Fact]
+    public async Task Open_encrypted_pdf_requires_password_then_succeeds()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "encrypted.pdf");
+        File.Exists(path).Should().BeTrue();
+
+        var factory = new PdfiumDocumentFactory();
+
+        var missing = async () => await factory.OpenAsync(path);
+        await missing.Should().ThrowAsync<PdfPasswordRequiredException>()
+            .Where(ex => !ex.PasswordWasProvided);
+
+        var wrong = async () => await factory.OpenAsync(path, "wrong-password");
+        await wrong.Should().ThrowAsync<PdfPasswordRequiredException>()
+            .Where(ex => ex.PasswordWasProvided);
+
+        await using var document = await factory.OpenAsync(path, "secret");
+        document.PageCount.Should().Be(1);
+        document.IsEncrypted.Should().BeTrue();
+    }
+
     private static void CreateSamplePdf(string path)
     {
         var builder = new PdfDocumentBuilder();

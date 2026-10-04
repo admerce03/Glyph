@@ -8,6 +8,10 @@ public sealed class PdfiumDocumentFactory : IPdfDocumentFactory
     // PDFium BGRA pixel format constant.
     private const int FpdfBitmapBgra = 4;
 
+    // https://pdfium.googlesource.com/pdfium/+/main/public/fpdfview.h
+    private const uint FpdfErrSuccess = 0;
+    private const uint FpdfErrPassword = 4;
+
     public Task<IPdfDocument> OpenAsync(string path, string? password = null, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
@@ -24,10 +28,16 @@ public sealed class PdfiumDocumentFactory : IPdfDocumentFactory
                     var handle = fpdfview.FPDF_LoadDocument(path, password);
                     if (handle is null)
                     {
+                        var error = fpdfview.FPDF_GetLastError();
+                        if (error == FpdfErrPassword)
+                        {
+                            throw new PdfPasswordRequiredException(path, passwordWasProvided: password is not null);
+                        }
+
                         throw new InvalidOperationException(
-                            password is null
+                            error == FpdfErrSuccess
                                 ? $"Failed to open PDF: {path}"
-                                : $"Failed to open PDF (password may be incorrect): {path}");
+                                : $"Failed to open PDF (error {error}): {path}");
                     }
 
                     var pageCount = fpdfview.FPDF_GetPageCount(handle);

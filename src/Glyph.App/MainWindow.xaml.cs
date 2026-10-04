@@ -296,6 +296,12 @@ public sealed partial class MainWindow : Window
             if (existing is null)
             {
                 var content = await CreateDocumentContentAsync(session);
+                if (content is null)
+                {
+                    _workspace.Close(session.Id);
+                    return;
+                }
+
                 var tab = new TabViewItem
                 {
                     Header = displayName,
@@ -329,17 +335,92 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async Task<FrameworkElement> CreateDocumentContentAsync(DocumentSession session)
+    private async Task<FrameworkElement?> CreateDocumentContentAsync(DocumentSession session)
     {
         if (session.Kind == DocumentKind.Pdf && session.Path is not null)
         {
-            var pdf = await _pdfFactory.OpenAsync(session.Path);
+            var pdf = await OpenPdfWithPasswordAsync(session.Path);
+            if (pdf is null)
+            {
+                return null;
+            }
+
             _openEngines[session.Id] = pdf;
             SidebarStatus.Text = $"{pdf.PageCount} pages — thumbnails and search in the document pane.";
-            return new PdfDocumentView(pdf, _pdfRenderer, _pageCache, _pdfSearch);
+            return new PdfDocumentView(pdf, _pdfRenderer, _pageCache, _pdfSearch, session.ViewState);
         }
 
         return CreatePlaceholderContent(session);
+    }
+
+    private async Task<IPdfDocument?> OpenPdfWithPasswordAsync(string path)
+    {
+        try
+        {
+            return await _pdfFactory.OpenAsync(path);
+        }
+        catch (PdfPasswordRequiredException)
+        {
+            // Fall through to password prompt.
+        }
+
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            var password = await PromptForPdfPasswordAsync(
+                System.IO.Path.GetFileName(path),
+                isRetry: attempt > 0);
+            if (password is null)
+            {
+                StatusText.Text = "PDF open cancelled — password required.";
+                return null;
+            }
+
+            try
+            {
+                return await _pdfFactory.OpenAsync(path, password);
+            }
+            catch (PdfPasswordRequiredException)
+            {
+                StatusText.Text = "Incorrect PDF password.";
+            }
+        }
+
+        StatusText.Text = "Could not open password-protected PDF.";
+        return null;
+    }
+
+    private async Task<string?> PromptForPdfPasswordAsync(string fileName, bool isRetry)
+    {
+        var box = new PasswordBox { Width = 280, PlaceholderText = "Password" };
+        var dialog = new ContentDialog
+        {
+            Title = isRetry ? "Incorrect password" : "Password required",
+            Content = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = $"Enter the password for “{fileName}”.",
+                        TextWrapping = TextWrapping.WrapWholeWords,
+                    },
+                    box,
+                },
+            },
+            PrimaryButtonText = "Open",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = RootGrid.XamlRoot,
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result != ContentDialogResult.Primary)
+        {
+            return null;
+        }
+
+        return box.Password;
     }
 
     private static FrameworkElement CreatePlaceholderContent(DocumentSession session)
@@ -360,7 +441,7 @@ public sealed partial class MainWindow : Window
                 new TextBlock
                 {
                     Text = session.Kind == DocumentKind.Pdf
-                        ? "PDF document session ready. Rendering lands in Milestone 2."
+                        ? "PDF document session ready."
                         : "Image document session ready. Viewing/editing lands in Milestone 5.",
                     Opacity = 0.75,
                     HorizontalAlignment = HorizontalAlignment.Center,
