@@ -6,6 +6,7 @@ using Glyph.Infrastructure.RecentFiles;
 using Glyph.Infrastructure.Settings;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Rendering;
+using Glyph.Pdf.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -31,6 +32,7 @@ public sealed partial class MainWindow : Window
     private readonly ISettingsStore _settingsStore;
     private readonly IPdfDocumentFactory _pdfFactory;
     private readonly IPdfRenderer _pdfRenderer;
+    private readonly IPdfTextSearchService _pdfSearch;
     private readonly PageRenderCache _pageCache;
     private readonly ILogger<MainWindow> _logger;
     private readonly Dictionary<DocumentId, IAsyncDisposable> _openEngines = new();
@@ -41,6 +43,7 @@ public sealed partial class MainWindow : Window
         ISettingsStore settingsStore,
         IPdfDocumentFactory pdfFactory,
         IPdfRenderer pdfRenderer,
+        IPdfTextSearchService pdfSearch,
         PageRenderCache pageCache,
         ILogger<MainWindow> logger)
     {
@@ -49,6 +52,7 @@ public sealed partial class MainWindow : Window
         _settingsStore = settingsStore;
         _pdfFactory = pdfFactory;
         _pdfRenderer = pdfRenderer;
+        _pdfSearch = pdfSearch;
         _pageCache = pageCache;
         _logger = logger;
 
@@ -331,8 +335,8 @@ public sealed partial class MainWindow : Window
         {
             var pdf = await _pdfFactory.OpenAsync(session.Path);
             _openEngines[session.Id] = pdf;
-            SidebarStatus.Text = $"{pdf.PageCount} pages — thumbnails in the document pane.";
-            return new PdfDocumentView(pdf, _pdfRenderer, _pageCache);
+            SidebarStatus.Text = $"{pdf.PageCount} pages — thumbnails and search in the document pane.";
+            return new PdfDocumentView(pdf, _pdfRenderer, _pageCache, _pdfSearch);
         }
 
         return CreatePlaceholderContent(session);

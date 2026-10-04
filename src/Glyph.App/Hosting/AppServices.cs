@@ -5,6 +5,7 @@ using Glyph.Infrastructure.Settings;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Pdfium;
 using Glyph.Pdf.Rendering;
+using Glyph.Pdf.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -31,6 +32,7 @@ internal static class AppServices
         });
         services.AddSingleton<IPdfDocumentFactory, PdfiumDocumentFactory>();
         services.AddSingleton<IPdfRenderer, PdfiumRenderer>();
+        services.AddSingleton<IPdfTextSearchService, PdfPigTextSearchService>();
         services.AddSingleton<PageRenderCache>(_ => new PageRenderCache(capacity: 48));
         services.AddSingleton<MainWindow>();
 

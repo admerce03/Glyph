@@ -119,22 +119,22 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F05-07 | PDF table of contents and navigation | Show internal PDF links. | M2 | Not Started |  |
 | F05-08 | PDF table of contents and navigation | Support clickable: | M2 | Not Started |  |
 | F05-09 | PDF table of contents and navigation | Back/forward navigation history within the document. | M2 | Not Started |  |
-| F06-01 | PDF search | Full-text search. | M2/M6 | Not Started |  |
-| F06-02 | PDF search | Case-insensitive search. | M2/M6 | Not Started |  |
-| F06-03 | PDF search | Optional case-sensitive search. | M2/M6 | Not Started |  |
+| F06-01 | PDF search | Full-text search. | M2/M6 | In Progress | PdfPig offline full-text search |
+| F06-02 | PDF search | Case-insensitive search. | M2/M6 | In Progress | Case-insensitive search default |
+| F06-03 | PDF search | Optional case-sensitive search. | M2/M6 | In Progress | Optional case-sensitive flag in service |
 | F06-04 | PDF search | Exact phrase search. | M2/M6 | Not Started |  |
 | F06-05 | PDF search | Any-word search. | M2/M6 | Not Started |  |
 | F06-06 | PDF search | Search all occurrences. | M2/M6 | Not Started |  |
-| F06-07 | PDF search | Search current PDF. | M2/M6 | Not Started |  |
+| F06-07 | PDF search | Search current PDF. | M2/M6 | In Progress | Search current PDF path |
 | F06-08 | PDF search | Search all open PDFs. | M2/M6 | Not Started |  |
 | F06-09 | PDF search | Highlight matches on pages. | M2/M6 | Not Started |  |
-| F06-10 | PDF search | Results sidebar. | M2/M6 | Not Started |  |
-| F06-11 | PDF search | Show contextual snippets around matches. | M2/M6 | Not Started |  |
+| F06-10 | PDF search | Results sidebar. | M2/M6 | In Progress | Results list in viewer sidebar |
+| F06-11 | PDF search | Show contextual snippets around matches. | M2/M6 | In Progress | Snippet around match |
 | F06-12 | PDF search | Sort results by: | M2/M6 | Not Started |  |
 | F06-13 | PDF search | Next match. | M2/M6 | Not Started |  |
 | F06-14 | PDF search | Previous match. | M2/M6 | Not Started |  |
 | F06-15 | PDF search | Clear search. | M2/M6 | Not Started |  |
-| F06-16 | PDF search | Click result to jump to it. | M2/M6 | Not Started |  |
+| F06-16 | PDF search | Click result to jump to it. | M2/M6 | In Progress | Click/select result jumps to page |
 | F06-17 | PDF search | Search OCR text where OCR has been generated. | M2/M6 | Not Started |  |
 | F07-01 | PDF text interaction | Text selection. | M2/M6 | Not Started |  |
 | F07-02 | PDF text interaction | Copy text. | M2/M6 | Not Started |  |

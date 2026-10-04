@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Rendering;
+using Glyph.Pdf.Text;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -21,12 +22,15 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfDocument _document;
     private readonly IPdfRenderer _renderer;
     private readonly PageRenderCache _cache;
+    private readonly IPdfTextSearchService _searchService;
     private readonly string _documentKey;
     private readonly string _thumbnailKey;
     private readonly ScrollViewer _scrollViewer;
     private readonly StackPanel _pageHost;
     private readonly StackPanel _thumbnailHost;
     private readonly ScrollViewer _thumbnailScroll;
+    private readonly ListView _searchResults;
+    private readonly TextBox _searchBox;
     private readonly TextBlock _status;
     private readonly Dictionary<int, Image> _pageImages = new();
     private readonly Dictionary<int, Image> _thumbnailImages = new();
@@ -36,12 +40,18 @@ public sealed class PdfDocumentView : UserControl
     private int _renderGeneration;
     private bool _loaded;
     private bool _suppressThumbnailNav;
+    private IReadOnlyList<PdfSearchHit> _hits = [];
 
-    public PdfDocumentView(IPdfDocument document, IPdfRenderer renderer, PageRenderCache cache)
+    public PdfDocumentView(
+        IPdfDocument document,
+        IPdfRenderer renderer,
+        PageRenderCache cache,
+        IPdfTextSearchService searchService)
     {
         _document = document;
         _renderer = renderer;
         _cache = cache;
+        _searchService = searchService;
         _documentKey = document.Path ?? document.GetHashCode().ToString("X");
         _thumbnailKey = _documentKey + "|thumb";
 
@@ -59,10 +69,40 @@ public sealed class PdfDocumentView : UserControl
         _thumbnailScroll = new ScrollViewer
         {
             Content = _thumbnailHost,
-            Width = 140,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
         };
+
+        _searchBox = new TextBox { PlaceholderText = "Find in document", Width = 220 };
+        _searchBox.KeyDown += SearchBox_KeyDown;
+        var searchButton = new Button { Content = "Find" };
+        searchButton.Click += async (_, _) => await RunSearchAsync();
+        _searchResults = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            Height = 160,
+        };
+        _searchResults.SelectionChanged += SearchResults_SelectionChanged;
+
+        var sidePanel = new Grid
+        {
+            Width = 160,
+            RowDefinitions =
+            {
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(160) },
+            },
+        };
+        sidePanel.Children.Add(new TextBlock { Text = "Pages", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(8, 8, 8, 4) });
+        Grid.SetRow(_thumbnailScroll, 1);
+        sidePanel.Children.Add(_thumbnailScroll);
+        var searchHeader = new TextBlock { Text = "Search", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(8, 8, 8, 4) };
+        Grid.SetRow(searchHeader, 2);
+        sidePanel.Children.Add(searchHeader);
+        Grid.SetRow(_searchResults, 3);
+        sidePanel.Children.Add(_searchResults);
 
         _status = new TextBlock { Opacity = 0.75, FontSize = 12, Margin = new Thickness(8, 0, 8, 0) };
 
@@ -82,18 +122,18 @@ public sealed class PdfDocumentView : UserControl
             Orientation = Orientation.Horizontal,
             Spacing = 8,
             Padding = new Thickness(8),
-            Children = { prev, next, zoomOut, zoomIn, fitWidth, _status },
+            Children = { prev, next, zoomOut, zoomIn, fitWidth, _searchBox, searchButton, _status },
         };
 
         var body = new Grid
         {
             ColumnDefinitions =
             {
-                new ColumnDefinition { Width = new GridLength(150) },
+                new ColumnDefinition { Width = new GridLength(170) },
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
             },
         };
-        body.Children.Add(_thumbnailScroll);
+        body.Children.Add(sidePanel);
         Grid.SetColumn(_scrollViewer, 1);
         body.Children.Add(_scrollViewer);
 
@@ -213,6 +253,48 @@ public sealed class PdfDocumentView : UserControl
         if (sender is Border { Tag: int index })
         {
             await GoToPageAsync(index);
+        }
+    }
+
+    private async void SearchBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Enter)
+        {
+            await RunSearchAsync();
+        }
+    }
+
+    private async Task RunSearchAsync()
+    {
+        var query = _searchBox.Text?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(query) || _document.Path is null)
+        {
+            _hits = [];
+            _searchResults.ItemsSource = null;
+            _status.Text = "Enter search text.";
+            return;
+        }
+
+        _status.Text = "Searching…";
+        _hits = await _searchService.SearchAsync(_document.Path, query);
+        _searchResults.ItemsSource = _hits
+            .Select(h => $"p.{h.PageIndex + 1}: {h.Snippet}")
+            .ToList();
+        _status.Text = _hits.Count == 0
+            ? "No matches."
+            : $"{_hits.Count} match{(_hits.Count == 1 ? string.Empty : "es")}";
+
+        if (_hits.Count > 0)
+        {
+            await GoToPageAsync(_hits[0].PageIndex);
+        }
+    }
+
+    private async void SearchResults_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_searchResults.SelectedIndex >= 0 && _searchResults.SelectedIndex < _hits.Count)
+        {
+            await GoToPageAsync(_hits[_searchResults.SelectedIndex].PageIndex);
         }
     }
 
