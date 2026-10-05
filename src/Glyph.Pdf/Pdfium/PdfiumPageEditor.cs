@@ -290,7 +290,7 @@ public sealed class PdfiumPageEditor : IPdfPageEditor
             cancellationToken);
     }
 
-public async Task MergeDocumentsAsync(
+    public async Task MergeDocumentsAsync(
         IPdfDocument document,
         IReadOnlyList<IPdfDocument> sources,
         int insertIndex,

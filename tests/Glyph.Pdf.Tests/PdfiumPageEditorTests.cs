@@ -298,7 +298,7 @@ public class PdfiumPageEditorTests
         }
     }
 
-[Fact]
+    [Fact]
     public async Task Merge_documents_appends_all_source_pages()
     {
         var destPath = CreateMultiPagePdf(pageCount: 2);
