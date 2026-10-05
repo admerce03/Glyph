@@ -887,6 +887,6 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F63-27 | Explicit exclusions | ray tracing | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
 | F63-28 | Explicit exclusions | Gaussian splat editing | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
 | F63-29 | Explicit exclusions | Vision Pro spatial export workflows | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
-| F64-00 | Resulting application scope | Overall product framing (six integrated tools + low-friction workflows) | all | Implemented | Charter embodied by FEATURES/ROADMAP/matrix; not a discrete shippable checkbox |
+| F64-00 | Resulting application scope | Overall product framing (six integrated tools + low-friction workflows) | all | Tested | Charter; `ProductFramingPolicy` six-tool catalog unit tests |
 
 _Generated from FEATURES.md top-level bullets. Total tracked rows: 879._

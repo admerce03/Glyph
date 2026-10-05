@@ -297,8 +297,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - FreeText Align / `/Q` quadding via post-save dict patch (F13-38 / F16-15)
 - Bookmarks → PDF `/Outlines` export (F09-08)
 - Password-protect write blocked on ADR-015 (Needs approval)
-- Local polish (+166 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
-- FEATURE_MATRIX: only F64-00 remains Implemented (charter); password-write / MSIX / HDR / ML still Blocked or Deferred
+- Local polish (+167 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
+- FEATURE_MATRIX: no Implemented rows remain (F64-00 Tested); password-write / MSIX / HDR / ML still Blocked or Deferred
 - Print N-up/scale/rotate/center extracted to `PrintSheetLayout`; scroll throttle + presentation defaults unit-tested
 - Search result snippets unified via `PdfSearchSnippet` (F06-10)
 - Page drop accept/copy helpers + ink dash preview pattern extracted
@@ -432,4 +432,4 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Non-destructive editing | §61 | M3–M5 | Tested (CropBox + in-memory image edits until Save) |
 | Output formats | §62 | M5, M7 | Tested (HEIF deferred; `OutputFormatSupport`) |
 | Explicit exclusions | §63 | — | Tested (`ExplicitExclusionPolicy` documents non-goals) |
-| Product framing | §64 | all | Implemented (charter via FEATURES/ROADMAP/matrix) |
+| Product framing | §64 | all | Tested (`ProductFramingPolicy` six-tool catalog) |
