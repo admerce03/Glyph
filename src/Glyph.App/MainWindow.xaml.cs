@@ -2480,6 +2480,47 @@ public sealed partial class MainWindow : Window
             Content = "Compact document toolbars (tighter padding)",
             IsChecked = settings.CompactToolbar,
         };
+        var highlightColorBox = new ComboBox
+        {
+            Header = "Default highlight color",
+            Width = 280,
+            ItemsSource = PdfAnnotationColor.HighlightPresets.Select(p => p.Name).ToList(),
+            SelectedItem = PdfAnnotationColor.HighlightPresets
+                .Select(p => p.Name)
+                .FirstOrDefault(n => string.Equals(n, settings.DefaultHighlightColor, StringComparison.OrdinalIgnoreCase))
+                ?? "Yellow",
+        };
+        var strokeColorBox = new ComboBox
+        {
+            Header = "Default stroke color",
+            Width = 280,
+            ItemsSource = PdfAnnotationColor.StrokePresets.Select(p => p.Name).ToList(),
+            SelectedItem = PdfAnnotationColor.StrokePresets
+                .Select(p => p.Name)
+                .FirstOrDefault(n => string.Equals(n, settings.DefaultStrokeColor, StringComparison.OrdinalIgnoreCase))
+                ?? "Red",
+        };
+        var stickyColorBox = new ComboBox
+        {
+            Header = "Default sticky-note color",
+            Width = 280,
+            ItemsSource = PdfAnnotationColor.StickyNotePresets.Select(p => p.Name).ToList(),
+            SelectedItem = PdfAnnotationColor.StickyNotePresets
+                .Select(p => p.Name)
+                .FirstOrDefault(n => string.Equals(n, settings.DefaultStickyNoteColor, StringComparison.OrdinalIgnoreCase))
+                ?? "Yellow",
+        };
+        var strokeWidthBox = new NumberBox
+        {
+            Header = "Default stroke width (pt)",
+            Value = settings.DefaultStrokeWidthPoints,
+            Minimum = 0.5,
+            Maximum = 12,
+            SmallChange = 0.5,
+            LargeChange = 1,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
+            Width = 280,
+        };
 
         var clearRecentButton = new Button
         {
@@ -2534,6 +2575,7 @@ public sealed partial class MainWindow : Window
             {
                 restoreBox, autoSaveBox, intervalBox, recentBox, snapshotsBox, snapshotCapBox,
                 separateWindowsBox, authorBox, compactToolbarBox,
+                highlightColorBox, strokeColorBox, stickyColorBox, strokeWidthBox,
                 privacyHeader, clearRecentButton, clearSignaturesButton,
             },
         };
@@ -2560,6 +2602,10 @@ public sealed partial class MainWindow : Window
         settings.OpenFilesInSeparateWindows = separateWindowsBox.IsChecked == true;
         settings.AnnotationAuthor = authorBox.Text?.Trim() ?? string.Empty;
         settings.CompactToolbar = compactToolbarBox.IsChecked == true;
+        settings.DefaultHighlightColor = highlightColorBox.SelectedItem as string ?? "Yellow";
+        settings.DefaultStrokeColor = strokeColorBox.SelectedItem as string ?? "Red";
+        settings.DefaultStickyNoteColor = stickyColorBox.SelectedItem as string ?? "Yellow";
+        settings.DefaultStrokeWidthPoints = Math.Clamp(strokeWidthBox.Value, 0.5, 12);
         await _settingsStore.SaveAsync(settings);
         ConfigureRecoveryTimer();
         await PersistSessionAsync();

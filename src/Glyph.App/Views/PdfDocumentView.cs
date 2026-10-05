@@ -264,6 +264,8 @@ public sealed class PdfDocumentView : UserControl
             _annotationAuthor = settings.AnnotationAuthor.Trim();
         }
 
+        ApplyAnnotationDefaults(settings);
+
         _scale = PdfZoomCalculator.Clamp(_viewState.Zoom <= 0 ? 1.25 : _viewState.Zoom);
         _layoutMode = _viewState.PageLayout;
         CurrentPageIndex = Math.Clamp(_viewState.CurrentPageIndex, 0, Math.Max(0, document.PageCount - 1));
@@ -7982,7 +7984,9 @@ public sealed class PdfDocumentView : UserControl
             Height = 140,
             SelectionMode = ListViewSelectionMode.Single,
             ItemsSource = PdfAnnotationColor.StickyNotePresets.Select(p => p.Name).ToList(),
-            SelectedIndex = 0,
+            SelectedIndex = Math.Max(0, PdfAnnotationColor.StickyNotePresets
+                .ToList()
+                .FindIndex(p => string.Equals(p.Name, ResolveDefaultStickyNoteColorName(), StringComparison.OrdinalIgnoreCase))),
         };
         var panel = new StackPanel
         {
@@ -9288,6 +9292,45 @@ public sealed class PdfDocumentView : UserControl
         {
             return null;
         }
+    }
+
+    private void ApplyAnnotationDefaults(AppSettings? settings)
+    {
+        if (settings is null)
+        {
+            return;
+        }
+
+        var highlight = PdfAnnotationColor.HighlightPresets
+            .FirstOrDefault(p => string.Equals(p.Name, settings.DefaultHighlightColor, StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrEmpty(highlight.Name))
+        {
+            _highlightModeColor = highlight.Color;
+        }
+
+        var stroke = PdfAnnotationColor.StrokePresets
+            .FirstOrDefault(p => string.Equals(p.Name, settings.DefaultStrokeColor, StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrEmpty(stroke.Name))
+        {
+            _drawStrokeColor = stroke.Color;
+        }
+
+        _drawStrokeWidth = (float)Math.Clamp(settings.DefaultStrokeWidthPoints, 0.5, 12);
+    }
+
+    private string ResolveDefaultStickyNoteColorName()
+    {
+        var settings = TryGetSettings();
+        var name = settings?.DefaultStickyNoteColor;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "Yellow";
+        }
+
+        return PdfAnnotationColor.StickyNotePresets.Any(p =>
+            string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))
+            ? name
+            : "Yellow";
     }
 
     private async Task EditSelectedAnnotationContentsAsync()

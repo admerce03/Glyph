@@ -765,7 +765,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F54-17 | Toolbar customization | OCR | M1/M9 | Not Started |  |
 | F54-18 | Toolbar customization | default toolbar | M1/M9 | Not Started |  |
 | F54-19 | Toolbar customization | reset toolbar | M1/M9 | Not Started |  |
-| F54-20 | Toolbar customization | compact icon mode | M1/M9 | Not Started |  |
+| F54-20 | Toolbar customization | compact icon mode | M1/M9 | Implemented | Preferences → Compact document toolbars |
 | F55-01 | Preferences | theme | M1/M9 | In Progress | Theme setting persisted in settings.json |
 | F55-02 | Preferences | restore previous session | M1/M9 | Implemented | View → Preferences toggle |
 | F55-03 | Preferences | recent file count | M1/M9 | Implemented | View → Preferences NumberBox |
@@ -778,13 +778,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-10 | Preferences | annotation author | M1/M9 | Implemented | Preferences + PDF Author button; persisted |
 | F55-11 | Preferences | OCR behavior | M1/M9 | Not Started |  |
 | F55-12 | Preferences | autosave behavior | M1/M9 | Implemented | Auto-save to original checkbox |
-| F55-13 | Preferences | open multiple images in same window or separate windows | M1/M9 | Not Started |  |
+| F55-13 | Preferences | open multiple images in same window or separate windows | M1/M9 | Implemented | Same as F55-09 — Open each file in a separate window |
 | F55-14 | Preferences | 100% zoom meaning | M1/M9 | Not Started |  |
 | F55-15 | Preferences | default interpolation | M1/M9 | Not Started |  |
 | F55-16 | Preferences | color management | M1/M9 | Not Started |  |
 | F55-17 | Preferences | animation autoplay | M1/M9 | Not Started |  |
-| F55-18 | Preferences | default annotation colors | M1/M9 | Not Started |  |
-| F55-19 | Preferences | default line width | M1/M9 | Not Started |  |
+| F55-18 | Preferences | default annotation colors | M1/M9 | Implemented | Highlight / stroke / sticky-note color combos |
+| F55-19 | Preferences | default line width | M1/M9 | Implemented | Default stroke width (pt) NumberBox |
 | F55-20 | Preferences | signature handling | M1/M9 | Implemented | Signature library save/delete/reorder/descriptions + prefs clear |
 | F55-21 | Preferences | crash recovery interval | M1/M9 | Implemented | Seconds NumberBox (0 = off) |
 | F55-22 | Preferences | local-only OCR preference | M1/M9 | Not Started |  |

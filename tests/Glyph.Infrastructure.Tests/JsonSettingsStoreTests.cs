@@ -20,6 +20,10 @@ public class JsonSettingsStoreTests
                 RestorePreviousSession = true,
                 AutoSaveToOriginal = true,
                 CrashRecoveryIntervalSeconds = 90,
+                DefaultHighlightColor = "Green",
+                DefaultStrokeColor = "Black",
+                DefaultStickyNoteColor = "Blue",
+                DefaultStrokeWidthPoints = 3.5,
             });
 
             var reloaded = new JsonSettingsStore(path);
@@ -31,6 +35,10 @@ public class JsonSettingsStoreTests
             settings.RestorePreviousSession.Should().BeTrue();
             settings.AutoSaveToOriginal.Should().BeTrue();
             settings.CrashRecoveryIntervalSeconds.Should().Be(90);
+            settings.DefaultHighlightColor.Should().Be("Green");
+            settings.DefaultStrokeColor.Should().Be("Black");
+            settings.DefaultStickyNoteColor.Should().Be("Blue");
+            settings.DefaultStrokeWidthPoints.Should().Be(3.5);
             reloaded.Current.Theme.Should().Be(ThemePreference.Dark);
         }
         finally

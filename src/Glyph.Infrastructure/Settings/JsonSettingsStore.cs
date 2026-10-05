@@ -110,6 +110,25 @@ public sealed class JsonSettingsStore : ISettingsStore
         {
             settings.VersionSnapshotCapacity = 50;
         }
+
+        if (double.IsNaN(settings.DefaultStrokeWidthPoints) || settings.DefaultStrokeWidthPoints < 0.5)
+        {
+            settings.DefaultStrokeWidthPoints = 0.5;
+        }
+        else if (settings.DefaultStrokeWidthPoints > 12)
+        {
+            settings.DefaultStrokeWidthPoints = 12;
+        }
+
+        settings.DefaultHighlightColor = string.IsNullOrWhiteSpace(settings.DefaultHighlightColor)
+            ? "Yellow"
+            : settings.DefaultHighlightColor.Trim();
+        settings.DefaultStrokeColor = string.IsNullOrWhiteSpace(settings.DefaultStrokeColor)
+            ? "Red"
+            : settings.DefaultStrokeColor.Trim();
+        settings.DefaultStickyNoteColor = string.IsNullOrWhiteSpace(settings.DefaultStickyNoteColor)
+            ? "Yellow"
+            : settings.DefaultStickyNoteColor.Trim();
     }
 
     private static AppSettings Clone(AppSettings settings) => new()
@@ -125,6 +144,10 @@ public sealed class JsonSettingsStore : ISettingsStore
         OpenFilesInSeparateWindows = settings.OpenFilesInSeparateWindows,
         AnnotationAuthor = settings.AnnotationAuthor ?? string.Empty,
         CompactToolbar = settings.CompactToolbar,
+        DefaultHighlightColor = settings.DefaultHighlightColor ?? "Yellow",
+        DefaultStrokeColor = settings.DefaultStrokeColor ?? "Red",
+        DefaultStickyNoteColor = settings.DefaultStickyNoteColor ?? "Yellow",
+        DefaultStrokeWidthPoints = settings.DefaultStrokeWidthPoints,
         SidebarVisible = settings.SidebarVisible,
     };
 }

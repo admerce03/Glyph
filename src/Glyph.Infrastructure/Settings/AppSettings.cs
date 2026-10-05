@@ -31,8 +31,20 @@ public sealed class AppSettings
     /// <summary>Default annotation author for sticky notes / text markup (F55-10).</summary>
     public string AnnotationAuthor { get; set; } = string.Empty;
 
-    /// <summary>When true, document toolbars use tighter padding (F02-04).</summary>
+    /// <summary>When true, document toolbars use tighter padding (F02-04 / F54-20).</summary>
     public bool CompactToolbar { get; set; }
+
+    /// <summary>Default highlight preset name (F55-18), e.g. Yellow.</summary>
+    public string DefaultHighlightColor { get; set; } = "Yellow";
+
+    /// <summary>Default stroke/ink preset name (F55-18), e.g. Red.</summary>
+    public string DefaultStrokeColor { get; set; } = "Red";
+
+    /// <summary>Default sticky-note preset name (F55-18).</summary>
+    public string DefaultStickyNoteColor { get; set; } = "Yellow";
+
+    /// <summary>Default stroke width in PDF points (F55-19).</summary>
+    public double DefaultStrokeWidthPoints { get; set; } = 2;
 
     public bool SidebarVisible { get; set; } = true;
 }
