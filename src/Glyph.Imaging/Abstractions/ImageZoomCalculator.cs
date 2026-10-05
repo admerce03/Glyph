@@ -65,4 +65,12 @@ public static class ImageZoomCalculator
     /// </summary>
     public static int DecodeTargetEdge(int nativeMaxEdge, double zoom) =>
         (int)Math.Clamp(Math.Max(0, nativeMaxEdge) * zoom, MinDecodeEdge, MaxDecodeEdge);
+
+    public const int ProgressivePreviewEdge = 1280;
+
+    /// <summary>
+    /// True when a low-res preview should paint before the full zoomed decode (F58-03).
+    /// </summary>
+    public static bool NeedsProgressivePreview(int nativeMaxEdge, int targetEdge) =>
+        nativeMaxEdge > ProgressivePreviewEdge * 2 && targetEdge > ProgressivePreviewEdge;
 }

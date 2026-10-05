@@ -1533,8 +1533,8 @@ public sealed class ImageDocumentView : UserControl
         var targetEdge = ImageZoomCalculator.DecodeTargetEdge(nativeMax, _zoom);
 
         // Progressive decode for large rasters (F58-02/03): quick preview, then refine.
-        const int previewEdge = 1280;
-        var needsProgressive = nativeMax > previewEdge * 2 && targetEdge > previewEdge;
+        var previewEdge = ImageZoomCalculator.ProgressivePreviewEdge;
+        var needsProgressive = ImageZoomCalculator.NeedsProgressivePreview(nativeMax, targetEdge);
 
         if (needsProgressive)
         {

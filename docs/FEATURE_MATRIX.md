@@ -817,7 +817,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F57-13 | Performance behavior | progress indicator for: | M2+/M9 | Implemented | Toolbar `ProgressBar` for OCR/export/optimize; batch image dialog ProgressBar (F36) |
 | F58-01 | Large-document handling | PDFs with thousands of pages. | M2+/M9 | Tested | Page virtualization via `ContinuousPageWindow` + on-demand render/cache |
 | F58-02 | Large-document handling | Very large raster images. | M2+/M9 | Tested | Display decode capped (max edge 8192); `ImageZoomCalculator.DecodeTargetEdge` |
-| F58-03 | Large-document handling | Progressive rendering. | M2+/M9 | Implemented | Image viewer: low-res preview then refine for large rasters |
+| F58-03 | Large-document handling | Progressive rendering. | M2+/M9 | Tested | Image viewer low-res then refine; `NeedsProgressivePreview` unit tests |
 | F58-04 | Large-document handling | Avoid loading entire PDF rasterized into memory. | M2+/M9 | Tested | Visible-window render only + LRU `PageRenderCache` |
 | F58-05 | Large-document handling | Efficient page cache. | M2+/M9 | Tested | `PageRenderCache` LRU (capacity 32) |
 | F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Deferred | Search is on-demand; full-doc index not required yet (same as F57-05) |

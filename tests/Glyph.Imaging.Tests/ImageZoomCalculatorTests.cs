@@ -52,4 +52,12 @@ public class ImageZoomCalculatorTests
         ImageZoomCalculator.DecodeTargetEdge(20000, 1.0).Should().Be(ImageZoomCalculator.MaxDecodeEdge);
         ImageZoomCalculator.DecodeTargetEdge(1000, 2.0).Should().Be(2000);
     }
+
+    [Fact]
+    public void NeedsProgressivePreview_for_large_rasters()
+    {
+        ImageZoomCalculator.NeedsProgressivePreview(5000, 4000).Should().BeTrue();
+        ImageZoomCalculator.NeedsProgressivePreview(1000, 800).Should().BeFalse();
+        ImageZoomCalculator.NeedsProgressivePreview(5000, 1000).Should().BeFalse();
+    }
 }
