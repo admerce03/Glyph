@@ -53,7 +53,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-16 | Main window and interface | Light mode. | M1/M9 | In Progress | Theme preference Light |
 | F02-17 | Main window and interface | Follow Windows system theme. | M1/M9 | In Progress | Theme preference System → ElementTheme.Default |
 | F02-18 | Main window and interface | High-DPI scaling. | M1/M9 | In Progress | PerMonitorV2 declared in app.manifest |
-| F02-19 | Main window and interface | Multi-monitor support. | M1/M9 | Not Started |  |
+| F02-19 | Main window and interface | Multi-monitor support. | M1/M9 | Implemented | OS multi-monitor windows + Window → Move to Next Monitor |
 | F02-20 | Main window and interface | Per-monitor DPI awareness. | M1/M9 | In Progress | PerMonitorV2 declared in app.manifest |
 | F02-21 | Main window and interface | Mouse support. | M1/M9 | Implemented | Pointer input throughout document and chrome UI |
 | F02-22 | Main window and interface | Precision touchpad gesture support where useful. | M1/M9 | Implemented | Two-finger ScrollViewer scroll + Ctrl+wheel / Manipulation Scale pinch (PDF + image) |
@@ -816,8 +816,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F57-12 | Performance behavior | cancel long-running operations | M2+/M9 | In Progress | PDF OCR Cancel OCR + `CancellationToken`; PDF search cancel |
 | F57-13 | Performance behavior | progress indicator for: | M2+/M9 | Implemented | Toolbar `ProgressBar` for OCR/export/optimize; batch image dialog ProgressBar (F36) |
 | F58-01 | Large-document handling | PDFs with thousands of pages. | M2+/M9 | In Progress | Page virtualization via on-demand render + cache |
-| F58-02 | Large-document handling | Very large raster images. | M2+/M9 | Not Started |  |
-| F58-03 | Large-document handling | Progressive rendering. | M2+/M9 | Not Started |  |
+| F58-02 | Large-document handling | Very large raster images. | M2+/M9 | Implemented | Display decode capped (max edge 8192); full pixels retained in Magick doc |
+| F58-03 | Large-document handling | Progressive rendering. | M2+/M9 | Implemented | Image viewer: low-res preview then refine for large rasters |
 | F58-04 | Large-document handling | Avoid loading entire PDF rasterized into memory. | M2+/M9 | Implemented | Visible-window render only + LRU page cache |
 | F58-05 | Large-document handling | Efficient page cache. | M2+/M9 | Tested | `PageRenderCache` LRU (capacity 32) |
 | F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Not Started |  |

@@ -136,6 +136,7 @@
                 </MenuFlyoutItem>
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem x:Name="MoveTabToNewWindowMenuItem" Text="Move Tab to New Window" Click="MoveTabToNewWindowMenuItem_Click" />
+                <MenuFlyoutItem x:Name="MoveToNextMonitorMenuItem" Text="Move to Next Monitor" Click="MoveToNextMonitorMenuItem_Click" />
             </MenuBarItem>
         </MenuBar>
 

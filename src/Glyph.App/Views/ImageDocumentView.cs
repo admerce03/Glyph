@@ -84,6 +84,7 @@ public sealed class ImageDocumentView : UserControl
     private const int MaxEditUndo = 12;
     private double _zoom = 1.0;
     private bool _loaded;
+    private int _refreshGeneration;
     private bool _syncingList;
     private bool _cropMode;
     private bool _selectionMode;
@@ -1526,9 +1527,58 @@ public sealed class ImageDocumentView : UserControl
 
     private async Task RefreshAsync()
     {
-        // Cap decode edge for very large images so the viewer stays responsive.
-        var maxEdge = (int)Math.Clamp(Math.Max(_document.PixelWidth, _document.PixelHeight) * _zoom, 256, 8192);
-        var buffer = await _document.GetPixelsAsync(maxEdge);
+        var generation = ++_refreshGeneration;
+        var nativeMax = Math.Max(_document.PixelWidth, _document.PixelHeight);
+        var targetEdge = (int)Math.Clamp(nativeMax * _zoom, 256, 8192);
+
+        // Progressive decode for large rasters (F58-02/03): quick preview, then refine.
+        const int previewEdge = 1280;
+        var needsProgressive = nativeMax > previewEdge * 2 && targetEdge > previewEdge;
+
+        if (needsProgressive)
+        {
+            await ApplyPixelBufferAsync(await _document.GetPixelsAsync(previewEdge), generation);
+            if (generation != _refreshGeneration)
+            {
+                return;
+            }
+
+            _status.Text = $"Loading full preview… ({nativeMax:N0}px edge)";
+            await Task.Yield();
+        }
+
+        if (generation != _refreshGeneration)
+        {
+            return;
+        }
+
+        await ApplyPixelBufferAsync(await _document.GetPixelsAsync(targetEdge), generation);
+        if (generation != _refreshGeneration)
+        {
+            return;
+        }
+
+        _viewState.Zoom = _zoom;
+        RebuildMarkupOverlay();
+        if (_cropMode)
+        {
+            ClearCropSelection();
+        }
+
+        await ApplyImageAccessibleNameAsync();
+        if (needsProgressive || nativeMax > 4096)
+        {
+            UpdateStatus();
+        }
+    }
+
+    private async Task ApplyPixelBufferAsync(ImagePixelBuffer buffer, int generation)
+    {
+        if (generation != _refreshGeneration)
+        {
+            return;
+        }
+
         var bitmap = new WriteableBitmap(buffer.Width, buffer.Height);
         using (var stream = bitmap.PixelBuffer.AsStream())
         {
@@ -1536,6 +1586,11 @@ public sealed class ImageDocumentView : UserControl
         }
 
         bitmap.Invalidate();
+        if (generation != _refreshGeneration)
+        {
+            return;
+        }
+
         _image.Source = bitmap;
         _image.Width = buffer.Width;
         _image.Height = buffer.Height;
@@ -1547,14 +1602,6 @@ public sealed class ImageDocumentView : UserControl
         _markupOverlay.Height = buffer.Height;
         _imageSurface.Width = buffer.Width;
         _imageSurface.Height = buffer.Height;
-        _viewState.Zoom = _zoom;
-        RebuildMarkupOverlay();
-        if (_cropMode)
-        {
-            ClearCropSelection();
-        }
-
-        await ApplyImageAccessibleNameAsync();
     }
 
     private async Task ApplyImageAccessibleNameAsync()
@@ -5600,6 +5647,12 @@ public sealed class ImageDocumentView : UserControl
     {
         var baseStatus =
             $"{_document.FormatName} {_document.PixelWidth}×{_document.PixelHeight} · {(_zoom * 100):0}%";
+        if (_displayWidth > 0
+            && _displayHeight > 0
+            && (_displayWidth < _document.PixelWidth || _displayHeight < _document.PixelHeight))
+        {
+            baseStatus += $" · view {_displayWidth}×{_displayHeight}";
+        }
         if (_document.FrameCount > 1)
         {
             baseStatus += $" · frame {_document.CurrentFrameIndex + 1}/{_document.FrameCount}";

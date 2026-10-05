@@ -22,6 +22,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using System.Runtime.InteropServices;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Graphics;
 using Windows.Storage;
@@ -224,6 +225,88 @@ public sealed partial class MainWindow : Window
     private async void EmailMenuItem_Click(object sender, RoutedEventArgs e) => await EmailActiveAsync();
 
     private void NewWindowMenuItem_Click(object sender, RoutedEventArgs e) => App.CurrentApp.OpenNewWindow();
+
+    private void MoveToNextMonitorMenuItem_Click(object sender, RoutedEventArgs e) => MoveWindowToNextMonitor();
+
+    private void MoveWindowToNextMonitor()
+    {
+        try
+        {
+            var areas = EnumerateDisplayAreas();
+            if (areas.Count < 2)
+            {
+                StatusText.Text = "Only one monitor detected.";
+                return;
+            }
+
+            var current = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Nearest);
+            var index = 0;
+            for (var i = 0; i < areas.Count; i++)
+            {
+                if (areas[i].DisplayId.Value == current.DisplayId.Value)
+                {
+                    index = i;
+                    break;
+                }
+            }
+
+            var next = areas[(index + 1) % areas.Count];
+            var work = next.WorkArea;
+            var size = AppWindow.Size;
+            var width = Math.Min(size.Width, work.Width);
+            var height = Math.Min(size.Height, work.Height);
+            AppWindow.MoveAndResize(new RectInt32(
+                work.X + Math.Max(0, (work.Width - width) / 2),
+                work.Y + Math.Max(0, (work.Height - height) / 2),
+                width,
+                height));
+            StatusText.Text = $"Moved window to monitor {((index + 1) % areas.Count) + 1} of {areas.Count}.";
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Move to monitor failed: " + ex.Message;
+        }
+    }
+
+    private static List<DisplayArea> EnumerateDisplayAreas()
+    {
+        var areas = new List<DisplayArea>();
+        var seen = new HashSet<ulong>();
+        MonitorEnumProc callback = (IntPtr hMonitor, IntPtr hdc, ref RECT rect, IntPtr data) =>
+        {
+            var centerX = rect.Left + Math.Max(1, (rect.Right - rect.Left) / 2);
+            var centerY = rect.Top + Math.Max(1, (rect.Bottom - rect.Top) / 2);
+            var area = DisplayArea.GetFromPoint(new PointInt32(centerX, centerY), DisplayAreaFallback.Nearest);
+            if (area is not null && seen.Add(area.DisplayId.Value))
+            {
+                areas.Add(area);
+            }
+
+            return true;
+        };
+
+        EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero);
+        if (areas.Count == 0 && DisplayArea.Primary is { } primary)
+        {
+            areas.Add(primary);
+        }
+
+        return areas;
+    }
+
+    private delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lprcClip, MonitorEnumProc lpfnEnum, IntPtr dwData);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
 
     private async void FindAllPdfsMenuItem_Click(object sender, RoutedEventArgs e) => await FindInAllOpenPdfsAsync();
 
