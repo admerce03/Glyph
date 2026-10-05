@@ -272,16 +272,17 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Scope (`FEATURES.md` §21, §23–25)
 
-- True redaction (content removal)
-- Password open/protect/permissions UI with honest warnings
+- True redaction (content removal) — mark/preview/apply, find-matches, annotation sanitize
+- Password open + Info encryption/permissions display; write-protect deferred pending ADR-015
 - Optimization presets + custom controls
-- Metadata view/edit
+- Metadata view (version, page size, Info dictionary); edit later
 
 ### Completion criteria
 
 - Redacted text not extractable after apply
 - Optimization size estimate within reasonable tolerance
 - Tests for security round-trips and metadata edits
+- ADR-015 approved before shipping password-protect / permission-write
 
 ---
 
@@ -348,9 +349,9 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | PDF forms | §20 | M4 | In Progress |
 | Redaction | §21 | M7 | In Progress (mark/preview/apply content removal) |
 | Flattening | §22 | M4 | Not Started |
-| PDF security | §23 | M7 | In Progress (open encrypted + info/permissions display) |
+| PDF security | §23 | M7 | In Progress (open + info/permissions; write-protect blocked on ADR-015) |
 | Optimization | §24 | M7 | Not Started |
-| PDF metadata | §25 | M7 | In Progress (read-only Info dialog) |
+| PDF metadata | §25 | M7 | In Progress (read-only Info: meta, version, page size, encryption) |
 | Image viewing/editing | §26–35 | M5 | In Progress |
 | Batch images | §36 | M8 | Not Started |
 | Image metadata/GPS | §37–38 | M5, M8 | In Progress (EXIF/GPS inspector + strip) |

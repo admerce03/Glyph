@@ -33,6 +33,9 @@ public class PdfiumDocumentInfoServiceTests
             info.Permissions.CanPrint.Should().BeTrue();
             info.Permissions.CanCopy.Should().BeTrue();
             info.FileSizeBytes.Should().BeGreaterThan(0);
+            info.PdfVersion.Should().NotBeNullOrWhiteSpace();
+            info.PageWidthPoints.Should().BeApproximately(612, 0.5); // Letter
+            info.PageHeightPoints.Should().BeApproximately(792, 0.5);
         }
         finally
         {

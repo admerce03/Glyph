@@ -32,9 +32,21 @@ public sealed class PdfiumDocumentInfoService : IPdfDocumentInfoService
             var flags = unchecked((uint)fpdfview.FPDF_GetDocPermissions(handle));
             var revision = fpdfview.FPDF_GetSecurityHandlerRevision(handle);
             long? fileSize = null;
+            string? pdfVersion = null;
             if (!string.IsNullOrWhiteSpace(pdfium.Path) && File.Exists(pdfium.Path))
             {
-                fileSize = new FileInfo(pdfium.Path).Length;
+                var info = new FileInfo(pdfium.Path);
+                fileSize = info.Length;
+                pdfVersion = ReadPdfVersion(pdfium.Path);
+            }
+
+            double? pageWidth = null;
+            double? pageHeight = null;
+            if (pdfium.PageCount > 0)
+            {
+                var page = pdfium.GetPage(0);
+                pageWidth = page.WidthPoints;
+                pageHeight = page.HeightPoints;
             }
 
             return new PdfDocumentInfo(
@@ -49,10 +61,45 @@ public sealed class PdfiumDocumentInfoService : IPdfDocumentInfoService
                 PageCount: pdfium.PageCount,
                 FilePath: pdfium.Path,
                 FileSizeBytes: fileSize,
+                PdfVersion: pdfVersion,
+                PageWidthPoints: pageWidth,
+                PageHeightPoints: pageHeight,
                 IsEncrypted: pdfium.IsEncrypted,
                 SecurityHandlerRevision: revision,
                 PermissionFlags: flags,
                 Permissions: DecodePermissions(flags));
+        }
+    }
+
+    private static string? ReadPdfVersion(string path)
+    {
+        try
+        {
+            using var stream = File.OpenRead(path);
+            Span<byte> header = stackalloc byte[16];
+            var read = stream.Read(header);
+            if (read < 8)
+            {
+                return null;
+            }
+
+            var text = Encoding.ASCII.GetString(header[..read]);
+            if (!text.StartsWith("%PDF-", StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            var end = 5;
+            while (end < text.Length && (char.IsDigit(text[end]) || text[end] == '.'))
+            {
+                end++;
+            }
+
+            return end > 5 ? text[5..end] : null;
+        }
+        catch
+        {
+            return null;
         }
     }
 

@@ -7290,6 +7290,10 @@ public sealed class PdfDocumentView : UserControl
                 + $"Created: {Val(info.CreationDate)}\n"
                 + $"Modified: {Val(info.ModificationDate)}\n"
                 + $"Pages: {info.PageCount}\n"
+                + $"PDF version: {Val(info.PdfVersion)}\n"
+                + $"Page size: {(info.PageWidthPoints is null || info.PageHeightPoints is null
+                    ? "—"
+                    : $"{info.PageWidthPoints:0.#} × {info.PageHeightPoints:0.#} pt")}\n"
                 + $"File: {Val(info.FilePath is null ? null : System.IO.Path.GetFileName(info.FilePath))}\n"
                 + $"Size: {Bytes(info.FileSizeBytes)}\n"
                 + $"Encrypted: {(info.IsEncrypted ? "yes" : "no")}\n"

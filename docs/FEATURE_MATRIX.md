@@ -380,12 +380,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F22-05 | PDF annotation flattening | text boxes | M4 | Tested | Same flatten path |
 | F22-06 | PDF annotation flattening | drawings | M4 | Tested | Ink strokes included in flatten |
 | F23-01 | PDF security | Open encrypted PDFs. | M7 | Tested | Open with password prompt via `OpenPdfWithPasswordAsync` / fixture test||
-| F23-02 | PDF security | Create password-protected PDFs. | M7 | Not Started |  |
-| F23-03 | PDF security | Set document-open password. | M7 | Not Started |  |
-| F23-04 | PDF security | Set permissions/owner password where PDF standard permits. | M7 | Not Started |  |
-| F23-05 | PDF security | Restrict: | M7 | Not Started |  |
-| F23-06 | PDF security | Change existing permissions where credentials permit. | M7 | Not Started |  |
-| F23-07 | PDF security | Remove protection when authorized. | M7 | Not Started |  |
+| F23-02 | PDF security | Create password-protected PDFs. | M7 | Blocked | Needs ADR-015 (PDFium has no write-encrypt API) |
+| F23-03 | PDF security | Set document-open password. | M7 | Blocked | Needs ADR-015 |
+| F23-04 | PDF security | Set permissions/owner password where PDF standard permits. | M7 | Blocked | Needs ADR-015 |
+| F23-05 | PDF security | Restrict: | M7 | Blocked | Needs ADR-015 |
+| F23-06 | PDF security | Change existing permissions where credentials permit. | M7 | Blocked | Needs ADR-015 |
+| F23-07 | PDF security | Remove protection when authorized. | M7 | Blocked | Needs ADR-015 |
 | F23-08 | PDF security | Display encryption information. | M7 | Implemented | Info dialog + status "Encrypted"; `IPdfDocumentInfoService` permissions||
 | F23-09 | PDF security | Warn about limitations of PDF permission enforcement. | M7 | Implemented | Info dialog notes PDF permission flags are advisory||
 | F24-01 | PDF optimization and compression | Lossless | M7 | Not Started |  |
@@ -413,8 +413,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F25-07 | PDF metadata | created date | M7 | Implemented | Info dialog CreationDate||
 | F25-08 | PDF metadata | modified date | M7 | Implemented | Info dialog ModDate||
 | F25-09 | PDF metadata | page count | M7 | Implemented | Info dialog page count||
-| F25-10 | PDF metadata | PDF version | M7 | Not Started |  |
-| F25-11 | PDF metadata | page dimensions | M7 | Not Started |  |
+| F25-10 | PDF metadata | PDF version | M7 | Tested | Info dialog `%PDF-x.y` header via `ReadPdfVersion` |
+| F25-11 | PDF metadata | page dimensions | M7 | Tested | Info dialog page 0 width×height in points |
 | F25-12 | PDF metadata | file size | M7 | Implemented | Info dialog file size||
 | F25-13 | PDF metadata | encryption status | M7 | Implemented | Info dialog + status encryption flag||
 | F25-14 | PDF metadata | permissions | M7 | Implemented | Info dialog decoded permission flags||
