@@ -18,9 +18,9 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | Milestone | Name | Status | Depends on |
 | --- | --- | --- | --- |
 | M0 | Architecture and engineering foundation | **Tested** | — |
-| M1 | Application shell and basic file opening | **Implemented** (CI green; interactive screenshot pending) | M0 |
-| M2 | Core PDF viewer | **Implemented** (+ post-core Zoom ▭ / Glass / Present) | M1 |
-| M3 | Core PDF page manipulation | **Tested** (matrix F10–F12; §11 DnD screen recording + CI merge pending) | M2 |
+| M1 | Application shell and basic file opening | **Tested** (CI green; interactive screenshot pending) | M0 |
+| M2 | Core PDF viewer | **Tested** (matrix §3–7; interactive screenshots pending) | M1 |
+| M3 | Core PDF page manipulation | **Tested** (matrix F10–F12; §11 DnD screen recording pending) | M2 |
 | M4 | PDF markup and editing | **Tested** (matrix-complete; Quadding `/Q` via dict patch) | M2 (forms/security touch M7) |
 | M5 | Image viewer/editor | **Tested** (matrix-complete; HDR/HEIF deferred) | M1 (shares shell/DnD with M3) |
 | M6 | OCR and scanned-document capabilities | **Tested** (PRs #62–#66 merged; offline OCR/Live Text/entities) | M2, M5 |
@@ -34,7 +34,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 0 — Architecture and engineering foundation
 
-**Status:** In Progress
+**Status:** Tested
 
 ### Scope
 
@@ -61,7 +61,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 1 — Application shell and basic file opening
 
-**Status:** In Progress · Depends on M0
+**Status:** Tested (interactive screenshot pending) · Depends on M0
 
 ### Scope (`FEATURES.md` §1–2, parts of §40–41, §52)
 
@@ -92,7 +92,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 2 — Core PDF viewer
 
-**Status:** Implemented · Depends on M1
+**Status:** Tested (interactive screenshots pending) · Depends on M1
 
 ### Scope (`FEATURES.md` §3–7, §57–58 PDF parts)
 
@@ -367,7 +367,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 9 — Performance, polish, accessibility, installer, audit
 
-**Status:** In Progress · Depends on prior milestones’ core paths
+**Status:** In Progress · Depends on prior milestones’ core paths (matrix complete; MSIX → ADR-012; interactive demos pending)
 
 ### Scope (`FEATURES.md` §52–56, §57–60 remaining, distribution)
 
@@ -390,7 +390,9 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 - Prefs, toolbar customization, session restore, crash recovery, version snapshots, a11y Names, cold-start timing shipped in matrix
 - MSIX / file associations still Deferred (ADR-012)
-- Matrix: no In Progress/Implemented rows; Blocked = ADR-015 (`PdfPasswordWriteBlockedPolicy`); Deferred ADR-012/016 + HDR/HEIF/ML/map catalogued
+- Matrix audit (2026-10-05): 880 rows — 858 Tested / 15 Deferred / 7 Blocked (all Blocked = ADR-015 password-write); zero Not Started / In Progress / Implemented
+- Interactive proof debt: M1 shell screenshot, M2 viewer screenshots, M3 §11 cross-doc DnD recording (Windows interactive environment required)
+- Deferred catalogs unit-tested (`PackagingDeferredPolicy`, `PdfOptimizeDeferredPolicy`, `ImageAdvancedDeferredPolicy`, …)
 
 ---
 
