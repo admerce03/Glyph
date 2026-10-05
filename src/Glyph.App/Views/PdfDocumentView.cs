@@ -13319,12 +13319,14 @@ public sealed class PdfDocumentView : UserControl
             Title = "Edit document info",
             Content = panel,
             PrimaryButtonText = "Save",
+            SecondaryButtonText = "Clear all",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        var choice = await dialog.ShowAsync();
+        if (choice == ContentDialogResult.None)
         {
             _status.Text = "Info edit cancelled.";
             return;
@@ -13340,22 +13342,32 @@ public sealed class PdfDocumentView : UserControl
                     Keywords: current.Keywords ?? string.Empty,
                     Creator: current.Creator ?? string.Empty,
                     Producer: current.Producer ?? string.Empty));
-            _documentInfo.SetInfo(
-                _document,
-                new PdfDocumentInfoUpdate(
-                    Title: titleBox.Text,
-                    Author: authorBox.Text,
-                    Subject: subjectBox.Text,
-                    Keywords: keywordsBox.Text,
-                    Creator: creatorBox.Text,
-                    Producer: producerBox.Text));
+
+            if (choice == ContentDialogResult.Secondary)
+            {
+                _documentInfo.SetInfo(_document, new PdfDocumentInfoUpdate(ClearAll: true));
+                _status.Text = "Document info cleared. Save the PDF to keep changes on disk.";
+            }
+            else
+            {
+                _documentInfo.SetInfo(
+                    _document,
+                    new PdfDocumentInfoUpdate(
+                        Title: titleBox.Text,
+                        Author: authorBox.Text,
+                        Subject: subjectBox.Text,
+                        Keywords: keywordsBox.Text,
+                        Creator: creatorBox.Text,
+                        Producer: producerBox.Text));
+                _status.Text = "Document info updated. Save the PDF to keep changes on disk.";
+            }
+
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             RefreshPropertiesSidebar();
             NotifyEdited();
-            _status.Text = "Document info updated. Save the PDF to keep changes on disk.";
         }
         catch (Exception ex)
         {
@@ -13391,6 +13403,9 @@ public sealed class PdfDocumentView : UserControl
             _propertiesSummary.Text =
                 $"Title: {Val(info.Title)}\n"
                 + $"Author: {Val(info.Author)}\n"
+                + $"Subject: {Val(info.Subject)}\n"
+                + $"Creator: {Val(info.Creator)}\n"
+                + $"Producer: {Val(info.Producer)}\n"
                 + $"Pages: {info.PageCount} · {pageSize}\n"
                 + $"File: {fileName} · {Bytes(info.FileSizeBytes)}\n"
                 + $"PDF: {Val(info.PdfVersion)}"

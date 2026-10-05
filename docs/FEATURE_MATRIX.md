@@ -67,7 +67,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-06 | Sidebar modes | Image list | M2-M5 | Implemented | Image viewer folder sibling ListView (`ImageFolderNavigator`) |
 | F03-07 | Sidebar modes | Contact sheet | M2-M5 | Implemented | Layout → Contact sheet grid; click page returns to continuous |
 | F03-08 | Sidebar modes | Document attachments, if supported | M2-M5 | Implemented | PDF sidebar Attachments list + Save… via `ListAttachments` |
-| F03-09 | Sidebar modes | Metadata/properties where useful | M2-M5 | Implemented | PDF sidebar Properties summary + More/Edit (F48) |
+| F03-09 | Sidebar modes | Metadata/properties where useful | M2-M5 | Implemented | PDF sidebar Properties summary (incl. Creator/Producer) + More/Edit (F48) |
 | F03-10 | Sidebar modes | Switch sidebar mode without opening another window. | M2-M5 | Implemented | Sidebar mode ComboBox: Pages/Contents/Bookmarks/Search/Annotations/Properties/Attachments |
 | F03-11 | Sidebar modes | Resize thumbnail size. | M2-M5 | Implemented | Pages S/M/L buttons; `ThumbnailWidth` persisted |
 | F03-12 | Sidebar modes | Multi-select sidebar items. | M2-M5 | Implemented | Page thumbnails via `PageSelection`; annotations Extended ListView |
@@ -683,7 +683,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F47-05 | External application integration | Send via default mail application where possible | M9 | Implemented | Alias of F46-05 |
 | F48-01 | File properties and inspector | dimensions | M5/M9 | Implemented | PDF Info page size (pt) |
 | F48-02 | File properties and inspector | pages | M5/M9 | Implemented | PDF Info page count |
-| F48-03 | File properties and inspector | metadata | M5/M9 | Implemented | PDF Info Title/Author/… + Edit |
+| F48-03 | File properties and inspector | metadata | M5/M9 | Implemented | PDF Info Title/Author/… + Edit (incl. Creator/Producer + Clear all) |
 | F48-04 | File properties and inspector | security | M5/M9 | Implemented | PDF Info encryption + permission flags |
 | F48-05 | File properties and inspector | fonts | M5/M9 | Implemented | PDF Info font list |
 | F48-06 | File properties and inspector | annotations | M5/M9 | Implemented | PDF Info annotation count |
