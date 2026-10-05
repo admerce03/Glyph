@@ -12,6 +12,93 @@ namespace Glyph.Pdf.Tests;
 public class PdfiumOptimizeServiceTests
 {
     [Fact]
+    public async Task Lower_jpeg_quality_yields_smaller_image_stream()
+    {
+            var pathLow = CreateBlankPdf();
+        var pathHigh = CreateBlankPdf();
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var lowEnc = new RecordingJpegEncoder();
+            var highEnc = new RecordingJpegEncoder();
+
+            async Task<uint> OptimizeAndRawLenAsync(string path, int quality, RecordingJpegEncoder encoder)
+            {
+                var optimize = new PdfiumOptimizeService(encoder);
+                await using var document = await factory.OpenAsync(path);
+                var pdfium = (PdfiumDocument)document;
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    InsertPatternedImage(pdfium, pageIndex: 0, pixelSize: 800, displayPoints: 72);
+                }
+
+                var opts = PdfOptimizeOptions.FromPreset(PdfOptimizePreset.Balanced) with { JpegQuality = quality };
+                var result = await optimize.OptimizeAsync(document, opts);
+                result.ImagesDownsampled.Should().BeGreaterThan(0);
+                encoder.LastQuality.Should().Be(quality);
+                encoder.LastJpegLength.Should().BeGreaterThan(0);
+
+                lock (PdfiumSync.Gate)
+                {
+                    var page = fpdfview.FPDF_LoadPage(pdfium.Handle, 0);
+                    page.Should().NotBeNull();
+                    try
+                    {
+                        FpdfPageobjectT? image = null;
+                        var count = fpdf_edit.FPDFPageCountObjects(page);
+                        for (var i = 0; i < count; i++)
+                        {
+                            var obj = fpdf_edit.FPDFPageGetObject(page, i);
+                            if (obj is not null && fpdf_edit.FPDFPageObjGetType(obj) == 3)
+                            {
+                                image = obj;
+                                break;
+                            }
+                        }
+
+                        image.Should().NotBeNull();
+                        var filters = fpdf_edit.FPDFImageObjGetImageFilterCount(image);
+                        filters.Should().BeGreaterThan(0, "expected DCTDecode JPEG rewrite, not SetBitmap fallback");
+                        var flen = fpdf_edit.FPDFImageObjGetImageFilter(image, 0, IntPtr.Zero, 0);
+                        var fbuf = new byte[flen];
+                        var fh = GCHandle.Alloc(fbuf, GCHandleType.Pinned);
+                        try
+                        {
+                            fpdf_edit.FPDFImageObjGetImageFilter(image, 0, fh.AddrOfPinnedObject(), (uint)fbuf.Length);
+                            var n = Array.IndexOf(fbuf, (byte)0);
+                            var name = System.Text.Encoding.ASCII.GetString(fbuf, 0, n < 0 ? fbuf.Length : n);
+                            name.Should().Be("DCTDecode");
+                        }
+                        finally
+                        {
+                            fh.Free();
+                        }
+
+                        return fpdf_edit.FPDFImageObjGetImageDataRaw(image, IntPtr.Zero, 0);
+                    }
+                    finally
+                    {
+                        fpdfview.FPDF_ClosePage(page);
+                    }
+                }
+            }
+
+            var lowLen = await OptimizeAndRawLenAsync(pathLow, quality: 30, lowEnc);
+            var highLen = await OptimizeAndRawLenAsync(pathHigh, quality: 90, highEnc);
+            lowEnc.LastJpegLength.Should().BeLessThan(highEnc.LastJpegLength);
+            lowLen.Should().Be((uint)lowEnc.LastJpegLength);
+            highLen.Should().Be((uint)highEnc.LastJpegLength);
+            lowLen.Should().BeLessThan(highLen);
+        }
+        finally
+        {
+            File.Delete(pathLow);
+            File.Delete(pathHigh);
+        }
+    }
+
+    [Fact]
     public async Task Estimate_and_optimize_downsample_high_dpi_image()
     {
         var path = CreateBlankPdf();
@@ -207,17 +294,42 @@ public class PdfiumOptimizeServiceTests
 
     private static void InsertSolidImage(PdfiumDocument pdfium, int pageIndex, int pixelSize, double displayPoints)
     {
+        InsertImage(pdfium, pageIndex, pixelSize, displayPoints, solid: true);
+    }
+
+    private static void InsertPatternedImage(PdfiumDocument pdfium, int pageIndex, int pixelSize, double displayPoints)
+    {
+        InsertImage(pdfium, pageIndex, pixelSize, displayPoints, solid: false);
+    }
+
+    private static void InsertImage(PdfiumDocument pdfium, int pageIndex, int pixelSize, double displayPoints, bool solid)
+    {
         var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
         page.Should().NotBeNull();
         try
         {
             var pixels = new byte[pixelSize * pixelSize * 4];
-            for (var i = 0; i < pixels.Length; i += 4)
+            for (var y = 0; y < pixelSize; y++)
             {
-                pixels[i] = 40;     // B
-                pixels[i + 1] = 80; // G
-                pixels[i + 2] = 160;// R
-                pixels[i + 3] = 255;
+                for (var x = 0; x < pixelSize; x++)
+                {
+                    var i = (y * pixelSize + x) * 4;
+                    if (solid)
+                    {
+                        pixels[i] = 40;
+                        pixels[i + 1] = 80;
+                        pixels[i + 2] = 160;
+                    }
+                    else
+                    {
+                        // Spatial noise so JPEG quality materially changes stream size.
+                        pixels[i] = (byte)((x * 37 + y * 17) & 0xFF);
+                        pixels[i + 1] = (byte)((x * 13 + y * 53) & 0xFF);
+                        pixels[i + 2] = (byte)((x * 91 + y * 7) & 0xFF);
+                    }
+
+                    pixels[i + 3] = 255;
+                }
             }
 
             var image = fpdf_edit.FPDFPageObjNewImageObj(pdfium.Handle);
@@ -271,6 +383,21 @@ public class PdfiumOptimizeServiceTests
         builder.AddPage(PageSize.Letter);
         File.WriteAllBytes(path, builder.Build());
         return path;
+    }
+
+    private sealed class RecordingJpegEncoder : IPdfImageJpegEncoder
+    {
+        private readonly MagickTestJpegEncoder _inner = new();
+        public int LastQuality { get; private set; }
+        public int LastJpegLength { get; private set; }
+
+        public byte[]? EncodeBgraToJpeg(ReadOnlySpan<byte> bgra, int width, int height, int quality)
+        {
+            LastQuality = quality;
+            var jpeg = _inner.EncodeBgraToJpeg(bgra, width, height, quality);
+            LastJpegLength = jpeg?.Length ?? 0;
+            return jpeg;
+        }
     }
 
     private sealed class MagickTestJpegEncoder : IPdfImageJpegEncoder

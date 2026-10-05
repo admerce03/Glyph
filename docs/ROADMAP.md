@@ -292,10 +292,11 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 - Redact mark/preview/apply removes intersecting text/images/annotations + attachment name-tree entries + Info metadata
 - Info dialog: encryption/permissions, version, page size, fonts, attachment count; Edit writes Title/Author/Subject/Keywords
-- Optimize presets + Custom + estimate; F24-08 JPEG rewrite via zeroed FILEACCESS + LoadJpegFileInline (SetBitmap fallback); font subset/linearize deferred (ADR-016)
+- Optimize presets + Custom (DPI + JPEG quality NumberBox) + estimate; F24-08 JPEG via zeroed FILEACCESS + LoadJpegFileInline; font subset/linearize deferred (ADR-016)
 - Page Export → PNG/JPEG/WebP/TIFF/BMP/GIF/AVIF/JP2 with DPI/quality, Title/Author metadata, sRGB ICC (F45-07), alpha where codec allows
+- FreeText Align / `/Q` quadding via post-save dict patch (F13-38 / F16-15)
 - Password-protect write blocked on ADR-015 (Needs approval)
-- Local polish (billing-blocked, unpushed on `cursor/m7-redaction-50da`): Zoom ▭ / Glass / Present, select-all text, sidebar modes, image surface DnD, cold-start metrics
+- Local polish (auth/billing-blocked, unpushed on `cursor/m7-redaction-50da`): Zoom ▭ / Glass / Present, select-all text, sidebar modes, image surface DnD, cold-start metrics
 
 ---
 

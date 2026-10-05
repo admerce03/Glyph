@@ -98,14 +98,9 @@ public sealed class PdfiumOptimizeService : IPdfOptimizeService
 
     private static PdfOptimizeOptions Resolve(PdfOptimizeOptions? options)
     {
-        if (options is null)
-        {
-            return PdfOptimizeOptions.FromPreset(PdfOptimizePreset.Balanced);
-        }
-
-        return options.Preset == PdfOptimizePreset.Custom
-            ? options
-            : PdfOptimizeOptions.FromPreset(options.Preset);
+        // Trust the options object. Callers should build via FromPreset(...) or Custom
+        // fields; re-applying FromPreset here would wipe overrides like `with { JpegQuality = n }`.
+        return options ?? PdfOptimizeOptions.FromPreset(PdfOptimizePreset.Balanced);
     }
 
     /// <summary>
