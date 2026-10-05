@@ -13144,14 +13144,7 @@ public sealed class PdfDocumentView : UserControl
                     : $"{size.Value / (1024.0 * 1024.0):0.##} MB";
 
         var perms = info.Permissions;
-        var permissionLines =
-            $"Print: {(perms.CanPrint ? "yes" : "no")}\n"
-            + $"Modify: {(perms.CanModify ? "yes" : "no")}\n"
-            + $"Copy: {(perms.CanCopy ? "yes" : "no")}\n"
-            + $"Annotate: {(perms.CanAnnotate ? "yes" : "no")}\n"
-            + $"Fill forms: {(perms.CanFillForms ? "yes" : "no")}\n"
-            + $"Assemble: {(perms.CanAssemble ? "yes" : "no")}\n"
-            + $"High-quality print: {(perms.CanPrintHighQuality ? "yes" : "no")}";
+        var permissionLines = perms.FormatLines();
 
         var body = new TextBlock
         {
@@ -13180,8 +13173,7 @@ public sealed class PdfDocumentView : UserControl
                 + $"Encrypted: {(info.IsEncrypted ? "yes" : "no")}\n"
                 + $"Security handler revision: {(info.SecurityHandlerRevision < 0 ? "none" : info.SecurityHandlerRevision.ToString())}\n"
                 + $"Permission flags: 0x{info.PermissionFlags:X8}\n\n"
-                + "Permissions (PDF flags — enforcement is advisory):\n"
-                + permissionLines,
+                + perms.FormatSection(),
         };
 
         var dialog = new ContentDialog
@@ -13207,7 +13199,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _status.Text = info.IsEncrypted
-            ? "Document is encrypted — permissions shown are advisory."
+            ? PdfDocumentPermissions.EncryptedAdvisoryStatus
             : "Document info.";
     }
 

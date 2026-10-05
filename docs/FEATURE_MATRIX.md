@@ -387,7 +387,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F23-06 | PDF security | Change existing permissions where credentials permit. | M7 | Blocked | Needs ADR-015 |
 | F23-07 | PDF security | Remove protection when authorized. | M7 | Blocked | Needs ADR-015 |
 | F23-08 | PDF security | Display encryption information. | M7 | Tested | Info dialog + status "Encrypted"; `GetInfo_reports_encryption_for_password_pdf` |
-| F23-09 | PDF security | Warn about limitations of PDF permission enforcement. | M7 | Implemented | Info dialog notes PDF permission flags are advisory||
+| F23-09 | PDF security | Warn about limitations of PDF permission enforcement. | M7 | Tested | `PdfDocumentPermissions.AdvisoryNotice` / `EncryptedAdvisoryStatus` + Info dialog |
 | F24-01 | PDF optimization and compression | Lossless | M7 | Tested | `Lossless_full_rewrite_succeeds` + FromPreset disables downsample |
 | F24-02 | PDF optimization and compression | High quality | M7 | Tested | FromPreset 300→200 DPI + `HighQuality_downsamples_images_above_300dpi` |
 | F24-03 | PDF optimization and compression | Balanced | M7 | Tested | Optimize preset → 150 DPI; service tests |

@@ -36,4 +36,24 @@ public sealed record PdfDocumentPermissions(
     bool CanAnnotate,
     bool CanFillForms,
     bool CanAssemble,
-    bool CanPrintHighQuality);
+    bool CanPrintHighQuality)
+{
+    /// <summary>F23-09 — PDF permission flags are not a security boundary.</summary>
+    public const string AdvisoryNotice =
+        "Permissions (PDF flags — enforcement is advisory)";
+
+    /// <summary>Status-line form of <see cref="AdvisoryNotice"/> when the document is encrypted.</summary>
+    public const string EncryptedAdvisoryStatus =
+        "Document is encrypted — permissions shown are advisory.";
+
+    public string FormatLines() =>
+        $"Print: {(CanPrint ? "yes" : "no")}\n"
+        + $"Modify: {(CanModify ? "yes" : "no")}\n"
+        + $"Copy: {(CanCopy ? "yes" : "no")}\n"
+        + $"Annotate: {(CanAnnotate ? "yes" : "no")}\n"
+        + $"Fill forms: {(CanFillForms ? "yes" : "no")}\n"
+        + $"Assemble: {(CanAssemble ? "yes" : "no")}\n"
+        + $"High-quality print: {(CanPrintHighQuality ? "yes" : "no")}";
+
+    public string FormatSection() => AdvisoryNotice + ":\n" + FormatLines();
+}
