@@ -64,8 +64,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-03 | Sidebar modes | Search results | M2-M5 | Implemented | Find hits list under Search header |
 | F03-04 | Sidebar modes | Bookmarks | M2-M5 | Implemented | PDF sidebar Bookmarks list (user bookmarks) |
 | F03-05 | Sidebar modes | Highlights and annotations | M2-M5 | Implemented | PDF sidebar Annotations list (markup, notes, ink, shapes, signatures) |
-| F03-06 | Sidebar modes | Image list | M2-M5 | Not Started |  |
-| F03-07 | Sidebar modes | Contact sheet | M2-M5 | Not Started |  |
+| F03-06 | Sidebar modes | Image list | M2-M5 | Implemented | Image viewer folder sibling ListView (`ImageFolderNavigator`) |
+| F03-07 | Sidebar modes | Contact sheet | M2-M5 | Implemented | Layout → Contact sheet grid; click page returns to continuous |
 | F03-08 | Sidebar modes | Document attachments, if supported | M2-M5 | Implemented | PDF sidebar Attachments list + Save… via `ListAttachments` |
 | F03-09 | Sidebar modes | Metadata/properties where useful | M2-M5 | Implemented | PDF sidebar Properties summary + More/Edit (F48) |
 | F03-10 | Sidebar modes | Switch sidebar mode without opening another window. | M2-M5 | In Progress | Thumbs/TOC/search coexist in one panel; dedicated mode switcher later |
@@ -821,7 +821,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F58-04 | Large-document handling | Avoid loading entire PDF rasterized into memory. | M2+/M9 | Implemented | Visible-window render only + LRU page cache |
 | F58-05 | Large-document handling | Efficient page cache. | M2+/M9 | Tested | `PageRenderCache` LRU (capacity 32) |
 | F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Not Started |  |
-| F58-07 | Large-document handling | Partial OCR. | M2+/M9 | Not Started |  |
+| F58-07 | Large-document handling | Partial OCR. | M2+/M9 | Implemented | OCR selected/current pages only (F08-06/07); not whole-doc by default |
 | F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | In Progress | PDF search cancel + PDF/image OCR Cancel OCR |
 | F59-01 | Multi-document workflow | multiple tabs | M1/M3 | Implemented | Tab strip + per-tab document hosts |
 | F59-02 | Multi-document workflow | multiple windows | M1/M3 | Implemented | File → New Window; per-window `WorkspaceState` |

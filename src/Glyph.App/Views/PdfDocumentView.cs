@@ -88,6 +88,8 @@ public sealed class PdfDocumentView : UserControl
     private readonly ScrollViewer _scrollViewer;
     private readonly StackPanel _continuousHost;
     private readonly StackPanel _spreadHost;
+    private readonly StackPanel _contactSheetHost;
+    private bool _contactSheetMode;
     private readonly StackPanel _thumbnailHost;
     private readonly ScrollViewer _thumbnailScroll;
     private Grid? _sidePanel;
@@ -296,6 +298,7 @@ public sealed class PdfDocumentView : UserControl
             Padding = new Thickness(12),
             HorizontalAlignment = HorizontalAlignment.Center,
         };
+        _contactSheetHost = new StackPanel { Spacing = 12, Padding = new Thickness(12) };
         _scrollViewer = new ScrollViewer
         {
             Content = _continuousHost,
@@ -662,10 +665,24 @@ public sealed class PdfDocumentView : UserControl
         _layoutBox = new ComboBox
         {
             Width = 150,
-            ItemsSource = new[] { "Continuous", "Single", "Two-page", "Two-page + cover" },
+            ItemsSource = new[] { "Continuous", "Single", "Two-page", "Two-page + cover", "Contact sheet" },
             SelectedIndex = LayoutToComboIndex(_layoutMode),
         };
-        _layoutBox.SelectionChanged += async (_, _) => await SetLayoutModeAsync(SelectedLayout());
+        _layoutBox.SelectionChanged += async (_, _) =>
+        {
+            if (_layoutBox.SelectedIndex == 4)
+            {
+                await EnterContactSheetAsync();
+                return;
+            }
+
+            if (_contactSheetMode)
+            {
+                _contactSheetMode = false;
+            }
+
+            await SetLayoutModeAsync(SelectedLayout());
+        };
 
         var first = new Button { Content = "First" };
         var prev = new Button { Content = "Prev" };
@@ -964,6 +981,122 @@ public sealed class PdfDocumentView : UserControl
         _cache.ClearDocument(_thumbnailKey);
     }
 
+    private async Task EnterContactSheetAsync()
+    {
+        _contactSheetMode = true;
+        _status.Text = "Contact sheet — click a page to open it.";
+        BuildContactSheet();
+        _scrollViewer.Content = _contactSheetHost;
+        SyncViewState();
+        await RenderContactSheetAsync();
+    }
+
+    private void BuildContactSheet()
+    {
+        _contactSheetHost.Children.Clear();
+        const int columns = 4;
+        StackPanel? row = null;
+        for (var i = 0; i < _document.PageCount; i++)
+        {
+            if (i % columns == 0)
+            {
+                row = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 12,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                };
+                _contactSheetHost.Children.Add(row);
+            }
+
+            var pageIndex = i;
+            var image = new Image
+            {
+                Width = 140,
+                Stretch = Stretch.Uniform,
+                Tag = pageIndex,
+            };
+            if (_thumbnailImages.TryGetValue(pageIndex, out var thumb) && thumb.Source is not null)
+            {
+                image.Source = thumb.Source;
+            }
+
+            var label = new TextBlock
+            {
+                Text = $"{pageIndex + 1}",
+                FontSize = 12,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Opacity = 0.8,
+            };
+            var stack = new StackPanel { Spacing = 4, Children = { image, label } };
+            var border = new Border
+            {
+                BorderBrush = new SolidColorBrush(
+                    pageIndex == CurrentPageIndex ? Colors.DodgerBlue : Colors.Transparent),
+                BorderThickness = new Thickness(2),
+                Padding = new Thickness(4),
+                Child = stack,
+                Tag = pageIndex,
+            };
+            border.PointerPressed += async (_, e) =>
+            {
+                e.Handled = true;
+                _contactSheetMode = false;
+                // SelectionChanged → SetLayoutModeAsync rebuilds continuous view.
+                if (_layoutBox.SelectedIndex != 0)
+                {
+                    _layoutBox.SelectedIndex = 0;
+                }
+                else
+                {
+                    await SetLayoutModeAsync(PageLayoutMode.Continuous);
+                }
+
+                await GoToPageAsync(pageIndex, recordHistory: true);
+            };
+            row!.Children.Add(border);
+        }
+    }
+
+    private async Task RenderContactSheetAsync()
+    {
+        // Prefer already-rendered sidebar thumbs; fill any missing at contact-sheet size.
+        for (var i = 0; i < _document.PageCount; i++)
+        {
+            if (_thumbnailImages.TryGetValue(i, out var existing) && existing.Source is not null)
+            {
+                continue;
+            }
+
+            try
+            {
+                await RenderThumbnailAsync(i);
+            }
+            catch
+            {
+                // Contact sheet still usable with missing cells.
+            }
+        }
+
+        // Refresh sources after thumbnail pass.
+        foreach (var border in _contactSheetHost.Children
+                     .OfType<StackPanel>()
+                     .SelectMany(r => r.Children.OfType<Border>()))
+        {
+            if (border.Tag is not int pageIndex
+                || border.Child is not StackPanel stack
+                || stack.Children.OfType<Image>().FirstOrDefault() is not { } image)
+            {
+                continue;
+            }
+
+            if (_thumbnailImages.TryGetValue(pageIndex, out var thumb) && thumb.Source is not null)
+            {
+                image.Source = thumb.Source;
+            }
+        }
+    }
+
     private PageLayoutMode SelectedLayout() => _layoutBox.SelectedIndex switch
     {
         1 => PageLayoutMode.SinglePage,
@@ -982,9 +1115,15 @@ public sealed class PdfDocumentView : UserControl
 
     private async Task SetLayoutModeAsync(PageLayoutMode mode)
     {
+        _contactSheetMode = false;
         _layoutMode = mode;
-        if (_layoutBox.SelectedIndex != LayoutToComboIndex(mode))
+        if (_layoutBox.SelectedIndex != LayoutToComboIndex(mode) && _layoutBox.SelectedIndex != 4)
         {
+            _layoutBox.SelectedIndex = LayoutToComboIndex(mode);
+        }
+        else if (_layoutBox.SelectedIndex == 4)
+        {
+            // Leaving contact sheet via SetLayoutMode — sync combo to mode.
             _layoutBox.SelectedIndex = LayoutToComboIndex(mode);
         }
 

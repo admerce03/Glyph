@@ -475,7 +475,7 @@ public sealed class ImageDocumentView : UserControl
         };
         sidebar.Children.Add(new TextBlock
         {
-            Text = "Folder",
+            Text = "Images",
             FontSize = 12,
             Opacity = 0.75,
             Margin = new Thickness(4, 0, 4, 4),
