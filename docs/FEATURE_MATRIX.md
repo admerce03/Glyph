@@ -767,7 +767,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F54-18 | Toolbar customization | default toolbar | M1/M9 | Tested | Empty hidden + empty order = catalog default (`ToolbarOrderPolicy.IsDefault`); live apply on open docs |
 | F54-19 | Toolbar customization | reset toolbar | M1/M9 | Tested | Clear hidden list + reset order; prefs Reset; live apply via `ApplyToolbarCustomization` |
 | F54-20 | Toolbar customization | compact icon mode | M1/M9 | Tested | `CompactToolbar` prefs; PDF+image spacing live-applied with F54 |
-| F55-01 | Preferences | theme | M1/M9 | Tested | Theme setting persisted; `JsonSettingsStoreTests` round-trip |
+| F55-01 | Preferences | theme | M1/M9 | Tested | Preferences Theme combo + View → Theme; `JsonSettingsStoreTests` round-trip |
 | F55-02 | Preferences | restore previous session | M1/M9 | Tested | Preferences toggle; `JsonSettingsStore` + `JsonSessionStore` unit tests |
 | F55-03 | Preferences | recent file count | M1/M9 | Tested | Preferences NumberBox; settings round-trip unit test |
 | F55-04 | Preferences | check for updates | M1/M9 | Tested | Help → Check for updates; `AppUpdateCheckPolicy` + GitHub Releases |

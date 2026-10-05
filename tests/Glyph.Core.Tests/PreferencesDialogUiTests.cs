@@ -19,6 +19,10 @@ public class PreferencesDialogUiTests
         PreferencesDialogUi.ClearSavedSignatures.Should().Contain("signatures");
         PreferencesDialogUi.PrivacyHeader.Should().Be("Privacy");
         PreferencesDialogUi.CheckForUpdates.Should().Contain("updates");
+        PreferencesDialogUi.ThemeHeader.Should().Be("Theme");
+        PreferencesDialogUi.ThemeLabels.Should().Equal("System", "Light", "Dark");
+        PreferencesDialogUi.ThemeIndex("Dark").Should().Be(2);
+        PreferencesDialogUi.ThemeSetting(1).Should().Be("Light");
         PreferencesDialogUi.RememberLastPage.Should().Contain("last page");
         PreferencesDialogUi.RememberZoom.Should().Contain("zoom");
         PreferencesDialogUi.ToolbarCommandsHeader.Should().Contain("reorder");

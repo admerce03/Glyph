@@ -7,6 +7,7 @@ public static class PreferencesDialogUi
 {
     public const string DialogTitle = "Preferences";
     public const string SaveButton = "Save";
+    public const string ThemeHeader = "Theme";
     public const string RestoreTabs =
         "Restore previously open tabs on startup";
     public const string AutoSaveToOriginal =
@@ -69,6 +70,16 @@ public static class PreferencesDialogUi
         "Continuous", "Single page", "Two-up", "Two-up with cover",
     ];
 
+    public static IReadOnlyList<string> ThemeLabels { get; } =
+    [
+        "System", "Light", "Dark",
+    ];
+
+    public static IReadOnlyList<string> ThemeNames { get; } =
+    [
+        "System", "Light", "Dark",
+    ];
+
     public static IReadOnlyList<string> PdfLayoutNames { get; } =
     [
         "Continuous", "Single", "TwoPage", "TwoPageWithCover",
@@ -107,4 +118,20 @@ public static class PreferencesDialogUi
 
     public static int Zoom100Index(string? setting) =>
         string.Equals(setting, "Print", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+
+    public static int ThemeIndex(string? setting) =>
+        setting?.Trim() switch
+        {
+            "Light" => 1,
+            "Dark" => 2,
+            _ => 0,
+        };
+
+    public static string ThemeSetting(int selectedIndex) =>
+        selectedIndex switch
+        {
+            1 => "Light",
+            2 => "Dark",
+            _ => "System",
+        };
 }
