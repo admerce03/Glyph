@@ -116,11 +116,7 @@
                     <RadioMenuFlyoutItem x:Name="ThemeDarkItem" Text="Dark" GroupName="Theme" Click="ThemeDarkItem_Click" />
                 </MenuFlyoutSubItem>
                 <MenuFlyoutSeparator />
-                <MenuFlyoutItem x:Name="PreferencesMenuItem" Text="Preferences…" Click="PreferencesMenuItem_Click" AutomationProperties.Name="Preferences">
-                    <MenuFlyoutItem.KeyboardAccelerators>
-                        <KeyboardAccelerator Key="OemComma" Modifiers="Control" />
-                    </MenuFlyoutItem.KeyboardAccelerators>
-                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="PreferencesMenuItem" Text="Preferences…" Click="PreferencesMenuItem_Click" AutomationProperties.Name="Preferences" />
             </MenuBarItem>
 
             <MenuBarItem Title="Window">

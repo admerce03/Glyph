@@ -764,6 +764,7 @@ public sealed class MagickImageProcessor : IImageProcessor
                 new Drawables()
                     .FillColor(color)
                     .StrokeColor(MagickColors.Transparent)
+                    .Font(MarkupFont.Value)
                     .FontPointSize(shape.FontSizePixels)
                     .Text(x1, y1 + shape.FontSizePixels, text)
                     .Draw(image);
@@ -788,6 +789,7 @@ public sealed class MagickImageProcessor : IImageProcessor
                     .Line(midX + tipSpread, bottom, midX, tipY)
                     .FillColor(color)
                     .StrokeColor(MagickColors.Transparent)
+                    .Font(MarkupFont.Value)
                     .FontPointSize(shape.FontSizePixels)
                     .Text(left + 4, top + shape.FontSizePixels + 2, label)
                     .Draw(image);
@@ -796,6 +798,30 @@ public sealed class MagickImageProcessor : IImageProcessor
         }
 
         drawables.Draw(image);
+    }
+
+    private static readonly Lazy<string> MarkupFont = new(ResolveMarkupFont);
+
+    /// <summary>
+    /// Prefer a font that exists on Ubuntu CI runners; fall back to ImageMagick defaults.
+    /// </summary>
+    private static string ResolveMarkupFont()
+    {
+        foreach (var candidate in new[] { "DejaVu-Sans", "Liberation-Sans", "Arial", "Helvetica" })
+        {
+            try
+            {
+                using var probe = new MagickImage(MagickColors.Transparent, 8, 8);
+                new Drawables().Font(candidate).FontPointSize(8).Text(1, 7, "A").Draw(probe);
+                return candidate;
+            }
+            catch (MagickException)
+            {
+                // try next
+            }
+        }
+
+        return "sans";
     }
 
     public Task PasteFileAsync(

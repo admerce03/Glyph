@@ -24,6 +24,7 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using System.Runtime.InteropServices;
+using Windows.System;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Graphics;
 using Windows.Storage;
@@ -137,6 +138,9 @@ public sealed partial class MainWindow : Window
         _logger = logger;
 
         InitializeComponent();
+        // WinUI XAML rejects Key="OemComma"; VirtualKey.OemComma is valid from code.
+        PreferencesMenuItem.KeyboardAccelerators.Add(
+            new KeyboardAccelerator { Key = VirtualKey.OemComma, Modifiers = VirtualKeyModifiers.Control });
         ResizeAndCenter(1180, 760);
         RootGrid.Loaded += RootGrid_Loaded;
         Closed += MainWindow_Closed;
