@@ -33,7 +33,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-23 | Application and file handling | Unsaved-change prompt where appropriate. | M1/M9 | Implemented | Close tab dirty prompt |
 | F01-24 | Application and file handling | Optional autosave. | M1/M9 | Implemented | Preferences → Auto-save to original (F50-04 timer) |
 | F01-25 | Application and file handling | Crash-recovery copy. | M1/M9 | Implemented | `FileCrashRecoveryStore` + periodic snapshots |
-| F01-26 | Application and file handling | Undo/redo history. | M1/M9 | In Progress | Page-edit snapshot undo via `PdfPageEditHistory`; app-wide stack later |
+| F01-26 | Application and file handling | Undo/redo history. | M1/M9 | Implemented | Per-doc: page edits, annot/form/meta/signature, image checkpoints; unified app-wide stack later |
 | F01-27 | Application and file handling | Do not silently overwrite originals by default. | M1/M9 | Implemented | Autosave-to-original is opt-in (off by default) |
 | F02-01 | Main window and interface | Standard Windows title bar. | M1/M9 | Implemented | WinUI AppWindow system title bar |
 | F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | Implemented | MenuBar File/View/Window |
@@ -811,11 +811,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F57-07 | Performance behavior | GPU acceleration where appropriate | M2+/M9 | Deferred | Win2D/Composition GPU path not adopted yet |
 | F57-08 | Performance behavior | smooth scrolling | M2+/M9 | In Progress | ScrollViewer + cached bitmaps; continuous polish open |
 | F57-09 | Performance behavior | large-document virtualization | M2+/M9 | Implemented | On-demand visible-page render; distant Image.Source cleared |
-| F57-10 | Performance behavior | low memory usage | M2+/M9 | In Progress | Bounded `PageRenderCache` (capacity 32) |
+| F57-10 | Performance behavior | low memory usage | M2+/M9 | Implemented | Bounded `PageRenderCache` (capacity 32) |
 | F57-11 | Performance behavior | unload distant PDF pages | M2+/M9 | Implemented | Clear distant page Image.Source; LRU evicts bitmaps |
 | F57-12 | Performance behavior | cancel long-running operations | M2+/M9 | Implemented | PDF OCR Cancel OCR + `CancellationToken`; PDF search cancel |
 | F57-13 | Performance behavior | progress indicator for: | M2+/M9 | Implemented | Toolbar `ProgressBar` for OCR/export/optimize; batch image dialog ProgressBar (F36) |
-| F58-01 | Large-document handling | PDFs with thousands of pages. | M2+/M9 | In Progress | Page virtualization via on-demand render + cache |
+| F58-01 | Large-document handling | PDFs with thousands of pages. | M2+/M9 | Implemented | Page virtualization via on-demand render + cache |
 | F58-02 | Large-document handling | Very large raster images. | M2+/M9 | Implemented | Display decode capped (max edge 8192); full pixels retained in Magick doc |
 | F58-03 | Large-document handling | Progressive rendering. | M2+/M9 | Implemented | Image viewer: low-res preview then refine for large rasters |
 | F58-04 | Large-document handling | Avoid loading entire PDF rasterized into memory. | M2+/M9 | Implemented | Visible-window render only + LRU page cache |
