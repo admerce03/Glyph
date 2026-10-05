@@ -6,42 +6,52 @@
 
     <Grid x:Name="RootGrid" RowDefinitions="Auto,Auto,*,Auto" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-        <Grid Grid.Row="0" Padding="16,12,16,4" ColumnDefinitions="*,Auto">
+        <Grid Grid.Row="0" Padding="16,12,16,4" ColumnDefinitions="*,Auto"
+              AutomationProperties.Name="Glyph application header">
             <StackPanel Orientation="Vertical" Spacing="2">
                 <TextBlock Text="Glyph"
                            FontSize="28"
                            FontWeight="SemiBold"
-                           CharacterSpacing="40" />
+                           CharacterSpacing="40"
+                           AutomationProperties.Name="Glyph" />
                 <TextBlock Text="Native Windows document preview"
                            Opacity="0.7"
-                           FontSize="12" />
+                           FontSize="12"
+                           AutomationProperties.Name="Native Windows document preview" />
             </StackPanel>
         </Grid>
 
-        <MenuBar Grid.Row="1" Margin="8,0,8,4">
+        <MenuBar Grid.Row="1" Margin="8,0,8,4" AutomationProperties.Name="Main menu">
             <MenuBarItem Title="File">
-                <MenuFlyoutItem x:Name="OpenMenuItem" Text="Open…" Click="OpenMenuItem_Click">
+                <MenuFlyoutItem x:Name="OpenMenuItem" Text="Open…" Click="OpenMenuItem_Click"
+                                AutomationProperties.Name="Open file">
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="O" Modifiers="Control" />
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
-                <MenuFlyoutItem x:Name="OpenMultipleMenuItem" Text="Open Multiple…" Click="OpenMultipleMenuItem_Click" />
-                <MenuFlyoutItem x:Name="NewFromClipboardMenuItem" Text="New from Clipboard" Click="NewFromClipboardMenuItem_Click">
+                <MenuFlyoutItem x:Name="OpenMultipleMenuItem" Text="Open Multiple…" Click="OpenMultipleMenuItem_Click"
+                                AutomationProperties.Name="Open multiple files" />
+                <MenuFlyoutItem x:Name="NewFromClipboardMenuItem" Text="New from Clipboard" Click="NewFromClipboardMenuItem_Click"
+                                AutomationProperties.Name="New from Clipboard">
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="N" Modifiers="Control,Shift" />
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
                 <MenuFlyoutSeparator />
-                <MenuFlyoutItem x:Name="CloseTabMenuItem" Text="Close Tab" Click="CloseTabMenuItem_Click">
+                <MenuFlyoutItem x:Name="CloseTabMenuItem" Text="Close Tab" Click="CloseTabMenuItem_Click"
+                                AutomationProperties.Name="Close tab">
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="W" Modifiers="Control" />
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
-                <MenuFlyoutItem x:Name="CloseAllMenuItem" Text="Close All" Click="CloseAllMenuItem_Click" />
+                <MenuFlyoutItem x:Name="CloseAllMenuItem" Text="Close All" Click="CloseAllMenuItem_Click"
+                                AutomationProperties.Name="Close all documents" />
                 <MenuFlyoutSeparator />
-                <MenuFlyoutItem x:Name="ClearRecentMenuItem" Text="Clear Recent Files" Click="ClearRecentMenuItem_Click" />
+                <MenuFlyoutItem x:Name="ClearRecentMenuItem" Text="Clear Recent Files" Click="ClearRecentMenuItem_Click"
+                                AutomationProperties.Name="Clear recent files" />
                 <MenuFlyoutSeparator />
-                <MenuFlyoutItem x:Name="ExitMenuItem" Text="Exit" Click="ExitMenuItem_Click">
+                <MenuFlyoutItem x:Name="ExitMenuItem" Text="Exit" Click="ExitMenuItem_Click"
+                                AutomationProperties.Name="Exit">
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="Q" Modifiers="Control" />
                     </MenuFlyoutItem.KeyboardAccelerators>
@@ -49,9 +59,10 @@
             </MenuBarItem>
 
             <MenuBarItem Title="View">
-                <MenuFlyoutItem x:Name="ToggleSidebarMenuItem" Text="Hide Sidebar" Click="ToggleSidebarMenuItem_Click" />
+                <MenuFlyoutItem x:Name="ToggleSidebarMenuItem" Text="Hide Sidebar" Click="ToggleSidebarMenuItem_Click"
+                                AutomationProperties.Name="Toggle sidebar" />
                 <MenuFlyoutSeparator />
-                <MenuFlyoutSubItem Text="Theme">
+                <MenuFlyoutSubItem Text="Theme" AutomationProperties.Name="Theme">
                     <RadioMenuFlyoutItem x:Name="ThemeSystemItem" Text="System" GroupName="Theme" Click="ThemeSystemItem_Click" />
                     <RadioMenuFlyoutItem x:Name="ThemeLightItem" Text="Light" GroupName="Theme" Click="ThemeLightItem_Click" />
                     <RadioMenuFlyoutItem x:Name="ThemeDarkItem" Text="Dark" GroupName="Theme" Click="ThemeDarkItem_Click" />
@@ -59,12 +70,14 @@
             </MenuBarItem>
 
             <MenuBarItem Title="Window">
-                <MenuFlyoutItem x:Name="NextTabMenuItem" Text="Next Tab" Click="NextTabMenuItem_Click">
+                <MenuFlyoutItem x:Name="NextTabMenuItem" Text="Next Tab" Click="NextTabMenuItem_Click"
+                                AutomationProperties.Name="Next tab">
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="Tab" Modifiers="Control" />
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
-                <MenuFlyoutItem x:Name="PreviousTabMenuItem" Text="Previous Tab" Click="PreviousTabMenuItem_Click">
+                <MenuFlyoutItem x:Name="PreviousTabMenuItem" Text="Previous Tab" Click="PreviousTabMenuItem_Click"
+                                AutomationProperties.Name="Previous tab">
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="Tab" Modifiers="Control,Shift" />
                     </MenuFlyoutItem.KeyboardAccelerators>
@@ -76,7 +89,8 @@
             <Border x:Name="SidebarBorder"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     CornerRadius="8"
-                    Padding="12">
+                    Padding="12"
+                    AutomationProperties.Name="Sidebar">
                 <Grid RowDefinitions="Auto,Auto,*,Auto">
                     <TextBlock Text="Sidebar" FontWeight="SemiBold" />
                     <TextBlock Grid.Row="1"
@@ -85,13 +99,15 @@
                                TextWrapping="WrapWholeWords"
                                Opacity="0.75"
                                FontSize="12"
-                               Margin="0,8,0,0" />
+                               Margin="0,8,0,0"
+                               AutomationProperties.LiveSetting="Polite" />
                     <StackPanel Grid.Row="2" Margin="0,16,0,0">
                         <TextBlock Text="Recent" FontWeight="SemiBold" Margin="0,0,0,8" />
                         <ListView x:Name="RecentList"
                                   SelectionMode="None"
                                   IsItemClickEnabled="True"
-                                  ItemClick="RecentList_ItemClick">
+                                  ItemClick="RecentList_ItemClick"
+                                  AutomationProperties.Name="Recent files">
                             <ListView.ItemTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding DisplayName}"

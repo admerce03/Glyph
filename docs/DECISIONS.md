@@ -5,6 +5,29 @@ When a decision needs product/licensing/privacy approval, it is marked **Needs a
 
 ---
 
+## ADR-017 — Post-vertical-slice deferrals (M9 audit)
+
+**Status:** Accepted (Milestone 9)  
+**Date:** 2026-10-04
+
+### Context
+
+`FEATURES.md` enumerates a Preview-class surface (~879 matrix rows). Milestones 0–8 delivered vertical slices for shell, PDF view/edit, annotations, imaging, OCR, redaction/security/metadata, batch/metadata/color, and emulated scan. M9 requires the matrix to have **no blank/unknown rows**: every requirement must be Implemented/Tested **or Deferred with reason**.
+
+### Decision
+
+1. Keep Implemented/Tested/In Progress rows that match shipped code and tests.
+2. Mark remaining not-yet-built requirements **Deferred** with this ADR (and more specific ADRs where they already exist: ADR-012 associations, ADR-014 loupe/rect/slideshow, ADR-016 hardware scanner).
+3. Deferral buckets include: advanced annotation transform/style, AcroForm fill, signatures library, animated images, smart selection/background removal, webcam Continuity-class capture, full print/Share polish, toolbar customization, shortcut customization UI, session restore multi-window, soft-proof/ICC assign, installer/MSIX finalize, and other polish called out in `FEATURE_MATRIX.md` notes.
+4. Re-open deferred rows only via focused milestone PRs with tests — never by silently deleting matrix rows.
+
+### Consequences
+
+- Matrix audit can complete without claiming unfinished UX is shipped
+- Product backlog remains visible as Deferred, not forgotten
+
+---
+
 ## ADR-016 — Emulated scanner until WIA harness exists
 
 **Status:** Accepted (Milestone 8)  

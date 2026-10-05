@@ -4,6 +4,7 @@ using Glyph.Core.IO;
 using Glyph.Core.Workspace;
 using Glyph.Infrastructure.Documents;
 using Glyph.Infrastructure.RecentFiles;
+using Glyph.Infrastructure.Recovery;
 using Glyph.Infrastructure.Settings;
 using Glyph.Imaging.Abstractions;
 using Glyph.Ocr.Abstractions;
@@ -54,6 +55,7 @@ public sealed partial class MainWindow : Window
     private readonly IImageColorProfileService _imageColor;
     private readonly IImageBatchService _imageBatch;
     private readonly IScannerService _scanner;
+    private readonly ICrashRecoveryStore _recovery;
     private readonly IOcrEngine _ocrEngine;
     private readonly PdfPageOcrService _pdfOcr;
     private readonly PageRenderCache _pageCache;
@@ -84,6 +86,7 @@ public sealed partial class MainWindow : Window
         IImageColorProfileService imageColor,
         IImageBatchService imageBatch,
         IScannerService scanner,
+        ICrashRecoveryStore recovery,
         IOcrEngine ocrEngine,
         PdfPageOcrService pdfOcr,
         PageRenderCache pageCache,
@@ -112,6 +115,7 @@ public sealed partial class MainWindow : Window
         _imageColor = imageColor;
         _imageBatch = imageBatch;
         _scanner = scanner;
+        _recovery = recovery;
         _ocrEngine = ocrEngine;
         _pdfOcr = pdfOcr;
         _pageCache = pageCache;
@@ -142,6 +146,19 @@ public sealed partial class MainWindow : Window
         ApplySidebarVisibility(_settingsStore.Current.SidebarVisible);
         RefreshRecentList();
         UpdateEmptyState();
+        try
+        {
+            var recovery = await _recovery.ListAsync();
+            if (recovery.Count > 0)
+            {
+                SidebarStatus.Text =
+                    $"{recovery.Count} recovery snapshot(s) available under LocalAppData\\Glyph\\recovery.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to list crash recovery snapshots.");
+        }
         StatusText.Text = "Ready — File → Open or drop files here";
         await Task.CompletedTask;
     }
@@ -463,7 +480,8 @@ public sealed partial class MainWindow : Window
                 _pdfMetadata,
                 _pdfSecurity,
                 _pdfRedaction,
-                _pdfOptimization);
+                _pdfOptimization,
+                _recovery);
         }
 
         if (session.Kind == DocumentKind.Image && session.Path is not null)

@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.Core.Documents;
+using Glyph.Infrastructure.Recovery;
 using Glyph.Ocr.Abstractions;
 using Glyph.Ocr.Pdf;
 using Glyph.Pdf.Abstractions;
@@ -42,6 +43,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfSecurityService? _security;
     private readonly IPdfRedactionService? _redaction;
     private readonly IPdfOptimizationService? _optimization;
+    private readonly ICrashRecoveryStore? _recovery;
     private readonly PdfPageOcrService? _pdfOcr;
     private string _ocrText = string.Empty;
     private readonly DocumentViewState _viewState;
@@ -108,7 +110,8 @@ public sealed class PdfDocumentView : UserControl
         IPdfMetadataService? metadata = null,
         IPdfSecurityService? security = null,
         IPdfRedactionService? redaction = null,
-        IPdfOptimizationService? optimization = null)
+        IPdfOptimizationService? optimization = null,
+        ICrashRecoveryStore? recovery = null)
     {
         _document = document;
         _renderer = renderer;
@@ -125,6 +128,7 @@ public sealed class PdfDocumentView : UserControl
         _security = security;
         _redaction = redaction;
         _optimization = optimization;
+        _recovery = recovery;
         _viewState = viewState ?? new DocumentViewState();
         _scale = PdfZoomCalculator.Clamp(_viewState.Zoom <= 0 ? 1.25 : _viewState.Zoom);
         _layoutMode = _viewState.PageLayout;
@@ -2102,7 +2106,9 @@ public sealed class PdfDocumentView : UserControl
         {
             if (!string.IsNullOrWhiteSpace(_document.Path))
             {
+                await WriteRecoverySnapshotAsync(_document.Path);
                 await _pageEditor.SaveAsync(_document, _document.Path);
+                await ClearRecoveryForAsync(_document.Path);
                 _status.Text = "Saved " + Path.GetFileName(_document.Path);
                 return;
             }
@@ -2122,12 +2128,40 @@ public sealed class PdfDocumentView : UserControl
                 return;
             }
 
+            await WriteRecoverySnapshotAsync(file.Path);
             await _pageEditor.SaveAsync(_document, file.Path);
+            await ClearRecoveryForAsync(file.Path);
             _status.Text = "Saved " + file.Name;
         }
         catch (Exception ex)
         {
             _status.Text = "Save failed: " + ex.Message;
+        }
+    }
+
+    private async Task WriteRecoverySnapshotAsync(string documentPath)
+    {
+        if (_recovery is null || string.IsNullOrWhiteSpace(documentPath) || !File.Exists(documentPath))
+        {
+            return;
+        }
+
+        await using var stream = File.OpenRead(documentPath);
+        await _recovery.SaveSnapshotAsync(documentPath, stream);
+    }
+
+    private async Task ClearRecoveryForAsync(string documentPath)
+    {
+        if (_recovery is null)
+        {
+            return;
+        }
+
+        var entries = await _recovery.ListAsync();
+        foreach (var entry in entries.Where(e =>
+                     string.Equals(e.DocumentPath, documentPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            await _recovery.DeleteAsync(entry.SnapshotPath);
         }
     }
 

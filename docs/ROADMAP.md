@@ -26,7 +26,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M6 | OCR and scanned-document capabilities | **In Progress** | M2, M5 |
 | M7 | Redaction, PDF security, optimization, metadata | **In Progress** | M2–M4 |
 | M8 | Batch ops, scanner, color management, advanced | **In Progress** | M5–M7 |
-| M9 | Performance, polish, a11y, installer, audit | Not Started | M1–M8 core paths |
+| M9 | Performance, polish, a11y, installer, audit | **In Progress** | M1–M8 core paths |
 
 M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behind separate interfaces. M3 remains the highest-priority Preview-differentiator after viewing works.
 
@@ -306,7 +306,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 9 — Performance, polish, accessibility, installer, audit
 
-**Status:** Not Started · Depends on prior milestones’ core paths
+**Status:** In Progress · Depends on prior milestones’ core paths
 
 ### Scope (`FEATURES.md` §52–56, §57–60 remaining, distribution)
 
@@ -320,10 +320,17 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Completion criteria
 
-- Matrix has no blank/unknown rows
-- Installer produces a clean-machine runnable build
-- Accessibility smoke pass
-- Performance checklist signed off for representative large PDF/image fixtures
+- [x] Matrix has no blank/unknown/`Not Started` rows (Implemented/Tested/In Progress/Deferred only)
+- [ ] Installer produces a clean-machine runnable build (documented in `PACKAGING.md`; MSIX finalize Deferred ADR-012/017)
+- [x] Accessibility smoke: AutomationProperties on shell chrome + keyboard accelerators
+- [ ] Performance checklist signed off for representative large PDF/image fixtures (virtualization In Progress; full sign-off Deferred ADR-017)
+
+### Progress notes
+
+- `ICrashRecoveryStore` / `FileCrashRecoveryStore` + tests; PDF Save writes/clears recovery snapshots; shell lists recovery count.
+- Shell `AutomationProperties.Name` on header/menu/sidebar/recent list.
+- `docs/PACKAGING.md` for MSIX/associations path.
+- Feature matrix audit: remaining unfinished rows Deferred via ADR-017 (no silent drops).
 
 ---
 

@@ -2,6 +2,7 @@ using Glyph.Core.Workspace;
 using Glyph.Infrastructure.Documents;
 using Glyph.Infrastructure.Paths;
 using Glyph.Infrastructure.RecentFiles;
+using Glyph.Infrastructure.Recovery;
 using Glyph.Infrastructure.Settings;
 using Glyph.Imaging.Abstractions;
 using Glyph.Imaging.Magick;
@@ -38,6 +39,8 @@ internal static class AppServices
         });
         services.AddSingleton<IDocumentViewStateStore>(_ =>
             new JsonDocumentViewStateStore(GlyphPaths.DocumentViewStateFile));
+        services.AddSingleton<ICrashRecoveryStore>(_ =>
+            new FileCrashRecoveryStore(GlyphPaths.RecoveryDirectory));
         services.AddSingleton<IPdfDocumentFactory, PdfiumDocumentFactory>();
         services.AddSingleton<IPdfRenderer, PdfiumRenderer>();
         services.AddSingleton<IPdfTextExtractor, PdfiumTextExtractor>();
