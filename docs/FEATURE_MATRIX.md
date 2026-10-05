@@ -144,7 +144,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F07-06 | PDF text interaction | Right-click selected text. | M2/M6 | Not Started |  |
 | F07-07 | PDF text interaction | Copy. | M2/M6 | Implemented | Clipboard text package |
 | F07-08 | PDF text interaction | Search selected text. | M2/M6 | Implemented | Find sel toolbar uses current text selection as query |
-| F07-09 | PDF text interaction | OCR fallback on scanned PDFs. | M2/M6 | Not Started |  |
+| F07-09 | PDF text interaction | OCR fallback on scanned PDFs. | M2/M6 | Implemented | Find on image-only PDF offers OCR current page then re-searches |
 | F07-10 | PDF text interaction | Preserve reasonable reading order during copy. | M2/M6 | Not Started |  |
 | F07-11 | PDF text interaction | Rectangular selection for copying a region as an image. | M2/M6 | Not Started |  |
 | F07-12 | PDF text interaction | Copy selected PDF region to clipboard as bitmap. | M2/M6 | Not Started |  |

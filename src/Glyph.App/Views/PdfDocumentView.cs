@@ -2102,8 +2102,29 @@ public sealed class PdfDocumentView : UserControl
         else if (status == PdfSearchStatus.NoExtractableText && _ocrPageTexts.Count == 0)
         {
             message = result.Message ?? "OCR required.";
+            if (_ocr is not null && !string.IsNullOrWhiteSpace(query))
+            {
+                var offer = new ContentDialog
+                {
+                    Title = "OCR required",
+                    Content = "This PDF has no extractable text. Run OCR on the current page so Find can search recognized text?",
+                    PrimaryButtonText = "OCR page",
+                    CloseButtonText = "Not now",
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = XamlRoot,
+                };
+                if (await offer.ShowAsync() == ContentDialogResult.Primary)
+                {
+                    await RunOcrPagesAsync([CurrentPageIndex]);
+                    if (_ocrPageTexts.ContainsKey(CurrentPageIndex))
+                    {
+                        await RunSearchAsync();
+                        return;
+                    }
+                }
+            }
         }
-        else if (status is PdfSearchStatus.NoExtractableText or PdfSearchStatus.NoMatches
+        else if ((status is PdfSearchStatus.NoExtractableText or PdfSearchStatus.NoMatches)
                  && _ocrPageTexts.Count > 0
                  && !string.IsNullOrWhiteSpace(query))
         {
