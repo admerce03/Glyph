@@ -104,14 +104,83 @@ public class PdfiumFormStoreTests
         }
     }
 
+    [Fact]
+    public async Task Radio_select_is_mutual_exclusive_and_survives_save()
+    {
+        var path = CreateAcroFormPdf(includeRadio: true);
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-radio-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var forms = new PdfiumFormStore();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var fields = await forms.ListFieldsAsync(document);
+                var radios = fields.Where(f => f.Name == "Color").OrderBy(f => f.TabOrder).ToList();
+                radios.Should().HaveCount(2);
+                radios.Should().OnlyContain(f => f.Kind == PdfFormFieldKind.RadioButton);
+
+                var first = radios[0];
+                var second = radios[1];
+
+                await forms.SetRadioButtonAsync(document, first.PageIndex, first.AnnotIndex);
+                var listed = await forms.ListFieldsAsync(document);
+                var afterFirst = listed.Where(f => f.Name == "Color").OrderBy(f => f.TabOrder).ToList();
+                afterFirst[0].Value.Should().Be("Red");
+                afterFirst[1].Value.Should().Be("Off");
+
+                await forms.SetRadioButtonAsync(document, second.PageIndex, second.AnnotIndex);
+                listed = await forms.ListFieldsAsync(document);
+                var afterSecond = listed.Where(f => f.Name == "Color").OrderBy(f => f.TabOrder).ToList();
+                afterSecond[0].Value.Should().Be("Off");
+                afterSecond[1].Value.Should().Be("Blue");
+
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var fields = await forms.ListFieldsAsync(reopened);
+                var radios = fields.Where(f => f.Name == "Color").OrderBy(f => f.TabOrder).ToList();
+                radios.Should().HaveCount(2);
+                radios[0].Value.Should().Be("Off");
+                radios[1].Value.Should().Be("Blue");
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
     /// <summary>
     /// Minimal AcroForm (letter page) written with a correct xref.
     /// </summary>
-    private static string CreateAcroFormPdf(bool includeCheckBox = false)
+    private static string CreateAcroFormPdf(bool includeCheckBox = false, bool includeRadio = false)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-acroform-" + Guid.NewGuid().ToString("N") + ".pdf");
-        var annots = includeCheckBox ? "[7 0 R 8 0 R 9 0 R]" : "[7 0 R 8 0 R]";
-        var fields = includeCheckBox ? "[7 0 R 8 0 R 9 0 R]" : "[7 0 R 8 0 R]";
+        var annotRefs = new List<string> { "7 0 R", "8 0 R" };
+        var nextObj = 9;
+        if (includeCheckBox)
+        {
+            annotRefs.Add($"{nextObj} 0 R");
+            nextObj++;
+        }
+
+        if (includeRadio)
+        {
+            annotRefs.Add($"{nextObj} 0 R");
+            annotRefs.Add($"{nextObj + 1} 0 R");
+        }
+
+        var annots = "[" + string.Join(" ", annotRefs) + "]";
+        var fields = annots;
         var objects = new List<string>
         {
             // 1 Catalog
@@ -136,6 +205,15 @@ public class PdfiumFormStoreTests
         {
             objects.Add(
                 "<< /Type /Annot /Subtype /Widget /Rect [120 630 140 650] /F 4 /P 3 0 R /FT /Btn /T (Agree) /V /Off /AS /Off /Ff 0 /MK << >> >>");
+        }
+
+        if (includeRadio)
+        {
+            // Ff bit 15 (32768) = radio. /DV holds export name while /AS is Off.
+            objects.Add(
+                "<< /Type /Annot /Subtype /Widget /Rect [120 590 140 610] /F 4 /P 3 0 R /FT /Btn /T (Color) /V /Off /AS /Off /DV /Red /Ff 32768 /MK << >> >>");
+            objects.Add(
+                "<< /Type /Annot /Subtype /Widget /Rect [160 590 180 610] /F 4 /P 3 0 R /FT /Btn /T (Color) /V /Off /AS /Off /DV /Blue /Ff 32768 /MK << >> >>");
         }
 
         using var ms = new MemoryStream();

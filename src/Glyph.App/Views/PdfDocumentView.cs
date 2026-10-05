@@ -2893,6 +2893,51 @@ public sealed class PdfDocumentView : UserControl
             }
 
             // Edit
+            if (field.Kind == PdfFormFieldKind.RadioButton)
+            {
+                var currentlyOn = !string.Equals(field.Value, "Off", StringComparison.OrdinalIgnoreCase)
+                    && !string.IsNullOrEmpty(field.Value);
+                var select = new ContentDialog
+                {
+                    Title = field.Name,
+                    Content = currentlyOn
+                        ? $"Radio is selected (\"{field.Value}\")."
+                        : "Radio is not selected. Selecting it turns off siblings in this group.",
+                    PrimaryButtonText = currentlyOn ? "OK" : "Select",
+                    CloseButtonText = currentlyOn ? "Close" : "Cancel",
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = window.Content.XamlRoot,
+                };
+
+                var radioResult = await select.ShowAsync();
+                if (currentlyOn || radioResult != ContentDialogResult.Primary)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    await _forms.SetRadioButtonAsync(
+                        _document,
+                        field.PageIndex,
+                        field.AnnotIndex);
+                    fields = await _forms.ListFieldsAsync(_document);
+                    list.ItemsSource = fields
+                        .Select(f => $"{f.TabOrder + 1}. {f.Name} ({f.Kind}) = \"{f.Value}\"")
+                        .ToList();
+                    list.SelectedIndex = Math.Clamp(index, 0, fields.Count - 1);
+                    _cache.ClearDocument(_documentKey);
+                    await RenderVisibleAsync();
+                    _status.Text = $"Selected radio {field.Name}.";
+                }
+                catch (Exception ex)
+                {
+                    _status.Text = "Form fill failed: " + ex.Message;
+                }
+
+                continue;
+            }
+
             if (field.Kind == PdfFormFieldKind.CheckBox)
             {
                 var currentlyOn = !string.Equals(field.Value, "Off", StringComparison.OrdinalIgnoreCase)
