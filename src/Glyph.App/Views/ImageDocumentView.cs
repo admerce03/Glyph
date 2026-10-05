@@ -2753,8 +2753,7 @@ public sealed class ImageDocumentView : UserControl
 
         var batchFolder = new CheckBox
         {
-            Content = _siblings.Count > 1
-ImageResizeDialogMath.FormatAlsoResizeFolder(_siblings.Count),
+            Content = ImageResizeDialogMath.FormatAlsoResizeFolder(_siblings.Count),
             IsChecked = false,
             IsEnabled = _siblings.Count > 1 && _decoder is not null,
         };
