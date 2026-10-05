@@ -8,6 +8,7 @@ using Glyph.Infrastructure.Forms;
 using Glyph.Infrastructure.Settings;
 using Glyph.Ocr.Abstractions;
 using Glyph.Pdf.Abstractions;
+using Glyph.Pdf.Annotations;
 using Glyph.Pdf.Editing;
 using Glyph.Pdf.Forms;
 using Glyph.Pdf.Rendering;
@@ -141,7 +142,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly List<PdfPagePoint> _polygonVertices = [];
     private Microsoft.UI.Xaml.Shapes.Polyline? _polygonPreview;
     /// <summary>Recent ink/freeform/polygon strokes for F18-06 stroke undo (Ctrl+Z prefers this).</summary>
-    private readonly Stack<PdfAnnotationInfo> _strokeUndoStack = new();
+    private readonly AnnotationUndoStack _strokeUndoStack = new();
     /// <summary>Previous form field values for F49-11 Ctrl+Z undo.</summary>
     private readonly FormFillUndoStack _formUndoStack = new();
     /// <summary>Previous Info dictionary fields for F49-10 Ctrl+Z undo after Edit document info.</summary>
@@ -6838,12 +6839,7 @@ public sealed class PdfDocumentView : UserControl
         try
         {
             await _annotations.RemoveAsync(_document, original.PageIndex, original.AnnotIndex);
-            if (_strokeUndoStack.Count > 0
-                && _strokeUndoStack.Peek().PageIndex == original.PageIndex
-                && _strokeUndoStack.Peek().AnnotIndex == original.AnnotIndex)
-            {
-                _strokeUndoStack.Pop();
-            }
+            _strokeUndoStack.TryPopIfMatches(original.PageIndex, original.AnnotIndex);
 
             PdfAnnotationInfo cleaned;
             switch (recognized.Shape)
@@ -6914,13 +6910,12 @@ public sealed class PdfDocumentView : UserControl
 
     private async Task UndoLastStrokeAsync()
     {
-        if (_strokeUndoStack.Count == 0)
+        if (!_strokeUndoStack.TryPop(out var stroke))
         {
             _status.Text = "Nothing to undo.";
             return;
         }
 
-        var stroke = _strokeUndoStack.Pop();
         try
         {
             // Prefer the live sidebar entry in case indices shifted after other edits.
