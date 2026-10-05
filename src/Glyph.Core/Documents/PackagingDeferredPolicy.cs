@@ -1,9 +1,10 @@
 namespace Glyph.Core.Documents;
 
 /// <summary>
-/// Packaging / update-channel items deferred on ADR-012 (F01-06/07, F55-04).
+/// Packaging items deferred on ADR-012 (F01-06/07).
 /// Windows CI produces a test-signed <c>.msix</c> via <c>scripts/publish-msix.ps1 -TestSign</c>;
-/// associations and update-check stay deferred until a signed/sideload install is verified.
+/// Explorer associations stay deferred until sideload default-app assignment is verified.
+/// Manual update check (F55-04) is shipped separately via <see cref="AppUpdateCheckPolicy"/>.
 /// </summary>
 public static class PackagingDeferredPolicy
 {
@@ -33,12 +34,14 @@ public static class PackagingDeferredPolicy
 
     public const bool NativeFileAssociationsShipped = false;
     public const bool ConfigurableDefaultAssociationsShipped = false;
-    public const bool InAppUpdateCheckShipped = false;
+
+    /// <summary>Manual Check for updates (F55-04) via <see cref="AppUpdateCheckPolicy"/>.</summary>
+    public const bool InAppUpdateCheckShipped = true;
 
     public const string Adr = "ADR-012";
 
     public const string Reason =
-        "Test-signed .msix + sideload helper/association probe shipped; Explorer defaults and update channel wait on verified sideload.";
+        "Test-signed .msix + sideload helper/association probe shipped; Explorer defaults wait on verified sideload.";
 
     public const string PublishScript = "scripts/publish-msix.ps1";
     public const string InstallScript = "scripts/install-msix-test.ps1";

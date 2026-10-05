@@ -134,6 +134,17 @@
                 <MenuFlyoutItem x:Name="MoveTabToNewWindowMenuItem" Text="Move Tab to New Window" Click="MoveTabToNewWindowMenuItem_Click" />
                 <MenuFlyoutItem x:Name="MoveToNextMonitorMenuItem" Text="Move to Next Monitor" Click="MoveToNextMonitorMenuItem_Click" />
             </MenuBarItem>
+
+            <MenuBarItem Title="Help">
+                <MenuFlyoutItem x:Name="CheckForUpdatesMenuItem"
+                                Text="Check for Updates…"
+                                Click="CheckForUpdatesMenuItem_Click"
+                                AutomationProperties.Name="Check for updates" />
+                <MenuFlyoutItem x:Name="AboutMenuItem"
+                                Text="About Glyph"
+                                Click="AboutMenuItem_Click"
+                                AutomationProperties.Name="About Glyph" />
+            </MenuBarItem>
         </MenuBar>
 
         <Grid x:Name="ContentGrid" Grid.Row="2" ColumnDefinitions="Auto,6,*" Margin="12,0,12,12" ColumnSpacing="0">
