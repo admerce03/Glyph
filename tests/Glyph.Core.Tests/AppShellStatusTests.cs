@@ -16,5 +16,8 @@ public class AppShellStatusTests
         AppShellStatus.FormatRestoredTabs(3).Should().Contain("3");
         AppShellStatus.PreferencesSaved.Should().Contain("Preferences");
         AppShellStatus.FormatFailed(AppShellStatus.MoveFailedPrefix, "x").Should().Contain("Move failed: x");
+        AppShellStatus.NoVersionSnapshotsYet.Should().Contain("Save");
+        AppShellStatus.FormatOpenedFilesFromClipboard(2).Should().Contain("2");
+        AppShellStatus.FormatActive("Doc").Should().Contain("Doc");
     }
 }

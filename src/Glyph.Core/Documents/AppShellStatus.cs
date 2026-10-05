@@ -79,6 +79,19 @@ public static class AppShellStatus
     public static string FormatRestoredSnapshot(string whenLocal) =>
         "Restored snapshot from " + whenLocal;
 
+    public const string Ready = "Ready";
+    public const string OpenedFileFromClipboard = "Opened file from clipboard.";
+    public const string NoVersionSnapshotsYet =
+        "No version snapshots yet — they are created on Save.";
+    public const string NoVersionSnapshotsDisabled =
+        "No snapshots. Enable “Keep local version snapshots on Save” in Preferences.";
+
     public static string FormatFailed(string prefix, string message) =>
         prefix + message;
+
+    public static string FormatOpenedFilesFromClipboard(int count) =>
+        $"Opened {count} files from clipboard.";
+
+    public static string FormatActive(string displayName) =>
+        $"Active: {displayName}";
 }

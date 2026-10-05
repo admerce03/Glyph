@@ -474,8 +474,8 @@ public sealed partial class MainWindow : Window
                 if (opened > 0)
                 {
                     StatusText.Text = opened == 1
-                        ? "Opened file from clipboard."
-                        : $"Opened {opened} files from clipboard.";
+                        ? AppShellStatus.OpenedFileFromClipboard
+                        : AppShellStatus.FormatOpenedFilesFromClipboard(opened);
                     return;
                 }
             }
@@ -594,7 +594,7 @@ public sealed partial class MainWindow : Window
         if (DocumentTabs.SelectedItem is TabViewItem { Tag: DocumentId id })
         {
             _workspace.Activate(id);
-            StatusText.Text = _workspace.ActiveDocument?.Path ?? _workspace.ActiveDocument?.DisplayName ?? "Ready";
+            StatusText.Text = _workspace.ActiveDocument?.Path ?? _workspace.ActiveDocument?.DisplayName ?? AppShellStatus.Ready;
         }
 
         UpdateEmptyState();
@@ -2101,7 +2101,7 @@ public sealed partial class MainWindow : Window
 
         SelectTabForActiveDocument();
         UpdateEmptyState();
-        StatusText.Text = _workspace.ActiveDocument is null ? "Ready" : $"Active: {_workspace.ActiveDocument.DisplayName}";
+        StatusText.Text = _workspace.ActiveDocument is null ? AppShellStatus.Ready : AppShellStatus.FormatActive(_workspace.ActiveDocument.DisplayName);
         await PersistSessionAsync();
         return true;
     }
@@ -2864,8 +2864,8 @@ public sealed partial class MainWindow : Window
         if (entries.Count == 0)
         {
             StatusText.Text = _settingsStore.Current.VersionSnapshotsEnabled
-                ? "No version snapshots yet — they are created on Save."
-                : "No snapshots. Enable “Keep local version snapshots on Save” in Preferences.";
+                ? AppShellStatus.NoVersionSnapshotsYet
+                : AppShellStatus.NoVersionSnapshotsDisabled;
             return;
         }
 
