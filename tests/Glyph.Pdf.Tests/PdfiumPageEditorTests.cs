@@ -423,6 +423,7 @@ public class PdfiumPageEditorTests
             var parts = await editor.SplitDocumentAsync(document, [2, 4]);
             try
             {
+                document.PageCount.Should().Be(5); // source unchanged
                 parts.Should().HaveCount(3);
                 parts[0].PageCount.Should().Be(2);
                 parts[1].PageCount.Should().Be(2);

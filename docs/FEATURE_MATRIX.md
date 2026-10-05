@@ -45,8 +45,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-08 | Main window and interface | Resizable document area. | M1/M9 | Implemented | Content pane fills remaining space; window resize |
 | F02-09 | Main window and interface | Full-screen mode. | M1/M9 | Implemented | View → Full Screen / F11 / toolbar |
 | F02-10 | Main window and interface | Tabbed documents. | M1/M9 | Implemented | TabView + Ctrl+Tab navigation |
-| F02-11 | Main window and interface | Tear tab into separate window. | M1/M9 | Implemented | Window → Move Tab to New Window + tab context menu |
-| F02-12 | Main window and interface | Move tabs between windows. | M1/M9 | Implemented | Tear-off + `CanDragTabs`/`AllowDropTabs` cross-window (see F59-03) |
+| F02-11 | Main window and interface | Tear tab into separate window. | M1/M9 | Tested | Window → Move Tab to New Window; `TabTearOffPolicy` unit tests |
+| F02-12 | Main window and interface | Move tabs between windows. | M1/M9 | Tested | Tear-off + `CanDragTabs`/`AllowDropTabs`; `TabTearOffPolicy` (see F59-03) |
 | F02-13 | Main window and interface | Reorder tabs. | M1/M9 | Tested | TabView CanReorderTabs + `WorkspaceState.Reorder` unit test |
 | F02-14 | Main window and interface | Context menus throughout. | M1/M9 | Implemented | Tab, PDF page/text/annot/sidebar, image surface context menus |
 | F02-15 | Main window and interface | Dark mode. | M1/M9 | Tested | Theme preference Dark prefs round-trip |
@@ -825,11 +825,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | Implemented | PDF search cancel + PDF/image OCR Cancel OCR |
 | F59-01 | Multi-document workflow | multiple tabs | M1/M3 | Tested | `WorkspaceState` Open/Activate/Close/Reorder/ActivateNext unit tests |
 | F59-02 | Multi-document workflow | multiple windows | M1/M3 | Tested | File → New Window; independent `WorkspaceState` per window (reuse/close tests) |
-| F59-03 | Multi-document workflow | drag tabs between windows | M1/M3 | Implemented | `CanDragTabs` + `AllowDropTabs` cross-window; drop outside → new window |
+| F59-03 | Multi-document workflow | drag tabs between windows | M1/M3 | Tested | `CanDragTabs`/`AllowDropTabs` + drop-outside tear-off; `TabTearOffPolicy` unit tests |
 | F59-04 | Multi-document workflow | drag PDF pages between documents | M1/M3 | Tested | Cross-tab/window insert via `PdfPageDragRegistry` unit tests |
 | F59-05 | Multi-document workflow | drag images between compatible contexts | M1/M3 | Tested | Image surface deferred StorageItems; `ImageDragSemantics.CanDragFile` unit tests |
 | F59-06 | Multi-document workflow | copy/paste between documents | M1/M3 | Tested | Ctrl+C/V pages via `PdfPageClipboard` extract/open unit tests |
-| F59-07 | Multi-document workflow | side-by-side windows using Windows Snap | M1/M3 | Implemented | Multi-window shell; Snap is OS-native |
+| F59-07 | Multi-document workflow | side-by-side windows using Windows Snap | M1/M3 | Tested | Multi-window shell (`WorkspaceState`); Snap is OS-native |
 | F59-08 | Multi-document workflow | maintain independent undo history for each document | M1/M3 | Tested | Per-view `PdfPageEditHistory`; history unit tests |
 | F59-09 | Multi-document workflow | retain per-document page/zoom position | M1/M3 | Tested | `JsonDocumentViewStateStore` save/load zoom/page/layout unit tests |
 | F60-01 | Context-sensitive commands | Copy | M1/M3 | Implemented | Page right-click + Edit → Copy for selected text |

@@ -2005,22 +2005,22 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(session.Path) || !File.Exists(session.Path))
+        if (!TabTearOffPolicy.CanTearOff(session.Path))
         {
-            StatusText.Text = "Save the document before moving it to a new window.";
+            StatusText.Text = TabTearOffPolicy.NeedsSaveStatus;
             return;
         }
 
         var tab = DocumentTabs.TabItems.OfType<TabViewItem>()
             .FirstOrDefault(t => t.Tag is DocumentId d && d.Equals(id));
         var pathToOpen = session.Path!;
-        var dirty = session.IsDirty || TabHasUnsavedEdits(id);
+        var dirty = TabTearOffPolicy.RequiresDirtyResolution(session.IsDirty, TabHasUnsavedEdits(id));
         if (dirty)
         {
             var dialog = new ContentDialog
             {
                 Title = "Unsaved changes",
-                Content = $"“{session.DisplayName}” has unsaved changes. Save before moving to a new window?",
+                Content = TabTearOffPolicy.UnsavedChangesPrompt(session.DisplayName),
                 PrimaryButtonText = "Save & move",
                 SecondaryButtonText = "Move recovery copy",
                 CloseButtonText = "Cancel",
@@ -2040,7 +2040,7 @@ public sealed partial class MainWindow : Window
                 await SaveActiveDocumentAsync(saveAs: false);
                 if (session.IsDirty || TabHasUnsavedEdits(id))
                 {
-                    StatusText.Text = "Save cancelled — tab not moved.";
+                    StatusText.Text = TabTearOffPolicy.SaveCancelledStatus;
                     return;
                 }
 
@@ -2054,7 +2054,7 @@ public sealed partial class MainWindow : Window
                     string.Equals(e.OriginalPath, System.IO.Path.GetFullPath(session.Path!), StringComparison.OrdinalIgnoreCase));
                 if (match is null || !File.Exists(match.RecoveryPath))
                 {
-                    StatusText.Text = "Could not create recovery copy for move.";
+                    StatusText.Text = TabTearOffPolicy.RecoveryFailedStatus;
                     return;
                 }
 
@@ -2069,7 +2069,7 @@ public sealed partial class MainWindow : Window
 
         var window = App.CurrentApp.OpenNewWindow();
         await window.OpenDocumentPathAsync(pathToOpen);
-        StatusText.Text = "Moved tab to a new window.";
+        StatusText.Text = TabTearOffPolicy.MovedStatus;
     }
 
     private async Task<bool> CloseDocumentAsync(DocumentId id, bool skipDirtyPrompt = false)
