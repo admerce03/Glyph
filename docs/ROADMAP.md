@@ -188,7 +188,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 ### Progress notes
 
 - `IPdfAnnotationService` / `PdfiumAnnotationService`: create/list/remove text markup (Highlight / Underline / StrikeOut) with QuadPoints + color; round-trip save/reopen covered by Pdf.Tests.
-- Viewer: select text → Highlight (multi-color picker) / Underline / Strike toolbar actions; sidebar Color recolors selected markup.
+- Viewer: select text → Highlight (multi-color picker; persistent mode toggles so every selection highlights) / Underline / Strike toolbar actions; sidebar Color recolors selected markup.
 - Annotation sidebar lists text markup; click jumps to page; Delete removes selected markup.
 - Sticky notes: `AddStickyNoteAsync` + Note toolbar dialog; Contents/color/move APIs; notes appear in sidebar.
 - Freehand ink: `AddInkAsync` + Ink draw mode on page surface; listed in annotation sidebar.

@@ -263,7 +263,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-37 | PDF annotations | change text color | M4 | Not Started |  |
 | F13-38 | PDF annotations | change text alignment | M4 | Not Started |  |
 | F14-01 | Highlight workflow | Select text and apply highlight. | M4 | Implemented | Selection quads → Highlight toolbar |
-| F14-02 | Highlight workflow | Persistent highlight mode: | M4 | Not Started |  |
+| F14-02 | Highlight workflow | Persistent highlight mode: | M4 | Implemented | Highlight toggles mode; Esc exits; color remembered |
 | F14-03 | Highlight workflow | Multiple highlight colors. | M4 | Tested | Yellow/Green/Pink/Blue/Orange picker |
 | F14-04 | Highlight workflow | Change existing highlight color. | M4 | Tested | Sidebar Color → presets / `SetColorAsync` |
 | F14-05 | Highlight workflow | Underline selection. | M4 | Implemented | Underline toolbar |
