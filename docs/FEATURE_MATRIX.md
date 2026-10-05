@@ -701,8 +701,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F49-05 | Undo and redo | page ordering | M1-M4 | Tested | `PdfPageEditHistory` snapshot undo/redo unit tests |
 | F49-06 | Undo and redo | page rotation | M1-M4 | Tested | `PdfPageEditHistory` snapshot undo/redo unit tests |
 | F49-07 | Undo and redo | crop | M1-M4 | Tested | PDF crop undo restores page size (`PdfPageEditHistory`); image crop undo stack |
-| F49-08 | Undo and redo | resizing | M1-M4 | Implemented | Image resize undo checkpoints |
-| F49-09 | Undo and redo | image adjustments | M1-M4 | Implemented | Image adjust undo checkpoints |
+| F49-08 | Undo and redo | resizing | M1-M4 | Tested | Image resize undo via Magick checkpoint unit tests |
+| F49-09 | Undo and redo | image adjustments | M1-M4 | Tested | Image adjust undo via Magick checkpoint unit tests |
 | F49-10 | Undo and redo | metadata editing | M1-M4 | Tested | Image IPTC/GPS via `MutateAsync`; PDF Info `DocumentInfoUndoStack` |
 | F49-11 | Undo and redo | form filling | M1-M4 | Tested | Ctrl+Z restores prior AcroForm value via `FormFillUndoStack` unit tests |
 | F49-12 | Undo and redo | signature placement | M1-M4 | Tested | Signature stamps push onto `AnnotationUndoStack` (Ctrl+Z) |
