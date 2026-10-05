@@ -5213,15 +5213,11 @@ public sealed class PdfDocumentView : UserControl
             Content = panel,
             PrimaryButtonText = "Insert",
             SecondaryButtonText = "Draw new",
-            CloseButtonText = "Import…",
+            CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
 
-        // WinUI CloseButtonText is dismiss; use a fourth path via Secondary for Draw and Close for Import.
-        // Re-map: Primary=Insert, Secondary=Draw, Close=Cancel — add Import as another dialog after.
-        dialog.CloseButtonText = "Cancel";
-        // Extra Import button in panel
         var importBtn = new Button { Content = "Import image…", HorizontalAlignment = HorizontalAlignment.Left };
         var importRequested = false;
         importBtn.Click += (_, _) =>
