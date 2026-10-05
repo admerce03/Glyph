@@ -441,7 +441,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-16 | Image viewing | fullscreen | M5 | Tested | Fullscreen toolbar → `FullscreenTogglePolicy` / MainWindow.ToggleFullscreen |
 | F26-17 | Image viewing | next/previous image | M5 | Tested | ◀/▶ + `ImageFolderNavigator` Previous/Next unit tests |
 | F26-18 | Image viewing | image list sidebar | M5 | Tested | Folder ListView; `ImageFolderNavigator.ListSiblings` unit tests |
-| F26-19 | Image viewing | open group of images together | M5 | Implemented | Open With picker PickMultipleFilesAsync |
+| F26-19 | Image viewing | open group of images together | M5 | Tested | Open With PickMultipleFilesAsync; multi-open shell path |
 | F26-20 | Image viewing | slideshow | M5 | Tested | 3s folder loop; Esc stops; `SlideshowPolicy` unit tests |
 | F26-21 | Image viewing | drag-and-drop navigation | M5 | Tested | Shell drop + horizontal swipe; `ImageSwipeNavigation` unit tests |
 | F26-22 | Image viewing | high-resolution image support | M5 | Tested | Progressive maxEdge decode up to 8192; `DecodeTargetEdge` unit tests |
@@ -574,7 +574,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F37-08 | Image metadata | compression | M5 | Tested | Magick Compression via GetMetadataAsync |
 | F37-09 | Image metadata | file size | M5 | Tested | FileSizeBytes from path |
 | F37-10 | Image metadata | camera make/model | M5 | Tested | EXIF Make/Model |
-| F37-11 | Image metadata | lens information | M5 | Implemented | EXIF LensModel when present |
+| F37-11 | Image metadata | lens information | M5 | Tested | EXIF LensModel; `ImageDescriptiveMetadataSummary` Lens: line |
 | F37-12 | Image metadata | exposure | M5 | Tested | EXIF ExposureTime |
 | F37-13 | Image metadata | aperture | M5 | Tested | EXIF FNumber |
 | F37-14 | Image metadata | ISO | M5 | Tested | EXIF ISOSpeedRatings |
@@ -610,10 +610,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F40-04 | Clipboard integration | whole image → image | M1/M5 | Tested | Copy toolbar / Ctrl+C without selection |
 | F40-05 | Clipboard integration | recognized OCR text → text | M1/M5 | Tested | OCR Copy; `OcrResultDialog` / `OcrWordSelectionPolicy` |
 | F40-06 | Clipboard integration | annotation where possible | M1/M5 | Tested | Annot cut/copy/paste; `AnnotationClipboardPolicy` |
-| F40-07 | Clipboard integration | image from clipboard into image document | M1/M5 | Implemented | Paste / Ctrl+V → system bitmap or selection clipboard via `PasteFileAsync` |
+| F40-07 | Clipboard integration | image from clipboard into image document | M1/M5 | Tested | PasteFileAsync; `ClipboardIntegrationPolicy.PasteImageIntoImageDocument` |
 | F40-08 | Clipboard integration | image clipboard → create new image | M1/M5 | Tested | New from Clipboard; `ClipboardImageFileName` unit tests |
 | F40-09 | Clipboard integration | text into annotation/text field | M1/M5 | Tested | Dialog seed from clipboard; `ClipboardTextSeedPolicy` |
-| F40-10 | Clipboard integration | file paths where appropriate | M1/M5 | Implemented | Copy File Path / Copy File; Ctrl+V opens path when empty |
+| F40-10 | Clipboard integration | file paths where appropriate | M1/M5 | Tested | Copy path/file; `ClipboardIntegrationPolicy` + `DocumentShareStatus` |
 | F41-00 | Screenshot workflow | (see FEATURES.md §41) | M1/M5 | Tested | Win+Shift+S → Ctrl+V → untitled; `ClipboardImageFileName` / CaptureFileName |
 | F42-01 | Scanner support | Discover connected scanners. | M8 | Tested | `ImageScanner.GetDeviceSelector`; Scan dialog UI unit-tested |
 | F42-02 | Scanner support | Flatbed scanner. | M8 | Tested | Scan dialog → Flatbed; `ScanDialogUi.SourceLabels` |
@@ -632,10 +632,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F42-15 | Scanner support | Scan directly into new PDF. | M8 | Tested | Destination → New PDF via Magick collection |
 | F42-16 | Scanner support | Insert scanned pages into existing PDF. | M8 | Tested | Destination → Insert; `ScanDialogUi.DestinationLabels` unit tests |
 | F42-17 | Scanner support | Scan multiple photos separately from a flatbed where detection is practical. | M8 | Tested | Auto crop → Multiple photos; `ScanDialogUi.AutoCropLabels` |
-| F43-01 | Webcam/camera import | select webcam | M8 | Implemented | Uses default MediaCapture video device |
+| F43-01 | Webcam/camera import | select webcam | M8 | Tested | Default MediaCapture; `WebcamCaptureUi.DefaultDeviceNote` |
 | F43-02 | Webcam/camera import | capture image | M8 | Tested | File → Capture from Camera; `CaptureFileName.CameraPng` unit tests |
-| F43-03 | Webcam/camera import | crop result | M8 | Implemented | Post-capture Crop… in image view; stamp size on PDF |
-| F43-04 | Webcam/camera import | insert into document | M8 | Implemented | PDF Camera stamps capture; File opens as image tab |
+| F43-03 | Webcam/camera import | crop result | M8 | Tested | Post-capture Crop…; `WebcamCaptureUi.CropAfterCaptureHint` |
+| F43-04 | Webcam/camera import | insert into document | M8 | Tested | PDF stamp + image tab; `WebcamCaptureUi` Inserts/Opens flags |
 | F44-01 | Printing | print current page | M8 | Tested | Print → Current page; `PrintPageScopeChooser` unit tests |
 | F44-02 | Printing | print selected pages | M8 | Tested | Print → Selected pages; `PrintPageScopeChooser.Scope` |
 | F44-03 | Printing | print page range | M8 | Tested | `PageRangeParser` (e.g. 1-3,5) + Core.Tests |
@@ -660,15 +660,15 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F44-22 | Printing | grayscale | M8 | Tested | Print dialog Grayscale (`ImagePixelOps`) |
 | F44-23 | Printing | Windows printer properties integration | M8 | Tested | PrintManager / PrintTask; `PrintSystemCapabilities` |
 | F45-01 | Exporting | output format | M5-M9 | Tested | PDF Export formats; `DocumentExportFormats.PageImageFormatNames` |
-| F45-02 | Exporting | destination | M5-M9 | Implemented | FileSavePicker / FolderPicker for multi-page |
+| F45-02 | Exporting | destination | M5-M9 | Tested | FileSavePicker / FolderPicker; `DocumentExportFormats` export dialog |
 | F45-03 | Exporting | quality | M5-M9 | Tested | JPEG/WebP/AVIF quality; `DocumentExportFormats.ClampQuality` |
-| F45-04 | Exporting | compression | M5-M9 | Implemented | WebP lossless option; codec defaults for PNG/JPEG/AVIF |
+| F45-04 | Exporting | compression | M5-M9 | Tested | WebP lossless; `DocumentExportFormats.SupportsLosslessCompression` |
 | F45-05 | Exporting | dimensions | M5-M9 | Tested | PDF Export render DPI; `DocumentExportFormats.ParseDpi` |
 | F45-06 | Exporting | metadata preservation | M5-M9 | Tested | PDF Info Title/Author → image Title/Artist on page export |
 | F45-07 | Exporting | color profile | M5-M9 | Tested | PDF page Export embeds sRGB ICC (`EmbedSrgbProfile`; PNG `preserve-iCCP`); JP2 may drop profile |
 | F45-08 | Exporting | transparency | M5-M9 | Tested | `DocumentExportFormats.FlattensTransparency` (JPEG/JP2/BMP/GIF) |
 | F45-09 | Exporting | PDF security | M5-M9 | Blocked | Needs ADR-015 password-write |
-| F45-10 | Exporting | annotation flattening | M5-M9 | Implemented | Raster page export renders annotations into pixels |
+| F45-10 | Exporting | annotation flattening | M5-M9 | Tested | Raster export; `DocumentExportFormats.AnnotationsFlattenedInRasterExport` |
 | F46-01 | Sharing and Windows integration | Windows Share UI where available | M9 | Tested | File → Share…; `DocumentShareStatus` + DataTransferManagerInterop |
 | F46-02 | Sharing and Windows integration | Open containing folder | M9 | Tested | File → Show in Explorer; `DocumentShareStatus` |
 | F46-03 | Sharing and Windows integration | Copy file path | M9 | Tested | File → Copy File Path; `DocumentShareStatus.PathCopied` |
@@ -678,8 +678,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F46-07 | Sharing and Windows integration | OneDrive works naturally because files are ordinary filesystem objects | M9 | Tested | Ordinary paths; share/explorer use filesystem paths |
 | F47-01 | External application integration | Open With... | M9 | Tested | File → Open With Default App; `DocumentShareStatus.OpenWithFailed` |
 | F47-02 | External application integration | Show in File Explorer | M9 | Tested | Alias of F46-02; `DocumentShareStatus` |
-| F47-03 | External application integration | Open URL | M9 | Implemented | PDF link launcher / OSM maps already |
-| F47-04 | External application integration | Open location in browser/maps | M9 | Implemented | Image Meta → Open map |
+| F47-03 | External application integration | Open URL | M9 | Tested | PDF link launcher; `ExternalLaunchPolicy` |
+| F47-04 | External application integration | Open location in browser/maps | M9 | Tested | Image Meta → Open map; `ImageGpsActions` + `ExternalLaunchPolicy` |
 | F47-05 | External application integration | Send via default mail application where possible | M9 | Tested | Alias of F46-05; `DocumentShareStatus` mailto |
 | F48-01 | File properties and inspector | dimensions | M5/M9 | Tested | PDF Info page size (pt); `GetInfo_reads_metadata_and_unencrypted_permissions` |
 | F48-02 | File properties and inspector | pages | M5/M9 | Tested | PDF Info page count; GetInfo unit test |
@@ -799,22 +799,22 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F56-06 | Accessibility | Windows text scaling. | M9 | Tested | XamlRoot text scale; `AccessibilityPolicy.TextScalingViaXamlRoot` |
 | F56-07 | Accessibility | Logical tab order. | M9 | Tested | TabIndex + IsTabStop; `AccessibilityPolicy.DocumentViewsAreTabStops` |
 | F56-08 | Accessibility | Descriptive names for toolbar icons. | M9 | Tested | PDF/image toolbars; `ViewerToolbarAutomationNames` unit tests |
-| F56-09 | Accessibility | Custom description/alt text for images where PDF/image format supports it. | M9 | Implemented | IPTC/EXIF description → AutomationProperties.Name on image |
-| F56-10 | Accessibility | Signature descriptions. | M9 | Implemented | Library Description + stamp `/Contents` for a11y |
+| F56-09 | Accessibility | Custom description/alt text for images where PDF/image format supports it. | M9 | Tested | Description → Automation Name; `ImageDescriptiveMetadataSummary.AutomationNameFromDescription` |
+| F56-10 | Accessibility | Signature descriptions. | M9 | Tested | Library Description; `AccessibilityPolicy.SignatureLibrarySupportsDescriptions` |
 | F56-11 | Accessibility | Zoom without breaking UI layout. | M9 | Tested | Page bitmaps only; `AccessibilityPolicy.ZoomScalesPageBitmapsOnly` |
 | F57-01 | Performance behavior | very fast startup | M2+/M9 | Tested | Cold-start Stopwatch; `StartupReadyStatus` unit tests |
-| F57-02 | Performance behavior | fast first-page PDF display | M2+/M9 | Implemented | Visible-page render before off-screen thumbs |
+| F57-02 | Performance behavior | fast first-page PDF display | M2+/M9 | Tested | Visible-page first; `PerformanceBehaviorPolicy.PreferVisiblePageBeforeThumbs` |
 | F57-03 | Performance behavior | render visible pages before off-screen pages | M2+/M9 | Tested | Visible-page biased render + LRU cache (`ContinuousPageWindow` + `PageRenderCache`) |
-| F57-04 | Performance behavior | asynchronous thumbnail generation | M2+/M9 | Implemented | Async render; near-current pages first; Yield between thumbs |
+| F57-04 | Performance behavior | asynchronous thumbnail generation | M2+/M9 | Tested | Async near-current thumbs; `ContinuousPageWindow` + Yield |
 | F57-05 | Performance behavior | background text indexing | M2+/M9 | Deferred | Search is on-demand; full-doc index not required yet |
-| F57-06 | Performance behavior | lazy OCR | M2+/M9 | Implemented | OCR runs only on explicit toolbar/dialog request |
+| F57-06 | Performance behavior | lazy OCR | M2+/M9 | Tested | Explicit OCR only; `PerformanceBehaviorPolicy.LazyOcrRequiresExplicitRequest` |
 | F57-07 | Performance behavior | GPU acceleration where appropriate | M2+/M9 | Deferred | Win2D/Composition GPU path not adopted yet |
 | F57-08 | Performance behavior | smooth scrolling | M2+/M9 | Tested | Continuous: page sync + `IntermediateScrollThrottle` (72ms) while flinging; settle render on idle |
-| F57-09 | Performance behavior | large-document virtualization | M2+/M9 | Implemented | On-demand visible-page render; distant Image.Source cleared |
+| F57-09 | Performance behavior | large-document virtualization | M2+/M9 | Tested | Visible window; `PerformanceBehaviorPolicy.IsOutsideMaterializedWindow` |
 | F57-10 | Performance behavior | low memory usage | M2+/M9 | Tested | Bounded `PageRenderCache` (capacity 32); same coverage as F58-05 |
-| F57-11 | Performance behavior | unload distant PDF pages | M2+/M9 | Implemented | Clear distant page Image.Source; LRU evicts bitmaps |
-| F57-12 | Performance behavior | cancel long-running operations | M2+/M9 | Implemented | PDF OCR Cancel OCR + `CancellationToken`; PDF search cancel |
-| F57-13 | Performance behavior | progress indicator for: | M2+/M9 | Implemented | Toolbar `ProgressBar` for OCR/export/optimize; batch image dialog ProgressBar (F36) |
+| F57-11 | Performance behavior | unload distant PDF pages | M2+/M9 | Tested | Distant Source clear; `ContinuousPageWindow` / LRU |
+| F57-12 | Performance behavior | cancel long-running operations | M2+/M9 | Tested | Cancel OCR/search; `PerformanceBehaviorPolicy.CancelOcrButton` |
+| F57-13 | Performance behavior | progress indicator for: | M2+/M9 | Tested | ProgressBar surfaces; `PerformanceBehaviorPolicy.ProgressSurfaces` |
 | F58-01 | Large-document handling | PDFs with thousands of pages. | M2+/M9 | Tested | Page virtualization via `ContinuousPageWindow` + on-demand render/cache |
 | F58-02 | Large-document handling | Very large raster images. | M2+/M9 | Tested | Display decode capped (max edge 8192); `ImageZoomCalculator.DecodeTargetEdge` |
 | F58-03 | Large-document handling | Progressive rendering. | M2+/M9 | Tested | Image viewer low-res then refine; `NeedsProgressivePreview` unit tests |
@@ -822,7 +822,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F58-05 | Large-document handling | Efficient page cache. | M2+/M9 | Tested | `PageRenderCache` LRU (capacity 32) |
 | F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Deferred | Search is on-demand; full-doc index not required yet (same as F57-05) |
 | F58-07 | Large-document handling | Partial OCR. | M2+/M9 | Tested | OCR selected/current via `OcrPageRangeChooser`; not whole-doc by default |
-| F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | Implemented | PDF search cancel + PDF/image OCR Cancel OCR |
+| F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | Tested | Search/OCR cancel; `PerformanceBehaviorPolicy.CancelOcrButton` |
 | F59-01 | Multi-document workflow | multiple tabs | M1/M3 | Tested | `WorkspaceState` Open/Activate/Close/Reorder/ActivateNext unit tests |
 | F59-02 | Multi-document workflow | multiple windows | M1/M3 | Tested | File → New Window; independent `WorkspaceState` per window (reuse/close tests) |
 | F59-03 | Multi-document workflow | drag tabs between windows | M1/M3 | Tested | `CanDragTabs`/`AllowDropTabs` + drop-outside tear-off; `TabTearOffPolicy` unit tests |
@@ -848,7 +848,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F61-05 | Non-destructive editing where practical | signatures | M3-M5 | Tested | Stamp annotations until Flatten / Save; flatten unit path |
 | F61-06 | Non-destructive editing where practical | shapes | M3-M5 | Tested | Shape annotations until Flatten / Save; flatten unit path |
 | F61-07 | Non-destructive editing where practical | text | M3-M5 | Tested | Text box / callout until Flatten / Save; flatten unit path |
-| F62-01 | Supported output formats | PDF | M5/M7 | Implemented | Save / Extract / OCR→PDF / cropped export |
+| F62-01 | Supported output formats | PDF | M5/M7 | Tested | Save/Extract/OCR→PDF; `OutputFormatSupport.PdfOutputPaths` |
 | F62-02 | Supported output formats | PNG | M5/M7 | Tested | Image export + PDF page Export (`WriteBgraAsync`) |
 | F62-03 | Supported output formats | JPEG | M5/M7 | Tested | Image JPEG quality export + PDF page Export |
 | F62-04 | Supported output formats | WebP | M5/M7 | Tested | Image Convert + PDF page Export |

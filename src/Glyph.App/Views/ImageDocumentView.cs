@@ -1615,13 +1615,12 @@ public sealed class ImageDocumentView : UserControl
         try
         {
             var meta = await _document.GetMetadataAsync();
-            var name = !string.IsNullOrWhiteSpace(meta.Description)
-                ? meta.Description!
-                : !string.IsNullOrWhiteSpace(meta.Title)
+            var name = ImageDescriptiveMetadataSummary.AutomationNameFromDescription(meta)
+                ?? (!string.IsNullOrWhiteSpace(meta.Title)
                     ? meta.Title!
                     : !string.IsNullOrWhiteSpace(_document.Path)
                         ? System.IO.Path.GetFileName(_document.Path)
-                        : "Image";
+                        : "Image");
             AutomationProperties.SetName(_image, name);
             AutomationProperties.SetName(this, name);
         }
@@ -4114,7 +4113,7 @@ public sealed class ImageDocumentView : UserControl
             StepFrequency = 1,
             Width = 240,
         };
-        var lossless = new CheckBox { Content = "Lossless WebP", IsChecked = false };
+        var lossless = new CheckBox { Content = DocumentExportFormats.WebpLosslessLabel, IsChecked = false };
         var preserveAlpha = new CheckBox { Content = "Preserve alpha", IsChecked = true };
         var stripByDefault = false;
         try

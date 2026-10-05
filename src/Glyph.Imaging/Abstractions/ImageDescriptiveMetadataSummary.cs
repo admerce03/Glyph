@@ -42,6 +42,11 @@ public static class ImageDescriptiveMetadataSummary
             parts.Add("Rating: " + rating);
         }
 
+        if (!string.IsNullOrWhiteSpace(info.LensModel))
+        {
+            parts.Add("Lens: " + info.LensModel);
+        }
+
         if (info.HasIptc)
         {
             parts.Add("IPTC");
@@ -54,4 +59,7 @@ public static class ImageDescriptiveMetadataSummary
 
         return string.Join(" · ", parts);
     }
+
+    public static string? AutomationNameFromDescription(ImageMetadataInfo info) =>
+        string.IsNullOrWhiteSpace(info.Description) ? null : info.Description.Trim();
 }

@@ -28,12 +28,18 @@ public static class DocumentExportFormats
     public const string PrimaryButton = "Export…";
     public const string QualityHeader = "JPEG/WebP/AVIF quality";
     public const string DpiHeader = "Render DPI";
+    public const string WebpLosslessLabel = "Lossless WebP";
     public const double DefaultDpi = 144;
     public const double MinDpi = 36;
     public const double MaxDpi = 600;
     public const int MinQuality = 1;
     public const int MaxQuality = 100;
     public const int DefaultQuality = 85;
+
+    public static bool SupportsLosslessCompression(string? formatName) =>
+        formatName is "WebP" or "PNG" or "TIFF" or "AVIF";
+
+    public static bool AnnotationsFlattenedInRasterExport => true;
 
     public static double ParseDpi(string? text, double fallback = DefaultDpi)
     {

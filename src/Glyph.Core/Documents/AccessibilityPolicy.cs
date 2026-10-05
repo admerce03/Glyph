@@ -11,6 +11,8 @@ public static class AccessibilityPolicy
     public const bool TextScalingViaXamlRoot = true;
     public const bool DocumentViewsAreTabStops = true;
     public const bool ZoomScalesPageBitmapsOnly = true;
+    public const bool ImageDescriptionMapsToAutomationName = true;
+    public const bool SignatureLibrarySupportsDescriptions = true;
 
     public static IReadOnlyList<string> ScreenReaderLabeledSurfaces { get; } =
     [

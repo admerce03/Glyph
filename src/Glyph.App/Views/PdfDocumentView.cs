@@ -368,7 +368,7 @@ public sealed class PdfDocumentView : UserControl
         var ocrPage = new Button { Content = "OCR" };
         ocrPage.Click += async (_, _) => await OnOcrButtonClickAsync();
         ToolTipService.SetToolTip(ocrPage, "Run offline OCR on selected pages or the entire PDF");
-        _ocrCancelButton = new Button { Content = "Cancel OCR", Visibility = Visibility.Collapsed };
+        _ocrCancelButton = new Button { Content = PerformanceBehaviorPolicy.CancelOcrButton, Visibility = Visibility.Collapsed };
         _ocrCancelButton.Click += (_, _) => CancelOcr();
         ToolTipService.SetToolTip(_ocrCancelButton, "Cancel the in-flight OCR job");
         _jobProgress = new ProgressBar
@@ -794,7 +794,7 @@ public sealed class PdfDocumentView : UserControl
         var optimize = new Button { Content = "Optimize" };
         var export = new Button { Content = "Export" };
         var print = new Button { Content = "Print" };
-        var camera = new Button { Content = "Camera" };
+        var camera = new Button { Content = WebcamCaptureUi.CaptureButton };
         var sign = new Button { Content = "Sign" };
         var share = new Button { Content = "Share" };
         var sidebarToggle = new Button { Content = "Sidebar" };
@@ -8041,7 +8041,10 @@ public sealed class PdfDocumentView : UserControl
 
             try
             {
-                if (!Uri.TryCreate(action.Uri, UriKind.Absolute, out var uri)
+                var raw = ExternalLaunchPolicy.LooksLikeHttpUrl(action.Uri)
+                    ? action.Uri!
+                    : ExternalLaunchPolicy.NormalizeHttpUrl(action.Uri!);
+                if (!Uri.TryCreate(raw, UriKind.Absolute, out var uri)
                     || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps
                         && uri.Scheme != Uri.UriSchemeMailto))
                 {

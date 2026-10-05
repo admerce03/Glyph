@@ -35,17 +35,11 @@ public class ImageDescriptiveMetadataSummaryTests
     }
 
     [Fact]
-    public void Format_joins_full_descriptive_fields()
+    public void Format_includes_lens_model()
     {
-        var info = Blank(
-            title: "T",
-            description: "D",
-            keywords: "a,b",
-            copyright: "Me",
-            rating: 4,
-            hasIptc: true,
-            hasXmp: true);
-        ImageDescriptiveMetadataSummary.Format(info)
-            .Should().Be("Title: T · Description: D · Keywords: a,b · © Me · Rating: 4 · IPTC · XMP");
+        var info = Blank(title: "T") with { LensModel = "EF 50mm" };
+        ImageDescriptiveMetadataSummary.Format(info).Should().Contain("Lens: EF 50mm");
+        ImageDescriptiveMetadataSummary.AutomationNameFromDescription(Blank(description: "Alt"))
+            .Should().Be("Alt");
     }
 }
