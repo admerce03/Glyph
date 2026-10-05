@@ -443,7 +443,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-18 | Image viewing | image list sidebar | M5 | Implemented | Folder ListView in ImageDocumentView |
 | F26-19 | Image viewing | open group of images together | M5 | Implemented | Open With picker PickMultipleFilesAsync |
 | F26-20 | Image viewing | slideshow | M5 | Implemented | Slideshow toolbar: 3s loop through folder; Esc / Stop show; resumes across sibling opens via `ViewState.IsSlideshowActive` |
-| F26-21 | Image viewing | drag-and-drop navigation | M5 | Not Started |  |
+| F26-21 | Image viewing | drag-and-drop navigation | M5 | Implemented | Shell drop opens images (`DropHost`); horizontal swipe on image → prev/next in folder |
 | F26-22 | Image viewing | high-resolution image support | M5 | Not Started |  |
 | F26-23 | Image viewing | alpha transparency | M5 | Implemented | BGRA32 decode via Magick → WriteableBitmap |
 | F26-24 | Image viewing | HDR display where Windows/display stack supports it | M5 | Not Started |  |

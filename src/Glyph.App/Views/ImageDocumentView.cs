@@ -44,6 +44,8 @@ public sealed class ImageDocumentView : UserControl
     private bool _cropMode;
     private bool _cropDragging;
     private Windows.Foundation.Point _cropStart;
+    private bool _navDragging;
+    private Windows.Foundation.Point _navStart;
     private int _displayWidth;
     private int _displayHeight;
 
@@ -93,6 +95,10 @@ public sealed class ImageDocumentView : UserControl
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
         };
+        _scrollViewer.PointerPressed += ImageSurface_PointerPressed;
+        _scrollViewer.PointerMoved += ImageSurface_PointerMoved;
+        _scrollViewer.PointerReleased += ImageSurface_PointerReleased;
+        _scrollViewer.PointerCaptureLost += (_, _) => _navDragging = false;
         _status = new TextBlock { Opacity = 0.75, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
         _cropBox = new TextBox
         {
@@ -336,6 +342,52 @@ public sealed class ImageDocumentView : UserControl
         }
 
         await _openSibling(target);
+    }
+
+    private void ImageSurface_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (_cropMode || e.GetCurrentPoint(_scrollViewer).Properties.IsRightButtonPressed)
+        {
+            return;
+        }
+
+        // Don't steal clicks from toolbar; only gesture when not cropping.
+        _navDragging = true;
+        _navStart = e.GetCurrentPoint(_scrollViewer).Position;
+        _scrollViewer.CapturePointer(e.Pointer);
+    }
+
+    private void ImageSurface_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        // Threshold checked on release to avoid fighting ScrollViewer pan.
+    }
+
+    private async void ImageSurface_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_navDragging)
+        {
+            return;
+        }
+
+        _navDragging = false;
+        try { _scrollViewer.ReleasePointerCapture(e.Pointer); } catch { /* ignore */ }
+
+        if (_cropMode)
+        {
+            return;
+        }
+
+        var end = e.GetCurrentPoint(_scrollViewer).Position;
+        var dx = end.X - _navStart.X;
+        var dy = end.Y - _navStart.Y;
+        const double minSwipe = 80;
+        if (Math.Abs(dx) < minSwipe || Math.Abs(dx) < Math.Abs(dy) * 1.5)
+        {
+            return;
+        }
+
+        // Swipe left → next; swipe right → previous (natural photo-viewer feel).
+        await NavigateSiblingAsync(dx < 0 ? 1 : -1);
     }
 
     private void ToggleSlideshow()
