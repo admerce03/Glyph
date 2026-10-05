@@ -371,7 +371,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F21-06 | Redaction | Remove underlying text/image data, not merely cover it visually. | M7 | Tested | Black page object + remove intersecting text/images; search empty after apply |
 | F21-07 | Redaction | Warn before permanent application. | M7 | Implemented | ContentDialog confirm before `ApplyAsync` |
 | F21-08 | Redaction | Sanitize associated hidden content where practical. | M7 | Tested | Apply removes intersecting annotations via `RemoveIntersectingAnnotations` |
-| F21-09 | Redaction | Option to remove: | M7 | In Progress | Annotations on apply; metadata/embedded files/layers still open |
+| F21-09 | Redaction | Option to remove: | M7 | Implemented | Apply removes intersecting annotations + embedded file name-tree entries (PDFium unlink; stream bytes may remain until optimize). Metadata clear blocked (no PDFium SetMetaText; ADR-015). Layers N/A (no OCG API). |
 | F21-10 | Redaction | Search and redact matching text, later/advanced. | M7 | Implemented | Redact → Mark find matches from current Find query |
 | F22-01 | PDF annotation flattening | highlights | M4 | Tested | `FlattenAsync` via `FPDFPage_Flatten` |
 | F22-02 | PDF annotation flattening | notes as configured | M4 | Tested | Same flatten path |
@@ -418,7 +418,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F25-12 | PDF metadata | file size | M7 | Implemented | Info dialog file size||
 | F25-13 | PDF metadata | encryption status | M7 | Implemented | Info dialog + status encryption flag||
 | F25-14 | PDF metadata | permissions | M7 | Implemented | Info dialog decoded permission flags||
-| F25-15 | PDF metadata | embedded fonts, optionally | M7 | Not Started |  |
+| F25-15 | PDF metadata | embedded fonts, optionally | M7 | Tested | Info dialog lists fonts from page text objects (first 32 pages) |
 | F25-16 | PDF metadata | title | M7 | Not Started |  |
 | F25-17 | PDF metadata | author | M7 | Not Started |  |
 | F25-18 | PDF metadata | subject | M7 | Not Started |  |

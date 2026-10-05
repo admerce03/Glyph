@@ -49,6 +49,9 @@ public sealed class PdfiumDocumentInfoService : IPdfDocumentInfoService
                 pageHeight = page.HeightPoints;
             }
 
+            var fonts = CollectFontNames(handle, pdfium.PageCount);
+            var attachmentCount = Math.Max(0, fpdf_attachment.FPDFDocGetAttachmentCount(handle));
+
             return new PdfDocumentInfo(
                 Title: ReadMeta(handle, "Title"),
                 Author: ReadMeta(handle, "Author"),
@@ -64,10 +67,85 @@ public sealed class PdfiumDocumentInfoService : IPdfDocumentInfoService
                 PdfVersion: pdfVersion,
                 PageWidthPoints: pageWidth,
                 PageHeightPoints: pageHeight,
+                Fonts: fonts,
+                EmbeddedAttachmentCount: attachmentCount,
                 IsEncrypted: pdfium.IsEncrypted,
                 SecurityHandlerRevision: revision,
                 PermissionFlags: flags,
                 Permissions: DecodePermissions(flags));
+        }
+    }
+
+    private static IReadOnlyList<string> CollectFontNames(FpdfDocumentT handle, int pageCount)
+    {
+        var names = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        var pagesToScan = Math.Min(pageCount, 32);
+        for (var pageIndex = 0; pageIndex < pagesToScan; pageIndex++)
+        {
+            var page = fpdfview.FPDF_LoadPage(handle, pageIndex);
+            if (page is null)
+            {
+                continue;
+            }
+
+            try
+            {
+                var objectCount = fpdf_edit.FPDFPageCountObjects(page);
+                for (var i = 0; i < objectCount; i++)
+                {
+                    var obj = fpdf_edit.FPDFPageGetObject(page, i);
+                    if (obj is null || fpdf_edit.FPDFPageObjGetType(obj) != 1 /* text */)
+                    {
+                        continue;
+                    }
+
+                    var font = fpdf_edit.FPDFTextObjGetFont(obj);
+                    if (font is null)
+                    {
+                        continue;
+                    }
+
+                    var name = ReadFontName(font);
+                    if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        names.Add(name);
+                    }
+                }
+            }
+            finally
+            {
+                fpdfview.FPDF_ClosePage(page);
+            }
+        }
+
+        return names.ToList();
+    }
+
+    private static unsafe string? ReadFontName(FpdfFontT font)
+    {
+        var needed = fpdf_edit.FPDFFontGetFontName(font, null, 0);
+        if (needed <= 1)
+        {
+            return null;
+        }
+
+        var buffer = new byte[needed];
+        fixed (byte* ptr = buffer)
+        {
+            var written = fpdf_edit.FPDFFontGetFontName(font, (sbyte*)ptr, (uint)buffer.Length);
+            if (written <= 1)
+            {
+                return null;
+            }
+
+            var length = (int)Math.Min(written, (uint)buffer.Length);
+            while (length > 0 && buffer[length - 1] == 0)
+            {
+                length--;
+            }
+
+            var text = Encoding.UTF8.GetString(buffer, 0, length).Trim();
+            return string.IsNullOrEmpty(text) ? null : text;
         }
     }
 

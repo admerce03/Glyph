@@ -36,6 +36,8 @@ public class PdfiumDocumentInfoServiceTests
             info.PdfVersion.Should().NotBeNullOrWhiteSpace();
             info.PageWidthPoints.Should().BeApproximately(612, 0.5); // Letter
             info.PageHeightPoints.Should().BeApproximately(792, 0.5);
+            info.Fonts.Should().NotBeEmpty();
+            info.EmbeddedAttachmentCount.Should().Be(0);
         }
         finally
         {

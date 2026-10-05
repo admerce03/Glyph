@@ -70,6 +70,7 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
                     var textRemoved = 0;
                     var imagesRemoved = 0;
                     var annotationsRemoved = 0;
+                    var attachmentsRemoved = 0;
                     var marks = 0;
 
                     foreach (var group in byPage)
@@ -122,6 +123,11 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
                         }
                     }
 
+                    if (opts.RemoveEmbeddedAttachments && marks > 0)
+                    {
+                        attachmentsRemoved = RemoveAllEmbeddedAttachments(pdfium.Handle);
+                    }
+
                     _store.Clear(pdfium);
                     if (pagesChanged > 0)
                     {
@@ -133,10 +139,26 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
                         pagesChanged,
                         textRemoved,
                         imagesRemoved,
-                        annotationsRemoved);
+                        annotationsRemoved,
+                        attachmentsRemoved);
                 }
             },
             cancellationToken);
+    }
+
+    private static int RemoveAllEmbeddedAttachments(FpdfDocumentT handle)
+    {
+        var removed = 0;
+        // High→low so deletions do not shift earlier indices.
+        for (var i = fpdf_attachment.FPDFDocGetAttachmentCount(handle) - 1; i >= 0; i--)
+        {
+            if (fpdf_attachment.FPDFDocDeleteAttachment(handle, i) != 0)
+            {
+                removed++;
+            }
+        }
+
+        return removed;
     }
 
     private static void InsertBlackRect(FpdfPageT page, PdfRect bounds)

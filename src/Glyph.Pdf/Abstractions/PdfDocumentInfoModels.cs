@@ -18,6 +18,8 @@ public sealed record PdfDocumentInfo(
     string? PdfVersion,
     double? PageWidthPoints,
     double? PageHeightPoints,
+    IReadOnlyList<string> Fonts,
+    int EmbeddedAttachmentCount,
     bool IsEncrypted,
     int SecurityHandlerRevision,
     uint PermissionFlags,

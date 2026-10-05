@@ -19,11 +19,17 @@ public sealed record PdfPendingRedaction(
 public sealed record PdfRedactionApplyOptions(
     bool RemoveIntersectingTextObjects = true,
     bool RemoveIntersectingImageObjects = false,
-    bool RemoveIntersectingAnnotations = true);
+    bool RemoveIntersectingAnnotations = true,
+    /// <summary>
+    /// Unlink document-level embedded file attachments from the name tree
+    /// (PDFium may leave orphan stream bytes until a later full optimize pass).
+    /// </summary>
+    bool RemoveEmbeddedAttachments = true);
 
 public sealed record PdfRedactionApplyResult(
     int MarksApplied,
     int PagesChanged,
     int TextObjectsRemoved,
     int ImageObjectsRemoved,
-    int AnnotationsRemoved = 0);
+    int AnnotationsRemoved = 0,
+    int AttachmentsRemoved = 0);

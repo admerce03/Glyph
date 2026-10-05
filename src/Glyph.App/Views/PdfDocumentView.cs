@@ -5610,7 +5610,8 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = "Apply redactions permanently?",
             Content =
-                $"Apply {pending.Count} redaction mark(s)? Underlying text and covered content will be removed from the PDF. This cannot be undone.",
+                $"Apply {pending.Count} redaction mark(s)? Underlying text and covered content will be removed from the PDF. "
+                + "Intersecting annotations and embedded file entries will also be removed. This cannot be undone.",
             PrimaryButtonText = "Apply",
             SecondaryButtonText = "Clear marks",
             CloseButtonText = "Cancel",
@@ -5641,7 +5642,8 @@ public sealed class PdfDocumentView : UserControl
                 new PdfRedactionApplyOptions(
                     RemoveIntersectingTextObjects: true,
                     RemoveIntersectingImageObjects: true,
-                    RemoveIntersectingAnnotations: true));
+                    RemoveIntersectingAnnotations: true,
+                    RemoveEmbeddedAttachments: true));
             ClearRedactionMode();
             RefreshToolButtonChrome();
             _cache.ClearDocument(_documentKey);
@@ -5660,7 +5662,7 @@ public sealed class PdfDocumentView : UserControl
                 _status.Text =
                     $"Applied {result.MarksApplied} redaction(s) on {result.PagesChanged} page(s); "
                     + $"removed {result.TextObjectsRemoved} text / {result.ImageObjectsRemoved} image / "
-                    + $"{result.AnnotationsRemoved} annotation object(s).";
+                    + $"{result.AnnotationsRemoved} annotation / {result.AttachmentsRemoved} attachment object(s).";
             }
         }
         catch (Exception ex)
@@ -7294,6 +7296,8 @@ public sealed class PdfDocumentView : UserControl
                 + $"Page size: {(info.PageWidthPoints is null || info.PageHeightPoints is null
                     ? "—"
                     : $"{info.PageWidthPoints:0.#} × {info.PageHeightPoints:0.#} pt")}\n"
+                + $"Fonts: {(info.Fonts.Count == 0 ? "—" : string.Join(", ", info.Fonts))}\n"
+                + $"Embedded files: {info.EmbeddedAttachmentCount}\n"
                 + $"File: {Val(info.FilePath is null ? null : System.IO.Path.GetFileName(info.FilePath))}\n"
                 + $"Size: {Bytes(info.FileSizeBytes)}\n"
                 + $"Encrypted: {(info.IsEncrypted ? "yes" : "no")}\n"

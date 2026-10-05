@@ -1,7 +1,9 @@
+using System.Text;
 using FluentAssertions;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Pdfium;
 using Glyph.Pdf.Text;
+using PDFiumCore;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.Core;
 using UglyToad.PdfPig.Fonts.Standard14Fonts;
@@ -178,6 +180,64 @@ public class PdfiumRedactionServiceTests
         finally
         {
             File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task Apply_removes_embedded_attachments()
+    {
+        var path = CreateTextPdf("Attachment host");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var redaction = new PdfiumRedactionService();
+            await using var document = await factory.OpenAsync(path);
+            var pdfium = (PdfiumDocument)document;
+
+            PdfiumLibrary.EnsureInitialized();
+            lock (PdfiumSync.Gate)
+            {
+                AddAttachment(pdfium.Handle, "secret.txt", "top secret bytes"u8.ToArray());
+                fpdf_attachment.FPDFDocGetAttachmentCount(pdfium.Handle).Should().Be(1);
+            }
+
+            redaction.MarkRectangle(document, 0, new PdfRect(50, 700, 200, 740), "box");
+            var result = await redaction.ApplyAsync(
+                document,
+                new PdfRedactionApplyOptions(
+                    RemoveIntersectingTextObjects: false,
+                    RemoveIntersectingImageObjects: false,
+                    RemoveIntersectingAnnotations: false,
+                    RemoveEmbeddedAttachments: true));
+            result.AttachmentsRemoved.Should().Be(1);
+
+            lock (PdfiumSync.Gate)
+            {
+                fpdf_attachment.FPDFDocGetAttachmentCount(pdfium.Handle).Should().Be(0);
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    private static unsafe void AddAttachment(FpdfDocumentT handle, string name, byte[] contents)
+    {
+        var nameBytes = Encoding.Unicode.GetBytes(name + "\0");
+        fixed (byte* namePtr = nameBytes)
+        {
+            var attachment = fpdf_attachment.FPDFDocAddAttachment(handle, ref *(ushort*)namePtr);
+            attachment.Should().NotBeNull();
+            fixed (byte* dataPtr = contents)
+            {
+                fpdf_attachment.FPDFAttachmentSetFile(
+                        attachment,
+                        handle,
+                        (IntPtr)dataPtr,
+                        (uint)contents.Length)
+                    .Should().NotBe(0);
+            }
         }
     }
 
