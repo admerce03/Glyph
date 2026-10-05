@@ -26,7 +26,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M6 | OCR and scanned-document capabilities | **Tested** (PRs #62–#66 merged; offline OCR/Live Text/entities) | M2, M5 |
 | M7 | Redaction, PDF security, optimization, metadata | **Tested** (#67; password-write → ADR-015) | M2–M4 |
 | M8 | Batch ops, scanner, color management, advanced | **Tested** (hardware validation TBD; ML subject deferred) | M5–M7 |
-| M9 | Performance, polish, a11y, installer, audit | **In Progress** (packaging+CI sideload probe+shortcuts+toolbar F54+proof kit; Explorer UserChoice + ADR-015 TBD — see INTERACTIVE_VERIFY / docs/proof) | M1–M8 core paths |
+| M9 | Performance, polish, a11y, installer, audit | **In Progress** (packaging x64+arm64+CI sideload probe+shortcuts+toolbar F54+proof kit; Explorer UserChoice + ADR-015 TBD — see INTERACTIVE_VERIFY / docs/proof) | M1–M8 core paths |
 
 M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behind separate interfaces. M3 remains the highest-priority Preview-differentiator after viewing works.
 
@@ -399,7 +399,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - CI: push + PR for the same branch share a concurrency group (`head_ref || ref_name`) so Windows runners are not double-queued
 - MSIX: Windows CI produces test-signed `Glyph.App_*.msix` + `Glyph.CI.TestSign.cer` for **win-x64** and **win-arm64**, enables AppModelUnlock sideloading on the x64 runner, and runs `install-msix-test.ps1 -Force -ProbeUserDefaults` (manifest association probe). Operator guide: [`PACKAGING.md`](PACKAGING.md). F01-06/07 remain Deferred until Explorer UserChoice / double-click verification (ADR-012). **Blocked:** ADR-015 password-write (Needs approval, prefer Option A PdfSharp).
 - Interactive proof kit (#107): `docs/proof/README.md` + `InteractiveVerifyArtifacts` path helpers; sideload script dumps HKCU UserChoice ProgIds and can open Default apps Settings
-- Matrix audit (2026-10-05 tip through #109): 881 rows — 862 Tested / 12 Deferred / 7 Blocked (all Blocked = ADR-015 password-write); zero Not Started / In Progress / Implemented
+- Matrix audit (2026-10-05 tip through #110): 881 rows — 862 Tested / 12 Deferred / 7 Blocked (all Blocked = ADR-015 password-write); zero Not Started / In Progress / Implemented
 - Interactive proof debt: Explorer UserChoice defaults, M1 shell screenshot, M2 viewer screenshots, M3 §11 cross-doc DnD recording — checklist in [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md) / [`docs/proof/`](proof/README.md)
 - Deferred catalogs unit-tested (`PackagingDeferredPolicy`, `PdfOptimizeDeferredPolicy`, `ImageAdvancedDeferredPolicy`, …)
 
@@ -409,7 +409,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 | Area | FEATURES.md | Milestone | Status |
 | --- | --- | --- | --- |
-| App/file handling | §1 | M1, M9 | Tested (test-signed `.msix` on CI; associations → ADR-012 sideload; session restore = single-window tabs) |
+| App/file handling | §1 | M1, M9 | Tested (CI test-signed x64+arm64 `.msix` + x64 sideload/association probe; Explorer UserChoice → ADR-012 interactive; session restore = single-window tabs) |
 | Main window/UI chrome | §2 | M1, M9 | Tested |
 | Sidebar modes | §3 | M2–M5 | Tested (mode ComboBox + panels) |
 | PDF viewing | §4 | M2 | Tested (incl. Zoom ▭ / Glass / Present) |
