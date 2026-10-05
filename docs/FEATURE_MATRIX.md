@@ -241,8 +241,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-15 | PDF annotations | Stamps, optionally | M4 | Tested | Same path as signatures (`AddStampAsync`) |
 | F13-16 | PDF annotations | Signatures | M4 | Tested | Stamp via `AddStampAsync` + Sign toolbar |
 | F13-17 | PDF annotations | Freeform shapes | M4 | Not Started |  |
-| F13-18 | PDF annotations | Annotation selection tool | M4 | Not Started |  |
-| F13-19 | PDF annotations | move | M4 | Tested | `MoveAsync` API |
+| F13-18 | PDF annotations | Annotation selection tool | M4 | Tested | Click annot on page / sidebar; drag moves |
+| F13-19 | PDF annotations | move | M4 | Tested | `MoveAsync` API + drag on page |
 | F13-20 | PDF annotations | resize | M4 | Not Started |  |
 | F13-21 | PDF annotations | rotate where appropriate | M4 | Not Started |  |
 | F13-22 | PDF annotations | duplicate | M4 | Not Started |  |

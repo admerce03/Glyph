@@ -100,6 +100,11 @@ public sealed class PdfDocumentView : UserControl
     private bool _dragSelecting;
     private Windows.Foundation.Point _dragStart;
     private int _dragPageIndex = -1;
+    private PdfAnnotationInfo? _selectedAnnot;
+    private bool _annotDragging;
+    private PdfRect _annotDragOriginBounds;
+    private Windows.Foundation.Point _annotDragOriginUi;
+    private Microsoft.UI.Xaml.Shapes.Rectangle? _annotSelectionRect;
     private string _searchQuery = string.Empty;
     private bool _searchCaseSensitive;
     private bool _cropMode;
@@ -1330,9 +1335,23 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        var pressPoint = e.GetCurrentPoint(border).Position;
+        var page = _document.GetPage(pageIndex);
+        var pdfX = pressPoint.X / _scale;
+        var pdfY = page.HeightPoints - (pressPoint.Y / _scale);
+        var hit = PdfAnnotationHitTest.HitTest(_annotationItems, pageIndex, pdfX, pdfY);
+        if (hit is not null)
+        {
+            BeginAnnotDrag(border, hit, pressPoint, e);
+            e.Handled = true;
+            return;
+        }
+
+        ClearAnnotSelectionVisual();
+        _selectedAnnot = null;
         _dragSelecting = true;
         _dragPageIndex = pageIndex;
-        _dragStart = e.GetCurrentPoint(border).Position;
+        _dragStart = pressPoint;
         border.CapturePointer(e.Pointer);
     }
 
@@ -1367,6 +1386,19 @@ public sealed class PdfDocumentView : UserControl
             if (sender is Border { Tag: int shapePage } shapeBorder && shapePage == _shapePageIndex)
             {
                 ContinueShapeDrag(shapeBorder, e);
+                e.Handled = true;
+            }
+
+            return;
+        }
+
+        if (_annotDragging)
+        {
+            if (sender is Border { Tag: int annotPage } annotBorder &&
+                _selectedAnnot is not null &&
+                annotPage == _selectedAnnot.PageIndex)
+            {
+                ContinueAnnotDrag(annotBorder, e);
                 e.Handled = true;
             }
 
@@ -1445,6 +1477,13 @@ public sealed class PdfDocumentView : UserControl
         if (_shapeMode is not null && _shapeDrawing && pageIndex == _shapePageIndex)
         {
             await EndShapeDragAsync(border, e);
+            e.Handled = true;
+            return;
+        }
+
+        if (_annotDragging && _selectedAnnot is not null && pageIndex == _selectedAnnot.PageIndex)
+        {
+            await EndAnnotDragAsync(border, e);
             e.Handled = true;
             return;
         }
@@ -3059,8 +3098,161 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var item = _annotationItems[index];
+        _selectedAnnot = item;
+        DrawAnnotSelection(item);
         await GoToPageAsync(item.PageIndex, recordHistory: true);
         _status.Text = $"Jumped to {FormatAnnotationLabel(item)}.";
+    }
+
+    private void BeginAnnotDrag(
+        Border border,
+        PdfAnnotationInfo hit,
+        Windows.Foundation.Point uiPoint,
+        PointerRoutedEventArgs e)
+    {
+        _selectedAnnot = hit;
+        _annotDragging = true;
+        _annotDragOriginBounds = hit.Bounds;
+        _annotDragOriginUi = uiPoint;
+        border.CapturePointer(e.Pointer);
+        SyncSidebarSelection(hit);
+        DrawAnnotSelection(hit);
+        _status.Text = $"Selected {FormatAnnotationLabel(hit)}. Drag to move.";
+    }
+
+    private void ContinueAnnotDrag(Border border, PointerRoutedEventArgs e)
+    {
+        if (_selectedAnnot is null)
+        {
+            return;
+        }
+
+        var current = e.GetCurrentPoint(border).Position;
+        var dx = (current.X - _annotDragOriginUi.X) / _scale;
+        var dy = (_annotDragOriginUi.Y - current.Y) / _scale; // UI Y down → PDF Y up
+        var moved = new PdfRect(
+            _annotDragOriginBounds.Left + dx,
+            _annotDragOriginBounds.Bottom + dy,
+            _annotDragOriginBounds.Right + dx,
+            _annotDragOriginBounds.Top + dy);
+        DrawAnnotSelection(_selectedAnnot with { Bounds = moved });
+    }
+
+    private async Task EndAnnotDragAsync(Border border, PointerRoutedEventArgs e)
+    {
+        try { border.ReleasePointerCapture(e.Pointer); } catch { /* ignore */ }
+        _annotDragging = false;
+        if (_selectedAnnot is null)
+        {
+            return;
+        }
+
+        var current = e.GetCurrentPoint(border).Position;
+        var dxUi = current.X - _annotDragOriginUi.X;
+        var dyUi = current.Y - _annotDragOriginUi.Y;
+        if (Math.Abs(dxUi) + Math.Abs(dyUi) < 3)
+        {
+            DrawAnnotSelection(_selectedAnnot);
+            return;
+        }
+
+        var dx = dxUi / _scale;
+        var dy = -dyUi / _scale;
+        var moved = new PdfRect(
+            _annotDragOriginBounds.Left + dx,
+            _annotDragOriginBounds.Bottom + dy,
+            _annotDragOriginBounds.Right + dx,
+            _annotDragOriginBounds.Top + dy);
+
+        try
+        {
+            _status.Text = "Moving annotation…";
+            await _annotations.MoveAsync(
+                _document,
+                _selectedAnnot.PageIndex,
+                _selectedAnnot.AnnotIndex,
+                moved);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _selectedAnnot = _annotationItems.FirstOrDefault(
+                a => a.PageIndex == _selectedAnnot.PageIndex && a.AnnotIndex == _selectedAnnot.AnnotIndex)
+                ?? _selectedAnnot with { Bounds = moved };
+            SyncSidebarSelection(_selectedAnnot);
+            DrawAnnotSelection(_selectedAnnot);
+            _status.Text = "Annotation moved.";
+        }
+        catch (Exception ex)
+        {
+            DrawAnnotSelection(_selectedAnnot);
+            _status.Text = "Move failed: " + ex.Message;
+        }
+    }
+
+    private void SyncSidebarSelection(PdfAnnotationInfo info)
+    {
+        var index = _annotationItems.ToList().FindIndex(
+            a => a.PageIndex == info.PageIndex && a.AnnotIndex == info.AnnotIndex);
+        if (index < 0)
+        {
+            return;
+        }
+
+        _suppressAnnotationNav = true;
+        _annotationList.SelectedIndex = index;
+        _suppressAnnotationNav = false;
+    }
+
+    private void DrawAnnotSelection(PdfAnnotationInfo info)
+    {
+        ClearAnnotSelectionVisual();
+        if (!_pageOverlays.TryGetValue(info.PageIndex, out var overlay))
+        {
+            return;
+        }
+
+        var page = _document.GetPage(info.PageIndex);
+        var left = info.Bounds.Left * _scale;
+        var top = (page.HeightPoints - info.Bounds.Top) * _scale;
+        var width = Math.Max(4, info.Bounds.Width * _scale);
+        var height = Math.Max(4, info.Bounds.Height * _scale);
+        _annotSelectionRect = new Microsoft.UI.Xaml.Shapes.Rectangle
+        {
+            Width = width,
+            Height = height,
+            Stroke = new SolidColorBrush(Colors.DodgerBlue),
+            StrokeThickness = 2,
+            Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 30, 144, 255)),
+            IsHitTestVisible = false,
+        };
+        Canvas.SetLeft(_annotSelectionRect, left);
+        Canvas.SetTop(_annotSelectionRect, top);
+        overlay.Children.Add(_annotSelectionRect);
+    }
+
+    private void ClearAnnotSelectionVisual()
+    {
+        if (_annotSelectionRect is null)
+        {
+            return;
+        }
+
+        if (_selectedAnnot is not null &&
+            _pageOverlays.TryGetValue(_selectedAnnot.PageIndex, out var overlay))
+        {
+            overlay.Children.Remove(_annotSelectionRect);
+        }
+        else
+        {
+            foreach (var pageOverlay in _pageOverlays.Values)
+            {
+                pageOverlay.Children.Remove(_annotSelectionRect);
+            }
+        }
+
+        _annotSelectionRect = null;
     }
 
     private async Task RemoveSelectedAnnotationAsync()
