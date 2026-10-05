@@ -410,8 +410,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F25-04 | PDF metadata | keywords | M7 | Implemented | Info dialog Keywords||
 | F25-05 | PDF metadata | creator | M7 | Tested | Info dialog + Edit… `/Creator` via Info patch |
 | F25-06 | PDF metadata | producer | M7 | Tested | Info dialog + Edit… `/Producer` via Info patch |
-| F25-07 | PDF metadata | created date | M7 | Implemented | Info dialog CreationDate||
-| F25-08 | PDF metadata | modified date | M7 | Implemented | Info dialog ModDate||
+| F25-07 | PDF metadata | created date | M7 | Tested | Info dialog CreationDate; preserved on Edit… |
+| F25-08 | PDF metadata | modified date | M7 | Tested | Info dialog ModDate; Edit…/SetInfo refreshes `/ModDate` |
 | F25-09 | PDF metadata | page count | M7 | Implemented | Info dialog page count||
 | F25-10 | PDF metadata | PDF version | M7 | Tested | Info dialog `%PDF-x.y` header via `ReadPdfVersion` |
 | F25-11 | PDF metadata | page dimensions | M7 | Tested | Info dialog page 0 width×height in points |

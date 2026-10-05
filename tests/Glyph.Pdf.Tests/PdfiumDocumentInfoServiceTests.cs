@@ -93,6 +93,41 @@ public class PdfiumDocumentInfoServiceTests
             info.Keywords.Should().Be("alpha, beta");
             info.Creator.Should().Be("New Creator");
             info.Producer.Should().Be("New Producer");
+            info.ModificationDate.Should().NotBeNullOrWhiteSpace();
+            info.ModificationDate.Should().StartWith("D:");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task SetInfo_preserves_creation_date_when_updating()
+    {
+        var path = CreateInfoPdf();
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var infoService = new PdfiumDocumentInfoService();
+            await using var document = await factory.OpenAsync(path);
+
+            // Seed CreationDate via a clear-then-set cycle that writes ModDate, then set fields
+            // while preserving whatever CreationDate PDFium already exposed (often null on PdfPig).
+            infoService.SetInfo(
+                document,
+                new PdfDocumentInfoUpdate(Title: "Seed"));
+            var afterSeed = infoService.GetInfo(document);
+            var creation = afterSeed.CreationDate;
+
+            infoService.SetInfo(
+                document,
+                new PdfDocumentInfoUpdate(Title: "Updated Again"));
+
+            var info = infoService.GetInfo(document);
+            info.Title.Should().Be("Updated Again");
+            info.CreationDate.Should().Be(creation);
+            info.ModificationDate.Should().NotBeNullOrWhiteSpace();
         }
         finally
         {
@@ -147,6 +182,8 @@ public class PdfiumDocumentInfoServiceTests
             info.Keywords.Should().BeNullOrEmpty();
             info.Creator.Should().BeNullOrEmpty();
             info.Producer.Should().BeNullOrEmpty();
+            info.CreationDate.Should().BeNullOrEmpty();
+            info.ModificationDate.Should().BeNullOrEmpty();
         }
         finally
         {

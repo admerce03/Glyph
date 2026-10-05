@@ -144,7 +144,9 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
                                 Subject: string.Empty,
                                 Keywords: string.Empty,
                                 Creator: string.Empty,
-                                Producer: string.Empty));
+                                Producer: string.Empty,
+                                CreationDate: string.Empty,
+                                ModDate: string.Empty));
                         pdfium.ReplaceFromBytes(cleared);
                         metadataCleared = true;
                     }

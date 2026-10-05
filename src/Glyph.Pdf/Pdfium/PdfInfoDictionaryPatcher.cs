@@ -117,6 +117,8 @@ internal static partial class PdfInfoDictionaryPatcher
         Append(sb, "Keywords", fields.Keywords);
         Append(sb, "Creator", fields.Creator);
         Append(sb, "Producer", fields.Producer);
+        Append(sb, "CreationDate", fields.CreationDate);
+        Append(sb, "ModDate", fields.ModDate);
         sb.Append(" >>");
         return sb.ToString();
     }
@@ -182,4 +184,6 @@ internal sealed record PdfInfoFields(
     string? Subject,
     string? Keywords,
     string? Creator = null,
-    string? Producer = null);
+    string? Producer = null,
+    string? CreationDate = null,
+    string? ModDate = null);
