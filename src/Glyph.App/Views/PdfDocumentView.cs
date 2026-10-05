@@ -13122,7 +13122,7 @@ public sealed class PdfDocumentView : UserControl
                 + $"Pages: {info.PageCount} · {pageSize}\n"
                 + $"File: {fileName} · {Bytes(info.FileSizeBytes)}\n"
                 + $"PDF: {DisplayValue.OrEmDash(info.PdfVersion)}"
-                + (info.IsEncrypted ? " · Encrypted" : string.Empty)
+                + PdfDocumentPermissions.PropertiesEncryptedMarker(info.IsEncrypted)
                 + (info.EmbeddedAttachmentCount > 0
                     ? $"\nAttachments: {info.EmbeddedAttachmentCount}"
                     : string.Empty);

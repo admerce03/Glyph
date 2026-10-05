@@ -58,8 +58,14 @@ public sealed record PdfDocumentPermissions(
     /// <summary>Compact status-bar marker when <c>IsEncrypted</c> (F23-08).</summary>
     public const string StatusBarEncryptedMarker = "    Encrypted";
 
+    /// <summary>Sidebar properties suffix when encrypted (F23-08).</summary>
+    public const string PropertiesEncryptedSuffix = " · Encrypted";
+
     public static string StatusBarEncryptedSuffix(bool isEncrypted) =>
         isEncrypted ? StatusBarEncryptedMarker : string.Empty;
+
+    public static string PropertiesEncryptedMarker(bool isEncrypted) =>
+        isEncrypted ? PropertiesEncryptedSuffix : string.Empty;
 
     public static string InfoEncryptedLine(bool isEncrypted) =>
         $"Encrypted: {(isEncrypted ? "yes" : "no")}";
