@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Glyph.Core.Documents;
 using Glyph.Infrastructure.Settings;
 
 namespace Glyph.Infrastructure.Tests;
@@ -86,11 +87,63 @@ public class JsonSettingsStoreTests
             {
                 DefaultPageLayout = "TwoPageWithCover",
                 DefaultZoom = 1.5,
+                RememberLastPage = false,
+                RememberZoom = false,
             });
 
             var settings = await new JsonSettingsStore(path).LoadAsync();
             settings.DefaultPageLayout.Should().Be("TwoPageWithCover");
             settings.DefaultZoom.Should().Be(1.5);
+            settings.RememberLastPage.Should().BeFalse();
+            settings.RememberZoom.Should().BeFalse();
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Load_missing_remember_view_prefs_means_null_default_on()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-remember-missing-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            await File.WriteAllTextAsync(path, """{"theme":"System","defaultZoom":1.25}""");
+            var settings = await new JsonSettingsStore(path).LoadAsync();
+            settings.RememberLastPage.Should().BeNull();
+            settings.RememberZoom.Should().BeNull();
+            DocumentViewRestorePolicy.EffectiveRememberLastPage(settings.RememberLastPage).Should().BeTrue();
+            DocumentViewRestorePolicy.EffectiveRememberZoom(settings.RememberZoom).Should().BeTrue();
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Save_and_load_round_trips_remember_view_prefs_on()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-remember-on-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings
+            {
+                RememberLastPage = true,
+                RememberZoom = true,
+            });
+
+            var settings = await new JsonSettingsStore(path).LoadAsync();
+            settings.RememberLastPage.Should().BeTrue();
+            settings.RememberZoom.Should().BeTrue();
         }
         finally
         {
@@ -112,6 +165,8 @@ public class JsonSettingsStoreTests
         settings.AutoSaveToOriginal.Should().BeFalse();
         settings.VersionSnapshotsEnabled.Should().BeFalse();
         settings.ToolbarHiddenCommands.Should().BeEmpty();
+        settings.RememberLastPage.Should().BeNull();
+        settings.RememberZoom.Should().BeNull();
     }
 
     [Fact]

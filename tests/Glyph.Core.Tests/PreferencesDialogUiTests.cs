@@ -19,6 +19,8 @@ public class PreferencesDialogUiTests
         PreferencesDialogUi.ClearSavedSignatures.Should().Contain("signatures");
         PreferencesDialogUi.PrivacyHeader.Should().Be("Privacy");
         PreferencesDialogUi.CheckForUpdates.Should().Contain("updates");
+        PreferencesDialogUi.RememberLastPage.Should().Contain("last page");
+        PreferencesDialogUi.RememberZoom.Should().Contain("zoom");
         PreferencesDialogUi.ToolbarCommandsHeader.Should().Contain("reorder");
         PreferencesDialogUi.ToolbarCommandsHeader.Should().Contain("open documents");
         PreferencesDialogUi.MoveToolbarCommandUp.Should().Be("↑");

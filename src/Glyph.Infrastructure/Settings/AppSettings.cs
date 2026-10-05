@@ -84,6 +84,16 @@ public sealed class AppSettings
     public double DefaultZoom { get; set; } = 1.25;
 
     /// <summary>
+    /// When true, reopen restores last page index (F55-07). Null = default ON (missing key).
+    /// </summary>
+    public bool? RememberLastPage { get; set; }
+
+    /// <summary>
+    /// When true, reopen restores last zoom (F55-08). Null = default ON (missing key).
+    /// </summary>
+    public bool? RememberZoom { get; set; }
+
+    /// <summary>
     /// Image 100% zoom meaning (F55-14): "Pixels" = 1 device pixel per image pixel;
     /// "Print" = match physical size using image DPI vs screen DPI.
     /// </summary>

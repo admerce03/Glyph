@@ -41,6 +41,10 @@ public static class PreferencesDialogUi
     public const string DefaultPdfLayoutHeader = "Default PDF page layout";
     public const string DefaultPdfZoomHeader =
         "Default PDF zoom (scale, e.g. 1.25 = 125%)";
+    public const string RememberLastPage =
+        "Remember last page when reopening PDFs";
+    public const string RememberZoom =
+        "Remember zoom when reopening documents";
     public const string ImageZoom100Header = "Image 100% zoom means";
     public const string DefaultInterpolationHeader = "Default resize interpolation";
     public const string ColorManagedDisplay =
