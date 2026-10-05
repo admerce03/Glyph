@@ -4314,9 +4314,10 @@ public sealed class ImageDocumentView : UserControl
             return (ImageEncodeFormat.Jpeg, ".jpg");
         }
 
-        if (name.Contains("WebP", StringComparison.OrdinalIgnoreCase))
+        if (name.Contains("WebP", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("Webp", StringComparison.OrdinalIgnoreCase))
         {
-            return (ImageEncodeFormat.WebP, ".webp");
+            return (ImageEncodeFormat.Webp, ".webp");
         }
 
         if (name.Contains("Tif", StringComparison.OrdinalIgnoreCase))
