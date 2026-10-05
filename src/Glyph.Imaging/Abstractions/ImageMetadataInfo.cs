@@ -1,7 +1,7 @@
 namespace Glyph.Imaging.Abstractions;
 
 /// <summary>
-/// Snapshot of image properties and common EXIF/GPS fields.
+/// Snapshot of image properties and common EXIF/GPS/IPTC/XMP fields.
 /// </summary>
 public sealed record ImageMetadataInfo(
     int PixelWidth,
@@ -25,6 +25,13 @@ public sealed record ImageMetadataInfo(
     string? Orientation,
     double? GpsLatitude,
     double? GpsLongitude,
+    string? Title,
+    string? Description,
+    string? Keywords,
+    string? Copyright,
+    int? Rating,
+    bool HasIptc,
+    bool HasXmp,
     IReadOnlyList<ImageMetadataEntry> Entries);
 
 public sealed record ImageMetadataEntry(string Group, string Name, string Value);

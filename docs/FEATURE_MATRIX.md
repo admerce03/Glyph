@@ -582,13 +582,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F37-17 | Image metadata | orientation | M5 | Implemented | EXIF Orientation |
 | F37-18 | Image metadata | GPS coordinates | M5 | Tested | GPSLatitude/Longitude |
 | F37-19 | Image metadata | EXIF | M5 | Tested | Magick ExifProfile |
-| F37-20 | Image metadata | IPTC | M5 | Not Started |  |
-| F37-21 | Image metadata | XMP where available | M5 | Not Started |  |
-| F37-22 | Image metadata | title | M5 | Not Started |  |
-| F37-23 | Image metadata | description | M5 | Not Started |  |
-| F37-24 | Image metadata | keywords | M5 | Not Started |  |
-| F37-25 | Image metadata | copyright | M5 | Not Started |  |
-| F37-26 | Image metadata | rating, optionally | M5 | Not Started |  |
+| F37-20 | Image metadata | IPTC | M5 | Tested | Magick IptcProfile → Title/Caption/Keywords/Copyright |
+| F37-21 | Image metadata | XMP where available | M5 | Implemented | Magick XmpProfile presence + dc:title/description/subject/rights/Rating |
+| F37-22 | Image metadata | title | M5 | Tested | IPTC Title/Headline, else XMP/EXIF |
+| F37-23 | Image metadata | description | M5 | Tested | IPTC Caption, else XMP/EXIF ImageDescription |
+| F37-24 | Image metadata | keywords | M5 | Tested | IPTC Keyword list / XMP subject |
+| F37-25 | Image metadata | copyright | M5 | Tested | IPTC CopyrightNotice / XMP rights / EXIF Copyright |
+| F37-26 | Image metadata | rating, optionally | M5 | Implemented | XMP Rating when present |
 | F38-01 | GPS metadata | display latitude/longitude. | M5/M8 | Tested | Meta dialog GPS rows |
 | F38-02 | GPS metadata | Copy coordinates. | M5/M8 | Implemented | Copy GPS button |
 | F38-03 | GPS metadata | Open in default/browser mapping service. | M5/M8 | Implemented | Open map → OpenStreetMap |

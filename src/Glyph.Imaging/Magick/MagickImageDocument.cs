@@ -201,6 +201,75 @@ public sealed class MagickImageDocument : IImageDocument
             }
         }
 
+        string? title = null;
+        string? description = null;
+        string? keywords = null;
+        string? copyright = null;
+        int? rating = null;
+
+        var iptc = image.GetIptcProfile();
+        var hasIptc = iptc is not null;
+        if (iptc is not null)
+        {
+            title = ReadIptc(iptc, IptcTag.Title) ?? ReadIptc(iptc, IptcTag.Headline);
+            description = ReadIptc(iptc, IptcTag.Caption);
+            copyright = ReadIptc(iptc, IptcTag.CopyrightNotice);
+            var keywordValues = iptc.GetAllValues(IptcTag.Keyword)?
+                .Select(v => v.Value)
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .ToList();
+            if (keywordValues is { Count: > 0 })
+            {
+                keywords = string.Join(", ", keywordValues);
+            }
+
+            AddIfPresent(entries, "IPTC", "Title", title);
+            AddIfPresent(entries, "IPTC", "Description", description);
+            AddIfPresent(entries, "IPTC", "Keywords", keywords);
+            AddIfPresent(entries, "IPTC", "Copyright", copyright);
+            AddIfPresent(entries, "IPTC", "Byline", ReadIptc(iptc, IptcTag.Byline));
+        }
+
+        var xmp = image.GetXmpProfile();
+        var hasXmp = xmp is not null;
+        if (xmp is not null)
+        {
+            entries.Add(new("XMP", "Profile", "Present"));
+            try
+            {
+                var doc = xmp.ToXDocument();
+                if (doc is not null)
+                {
+                    title ??= FirstXmpText(doc, "title");
+                    description ??= FirstXmpText(doc, "description");
+                    copyright ??= FirstXmpText(doc, "rights");
+                    keywords ??= FirstXmpBagBag(doc, "subject");
+                    rating ??= FirstXmpInt(doc, "Rating");
+                    AddIfPresent(entries, "XMP", "Title", FirstXmpText(doc, "title"));
+                    AddIfPresent(entries, "XMP", "Description", FirstXmpText(doc, "description"));
+                    AddIfPresent(entries, "XMP", "Keywords", FirstXmpBagBag(doc, "subject"));
+                    AddIfPresent(entries, "XMP", "Copyright", FirstXmpText(doc, "rights"));
+                    if (rating is int r)
+                    {
+                        entries.Add(new("XMP", "Rating", r.ToString()));
+                    }
+                }
+            }
+            catch
+            {
+                // XMP parse is best-effort; presence flag remains.
+            }
+        }
+
+        // EXIF descriptive tags as last-resort fill for title/description/copyright.
+        if (exif is not null)
+        {
+            title ??= ReadString(exif, ExifTag.ImageDescription);
+            copyright ??= ReadString(exif, ExifTag.Copyright);
+            AddIfPresent(entries, "EXIF", "Description", ReadString(exif, ExifTag.ImageDescription));
+            AddIfPresent(entries, "EXIF", "Copyright", ReadString(exif, ExifTag.Copyright));
+        }
+
         return new ImageMetadataInfo(
             checked((int)image.Width),
             checked((int)image.Height),
@@ -223,7 +292,61 @@ public sealed class MagickImageDocument : IImageDocument
             orientation,
             gpsLat,
             gpsLon,
+            title,
+            description,
+            keywords,
+            copyright,
+            rating,
+            hasIptc,
+            hasXmp,
             entries);
+    }
+
+    private static string? ReadIptc(IIptcProfile iptc, IptcTag tag)
+        => Truncate(iptc.GetValue(tag)?.Value);
+
+    private static string? FirstXmpText(System.Xml.Linq.XDocument doc, string localName)
+    {
+        var el = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == localName);
+        if (el is null)
+        {
+            return null;
+        }
+
+        var li = el.Descendants().FirstOrDefault(e => e.Name.LocalName == "li");
+        return Truncate((li ?? el).Value);
+    }
+
+    private static string? FirstXmpBagBag(System.Xml.Linq.XDocument doc, string localName)
+    {
+        var el = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == localName);
+        if (el is null)
+        {
+            return null;
+        }
+
+        var items = el.Descendants()
+            .Where(e => e.Name.LocalName == "li")
+            .Select(e => e.Value.Trim())
+            .Where(v => v.Length > 0)
+            .ToList();
+        if (items.Count == 0)
+        {
+            return Truncate(el.Value);
+        }
+
+        return Truncate(string.Join(", ", items));
+    }
+
+    private static int? FirstXmpInt(System.Xml.Linq.XDocument doc, string localName)
+    {
+        var el = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == localName);
+        if (el is null)
+        {
+            return null;
+        }
+
+        return int.TryParse(el.Value.Trim(), out var value) ? value : null;
     }
 
     private static void AddIfPresent(List<ImageMetadataEntry> entries, string group, string name, string? value)

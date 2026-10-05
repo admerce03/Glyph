@@ -61,6 +61,46 @@ public class MagickImageMetadataTests
         }
     }
 
+    [Fact]
+    public async Task GetMetadata_reports_iptc_title_description_keywords()
+    {
+        var path = CreateIptcJpeg();
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            await using var document = await decoder.OpenAsync(path);
+            var meta = await document.GetMetadataAsync();
+
+            meta.HasIptc.Should().BeTrue();
+            meta.Title.Should().Be("Glyph Title");
+            meta.Description.Should().Be("A test caption");
+            meta.Keywords.Should().Contain("alpha");
+            meta.Keywords.Should().Contain("beta");
+            meta.Copyright.Should().Be("© Glyph");
+            meta.Entries.Should().Contain(e => e.Group == "IPTC" && e.Name == "Title");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    private static string CreateIptcJpeg()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-iptc-" + Guid.NewGuid().ToString("N") + ".jpg");
+        using var image = new MagickImage(MagickColors.SteelBlue, 32, 24);
+        image.Format = MagickFormat.Jpeg;
+        var iptc = new IptcProfile();
+        iptc.SetValue(IptcTag.Title, "Glyph Title");
+        iptc.SetValue(IptcTag.Caption, "A test caption");
+        iptc.SetValue(IptcTag.CopyrightNotice, "© Glyph");
+        iptc.SetValue(IptcTag.Keyword, "alpha");
+        iptc.SetValue(IptcTag.Keyword, "beta");
+        image.SetProfile(iptc);
+        image.Write(path);
+        return path;
+    }
+
     private static string CreateExifJpeg()
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-exif-" + Guid.NewGuid().ToString("N") + ".jpg");

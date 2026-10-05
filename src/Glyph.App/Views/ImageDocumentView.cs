@@ -232,7 +232,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(_cancelCropButton, "Cancel interactive crop");
         ToolTipService.SetToolTip(resize, "Resize width/height with optional aspect lock");
         ToolTipService.SetToolTip(adjust, "Brightness / contrast / saturation");
-        ToolTipService.SetToolTip(meta, "Image metadata, EXIF, and GPS");
+        ToolTipService.SetToolTip(meta, "Image metadata, EXIF/IPTC/XMP, and GPS");
         ToolTipService.SetToolTip(ocrButton, "Run offline OCR on this image");
         ToolTipService.SetToolTip(rotate180, "Rotate 180°");
         ToolTipService.SetToolTip(orient, "Apply EXIF orientation into pixels");
@@ -1933,6 +1933,13 @@ public sealed class ImageDocumentView : UserControl
                             + (info.Make is null ? string.Empty : $" · {info.Make} {info.Model}".TrimEnd()),
                         TextWrapping = TextWrapping.Wrap,
                     },
+                    new TextBlock
+                    {
+                        Text = BuildDescriptiveSummary(info),
+                        Opacity = 0.8,
+                        TextWrapping = TextWrapping.Wrap,
+                        Visibility = HasDescriptiveMetadata(info) ? Visibility.Visible : Visibility.Collapsed,
+                    },
                     list,
                     actions,
                 },
@@ -1951,6 +1958,56 @@ public sealed class ImageDocumentView : UserControl
         {
             _status.Text = "Metadata failed: " + ex.Message;
         }
+    }
+
+    private static bool HasDescriptiveMetadata(ImageMetadataInfo info) =>
+        !string.IsNullOrWhiteSpace(info.Title)
+        || !string.IsNullOrWhiteSpace(info.Description)
+        || !string.IsNullOrWhiteSpace(info.Keywords)
+        || !string.IsNullOrWhiteSpace(info.Copyright)
+        || info.Rating is not null
+        || info.HasIptc
+        || info.HasXmp;
+
+    private static string BuildDescriptiveSummary(ImageMetadataInfo info)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(info.Title))
+        {
+            parts.Add("Title: " + info.Title);
+        }
+
+        if (!string.IsNullOrWhiteSpace(info.Description))
+        {
+            parts.Add("Description: " + info.Description);
+        }
+
+        if (!string.IsNullOrWhiteSpace(info.Keywords))
+        {
+            parts.Add("Keywords: " + info.Keywords);
+        }
+
+        if (!string.IsNullOrWhiteSpace(info.Copyright))
+        {
+            parts.Add("© " + info.Copyright);
+        }
+
+        if (info.Rating is int rating)
+        {
+            parts.Add("Rating: " + rating);
+        }
+
+        if (info.HasIptc)
+        {
+            parts.Add("IPTC");
+        }
+
+        if (info.HasXmp)
+        {
+            parts.Add("XMP");
+        }
+
+        return string.Join(" · ", parts);
     }
 
     private async Task RunOcrAsync()
