@@ -250,8 +250,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 ### Progress notes
 
 - `IOcrEngine` / `OcrRequest` / `OcrResult` abstractions in `Glyph.Ocr`
-- `WindowsOcrEngine` (Windows.Media.Ocr) registered in App DI; **OCR** toolbar on `ImageDocumentView` with result dialog + copy
-- `UnsupportedOcrEngine` + Fake engine coverage in `Glyph.Ocr.Tests` (Linux)
+- `WindowsOcrEngine` (Windows.Media.Ocr) registered in App DI; **OCR** toolbar on `ImageDocumentView` with Live Text word-box overlay (click/Ctrl+click select + Copy OCR)
+- `UnsupportedOcrEngine` + Fake engine + overlay mapper coverage in `Glyph.Ocr.Tests` (Linux)
 - PDF **OCR** current/selected/entire document on `PdfDocumentView` (chooser → render → BGRA → engine + result dialog)
 - **Cancel OCR** + `n/m` status progress for multi-page PDF recognition
 - Document **Find** merges session OCR page text (`PdfPageTextSearch`) when OCR has been run
@@ -263,7 +263,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Multi-line drag selects across lines in reading order; Alt/wide drag keeps column rect selection
 - Drag selected text out of the page (OLE/text drag) when a selection exists
 - **Find in all open PDFs** (Edit menu / Ctrl+Shift+F) aggregates PdfPig hits across tabs
-- Image-folder OCR / Live Text image overlays still on parallel entities/live-text stack
+- Image-folder OCR still outstanding on entities stack
 ---
 
 ## Milestone 7 — Redaction, PDF security, optimization, metadata
