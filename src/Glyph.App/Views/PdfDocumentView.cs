@@ -108,6 +108,8 @@ public sealed class PdfDocumentView : UserControl
     private Button? _ellipseButton;
     private Button? _lineButton;
     private Button? _arrowButton;
+    private Button? _calloutButton;
+    private bool _calloutMode;
     private bool _dragSelecting;
     private Windows.Foundation.Point _dragStart;
     private int _dragPageIndex = -1;
@@ -339,6 +341,7 @@ public sealed class PdfDocumentView : UserControl
         var strikeout = new Button { Content = "Strike" };
         var stickyNote = new Button { Content = "Note" };
         var textBox = new Button { Content = "TextBox" };
+        var callout = new Button { Content = "Callout" };
         var flatten = new Button { Content = "Flatten" };
         var sign = new Button { Content = "Sign" };
         var formFill = new Button { Content = "Form" };
@@ -355,6 +358,7 @@ public sealed class PdfDocumentView : UserControl
         _ellipseButton = ellipse;
         _lineButton = line;
         _arrowButton = arrow;
+        _calloutButton = callout;
         var undoEdit = new Button { Content = "Undo" };
         var redoEdit = new Button { Content = "Redo" };
         ToolTipService.SetToolTip(rotateLeft, "Rotate selected pages left");
@@ -373,6 +377,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(strikeout, "Strike through selected text");
         ToolTipService.SetToolTip(stickyNote, "Add a sticky note on the current page");
         ToolTipService.SetToolTip(textBox, "Add a FreeText text box on the current page");
+        ToolTipService.SetToolTip(callout, "Draw a callout: drag from tip to text box");
         ToolTipService.SetToolTip(flatten, "Flatten annotations into page content (permanent)");
         ToolTipService.SetToolTip(sign, "Signature: draw with mouse or import PNG/JPEG (saved to library)");
         ToolTipService.SetToolTip(formFill, "Form fill: overlay mode or field list (Tab order)");
@@ -428,6 +433,7 @@ public sealed class PdfDocumentView : UserControl
         strikeout.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.StrikeOut);
         stickyNote.Click += async (_, _) => await AddStickyNoteAsync();
         textBox.Click += async (_, _) => await AddTextBoxAsync();
+        callout.Click += (_, _) => ToggleCalloutMode();
         flatten.Click += async (_, _) => await FlattenAnnotationsAsync();
         sign.Click += async (_, _) => await BeginSignatureAsync();
         formFill.Click += async (_, _) => await OnFormButtonClickAsync();
@@ -450,7 +456,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, flatten, sign, formFill, ink, rect, ellipse, line, arrow,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, sign, formFill, ink, rect, ellipse, line, arrow,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -1412,7 +1418,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (_shapeMode is not null)
+        if (_shapeMode is not null || _calloutMode)
         {
             BeginShapeDrag(border, pageIndex, e);
             e.Handled = true;
@@ -1475,7 +1481,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (_shapeMode is not null && _shapeDrawing)
+        if ((_shapeMode is not null || _calloutMode) && _shapeDrawing)
         {
             if (sender is Border { Tag: int shapePage } shapeBorder && shapePage == _shapePageIndex)
             {
@@ -1576,9 +1582,17 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (_shapeMode is not null && _shapeDrawing && pageIndex == _shapePageIndex)
+        if ((_shapeMode is not null || _calloutMode) && _shapeDrawing && pageIndex == _shapePageIndex)
         {
-            await EndShapeDragAsync(border, e);
+            if (_calloutMode)
+            {
+                await EndCalloutDragAsync(border, e);
+            }
+            else
+            {
+                await EndShapeDragAsync(border, e);
+            }
+
             e.Handled = true;
             return;
         }
@@ -2209,6 +2223,8 @@ public sealed class PdfDocumentView : UserControl
             CancelCropMode();
         }
 
+        ClearCalloutMode();
+
         _highlightMode = true;
         _highlightModeColor = picked.Value;
         RefreshToolButtonChrome();
@@ -2445,7 +2461,9 @@ public sealed class PdfDocumentView : UserControl
         {
             var all = await _annotations.ListAsync(_document);
             _annotationItems = all
-                .Where(a => a.TextMarkupKind is not null || a.IsStickyNote || a.IsInk || a.ShapeKind is not null || a.IsTextBox || a.IsStamp)
+                .Where(a =>
+                    (a.TextMarkupKind is not null || a.IsStickyNote || a.IsInk || a.ShapeKind is not null || a.IsTextBox || a.IsStamp)
+                    && !(a.IsInk && a.Contents == "CalloutPointer"))
                 .OrderBy(a => a.PageIndex)
                 .ThenBy(a => a.AnnotIndex)
                 .ToList();
@@ -2464,6 +2482,14 @@ public sealed class PdfDocumentView : UserControl
 
     private static string FormatAnnotationLabel(PdfAnnotationInfo info)
     {
+        if (info.IsCallout)
+        {
+            var preview = string.IsNullOrWhiteSpace(info.Contents)
+                ? "(empty)"
+                : TrimForStatus(info.Contents);
+            return $"Callout · p.{info.PageIndex + 1}: {preview}";
+        }
+
         if (info.IsStickyNote)
         {
             var preview = string.IsNullOrWhiteSpace(info.Contents)
@@ -2513,11 +2539,126 @@ public sealed class PdfDocumentView : UserControl
         return $"{kind} · p.{info.PageIndex + 1}";
     }
 
+    private void ToggleCalloutMode()
+    {
+        if (_inkMode)
+        {
+            _inkMode = false;
+            CancelInkStroke();
+        }
+
+        ClearShapeMode();
+        ClearSignatureMode();
+        ClearHighlightMode();
+        if (_formOverlayMode)
+        {
+            ClearFormOverlayMode();
+        }
+
+        if (_calloutMode)
+        {
+            _calloutMode = false;
+            CancelShapeDrag();
+            _status.Text = "Callout mode off.";
+            RefreshToolButtonChrome();
+            return;
+        }
+
+        if (_cropMode)
+        {
+            CancelCropMode();
+        }
+
+        CancelShapeDrag();
+        _calloutMode = true;
+        RefreshToolButtonChrome();
+        _status.Text = "Callout mode — drag from tip to where the text box should sit.";
+    }
+
+    private async Task EndCalloutDragAsync(Border border, PointerRoutedEventArgs e)
+    {
+        try { border.ReleasePointerCapture(e.Pointer); } catch { /* ignore */ }
+        ContinueShapeDrag(border, e);
+
+        var pageIndex = _shapePageIndex;
+        var start = _shapeStart;
+        var end = e.GetCurrentPoint(border).Position;
+        CancelShapeDrag();
+
+        if (pageIndex < 0)
+        {
+            return;
+        }
+
+        var page = _document.GetPage(pageIndex);
+        double ToPdfX(double x) => x / _scale;
+        double ToPdfY(double y) => page.HeightPoints - (y / _scale);
+        var tip = new PdfPagePoint(ToPdfX(start.X), ToPdfY(start.Y));
+        var boxCenterX = ToPdfX(end.X);
+        var boxCenterY = ToPdfY(end.Y);
+        var boxWidth = Math.Min(180, page.WidthPoints * 0.4);
+        var boxHeight = 56;
+        var left = Math.Clamp(boxCenterX - (boxWidth / 2), 8, Math.Max(8, page.WidthPoints - boxWidth - 8));
+        var bottom = Math.Clamp(boxCenterY - (boxHeight / 2), 8, Math.Max(8, page.HeightPoints - boxHeight - 8));
+        var textBounds = new PdfRect(left, bottom, left + boxWidth, bottom + boxHeight);
+
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for callout dialog.");
+        var box = new TextBox
+        {
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            Height = 100,
+            PlaceholderText = "Callout text",
+        };
+        var dialog = new ContentDialog
+        {
+            Title = "Callout",
+            Content = box,
+            PrimaryButtonText = "Add",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            _status.Text = "Callout cancelled.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Adding callout…";
+            await _annotations.AddCalloutAsync(
+                _document,
+                pageIndex,
+                textBounds,
+                tip,
+                box.Text ?? string.Empty,
+                new PdfAnnotationColor(20, 20, 20),
+                borderColor: _drawStrokeColor,
+                fillColor: new PdfAnnotationColor(255, 255, 230),
+                pointerWidthPoints: _drawStrokeWidth);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = "Callout added.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Callout failed: " + ex.Message;
+        }
+    }
+
     private async Task ToggleInkModeAsync()
     {
         ClearShapeMode();
         ClearSignatureMode();
         ClearHighlightMode();
+        ClearCalloutMode();
         if (_formOverlayMode)
         {
             ClearFormOverlayMode();
@@ -2561,6 +2702,7 @@ public sealed class PdfDocumentView : UserControl
 
         ClearSignatureMode();
         ClearHighlightMode();
+        ClearCalloutMode();
         if (_formOverlayMode)
         {
             ClearFormOverlayMode();
@@ -2665,6 +2807,17 @@ public sealed class PdfDocumentView : UserControl
         _shapeMode = null;
     }
 
+    private void ClearCalloutMode()
+    {
+        if (!_calloutMode)
+        {
+            return;
+        }
+
+        _calloutMode = false;
+        CancelShapeDrag();
+    }
+
     private void ClearSignatureMode()
     {
         if (!_signatureMode)
@@ -2718,6 +2871,11 @@ public sealed class PdfDocumentView : UserControl
         {
             _arrowButton.Background = _shapeMode == PdfShapeKind.Arrow ? active : null;
         }
+
+        if (_calloutButton is not null)
+        {
+            _calloutButton.Background = _calloutMode ? active : null;
+        }
     }
 
     private void BeginShapeDrag(Border border, int pageIndex, PointerRoutedEventArgs e)
@@ -2732,7 +2890,7 @@ public sealed class PdfDocumentView : UserControl
 
     private void ContinueShapeDrag(Border border, PointerRoutedEventArgs e)
     {
-        if (_shapePageIndex < 0 || !_pageOverlays.TryGetValue(_shapePageIndex, out var overlay) || _shapeMode is null)
+        if (_shapePageIndex < 0 || !_pageOverlays.TryGetValue(_shapePageIndex, out var overlay) || (_shapeMode is null && !_calloutMode))
         {
             return;
         }
@@ -2761,31 +2919,44 @@ public sealed class PdfDocumentView : UserControl
 
         var strokeThickness = Math.Max(1, _drawStrokeWidth * _scale / 1.5);
 
-        FrameworkElement preview = _shapeMode switch
+        FrameworkElement preview;
+        if (_calloutMode)
         {
-            PdfShapeKind.Ellipse => new Microsoft.UI.Xaml.Shapes.Ellipse
-            {
-                Width = Math.Max(1, width),
-                Height = Math.Max(1, height),
-                Stroke = stroke,
-                StrokeThickness = strokeThickness,
-                Fill = fill,
-            },
-            PdfShapeKind.Line or PdfShapeKind.Arrow => CreateLineOrArrowPreview(
-                _shapeMode.Value,
+            preview = CreateLineOrArrowPreview(
+                PdfShapeKind.Line,
                 _shapeStart,
                 current,
                 stroke,
-                strokeThickness),
-            _ => new Microsoft.UI.Xaml.Shapes.Rectangle
+                strokeThickness);
+        }
+        else
+        {
+            preview = _shapeMode switch
             {
-                Width = Math.Max(1, width),
-                Height = Math.Max(1, height),
-                Stroke = stroke,
-                StrokeThickness = strokeThickness,
-                Fill = fill,
-            },
-        };
+                PdfShapeKind.Ellipse => new Microsoft.UI.Xaml.Shapes.Ellipse
+                {
+                    Width = Math.Max(1, width),
+                    Height = Math.Max(1, height),
+                    Stroke = stroke,
+                    StrokeThickness = strokeThickness,
+                    Fill = fill,
+                },
+                PdfShapeKind.Line or PdfShapeKind.Arrow => CreateLineOrArrowPreview(
+                    _shapeMode.Value,
+                    _shapeStart,
+                    current,
+                    stroke,
+                    strokeThickness),
+                _ => new Microsoft.UI.Xaml.Shapes.Rectangle
+                {
+                    Width = Math.Max(1, width),
+                    Height = Math.Max(1, height),
+                    Stroke = stroke,
+                    StrokeThickness = strokeThickness,
+                    Fill = fill,
+                },
+            };
+        }
 
         if (preview is not Microsoft.UI.Xaml.Shapes.Line and not Microsoft.UI.Xaml.Shapes.Polyline)
         {
@@ -3101,6 +3272,7 @@ public sealed class PdfDocumentView : UserControl
     {
         ClearShapeMode();
         ClearHighlightMode();
+        ClearCalloutMode();
         if (_formOverlayMode)
         {
             ClearFormOverlayMode();
@@ -3332,6 +3504,7 @@ public sealed class PdfDocumentView : UserControl
         ClearShapeMode();
         ClearSignatureMode();
         ClearHighlightMode();
+        ClearCalloutMode();
         if (_inkMode)
         {
             _inkMode = false;

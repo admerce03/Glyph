@@ -287,6 +287,50 @@ public class PdfiumAnnotationServiceTests
     }
 
     [Fact]
+    public async Task Add_callout_survives_save_and_lists_as_callout()
+    {
+        var path = CreateTextPdf("Callout host page");
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-callout-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var created = await annots.AddCalloutAsync(
+                    document,
+                    0,
+                    new PdfRect(200, 600, 360, 680),
+                    tip: new PdfPagePoint(80, 500),
+                    "Look here",
+                    new PdfAnnotationColor(20, 20, 20));
+                created.IsCallout.Should().BeTrue();
+                created.IsTextBox.Should().BeTrue();
+                created.Contents.Should().Be("Look here");
+
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var listed = await annots.ListAsync(reopened, 0);
+                listed.Should().Contain(a => a.IsCallout && a.Contents == "Look here");
+                listed.Should().Contain(a => a.IsInk && a.Contents == "CalloutPointer");
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Add_rectangle_and_ellipse_survive_save()
     {
         var path = CreateTextPdf("Shape host page");

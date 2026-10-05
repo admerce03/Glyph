@@ -633,6 +633,73 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             cancellationToken);
     }
 
+    public async Task<PdfAnnotationInfo> AddCalloutAsync(
+        IPdfDocument document,
+        int pageIndex,
+        PdfRect textBounds,
+        PdfPagePoint tip,
+        string contents,
+        PdfAnnotationColor textColor,
+        PdfAnnotationColor? borderColor = null,
+        PdfAnnotationColor? fillColor = null,
+        float fontSizePoints = 12f,
+        float pointerWidthPoints = 1.5f,
+        CancellationToken cancellationToken = default)
+    {
+        borderColor ??= new PdfAnnotationColor(40, 40, 40);
+        fillColor ??= new PdfAnnotationColor(255, 255, 230);
+
+        // Anchor the pointer on the nearest edge midpoint of the text box.
+        var cx = (textBounds.Left + textBounds.Right) / 2;
+        var cy = (textBounds.Bottom + textBounds.Top) / 2;
+        var candidates = new[]
+        {
+            new PdfPagePoint(cx, textBounds.Bottom),
+            new PdfPagePoint(cx, textBounds.Top),
+            new PdfPagePoint(textBounds.Left, cy),
+            new PdfPagePoint(textBounds.Right, cy),
+        };
+        var anchor = candidates
+            .OrderBy(p => ((p.X - tip.X) * (p.X - tip.X)) + ((p.Y - tip.Y) * (p.Y - tip.Y)))
+            .First();
+
+        var box = await AddTextBoxAsync(
+            document,
+            pageIndex,
+            textBounds,
+            contents,
+            textColor,
+            borderColor,
+            fillColor,
+            fontSizePoints,
+            cancellationToken);
+
+        // Mark as callout via Subj so list/reload can recognize it.
+        await MutateAnnotAsync(
+            document,
+            pageIndex,
+            box.AnnotIndex,
+            cancellationToken,
+            annot =>
+            {
+                if (!PdfiumAnnotStrings.SetString(annot, "Subj", "Callout"))
+                {
+                    throw new InvalidOperationException("Failed to set callout Subj.");
+                }
+            });
+
+        await AddLabeledInkAsync(
+            document,
+            pageIndex,
+            [[tip, anchor]],
+            borderColor.Value,
+            pointerWidthPoints,
+            contents: "CalloutPointer",
+            cancellationToken);
+
+        return box with { IsCallout = true, IsTextBox = true };
+    }
+
     public Task<PdfAnnotationInfo> AddStampAsync(
         IPdfDocument document,
         int pageIndex,
@@ -1370,6 +1437,11 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
 
                     var isTextBox = subtype == PdfiumAnnotSubtypes.FreeText;
                     var isStamp = subtype == PdfiumAnnotSubtypes.Stamp;
+                    var isCallout = isTextBox
+                        && string.Equals(
+                            PdfiumAnnotStrings.GetString(annot, "Subj"),
+                            "Callout",
+                            StringComparison.Ordinal);
                     results.Add(new PdfAnnotationInfo(
                         pageIndex,
                         i,
@@ -1381,7 +1453,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                         isInk,
                         shapeKind,
                         isTextBox,
-                        isStamp));
+                        isStamp,
+                        isCallout));
                 }
                 finally
                 {
