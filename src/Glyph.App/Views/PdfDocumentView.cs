@@ -2905,6 +2905,7 @@ public sealed class PdfDocumentView : UserControl
     private void StartSignatureDrawMode()
     {
         ClearShapeMode();
+        ClearHighlightMode();
         if (_inkMode)
         {
             _inkMode = false;
