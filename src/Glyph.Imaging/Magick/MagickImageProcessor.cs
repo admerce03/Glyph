@@ -1,5 +1,6 @@
 using Glyph.Imaging.Abstractions;
 using ImageMagick;
+using ImageMagick.Drawing;
 
 namespace Glyph.Imaging.Magick;
 
@@ -194,6 +195,66 @@ public sealed class MagickImageProcessor : IImageProcessor
                 cancellationToken.ThrowIfCancellationRequested();
                 magick.Native.AutoOrient();
                 MagickImageDecoder.ClearExifOrientation(magick.Native);
+            },
+            cancellationToken);
+    }
+
+    public Task ClearRectAsync(
+        IImageDocument document,
+        ImageRect pixels,
+        bool transparent = true,
+        CancellationToken cancellationToken = default)
+    {
+        var magick = RequireMagick(document);
+        if (pixels.Width <= 0 || pixels.Height <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(pixels));
+        }
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var x = Math.Clamp(pixels.X, 0, Math.Max(0, (int)magick.Native.Width - 1));
+                var y = Math.Clamp(pixels.Y, 0, Math.Max(0, (int)magick.Native.Height - 1));
+                var right = Math.Clamp(pixels.X + pixels.Width, x + 1, (int)magick.Native.Width);
+                var bottom = Math.Clamp(pixels.Y + pixels.Height, y + 1, (int)magick.Native.Height);
+                if (transparent)
+                {
+                    magick.Native.Alpha(AlphaOption.Set);
+                }
+
+                var fill = transparent ? MagickColors.Transparent : MagickColors.White;
+                new Drawables()
+                    .FillColor(fill)
+                    .Rectangle(x, y, right - 1, bottom - 1)
+                    .Draw(magick.Native);
+            },
+            cancellationToken);
+    }
+
+    public Task<ImagePixelBuffer> ExtractRectAsync(
+        IImageDocument document,
+        ImageRect pixels,
+        CancellationToken cancellationToken = default)
+    {
+        var magick = RequireMagick(document);
+        if (pixels.Width <= 0 || pixels.Height <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(pixels));
+        }
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                using var clone = magick.Native.Clone();
+                clone.Crop(new MagickGeometry(pixels.X, pixels.Y, (uint)pixels.Width, (uint)pixels.Height));
+                clone.ResetPage();
+                clone.Depth = 8;
+                clone.ColorType = ColorType.TrueColorAlpha;
+                var bgra = clone.ToByteArray(MagickFormat.Bgra);
+                return new ImagePixelBuffer(checked((int)clone.Width), checked((int)clone.Height), bgra);
             },
             cancellationToken);
     }

@@ -110,6 +110,31 @@ public class MagickImageProcessorTests
     }
 
     [Fact]
+    public async Task Extract_and_clear_rect_round_trip()
+    {
+        var path = CreateSolidPng(40, 30);
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            await using var document = await decoder.OpenAsync(path);
+
+            var extracted = await processor.ExtractRectAsync(document, new ImageRect(5, 5, 10, 8));
+            extracted.Width.Should().Be(10);
+            extracted.Height.Should().Be(8);
+            extracted.BgraPixels.Length.Should().Be(10 * 8 * 4);
+
+            await processor.ClearRectAsync(document, new ImageRect(0, 0, 10, 10), transparent: true);
+            document.PixelWidth.Should().Be(40);
+            document.PixelHeight.Should().Be(30);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Resize_with_filter_and_dpi_updates_density()
     {
         var path = CreateSolidPng(80, 60);

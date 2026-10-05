@@ -458,19 +458,19 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F27-08 | Animated images | inspect individual frames | M8 | Not Started |  |
 | F27-09 | Animated images | extract frame | M8 | Not Started |  |
 | F27-10 | Animated images | save selected frame as image | M8 | Not Started |  |
-| F28-01 | Image selection tools | Rectangular selection. | M5 | Not Started |  |
+| F28-01 | Image selection tools | Rectangular selection. | M5 | Implemented | Select toolbar → drag rectangle overlay |
 | F28-02 | Image selection tools | Elliptical selection. | M5 | Not Started |  |
 | F28-03 | Image selection tools | Freeform lasso. | M5 | Not Started |  |
 | F28-04 | Image selection tools | Smart lasso. | M5 | Not Started |  |
-| F28-05 | Image selection tools | Select all. | M5 | Not Started |  |
+| F28-05 | Image selection tools | Select all. | M5 | Implemented | Select → All / Ctrl+A |
 | F28-06 | Image selection tools | Invert selection. | M5 | Not Started |  |
-| F28-07 | Image selection tools | Deselect. | M5 | Not Started |  |
+| F28-07 | Image selection tools | Deselect. | M5 | Implemented | Deselect / Esc |
 | F28-08 | Image selection tools | Move selected pixels. | M5 | Not Started |  |
-| F28-09 | Image selection tools | Copy. | M5 | Not Started |  |
+| F28-09 | Image selection tools | Copy. | M5 | Implemented | Copy sel / Ctrl+C → clipboard PNG via `ExtractRectAsync` |
 | F28-10 | Image selection tools | Cut. | M5 | Not Started |  |
 | F28-11 | Image selection tools | Paste. | M5 | Not Started |  |
-| F28-12 | Image selection tools | Delete selection. | M5 | Not Started |  |
-| F28-13 | Image selection tools | Crop to selection. | M5 | Not Started |  |
+| F28-12 | Image selection tools | Delete selection. | M5 | Tested | Del sel → `ClearRectAsync` transparent |
+| F28-13 | Image selection tools | Crop to selection. | M5 | Implemented | Crop sel → `CropAsync` |
 | F29-01 | Smart object/background selection | Smart Lasso. | M8 | Not Started |  |
 | F29-02 | Smart object/background selection | Edge-aware selection. | M8 | Not Started |  |
 | F29-03 | Smart object/background selection | Background removal. | M8 | Not Started |  |

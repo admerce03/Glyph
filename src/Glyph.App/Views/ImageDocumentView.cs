@@ -38,6 +38,12 @@ public sealed class ImageDocumentView : UserControl
     private readonly Button _applyCropButton;
     private readonly Button _cancelCropButton;
     private readonly ComboBox _cropAspectBox;
+    private readonly Button _selectButton;
+    private readonly Button _selectAllButton;
+    private readonly Button _deselectButton;
+    private readonly Button _copySelButton;
+    private readonly Button _deleteSelButton;
+    private readonly Button _cropSelButton;
     private IReadOnlyList<string> _siblings = Array.Empty<string>();
     private DispatcherTimer? _slideshowTimer;
     private readonly List<IImageEditCheckpoint> _editUndoStack = [];
@@ -46,10 +52,12 @@ public sealed class ImageDocumentView : UserControl
     private bool _loaded;
     private bool _syncingList;
     private bool _cropMode;
+    private bool _selectionMode;
     private bool _cropDragging;
     private Windows.Foundation.Point _cropStart;
     private bool _navDragging;
     private Windows.Foundation.Point _navStart;
+    private ImageRect? _pixelSelection;
     private int _displayWidth;
     private int _displayHeight;
 
@@ -136,6 +144,18 @@ public sealed class ImageDocumentView : UserControl
             SelectedIndex = 0,
         };
         ToolTipService.SetToolTip(_cropAspectBox, "Crop aspect: free, original image ratio, or common presets");
+        _selectButton = new Button { Content = "Select" };
+        _selectAllButton = new Button { Content = "All", Visibility = Visibility.Collapsed };
+        _deselectButton = new Button { Content = "Deselect", Visibility = Visibility.Collapsed };
+        _copySelButton = new Button { Content = "Copy sel", Visibility = Visibility.Collapsed };
+        _deleteSelButton = new Button { Content = "Del sel", Visibility = Visibility.Collapsed };
+        _cropSelButton = new Button { Content = "Crop sel", Visibility = Visibility.Collapsed };
+        ToolTipService.SetToolTip(_selectButton, "Rectangular selection (drag on image)");
+        ToolTipService.SetToolTip(_selectAllButton, "Select entire image");
+        ToolTipService.SetToolTip(_deselectButton, "Clear selection");
+        ToolTipService.SetToolTip(_copySelButton, "Copy selection to clipboard as PNG");
+        ToolTipService.SetToolTip(_deleteSelButton, "Clear selection to transparent");
+        ToolTipService.SetToolTip(_cropSelButton, "Crop image to selection");
         var resize = new Button { Content = "Resize" };
         var adjust = new Button { Content = "Adjust" };
         var meta = new Button { Content = "Meta" };
@@ -186,6 +206,12 @@ public sealed class ImageDocumentView : UserControl
         _interactiveCropButton.Click += (_, _) => EnterCropMode();
         _applyCropButton.Click += async (_, _) => await ApplyInteractiveCropAsync();
         _cancelCropButton.Click += (_, _) => ExitCropMode();
+        _selectButton.Click += (_, _) => ToggleSelectionMode();
+        _selectAllButton.Click += (_, _) => SelectAllPixels();
+        _deselectButton.Click += (_, _) => ClearPixelSelection();
+        _copySelButton.Click += async (_, _) => await CopySelectionAsync();
+        _deleteSelButton.Click += async (_, _) => await DeleteSelectionAsync();
+        _cropSelButton.Click += async (_, _) => await CropToSelectionAsync();
         resize.Click += async (_, _) => await ResizeAsync();
         adjust.Click += async (_, _) => await AdjustAsync();
         meta.Click += async (_, _) => await ShowMetadataAsync();
@@ -218,7 +244,9 @@ public sealed class ImageDocumentView : UserControl
             Children =
             {
                 _prevButton, _nextButton, _slideshowButton, _undoButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
-                _cropBox, crop, _interactiveCropButton, _cropAspectBox, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, save, exportPng, exportJpeg, convert, _status,
+                _cropBox, crop, _interactiveCropButton, _cropAspectBox, _applyCropButton, _cancelCropButton,
+                _selectButton, _selectAllButton, _deselectButton, _copySelButton, _deleteSelButton, _cropSelButton,
+                resize, adjust, meta, ocrButton, save, exportPng, exportJpeg, convert, _status,
             },
         };
 
@@ -365,7 +393,7 @@ public sealed class ImageDocumentView : UserControl
 
     private void ImageSurface_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        if (_cropMode || e.GetCurrentPoint(_scrollViewer).Properties.IsRightButtonPressed)
+        if (_cropMode || _selectionMode || e.GetCurrentPoint(_scrollViewer).Properties.IsRightButtonPressed)
         {
             return;
         }
@@ -510,12 +538,23 @@ public sealed class ImageDocumentView : UserControl
 
     private void ImageDocumentView_KeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (e.Key == Windows.System.VirtualKey.Escape && _viewState.IsSlideshowActive)
+        if (e.Key == Windows.System.VirtualKey.Escape)
         {
-            StopSlideshow();
-            _status.Text = "Slideshow stopped.";
-            e.Handled = true;
-            return;
+            if (_selectionMode)
+            {
+                ExitSelectionMode(keepSelection: false);
+                _status.Text = "Selection mode off.";
+                e.Handled = true;
+                return;
+            }
+
+            if (_viewState.IsSlideshowActive)
+            {
+                StopSlideshow();
+                _status.Text = "Slideshow stopped.";
+                e.Handled = true;
+                return;
+            }
         }
 
         var ctrl = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control)
@@ -524,7 +563,87 @@ public sealed class ImageDocumentView : UserControl
         {
             _ = UndoEditAsync();
             e.Handled = true;
+            return;
         }
+
+        if (ctrl && e.Key == Windows.System.VirtualKey.C && _pixelSelection is not null)
+        {
+            _ = CopySelectionAsync();
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrl && e.Key == Windows.System.VirtualKey.A && _selectionMode)
+        {
+            SelectAllPixels();
+            e.Handled = true;
+        }
+    }
+
+    private async Task CopySelectionAsync()
+    {
+        if (_pixelSelection is not { } sel || sel.Width < 1 || sel.Height < 1)
+        {
+            _status.Text = "Make a selection first.";
+            return;
+        }
+
+        try
+        {
+            var buffer = await _processor.ExtractRectAsync(_document, sel);
+            var temp = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
+                "glyph-sel-" + Guid.NewGuid().ToString("N") + ".png");
+            try
+            {
+                await _encoder.WriteBgraAsync(
+                    buffer.BgraPixels,
+                    buffer.Width,
+                    buffer.Height,
+                    temp,
+                    ImageEncodeFormat.Png);
+                var file = await Windows.Storage.StorageFile.GetFileFromPathAsync(temp);
+                var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                package.SetBitmap(Windows.Storage.Streams.RandomAccessStreamReference.CreateFromFile(file));
+                Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+                _status.Text = $"Copied selection {sel.Width}×{sel.Height}.";
+            }
+            finally
+            {
+                try { System.IO.File.Delete(temp); } catch { /* ignore */ }
+            }
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Copy selection failed: " + ex.Message;
+        }
+    }
+
+    private async Task DeleteSelectionAsync()
+    {
+        if (_pixelSelection is not { } sel || sel.Width < 1 || sel.Height < 1)
+        {
+            _status.Text = "Make a selection first.";
+            return;
+        }
+
+        await MutateAsync(
+            () => _processor.ClearRectAsync(_document, sel, transparent: true),
+            $"Cleared selection {sel.Width}×{sel.Height}.");
+    }
+
+    private async Task CropToSelectionAsync()
+    {
+        if (_pixelSelection is not { } sel || sel.Width < 1 || sel.Height < 1)
+        {
+            _status.Text = "Make a selection first.";
+            return;
+        }
+
+        ExitSelectionMode(keepSelection: false);
+        await MutateAsync(
+            () => _processor.CropAsync(_document, sel),
+            $"Cropped to selection {sel.Width}×{sel.Height}.");
     }
 
     private async Task MutateAsync(Func<Task> mutation, string okStatus)
@@ -668,12 +787,19 @@ public sealed class ImageDocumentView : UserControl
 
     private void EnterCropMode()
     {
+        if (_selectionMode)
+        {
+            ExitSelectionMode(keepSelection: true);
+        }
+
         _cropMode = true;
         _cropOverlay.IsHitTestVisible = true;
         _interactiveCropButton.Visibility = Visibility.Collapsed;
         _cropAspectBox.Visibility = Visibility.Visible;
         _applyCropButton.Visibility = Visibility.Visible;
         _cancelCropButton.Visibility = Visibility.Visible;
+        _cropRect.Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 200, 0));
+        _cropRect.Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 255, 200, 0));
         ClearCropSelection();
         _status.Text = "Drag on the image to select a crop region (aspect from dropdown).";
     }
@@ -682,13 +808,97 @@ public sealed class ImageDocumentView : UserControl
     {
         _cropMode = false;
         _cropDragging = false;
-        _cropOverlay.IsHitTestVisible = false;
+        if (!_selectionMode)
+        {
+            _cropOverlay.IsHitTestVisible = false;
+        }
+
         _interactiveCropButton.Visibility = Visibility.Visible;
         _cropAspectBox.Visibility = Visibility.Collapsed;
         _applyCropButton.Visibility = Visibility.Collapsed;
         _cancelCropButton.Visibility = Visibility.Collapsed;
         ClearCropSelection();
         UpdateStatus();
+    }
+
+    private void ToggleSelectionMode()
+    {
+        if (_selectionMode)
+        {
+            ExitSelectionMode(keepSelection: false);
+            _status.Text = "Selection mode off.";
+            return;
+        }
+
+        if (_cropMode)
+        {
+            ExitCropMode();
+        }
+
+        _selectionMode = true;
+        _cropOverlay.IsHitTestVisible = true;
+        _selectButton.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(60, 255, 140, 0));
+        _selectAllButton.Visibility = Visibility.Visible;
+        _deselectButton.Visibility = Visibility.Visible;
+        _copySelButton.Visibility = Visibility.Visible;
+        _deleteSelButton.Visibility = Visibility.Visible;
+        _cropSelButton.Visibility = Visibility.Visible;
+        _cropRect.Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 30, 144, 255));
+        _cropRect.Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 30, 144, 255));
+        ClearCropSelection();
+        _pixelSelection = null;
+        _status.Text = "Selection mode — drag a rectangle (Esc exits).";
+    }
+
+    private void ExitSelectionMode(bool keepSelection)
+    {
+        _selectionMode = false;
+        _cropDragging = false;
+        if (!_cropMode)
+        {
+            _cropOverlay.IsHitTestVisible = false;
+        }
+
+        _selectButton.Background = null;
+        _selectAllButton.Visibility = Visibility.Collapsed;
+        _deselectButton.Visibility = Visibility.Collapsed;
+        _copySelButton.Visibility = Visibility.Collapsed;
+        _deleteSelButton.Visibility = Visibility.Collapsed;
+        _cropSelButton.Visibility = Visibility.Collapsed;
+        if (!keepSelection)
+        {
+            ClearPixelSelection();
+        }
+    }
+
+    private void SelectAllPixels()
+    {
+        if (!_selectionMode)
+        {
+            ToggleSelectionMode();
+        }
+
+        _pixelSelection = new ImageRect(0, 0, _document.PixelWidth, _document.PixelHeight);
+        if (_displayWidth > 0 && _displayHeight > 0)
+        {
+            Canvas.SetLeft(_cropRect, 0);
+            Canvas.SetTop(_cropRect, 0);
+            _cropRect.Width = _displayWidth;
+            _cropRect.Height = _displayHeight;
+            _cropRect.Visibility = Visibility.Visible;
+        }
+
+        _status.Text = $"Selected all {_document.PixelWidth}×{_document.PixelHeight}.";
+    }
+
+    private void ClearPixelSelection()
+    {
+        _pixelSelection = null;
+        ClearCropSelection();
+        if (_selectionMode)
+        {
+            _status.Text = "Selection cleared.";
+        }
     }
 
     private void ClearCropSelection()
@@ -702,7 +912,7 @@ public sealed class ImageDocumentView : UserControl
 
     private void CropOverlay_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        if (!_cropMode)
+        if (!_cropMode && !_selectionMode)
         {
             return;
         }
@@ -735,12 +945,26 @@ public sealed class ImageDocumentView : UserControl
         _cropDragging = false;
         _cropOverlay.ReleasePointerCapture(e.Pointer);
         UpdateCropRect(_cropStart, e.GetCurrentPoint(_cropOverlay).Position);
+        if (_selectionMode && _cropRect.Visibility == Visibility.Visible && _displayWidth > 0)
+        {
+            _pixelSelection = ImageCropMapper.ToDocumentPixels(
+                Canvas.GetLeft(_cropRect),
+                Canvas.GetTop(_cropRect),
+                _cropRect.Width,
+                _cropRect.Height,
+                _displayWidth,
+                _displayHeight,
+                _document.PixelWidth,
+                _document.PixelHeight);
+            _status.Text = $"Selected {_pixelSelection.Value.Width}×{_pixelSelection.Value.Height} px";
+        }
+
         e.Handled = true;
     }
 
     private void UpdateCropRect(Windows.Foundation.Point a, Windows.Foundation.Point b)
     {
-        var aspect = ResolveCropAspect();
+        var aspect = _cropMode ? ResolveCropAspect() : null;
         var (x, y, w, h) = ImageCropAspect.Constrain(
             a.X, a.Y, b.X, b.Y, _displayWidth, _displayHeight, aspect);
         Canvas.SetLeft(_cropRect, x);

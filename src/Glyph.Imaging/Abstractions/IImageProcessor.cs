@@ -28,6 +28,23 @@ public interface IImageProcessor
     /// Applies EXIF orientation into pixel data and resets the orientation tag.
     /// </summary>
     Task NormalizeOrientationAsync(IImageDocument document, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Clears a rectangular region to transparent (or opaque white when <paramref name="transparent"/> is false).
+    /// </summary>
+    Task ClearRectAsync(
+        IImageDocument document,
+        ImageRect pixels,
+        bool transparent = true,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns BGRA32 pixels for a rectangular region (document pixel space).
+    /// </summary>
+    Task<ImagePixelBuffer> ExtractRectAsync(
+        IImageDocument document,
+        ImageRect pixels,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
