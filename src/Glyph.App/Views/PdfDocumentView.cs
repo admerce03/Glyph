@@ -6084,103 +6084,39 @@ public sealed class PdfDocumentView : UserControl
 
     private async Task CaptureWebcamSignatureAsync(Window window)
     {
-        MediaCapture? capture = null;
         try
         {
             _status.Text = "Starting webcam…";
-            capture = new MediaCapture();
-            await capture.InitializeAsync(new MediaCaptureInitializationSettings
+            var captured = await WebcamCaptureHelper.CaptureAsync(
+                window.Content.XamlRoot,
+                title: "Photograph signature",
+                hint: "Point the camera at a signature on paper, then Capture. Near-white paper is keyed out.");
+            if (captured is null)
             {
-                StreamingCaptureMode = StreamingCaptureMode.Video,
-                PhotoCaptureSource = PhotoCaptureSource.Auto,
-            });
-        }
-        catch (Exception ex)
-        {
-            capture?.Dispose();
-            _status.Text = "Webcam unavailable: " + ex.Message;
-            var fallback = new ContentDialog
-            {
-                Title = "Webcam unavailable",
-                Content = "No camera could be opened. Import a photo of your signature instead?",
-                PrimaryButtonText = "Import image…",
-                CloseButtonText = "Cancel",
-                DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = window.Content.XamlRoot,
-            };
-            if (await fallback.ShowAsync() == ContentDialogResult.Primary)
-            {
-                await ImportSignatureImageAsync(window);
-            }
-
-            return;
-        }
-
-        try
-        {
-            var preview = new CaptureElement
-            {
-                Source = capture,
-                Stretch = Stretch.Uniform,
-                Width = 420,
-                Height = 280,
-            };
-            await capture.StartPreviewAsync();
-
-            var dialog = new ContentDialog
-            {
-                Title = "Photograph signature",
-                Content = new StackPanel
+                var fallback = new ContentDialog
                 {
-                    Spacing = 8,
-                    Children =
-                    {
-                        new TextBlock
-                        {
-                            Text = "Point the camera at a signature on paper, then Capture. Near-white paper is keyed out.",
-                            TextWrapping = TextWrapping.Wrap,
-                        },
-                        preview,
-                    },
-                },
-                PrimaryButtonText = "Capture",
-                CloseButtonText = "Cancel",
-                DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = window.Content.XamlRoot,
-            };
+                    Title = "Webcam unavailable",
+                    Content = "No camera could be opened (or capture cancelled). Import a photo of your signature instead?",
+                    PrimaryButtonText = "Import image…",
+                    CloseButtonText = "Cancel",
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = window.Content.XamlRoot,
+                };
+                if (await fallback.ShowAsync() == ContentDialogResult.Primary)
+                {
+                    await ImportSignatureImageAsync(window);
+                }
+                else
+                {
+                    _status.Text = "Webcam signature cancelled.";
+                }
 
-            var result = await dialog.ShowAsync();
-            try { await capture.StopPreviewAsync(); } catch { /* ignore */ }
-            preview.Source = null;
-
-            if (result != ContentDialogResult.Primary)
-            {
-                _status.Text = "Webcam signature cancelled.";
                 return;
             }
 
-            _status.Text = "Capturing…";
-            using var stream = new InMemoryRandomAccessStream();
-            var props = ImageEncodingProperties.CreateJpeg();
-            await capture.CapturePhotoToStreamAsync(props, stream);
-            stream.Seek(0);
-
-            var decoder = await BitmapDecoder.CreateAsync(stream);
-            var pixelData = await decoder.GetPixelDataAsync(
-                BitmapPixelFormat.Bgra8,
-                BitmapAlphaMode.Straight,
-                new BitmapTransform(),
-                ExifOrientationMode.IgnoreExifOrientation,
-                ColorManagementMode.DoNotColorManage);
-            var pixels = pixelData.DetachPixelData();
-            var width = (int)decoder.PixelWidth;
-            var height = (int)decoder.PixelHeight;
-            if (width <= 0 || height <= 0)
-            {
-                _status.Text = "Webcam capture is empty.";
-                return;
-            }
-
+            var pixels = captured.BgraPixels;
+            var width = captured.Width;
+            var height = captured.Height;
             SignaturePaperKeying.KeyOutNearWhite(pixels, width, height);
 
             try
@@ -6201,22 +6137,6 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Webcam signature failed: " + ex.Message;
-        }
-        finally
-        {
-            try
-            {
-                if (capture is not null)
-                {
-                    await capture.StopPreviewAsync();
-                }
-            }
-            catch
-            {
-                // ignore
-            }
-
-            capture?.Dispose();
         }
     }
 
