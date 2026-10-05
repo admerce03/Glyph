@@ -727,6 +727,8 @@ public sealed class PdfDocumentView : UserControl
         border.PointerReleased += PageBorder_PointerReleased;
         border.PointerCaptureLost += (_, _) => _dragSelecting = false;
         border.RightTapped += PageBorder_RightTapped;
+        border.CanDrag = true;
+        border.DragStarting += PageBorder_DragStarting;
         RebuildOcrOverlayForPage(pageIndex);
         return border;
     }
@@ -1567,6 +1569,19 @@ public sealed class PdfDocumentView : UserControl
 
         flyout.ShowAt(target, e.GetPosition(target));
         e.Handled = true;
+    }
+
+    private void PageBorder_DragStarting(UIElement sender, DragStartingEventArgs args)
+    {
+        if (string.IsNullOrWhiteSpace(_selectedText))
+        {
+            args.Cancel = true;
+            return;
+        }
+
+        args.Data.SetText(_selectedText);
+        args.Data.RequestedOperation = DataPackageOperation.Copy;
+        _status.Text = "Dragging selected text…";
     }
 
     private void PageBorder_PointerMoved(object sender, PointerRoutedEventArgs e)
