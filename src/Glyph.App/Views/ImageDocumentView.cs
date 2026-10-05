@@ -152,7 +152,7 @@ public sealed class ImageDocumentView : UserControl
         meta.Click += async (_, _) => await ShowMetadataAsync();
         save.Click += async (_, _) => await SaveAsync();
         exportPng.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Png, ".png");
-        exportJpeg.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Jpeg, ".jpg");
+        exportJpeg.Click += async (_, _) => await ExportJpegAsync();
         convert.Click += async (_, _) => await ConvertAsync();
         _prevButton.Click += async (_, _) => await NavigateSiblingAsync(-1);
         _nextButton.Click += async (_, _) => await NavigateSiblingAsync(1);
@@ -728,7 +728,29 @@ public sealed class ImageDocumentView : UserControl
             ItemsSource = new[] { "WebP", "TIFF", "BMP", "GIF" },
             SelectedIndex = 0,
         };
-        var panel = new StackPanel { Spacing = 8, Children = { formatBox } };
+        var quality = new Slider
+        {
+            Header = "Quality (1–100)",
+            Minimum = 1,
+            Maximum = 100,
+            Value = 85,
+            StepFrequency = 1,
+            Width = 240,
+        };
+        var lossless = new CheckBox { Content = "Lossless WebP", IsChecked = false };
+        void SyncWebpOptions()
+        {
+            var isWebp = formatBox.SelectedItem as string == "WebP";
+            quality.Visibility = isWebp && lossless.IsChecked != true ? Visibility.Visible : Visibility.Collapsed;
+            lossless.Visibility = isWebp ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        formatBox.SelectionChanged += (_, _) => SyncWebpOptions();
+        lossless.Checked += (_, _) => SyncWebpOptions();
+        lossless.Unchecked += (_, _) => SyncWebpOptions();
+        SyncWebpOptions();
+
+        var panel = new StackPanel { Spacing = 8, Children = { formatBox, lossless, quality } };
         var dialog = new ContentDialog
         {
             Title = "Convert image",
@@ -752,7 +774,44 @@ public sealed class ImageDocumentView : UserControl
             "GIF" => (ImageEncodeFormat.Gif, ".gif"),
             _ => (ImageEncodeFormat.Webp, ".webp"),
         };
-        await ExportAsync(format, extension);
+
+        ImageEncodeOptions? options = null;
+        if (format == ImageEncodeFormat.Webp)
+        {
+            options = lossless.IsChecked == true
+                ? new ImageEncodeOptions(Lossless: true)
+                : new ImageEncodeOptions(Quality: (int)quality.Value);
+        }
+
+        await ExportAsync(format, extension, options);
+    }
+
+    private async Task ExportJpegAsync()
+    {
+        var quality = new Slider
+        {
+            Header = "JPEG quality (1–100)",
+            Minimum = 1,
+            Maximum = 100,
+            Value = 90,
+            StepFrequency = 1,
+            Width = 240,
+        };
+        var dialog = new ContentDialog
+        {
+            Title = "Export JPEG",
+            Content = quality,
+            PrimaryButtonText = "Export…",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        await ExportAsync(ImageEncodeFormat.Jpeg, ".jpg", new ImageEncodeOptions(Quality: (int)quality.Value));
     }
 
     private async Task ShowMetadataAsync()
@@ -856,7 +915,7 @@ public sealed class ImageDocumentView : UserControl
         }
     }
 
-    private async Task ExportAsync(ImageEncodeFormat format, string extension)
+    private async Task ExportAsync(ImageEncodeFormat format, string extension, ImageEncodeOptions? options = null)
     {
         try
         {
@@ -875,7 +934,7 @@ public sealed class ImageDocumentView : UserControl
                 return;
             }
 
-            await _encoder.SaveAsAsync(_document, file.Path, format);
+            await _encoder.SaveAsAsync(_document, file.Path, format, options);
             _status.Text = "Exported " + file.Name;
         }
         catch (Exception ex)

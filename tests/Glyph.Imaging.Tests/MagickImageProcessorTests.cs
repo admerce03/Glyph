@@ -166,6 +166,61 @@ public class MagickImageProcessorTests
         }
     }
 
+    [Fact]
+    public async Task Jpeg_quality_lower_produces_smaller_or_equal_file()
+    {
+        var path = CreateSolidPng(128, 96);
+        var highPath = Path.Combine(Path.GetTempPath(), "glyph-q90-" + Guid.NewGuid().ToString("N") + ".jpg");
+        var lowPath = Path.Combine(Path.GetTempPath(), "glyph-q20-" + Guid.NewGuid().ToString("N") + ".jpg");
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var encoder = new MagickImageEncoder();
+            await using var document = await decoder.OpenAsync(path);
+            await encoder.SaveAsAsync(document, highPath, ImageEncodeFormat.Jpeg, new ImageEncodeOptions(Quality: 90));
+            await encoder.SaveAsAsync(document, lowPath, ImageEncodeFormat.Jpeg, new ImageEncodeOptions(Quality: 20));
+            new FileInfo(lowPath).Length.Should().BeLessThanOrEqualTo(new FileInfo(highPath).Length);
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(highPath))
+            {
+                File.Delete(highPath);
+            }
+
+            if (File.Exists(lowPath))
+            {
+                File.Delete(lowPath);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Webp_lossless_round_trips_dimensions()
+    {
+        var path = CreateSolidPng(48, 36);
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-webp-" + Guid.NewGuid().ToString("N") + ".webp");
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var encoder = new MagickImageEncoder();
+            await using var document = await decoder.OpenAsync(path);
+            await encoder.SaveAsAsync(document, outPath, ImageEncodeFormat.Webp, new ImageEncodeOptions(Lossless: true));
+            await using var reopened = await decoder.OpenAsync(outPath);
+            reopened.PixelWidth.Should().Be(48);
+            reopened.PixelHeight.Should().Be(36);
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
     private static string CreateSolidPng(int width, int height)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-src-" + Guid.NewGuid().ToString("N") + ".png");
