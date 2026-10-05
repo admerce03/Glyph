@@ -49,9 +49,14 @@ public class ViewerChromePolicyTests
     {
         var root = FindRepoRoot();
         var src = File.ReadAllText(Path.Combine(root, "src/Glyph.App/Views/PdfDocumentView.cs"));
+        var namesSrc = File.ReadAllText(
+            Path.Combine(root, "src/Glyph.Pdf/Abstractions/PdfViewerAutomationNames.cs"));
+        src.Should().Contain("PdfViewerAutomationNames.");
         foreach (var name in ViewerToolbarAutomationNames.RequiredNames)
         {
-            src.Should().Contain($"\"{name}\"", because: name);
+            namesSrc.Should().Contain($"\"{name}\"", because: name);
+            // Wired via PdfViewerAutomationNames.* rather than inlined string literals.
+            src.Should().NotContain($"\"{name}\"", because: $"{name} should be centralized");
         }
     }
 
