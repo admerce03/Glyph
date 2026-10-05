@@ -310,13 +310,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | PDF text interaction | §7 | M2, M6 | Implemented |
 | OCR / Live Text | §8 | M6 | Not Started |
 | User bookmarks | §9 | M2/M4 | Not Started |
-<<<<<<< HEAD
 | PDF page manipulation | §10–12 | M3 | Implemented |
-| PDF annotations/markup | §13–19 | M4 | Not Started |
-=======
-| PDF page manipulation | §10–12 | M3 | In Progress |
 | PDF annotations/markup | §13–19 | M4 | In Progress |
->>>>>>> 0dee837 (Milestone 4: PDF text markup annotations (highlight/underline/strike))
 | PDF forms | §20 | M4 | Not Started |
 | Redaction | §21 | M7 | Not Started |
 | Flattening | §22 | M4 | Not Started |
