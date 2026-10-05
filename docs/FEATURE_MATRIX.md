@@ -8,15 +8,15 @@ Update this file when work lands. Do not delete rows to hide scope.
 
 | ID | Area | Requirement | Milestone | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
-| F01-01 | Application and file handling | Open files through: | M1/M9 | In Progress | Open / Open Multiple / drag-drop in shell |
-| F01-02 | Application and file handling | Open multiple files simultaneously. | M1/M9 | In Progress | Multi-tab + multi-select open |
+| F01-01 | Application and file handling | Open files through: | M1/M9 | Implemented | Open / Open Multiple / drag-drop in shell |
+| F01-02 | Application and file handling | Open multiple files simultaneously. | M1/M9 | Implemented | Multi-tab + multi-select open |
 | F01-03 | Application and file handling | Open multiple files: | M1/M9 | Implemented | Tabs by default; Preferences → separate windows |
 | F01-04 | Application and file handling | Reopen recently used files. | M1/M9 | Tested | JsonRecentFilesStore covered by unit tests |
 | F01-05 | Application and file handling | Restore previously open tabs/windows after restart, optionally. | M1/M9 | Implemented | `JsonSessionStore` + Preferences toggle; restores tabs on startup |
 | F01-06 | Application and file handling | Native Windows file associations. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
 | F01-07 | Application and file handling | Configurable default associations for supported formats. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
-| F01-08 | Application and file handling | Drag files from Explorer into an existing application window. | M1/M9 | In Progress | Explorer → window drop opens documents |
-| F01-09 | Application and file handling | Drag files from the application into Explorer where meaningful. | M1/M9 | In Progress | Thumbnail drag exposes extracted PDF via deferred StorageItems |
+| F01-08 | Application and file handling | Drag files from Explorer into an existing application window. | M1/M9 | Implemented | Explorer → window drop opens documents |
+| F01-09 | Application and file handling | Drag files from the application into Explorer where meaningful. | M1/M9 | Implemented | Thumbnail drag exposes extracted PDF via deferred StorageItems |
 | F01-10 | Application and file handling | Open files from: | M1/M9 | Implemented | Local/UNC/OneDrive/removable via `PathUtilities.NormalizeOpenPath` |
 | F01-11 | Application and file handling | Normal Windows long-path and Unicode filename support. | M1/M9 | Implemented | Unicode paths + `\\?\` long-path prefix when ≥260 chars |
 | F01-12 | Application and file handling | Read-only file detection. | M1/M9 | Implemented | Sets session.IsReadOnly; tab header + status |
@@ -36,7 +36,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-26 | Application and file handling | Undo/redo history. | M1/M9 | In Progress | Page-edit snapshot undo via `PdfPageEditHistory`; app-wide stack later |
 | F01-27 | Application and file handling | Do not silently overwrite originals by default. | M1/M9 | Implemented | Autosave-to-original is opt-in (off by default) |
 | F02-01 | Main window and interface | Standard Windows title bar. | M1/M9 | Implemented | WinUI AppWindow system title bar |
-| F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | In Progress | MenuBar File/View/Window |
+| F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | Implemented | MenuBar File/View/Window |
 | F02-03 | Main window and interface | Customizable toolbar. | M1/M9 | Implemented | Preferences → Toolbar commands show/hide + Reset (F54) |
 | F02-04 | Main window and interface | Optional compact toolbar. | M1/M9 | Implemented | Preferences → Compact document toolbars |
 | F02-05 | Main window and interface | Hide/show toolbar. | M1/M9 | Implemented | View → Hide/Show Toolbar |
@@ -44,17 +44,17 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-07 | Main window and interface | Resizable sidebar. | M1/M9 | Implemented | Drag splitter; width persisted in settings |
 | F02-08 | Main window and interface | Resizable document area. | M1/M9 | Implemented | Content pane fills remaining space; window resize |
 | F02-09 | Main window and interface | Full-screen mode. | M1/M9 | Implemented | View → Full Screen / F11 / toolbar |
-| F02-10 | Main window and interface | Tabbed documents. | M1/M9 | In Progress | TabView + Ctrl+Tab navigation |
+| F02-10 | Main window and interface | Tabbed documents. | M1/M9 | Implemented | TabView + Ctrl+Tab navigation |
 | F02-11 | Main window and interface | Tear tab into separate window. | M1/M9 | Implemented | Window → Move Tab to New Window + tab context menu |
-| F02-12 | Main window and interface | Move tabs between windows. | M1/M9 | In Progress | Tear-off to new window; cross-window drag later |
+| F02-12 | Main window and interface | Move tabs between windows. | M1/M9 | In Progress | Tear-off + in-window `CanDragTabs`; cross-window tab drop later |
 | F02-13 | Main window and interface | Reorder tabs. | M1/M9 | Implemented | TabView CanReorderTabs + WorkspaceState.Reorder |
 | F02-14 | Main window and interface | Context menus throughout. | M1/M9 | In Progress | Tab context menu (Close / Move to New Window) |
-| F02-15 | Main window and interface | Dark mode. | M1/M9 | In Progress | Theme preference Dark |
-| F02-16 | Main window and interface | Light mode. | M1/M9 | In Progress | Theme preference Light |
-| F02-17 | Main window and interface | Follow Windows system theme. | M1/M9 | In Progress | Theme preference System → ElementTheme.Default |
-| F02-18 | Main window and interface | High-DPI scaling. | M1/M9 | In Progress | PerMonitorV2 declared in app.manifest |
+| F02-15 | Main window and interface | Dark mode. | M1/M9 | Implemented | Theme preference Dark |
+| F02-16 | Main window and interface | Light mode. | M1/M9 | Implemented | Theme preference Light |
+| F02-17 | Main window and interface | Follow Windows system theme. | M1/M9 | Implemented | Theme preference System → ElementTheme.Default |
+| F02-18 | Main window and interface | High-DPI scaling. | M1/M9 | Implemented | PerMonitorV2 declared in app.manifest |
 | F02-19 | Main window and interface | Multi-monitor support. | M1/M9 | Implemented | OS multi-monitor windows + Window → Move to Next Monitor |
-| F02-20 | Main window and interface | Per-monitor DPI awareness. | M1/M9 | In Progress | PerMonitorV2 declared in app.manifest |
+| F02-20 | Main window and interface | Per-monitor DPI awareness. | M1/M9 | Implemented | PerMonitorV2 declared in app.manifest |
 | F02-21 | Main window and interface | Mouse support. | M1/M9 | Implemented | Pointer input throughout document and chrome UI |
 | F02-22 | Main window and interface | Precision touchpad gesture support where useful. | M1/M9 | Implemented | Two-finger ScrollViewer scroll + Ctrl+wheel / Manipulation Scale pinch (PDF + image) |
 | F02-23 | Main window and interface | Keyboard-first operation. | M1/M9 | In Progress | Menu accelerators + document Ctrl shortcuts |
@@ -68,7 +68,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-07 | Sidebar modes | Contact sheet | M2-M5 | Implemented | Layout → Contact sheet grid; click page returns to continuous |
 | F03-08 | Sidebar modes | Document attachments, if supported | M2-M5 | Implemented | PDF sidebar Attachments list + Save… via `ListAttachments` |
 | F03-09 | Sidebar modes | Metadata/properties where useful | M2-M5 | Implemented | PDF sidebar Properties summary + More/Edit (F48) |
-| F03-10 | Sidebar modes | Switch sidebar mode without opening another window. | M2-M5 | In Progress | Thumbs/TOC/search coexist in one panel; dedicated mode switcher later |
+| F03-10 | Sidebar modes | Switch sidebar mode without opening another window. | M2-M5 | Implemented | Sidebar mode ComboBox: Pages/Contents/Bookmarks/Search/Annotations/Properties/Attachments |
 | F03-11 | Sidebar modes | Resize thumbnail size. | M2-M5 | Implemented | Pages S/M/L buttons; `ThumbnailWidth` persisted |
 | F03-12 | Sidebar modes | Multi-select sidebar items. | M2-M5 | Implemented | Page thumbnails via `PageSelection`; annotations Extended ListView |
 | F03-13 | Sidebar modes | Shift-click range selection. | M2-M5 | Implemented | Thumbnail Shift+click / Shift+↑↓ via `PageSelection` |
@@ -114,7 +114,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F05-02 | PDF table of contents and navigation | Hierarchical table of contents. | M2 | Implemented | Nested `PdfOutlineNode` tree |
 | F05-03 | PDF table of contents and navigation | Expand/collapse outline nodes. | M2 | Implemented | TreeView expand/collapse |
 | F05-04 | PDF table of contents and navigation | Click outline entry to navigate. | M2 | Implemented | Outline invoke → GoToPage |
-| F05-05 | PDF table of contents and navigation | Keyboard navigation. | M2 | In Progress | Page Up/Down/Home/End in viewer |
+| F05-05 | PDF table of contents and navigation | Keyboard navigation. | M2 | Implemented | Page Up/Down/Home/End in viewer; outline Enter/Space + TreeView arrows |
 | F05-06 | PDF table of contents and navigation | Preserve embedded outline while editing when possible. | M2 | Tested | Rotate/page edits keep PDFium bookmarks (`Outline_survives_page_rotate_edit`) |
 | F05-07 | PDF table of contents and navigation | Show internal PDF links. | M2 | Tested | `IPdfLinkService` enumerates page links |
 | F05-08 | PDF table of contents and navigation | Support clickable: | M2 | Implemented | Click link rect → internal page jump |
@@ -139,8 +139,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F07-01 | PDF text interaction | Text selection. | M2/M6 | Implemented | Click near glyphs selects word-ish run via PDFium text |
 | F07-02 | PDF text interaction | Copy text. | M2/M6 | Implemented | Copy button / Ctrl+C |
 | F07-03 | PDF text interaction | Select across lines. | M2/M6 | Implemented | Drag stream selection across lines; Alt/wide drag = column rect |
-| F07-04 | PDF text interaction | Select columns where practical. | M2/M6 | In Progress | Alt-drag or wide region uses rectangular column selection |
-| F07-05 | PDF text interaction | Select all text on page/document. | M2/M6 | In Progress | Copy falls back to full page text |
+| F07-04 | PDF text interaction | Select columns where practical. | M2/M6 | Implemented | Alt-drag or wide region uses rectangular column selection |
+| F07-05 | PDF text interaction | Select all text on page/document. | M2/M6 | Implemented | Ctrl+A page text (2nd expands to document); Ctrl+Shift+A pages; context menu |
 | F07-06 | PDF text interaction | Right-click selected text. | M2/M6 | Implemented | Context menu: Copy / Find selection / Search web / Copy region as image |
 | F07-07 | PDF text interaction | Copy. | M2/M6 | Implemented | Clipboard text package |
 | F07-08 | PDF text interaction | Search selected text. | M2/M6 | Implemented | Find sel toolbar uses current text selection as query |
@@ -733,7 +733,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F52-10 | Keyboard shortcuts | Ctrl+C — Copy | M1/M9 | Implemented | PDF text/annot/pages; image pixels |
 | F52-11 | Keyboard shortcuts | Ctrl+X — Cut | M1/M9 | Implemented | Annotation / selection cut |
 | F52-12 | Keyboard shortcuts | Ctrl+V — Paste | M1/M9 | Implemented | Annotation/pages/image paste |
-| F52-13 | Keyboard shortcuts | Ctrl+A — Select all | M1/M9 | Implemented | PDF pages / image selection |
+| F52-13 | Keyboard shortcuts | Ctrl+A — Select all | M1/M9 | Implemented | PDF text on page (or pages if none); Ctrl+Shift+A pages; image selection |
 | F52-14 | Keyboard shortcuts | Ctrl+Z — Undo | M1/M9 | Implemented | PDF + image undo |
 | F52-15 | Keyboard shortcuts | Ctrl+Y — Redo | M1/M9 | Implemented | PDF page edit redo |
 | F52-16 | Keyboard shortcuts | Ctrl++ — Zoom in | M1/M9 | Implemented | PDF + image views |
@@ -766,7 +766,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F54-18 | Toolbar customization | default toolbar | M1/M9 | Implemented | Empty `ToolbarHiddenCommands` = all visible |
 | F54-19 | Toolbar customization | reset toolbar | M1/M9 | Implemented | Preferences → Reset toolbar to default |
 | F54-20 | Toolbar customization | compact icon mode | M1/M9 | Implemented | Preferences → Compact document toolbars |
-| F55-01 | Preferences | theme | M1/M9 | In Progress | Theme setting persisted in settings.json |
+| F55-01 | Preferences | theme | M1/M9 | Implemented | Theme setting persisted in settings.json |
 | F55-02 | Preferences | restore previous session | M1/M9 | Implemented | View → Preferences toggle |
 | F55-03 | Preferences | recent file count | M1/M9 | Implemented | View → Preferences NumberBox |
 | F55-04 | Preferences | check for updates | M1/M9 | Deferred | Needs installer/update channel (ADR-012 MSIX) |
@@ -813,7 +813,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F57-09 | Performance behavior | large-document virtualization | M2+/M9 | Implemented | On-demand visible-page render; distant Image.Source cleared |
 | F57-10 | Performance behavior | low memory usage | M2+/M9 | In Progress | Bounded `PageRenderCache` (capacity 32) |
 | F57-11 | Performance behavior | unload distant PDF pages | M2+/M9 | Implemented | Clear distant page Image.Source; LRU evicts bitmaps |
-| F57-12 | Performance behavior | cancel long-running operations | M2+/M9 | In Progress | PDF OCR Cancel OCR + `CancellationToken`; PDF search cancel |
+| F57-12 | Performance behavior | cancel long-running operations | M2+/M9 | Implemented | PDF OCR Cancel OCR + `CancellationToken`; PDF search cancel |
 | F57-13 | Performance behavior | progress indicator for: | M2+/M9 | Implemented | Toolbar `ProgressBar` for OCR/export/optimize; batch image dialog ProgressBar (F36) |
 | F58-01 | Large-document handling | PDFs with thousands of pages. | M2+/M9 | In Progress | Page virtualization via on-demand render + cache |
 | F58-02 | Large-document handling | Very large raster images. | M2+/M9 | Implemented | Display decode capped (max edge 8192); full pixels retained in Magick doc |
@@ -822,7 +822,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F58-05 | Large-document handling | Efficient page cache. | M2+/M9 | Tested | `PageRenderCache` LRU (capacity 32) |
 | F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Deferred | Search is on-demand; full-doc index not required yet (same as F57-05) |
 | F58-07 | Large-document handling | Partial OCR. | M2+/M9 | Implemented | OCR selected/current pages only (F08-06/07); not whole-doc by default |
-| F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | In Progress | PDF search cancel + PDF/image OCR Cancel OCR |
+| F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | Implemented | PDF search cancel + PDF/image OCR Cancel OCR |
 | F59-01 | Multi-document workflow | multiple tabs | M1/M3 | Implemented | Tab strip + per-tab document hosts |
 | F59-02 | Multi-document workflow | multiple windows | M1/M3 | Implemented | File → New Window; per-window `WorkspaceState` |
 | F59-03 | Multi-document workflow | drag tabs between windows | M1/M3 | Implemented | `CanDragTabs` + `AllowDropTabs` cross-window; drop outside → new window |

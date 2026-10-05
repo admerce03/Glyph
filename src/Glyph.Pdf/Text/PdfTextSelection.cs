@@ -31,6 +31,12 @@ public static class PdfTextSelection
         => JoinInReadingOrder(CharsInRect(chars, selection));
 
     /// <summary>
+    /// Select / copy every character on a page in visual reading order.
+    /// </summary>
+    public static string CopyAll(IReadOnlyList<PdfTextChar> chars)
+        => JoinInReadingOrder(chars);
+
+    /// <summary>
     /// Stream-style selection from the character nearest <paramref name="start"/> to the
     /// character nearest <paramref name="end"/> (inclusive), spanning multiple lines.
     /// </summary>

@@ -93,6 +93,8 @@ public sealed class PdfDocumentView : UserControl
     private readonly StackPanel _thumbnailHost;
     private readonly ScrollViewer _thumbnailScroll;
     private Grid? _sidePanel;
+    private ComboBox? _sidebarModeBox;
+    private readonly List<UIElement> _sidebarSections = new();
     private readonly TreeView _outlineTree;
     private readonly ListView _bookmarkList;
     private readonly ListView _searchResults;
@@ -325,6 +327,8 @@ public sealed class PdfDocumentView : UserControl
         _thumbnailScroll.Drop += ThumbnailHost_Drop;
         _outlineTree = new TreeView { SelectionMode = TreeViewSelectionMode.Single };
         _outlineTree.ItemInvoked += OutlineTree_ItemInvoked;
+        _outlineTree.KeyDown += OutlineTree_KeyDown;
+        AutomationProperties.SetName(_outlineTree, "Table of contents");
 
         _searchBox = new TextBox { PlaceholderText = "Find in document", Width = 160 };
         _searchBox.KeyDown += SearchBox_KeyDown;
@@ -375,60 +379,25 @@ public sealed class PdfDocumentView : UserControl
         _searchResults = new ListView
         {
             SelectionMode = ListViewSelectionMode.Single,
-            Height = 120,
         };
         _searchResults.SelectionChanged += SearchResults_SelectionChanged;
         _searchResults.RightTapped += SearchResults_RightTapped;
         _annotationList = new ListView
         {
             SelectionMode = ListViewSelectionMode.Extended,
-            Height = 140,
         };
         _annotationList.SelectionChanged += AnnotationList_SelectionChanged;
         _annotationList.RightTapped += AnnotationList_RightTapped;
         _attachmentList = new ListView
         {
             SelectionMode = ListViewSelectionMode.Single,
-            Height = 72,
         };
         _attachmentList.RightTapped += AttachmentList_RightTapped;
-
-        var sidePanel = new Grid
-        {
-            Width = Math.Max(180, _thumbnailWidth + 48),
-            RowDefinitions =
-            {
-                new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
-                new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(80) },
-                new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(100) },
-                new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(100) },
-                new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(120) },
-                new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(80) },
-            },
-        };
-        _sidePanel = sidePanel;
-        sidePanel.Children.Add(BuildPagesHeader());
-        Grid.SetRow(_thumbnailScroll, 1);
-        sidePanel.Children.Add(_thumbnailScroll);
-        var tocHeader = new TextBlock { Text = "Contents", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(8, 8, 8, 4) };
-        Grid.SetRow(tocHeader, 2);
-        sidePanel.Children.Add(tocHeader);
-        Grid.SetRow(_outlineTree, 3);
-        sidePanel.Children.Add(_outlineTree);
 
         _bookmarkList = new ListView
         {
             SelectionMode = ListViewSelectionMode.Single,
             IsItemClickEnabled = true,
-            Height = 100,
         };
         _bookmarkList.ItemClick += async (_, args) =>
         {
@@ -438,6 +407,7 @@ public sealed class PdfDocumentView : UserControl
             }
         };
         _bookmarkList.RightTapped += BookmarkList_RightTapped;
+
         var bookmarkHeader = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -478,16 +448,21 @@ public sealed class PdfDocumentView : UserControl
         bookmarkHeader.Children.Add(deleteBookmark);
         bookmarkHeader.Children.Add(upBookmark);
         bookmarkHeader.Children.Add(downBookmark);
-        Grid.SetRow(bookmarkHeader, 4);
-        sidePanel.Children.Add(bookmarkHeader);
-        Grid.SetRow(_bookmarkList, 5);
-        sidePanel.Children.Add(_bookmarkList);
 
-        var searchHeader = new TextBlock { Text = "Search", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(8, 8, 8, 4) };
-        Grid.SetRow(searchHeader, 6);
-        sidePanel.Children.Add(searchHeader);
-        Grid.SetRow(_searchResults, 7);
-        sidePanel.Children.Add(_searchResults);
+        var tocHeader = new TextBlock
+        {
+            Text = "Contents",
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Margin = new Thickness(8, 8, 8, 4),
+        };
+
+        var searchHeader = new TextBlock
+        {
+            Text = "Search",
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Margin = new Thickness(8, 8, 8, 4),
+        };
+
         var annotHeaderRow = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -579,10 +554,6 @@ public sealed class PdfDocumentView : UserControl
         rotateAnnot.Click += async (_, _) => await RotateSelectedAnnotationAsync();
         annotHeaderRow.Children.Add(rotateAnnot);
         annotHeaderRow.Children.Add(removeAnnot);
-        Grid.SetRow(annotHeaderRow, 8);
-        sidePanel.Children.Add(annotHeaderRow);
-        Grid.SetRow(_annotationList, 9);
-        sidePanel.Children.Add(_annotationList);
 
         var propertiesHeader = new StackPanel
         {
@@ -618,8 +589,6 @@ public sealed class PdfDocumentView : UserControl
         };
         propertiesHeader.Children.Add(propertiesMore);
         propertiesHeader.Children.Add(propertiesEdit);
-        Grid.SetRow(propertiesHeader, 10);
-        sidePanel.Children.Add(propertiesHeader);
         _propertiesSummary = new TextBlock
         {
             Margin = new Thickness(8, 0, 8, 8),
@@ -628,8 +597,6 @@ public sealed class PdfDocumentView : UserControl
             TextWrapping = TextWrapping.Wrap,
             Text = "Loading…",
         };
-        Grid.SetRow(_propertiesSummary, 11);
-        sidePanel.Children.Add(_propertiesSummary);
 
         var attachmentHeader = new StackPanel
         {
@@ -654,10 +621,82 @@ public sealed class PdfDocumentView : UserControl
         refreshAttachments.Click += (_, _) => RefreshAttachmentsSidebar();
         attachmentHeader.Children.Add(saveAttachment);
         attachmentHeader.Children.Add(refreshAttachments);
-        Grid.SetRow(attachmentHeader, 12);
-        sidePanel.Children.Add(attachmentHeader);
-        Grid.SetRow(_attachmentList, 13);
-        sidePanel.Children.Add(_attachmentList);
+
+        static Grid BuildSidebarSection(UIElement header, UIElement body)
+        {
+            var section = new Grid
+            {
+                RowDefinitions =
+                {
+                    new RowDefinition { Height = GridLength.Auto },
+                    new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
+                },
+            };
+            Grid.SetRow(header, 0);
+            section.Children.Add(header);
+            Grid.SetRow(body, 1);
+            section.Children.Add(body);
+            return section;
+        }
+
+        var pagesSection = BuildSidebarSection(BuildPagesHeader(), _thumbnailScroll);
+        var tocSection = BuildSidebarSection(tocHeader, _outlineTree);
+        var bookmarksSection = BuildSidebarSection(bookmarkHeader, _bookmarkList);
+        var searchSection = BuildSidebarSection(searchHeader, _searchResults);
+        var annotSection = BuildSidebarSection(annotHeaderRow, _annotationList);
+        var propertiesSection = BuildSidebarSection(propertiesHeader, _propertiesSummary);
+        var attachmentSection = BuildSidebarSection(attachmentHeader, _attachmentList);
+
+        _sidebarSections.Clear();
+        _sidebarSections.Add(pagesSection);
+        _sidebarSections.Add(tocSection);
+        _sidebarSections.Add(bookmarksSection);
+        _sidebarSections.Add(searchSection);
+        _sidebarSections.Add(annotSection);
+        _sidebarSections.Add(propertiesSection);
+        _sidebarSections.Add(attachmentSection);
+
+        _sidebarModeBox = new ComboBox
+        {
+            Margin = new Thickness(8, 8, 8, 4),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            ItemsSource = new[]
+            {
+                "Pages",
+                "Contents",
+                "Bookmarks",
+                "Search",
+                "Annotations",
+                "Properties",
+                "Attachments",
+            },
+            SelectedIndex = 0,
+        };
+        AutomationProperties.SetName(_sidebarModeBox, "Sidebar mode");
+        ToolTipService.SetToolTip(_sidebarModeBox, "Switch sidebar mode without opening another window");
+        _sidebarModeBox.SelectionChanged += (_, _) => ApplySidebarMode();
+
+        var sideContentHost = new Grid();
+        foreach (var section in _sidebarSections)
+        {
+            sideContentHost.Children.Add(section);
+        }
+
+        var sidePanel = new Grid
+        {
+            Width = Math.Max(180, _thumbnailWidth + 48),
+            RowDefinitions =
+            {
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
+            },
+        };
+        _sidePanel = sidePanel;
+        Grid.SetRow(_sidebarModeBox, 0);
+        sidePanel.Children.Add(_sidebarModeBox);
+        Grid.SetRow(sideContentHost, 1);
+        sidePanel.Children.Add(sideContentHost);
+        ApplySidebarMode();
 
         _status = new TextBlock { Opacity = 0.75, FontSize = 12, Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
         _gotoBox = new TextBox { PlaceholderText = "#", Width = 48 };
@@ -2079,11 +2118,17 @@ public sealed class PdfDocumentView : UserControl
 
         if (ctrlDown && e.Key == VirtualKey.A)
         {
-            _pageSelection.SelectAll(_document.PageCount);
-            RefreshThumbnailSelectionChrome();
-            _status.Text = _document.PageCount == 1
-                ? "Selected 1 page."
-                : $"Selected {_document.PageCount} pages.";
+            // Ctrl+Shift+A always selects all pages. Plain Ctrl+A prefers full-page text
+            // when the current page has extractable glyphs (F07-05); otherwise pages (F52-13).
+            if (shiftDown)
+            {
+                SelectAllPages();
+            }
+            else
+            {
+                await SelectAllTextOrPagesAsync();
+            }
+
             e.Handled = true;
             return;
         }
@@ -2254,6 +2299,126 @@ public sealed class PdfDocumentView : UserControl
         {
             await GoToPageAsync(page, recordHistory: true);
         }
+    }
+
+    private async void OutlineTree_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        // Arrow keys expand/collapse and move focus via TreeView defaults.
+        // Enter/Space navigate to the selected outline destination (F05-05).
+        if (e.Key is not (VirtualKey.Enter or VirtualKey.Space))
+        {
+            return;
+        }
+
+        var selected = _outlineTree.SelectedNodes.FirstOrDefault()?.Content as OutlineItem;
+        if (selected?.PageIndex is int page)
+        {
+            await GoToPageAsync(page, recordHistory: true);
+            e.Handled = true;
+        }
+    }
+
+    private void SelectAllPages()
+    {
+        _pageSelection.SelectAll(_document.PageCount);
+        RefreshThumbnailSelectionChrome();
+        _status.Text = _document.PageCount == 1
+            ? "Selected 1 page."
+            : $"Selected {_document.PageCount} pages.";
+    }
+
+    private async Task SelectAllTextOrPagesAsync()
+    {
+        // Second Ctrl+A after a full-page text selection expands to the whole document (copy buffer).
+        if (_selectionPageIndex == CurrentPageIndex
+            && !string.IsNullOrEmpty(_selectedText)
+            && _pageChars.TryGetValue(CurrentPageIndex, out var currentChars)
+            && currentChars.Count > 0
+            && string.Equals(_selectedText, PdfTextSelection.CopyAll(currentChars), StringComparison.Ordinal)
+            && _document.PageCount > 1)
+        {
+            await SelectAllTextInDocumentAsync();
+            return;
+        }
+
+        if (await TrySelectAllTextOnPageAsync(CurrentPageIndex))
+        {
+            return;
+        }
+
+        SelectAllPages();
+    }
+
+    private async Task SelectAllTextInDocumentAsync()
+    {
+        var parts = new List<string>();
+        for (var i = 0; i < _document.PageCount; i++)
+        {
+            if (!_pageChars.ContainsKey(i))
+            {
+                _pageChars[i] = await _textExtractor.GetCharsAsync(_document, i);
+            }
+
+            var pageText = PdfTextSelection.CopyAll(_pageChars[i]);
+            if (!string.IsNullOrWhiteSpace(pageText))
+            {
+                parts.Add(pageText);
+            }
+        }
+
+        if (parts.Count == 0)
+        {
+            _status.Text = "No extractable text in document.";
+            return;
+        }
+
+        _selectedText = string.Join("\n\n", parts);
+        // Keep a visual selection on the current page when it has glyphs.
+        _ = await TrySelectAllTextOnPageAsync(CurrentPageIndex);
+        // Restore the document-wide clipboard buffer after page select overwrote it.
+        _selectedText = string.Join("\n\n", parts);
+        _status.Text = $"Selected all text in document ({parts.Count} page(s), {_selectedText.Length} characters).";
+    }
+
+    private async Task<bool> TrySelectAllTextOnPageAsync(int pageIndex)
+    {
+        if (pageIndex < 0 || pageIndex >= _document.PageCount)
+        {
+            return false;
+        }
+
+        if (!_pageChars.ContainsKey(pageIndex))
+        {
+            _pageChars[pageIndex] = await _textExtractor.GetCharsAsync(_document, pageIndex);
+        }
+
+        var chars = _pageChars[pageIndex];
+        if (chars.Count == 0)
+        {
+            return false;
+        }
+
+        _selectedText = PdfTextSelection.CopyAll(chars);
+        if (string.IsNullOrWhiteSpace(_selectedText))
+        {
+            _selectedText = string.Empty;
+            return false;
+        }
+
+        _selectionPageIndex = pageIndex;
+        _selectionQuads = PdfTextMarkupQuads.FromChars(chars);
+        _pageSelection.Clear();
+        RefreshThumbnailSelectionChrome();
+
+        if (_pageOverlays.TryGetValue(pageIndex, out var overlay))
+        {
+            overlay.Children.Clear();
+        }
+
+        await RefreshSearchHighlightsAsync();
+        DrawSelectionOverlayFromRange(pageIndex, chars, 0, chars.Count - 1);
+        _status.Text = $"Selected all text on page {pageIndex + 1} ({_selectedText.Length} characters).";
+        return true;
     }
 
     private async Task CopyTextAsync()
@@ -2496,15 +2661,37 @@ public sealed class PdfDocumentView : UserControl
             && _regionCopyDisplayRect.Width >= 4
             && _regionCopyDisplayRect.Height >= 4;
         var hasAnnot = TryGetSelectedAnnotation(out _);
+        var pageIndex = target is Border { Tag: int taggedPage }
+            ? taggedPage
+            : CurrentPageIndex;
+
+        var flyout = new MenuFlyout();
+        var selectAllItem = new MenuFlyoutItem { Text = "Select all text" };
+        selectAllItem.Click += async (_, _) =>
+        {
+            if (!await TrySelectAllTextOnPageAsync(pageIndex))
+            {
+                _status.Text = "No extractable text on this page.";
+            }
+        };
+        flyout.Items.Add(selectAllItem);
+        if (_document.PageCount > 1)
+        {
+            var selectDocItem = new MenuFlyoutItem { Text = "Select all text in document" };
+            selectDocItem.Click += async (_, _) => await SelectAllTextInDocumentAsync();
+            flyout.Items.Add(selectDocItem);
+        }
+
         if (!hasText && !hasRegion && !hasAnnot)
         {
-            _status.Text = "Select text, an annotation, or drag a region, then right-click for actions.";
+            flyout.ShowAt(target, e.GetPosition(target));
+            e.Handled = true;
             return;
         }
 
-        var flyout = new MenuFlyout();
         if (hasText)
         {
+            flyout.Items.Add(new MenuFlyoutSeparator());
             var copyItem = new MenuFlyoutItem { Text = "Copy" };
             copyItem.Click += async (_, _) => await CopyTextAsync();
             var highlightItem = new MenuFlyoutItem { Text = "Highlight" };
@@ -3803,6 +3990,8 @@ public sealed class PdfDocumentView : UserControl
         {
             return;
         }
+
+        ShowSidebarMode(3); // Search results panel
 
         var ocrHits = PdfPageTextSearch.Find(_ocrPageTexts, query, _searchCaseSensitive);
         var merged = MergeSearchHits(result.Hits, ocrHits);
@@ -10014,6 +10203,32 @@ public sealed class PdfDocumentView : UserControl
                 large,
             },
         };
+    }
+
+    private void ApplySidebarMode()
+    {
+        var selected = _sidebarModeBox?.SelectedIndex ?? 0;
+        for (var i = 0; i < _sidebarSections.Count; i++)
+        {
+            _sidebarSections[i].Visibility = i == selected ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
+    private void ShowSidebarMode(int modeIndex)
+    {
+        if (_sidebarModeBox is null || modeIndex < 0 || modeIndex >= _sidebarSections.Count)
+        {
+            return;
+        }
+
+        if (_sidebarModeBox.SelectedIndex != modeIndex)
+        {
+            _sidebarModeBox.SelectedIndex = modeIndex;
+        }
+        else
+        {
+            ApplySidebarMode();
+        }
     }
 
     private async Task SetThumbnailWidthAsync(double width)
