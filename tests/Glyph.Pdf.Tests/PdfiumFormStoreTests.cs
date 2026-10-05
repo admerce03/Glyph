@@ -299,13 +299,39 @@ public class PdfiumFormStoreTests
         }
     }
 
+    [Fact]
+    public async Task Push_button_exposes_uri_action()
+    {
+        var path = CreateAcroFormPdf(includePushButton: true);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var forms = new PdfiumFormStore();
+
+            await using var document = await factory.OpenAsync(path);
+            var fields = await forms.ListFieldsAsync(document);
+            var button = fields.Should().ContainSingle(f => f.Name == "Website").Subject;
+            button.Kind.Should().Be(PdfFormFieldKind.PushButton);
+            button.Value.Should().Be("Open site");
+            button.ButtonAction.Should().NotBeNull();
+            button.ButtonAction!.Kind.Should().Be(PdfFormButtonActionKind.Uri);
+            button.ButtonAction.Uri.Should().Be("https://example.com/glyph");
+            button.ButtonAction.Caption.Should().Be("Open site");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     /// <summary>
     /// Minimal AcroForm (letter page) written with a correct xref.
     /// </summary>
     private static string CreateAcroFormPdf(
         bool includeCheckBox = false,
         bool includeRadio = false,
-        bool includeChoice = false)
+        bool includeChoice = false,
+        bool includePushButton = false)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-acroform-" + Guid.NewGuid().ToString("N") + ".pdf");
         var annotRefs = new List<string> { "7 0 R", "8 0 R" };
@@ -327,6 +353,12 @@ public class PdfiumFormStoreTests
         {
             annotRefs.Add($"{nextObj} 0 R");
             annotRefs.Add($"{nextObj + 1} 0 R");
+            nextObj += 2;
+        }
+
+        if (includePushButton)
+        {
+            annotRefs.Add($"{nextObj} 0 R");
         }
 
         var annots = "[" + string.Join(" ", annotRefs) + "]";
@@ -373,6 +405,13 @@ public class PdfiumFormStoreTests
                 "<< /Type /Annot /Subtype /Widget /Rect [120 550 280 575] /F 4 /P 3 0 R /FT /Ch /T (Flavor) /V (Vanilla) /DV (Vanilla) /Opt [(Vanilla)(Chocolate)(Strawberry)] /Ff 131072 /DA (/Helv 12 Tf 0 g) /MK << >> >>");
             objects.Add(
                 "<< /Type /Annot /Subtype /Widget /Rect [120 500 280 545] /F 4 /P 3 0 R /FT /Ch /T (Size) /V (Small) /DV (Small) /Opt [(Small)(Medium)(Large)] /Ff 0 /DA (/Helv 12 Tf 0 g) /MK << >> >>");
+        }
+
+        if (includePushButton)
+        {
+            // Ff bit 17 (65536) = pushbutton. URI action + caption in /MK /CA.
+            objects.Add(
+                "<< /Type /Annot /Subtype /Widget /Rect [120 450 220 480] /F 4 /P 3 0 R /FT /Btn /T (Website) /Ff 65536 /TU (Open site) /MK << /CA (Open site) >> /A << /S /URI /URI (https://example.com/glyph) >> >>");
         }
 
         using var ms = new MemoryStream();

@@ -6424,6 +6424,86 @@ public sealed class PdfDocumentView : UserControl
     }
 
     /// <summary>
+    /// Activates an AcroForm push button (URI launch or in-doc GoTo when resolvable).
+    /// Does not modify the document.
+    /// </summary>
+    private async Task<bool> ActivatePushButtonAsync(PdfFormFieldInfo field)
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for button dialog.");
+
+        var action = field.ButtonAction;
+        var caption = !string.IsNullOrWhiteSpace(action?.Caption)
+            ? action!.Caption!
+            : (!string.IsNullOrWhiteSpace(field.Value) ? field.Value : field.Name);
+
+        if (action?.Kind == PdfFormButtonActionKind.Uri && !string.IsNullOrWhiteSpace(action.Uri))
+        {
+            var confirm = new ContentDialog
+            {
+                Title = caption,
+                Content = $"Open link?\n{action.Uri}",
+                PrimaryButtonText = "Open",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = window.Content.XamlRoot,
+            };
+            if (await confirm.ShowAsync() != ContentDialogResult.Primary)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (!Uri.TryCreate(action.Uri, UriKind.Absolute, out var uri)
+                    || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps
+                        && uri.Scheme != Uri.UriSchemeMailto))
+                {
+                    _status.Text = "Button link uses an unsupported scheme.";
+                    return false;
+                }
+
+                await Launcher.LaunchUriAsync(uri);
+                _status.Text = $"Opened {caption}.";
+            }
+            catch (Exception ex)
+            {
+                _status.Text = "Button link failed: " + ex.Message;
+            }
+
+            return false;
+        }
+
+        if (action?.Kind == PdfFormButtonActionKind.GoTo && action.DestPageIndex is int dest
+            && dest >= 0 && dest < _document.PageCount)
+        {
+            await GoToPageAsync(dest, recordHistory: true);
+            _status.Text = $"Button {caption} → page {dest + 1}.";
+            return false;
+        }
+
+        var info = action?.Kind switch
+        {
+            PdfFormButtonActionKind.GoTo =>
+                "This button jumps elsewhere in the document, but the destination page could not be resolved.",
+            PdfFormButtonActionKind.Other =>
+                "This button uses an action type Glyph does not activate yet (submit/reset/JS/etc.).",
+            _ => "This button has no resolvable action.",
+        };
+        var dlg = new ContentDialog
+        {
+            Title = caption,
+            Content = info,
+            CloseButtonText = "Close",
+            XamlRoot = window.Content.XamlRoot,
+        };
+        await dlg.ShowAsync();
+        _status.Text = $"Button {caption}: no activatable action.";
+        return false;
+    }
+
+    /// <summary>
     /// Opens the appropriate edit UI for one field. Returns true when the document was modified.
     /// </summary>
     private async Task<bool> TryEditFormFieldAsync(PdfFormFieldInfo field)
@@ -6431,6 +6511,11 @@ public sealed class PdfDocumentView : UserControl
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
             ?? throw new InvalidOperationException("Main window unavailable for form dialog.");
+
+        if (field.Kind == PdfFormFieldKind.PushButton)
+        {
+            return await ActivatePushButtonAsync(field);
+        }
 
         if (field.Kind == PdfFormFieldKind.RadioButton)
         {
