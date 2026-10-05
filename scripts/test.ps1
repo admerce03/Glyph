@@ -13,7 +13,9 @@ if ($CoreOnly) {
     $projects = @(
         "./tests/Glyph.Core.Tests/Glyph.Core.Tests.csproj",
         "./tests/Glyph.Infrastructure.Tests/Glyph.Infrastructure.Tests.csproj",
-        "./tests/Glyph.Pdf.Tests/Glyph.Pdf.Tests.csproj"
+        "./tests/Glyph.Pdf.Tests/Glyph.Pdf.Tests.csproj",
+        "./tests/Glyph.Imaging.Tests/Glyph.Imaging.Tests.csproj",
+        "./tests/Glyph.Ocr.Tests/Glyph.Ocr.Tests.csproj"
     )
     foreach ($project in $projects) {
         dotnet test $project -c $Configuration

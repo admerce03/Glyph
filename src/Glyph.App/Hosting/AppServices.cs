@@ -1,3 +1,4 @@
+using Glyph.App.Ocr;
 using Glyph.Core.Signatures;
 using Glyph.Core.Workspace;
 using Glyph.Imaging.Abstractions;
@@ -7,6 +8,7 @@ using Glyph.Infrastructure.Paths;
 using Glyph.Infrastructure.RecentFiles;
 using Glyph.Infrastructure.Settings;
 using Glyph.Infrastructure.Signatures;
+using Glyph.Ocr.Abstractions;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Pdfium;
 using Glyph.Pdf.Rendering;
@@ -51,6 +53,7 @@ internal static class AppServices
         services.AddSingleton<IImageDecoder, MagickImageDecoder>();
         services.AddSingleton<IImageEncoder, MagickImageEncoder>();
         services.AddSingleton<IImageProcessor, MagickImageProcessor>();
+        services.AddSingleton<IOcrEngine, WindowsOcrEngine>();
         services.AddSingleton<PageRenderCache>(_ => new PageRenderCache(capacity: 48));
         services.AddTransient<MainWindow>();
 
