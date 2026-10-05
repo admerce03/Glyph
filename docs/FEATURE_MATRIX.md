@@ -10,7 +10,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | --- | --- | --- | --- | --- | --- |
 | F01-01 | Application and file handling | Open files through: | M1/M9 | Implemented | Open / Open Multiple / drag-drop in shell |
 | F01-02 | Application and file handling | Open multiple files simultaneously. | M1/M9 | Implemented | Multi-tab + multi-select open |
-| F01-03 | Application and file handling | Open multiple files: | M1/M9 | Implemented | Tabs by default; Preferences → separate windows |
+| F01-03 | Application and file handling | Open multiple files: | M1/M9 | Tested | Tabs by default; `OpenFilesInSeparateWindows` prefs round-trip |
 | F01-04 | Application and file handling | Reopen recently used files. | M1/M9 | Tested | JsonRecentFilesStore covered by unit tests |
 | F01-05 | Application and file handling | Restore previously open tabs/windows after restart, optionally. | M1/M9 | Tested | `JsonSessionStore` save/load/clear unit tests + Preferences toggle |
 | F01-06 | Application and file handling | Native Windows file associations. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
@@ -214,7 +214,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F11-07 | Preview-style PDF drag-and-drop workflows | create a new PDF containing those selected pages. | M3 | Implemented | Deferred StorageItems extract on drag-out |
 | F11-08 | Preview-style PDF drag-and-drop workflows | different windows | M3 | Implemented | File → New Window; per-window workspace + shared page drag registry |
 | F11-09 | Preview-style PDF drag-and-drop workflows | different tabs | M3 | Implemented | Cross-tab insert via `PdfPageDragRegistry` |
-| F12-01 | PDF crop | Rectangular page crop. | M3 | Implemented | CropBox rectangle via margins / absolute box |
+| F12-01 | PDF crop | Rectangular page crop. | M3 | Tested | CropBox rectangle via margins / absolute box; `PdfCropBox`/`PdfCropMargins` unit tests |
 | F12-02 | PDF crop | Visual crop handles. | M3 | Implemented | Interactive overlay handles + Apply/Cancel chrome |
 | F12-03 | PDF crop | Numeric crop dimensions. | M3 | Implemented | L/T/R/B inset dialog |
 | F12-04 | PDF crop | Units: | M3 | Implemented | pt / in / cm / mm via `PdfLengthUnits` |
@@ -775,7 +775,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-07 | Preferences | remember last page | M1/M9 | Tested | `JsonDocumentViewStateStore` page index round-trip |
 | F55-08 | Preferences | remember zoom | M1/M9 | Tested | `JsonDocumentViewStateStore` zoom round-trip |
 | F55-09 | Preferences | open PDF in tabs/windows | M1/M9 | Implemented | Preferences → Open each file in a separate window |
-| F55-10 | Preferences | annotation author | M1/M9 | Implemented | Preferences + PDF Author button; persisted |
+| F55-10 | Preferences | annotation author | M1/M9 | Tested | Preferences + PDF Author button; trimmed prefs round-trip |
 | F55-11 | Preferences | OCR behavior | M1/M9 | Tested | Preferred BCP-47 language; `Save_and_load_round_trips_ocr_language` |
 | F55-12 | Preferences | autosave behavior | M1/M9 | Tested | Auto-save to original checkbox; settings round-trip |
 | F55-13 | Preferences | open multiple images in same window or separate windows | M1/M9 | Implemented | Same as F55-09 — Open each file in a separate window |

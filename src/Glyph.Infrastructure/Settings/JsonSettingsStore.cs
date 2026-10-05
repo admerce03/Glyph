@@ -165,6 +165,7 @@ public sealed class JsonSettingsStore : ISettingsStore
         // OCR is always on-device; keep the flag true so prefs stay honest.
         settings.LocalOnlyOcr = true;
         settings.OcrLanguageTag = (settings.OcrLanguageTag ?? string.Empty).Trim();
+        settings.AnnotationAuthor = (settings.AnnotationAuthor ?? string.Empty).Trim();
 
         settings.ToolbarHiddenCommands ??= [];
         var known = new HashSet<string>(ToolbarCommands.Catalog.Select(c => c.Id), StringComparer.OrdinalIgnoreCase);

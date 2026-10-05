@@ -293,4 +293,30 @@ public class JsonSettingsStoreTests
             }
         }
     }
+
+    [Fact]
+    public async Task Save_and_load_round_trips_open_in_separate_windows_and_author()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-shell-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings
+            {
+                OpenFilesInSeparateWindows = true,
+                AnnotationAuthor = "  Ada Lovelace  ",
+            });
+
+            var settings = await new JsonSettingsStore(path).LoadAsync();
+            settings.OpenFilesInSeparateWindows.Should().BeTrue();
+            settings.AnnotationAuthor.Should().Be("Ada Lovelace");
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
 }
