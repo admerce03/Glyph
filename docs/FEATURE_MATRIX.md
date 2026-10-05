@@ -330,8 +330,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F18-06 | Freehand drawing | Undo stroke. | M4 | Implemented | Ctrl+Z undoes last ink/freeform/polygon via `_strokeUndoStack` |
 | F18-07 | Freehand drawing | Select/move completed strokes. | M4 | Implemented | Ink annots use selection tool + `MoveAsync` |
 | F18-08 | Freehand drawing | Delete stroke. | M4 | Implemented | Sidebar Delete / `RemoveAsync` on ink annot |
-| F18-09 | Freehand drawing | recognize rough: | M4 | Not Started |  |
-| F18-10 | Freehand drawing | offer cleaned-up shape or original stroke. | M4 | Not Started |  |
+| F18-09 | Freehand drawing | recognize rough: | M4 | Tested | `PdfStrokeShapeRecognizer` line/rect/ellipse/triangle |
+| F18-10 | Freehand drawing | offer cleaned-up shape or original stroke. | M4 | Implemented | Dialog after ink/freeform when shape recognized |
 | F19-01 | PDF signatures | mouse | M4 | Tested | Draw mode → BGRA raster → library + stamp |
 | F19-02 | PDF signatures | webcam photographing a signature on paper | M4 | Not Started |  |
 | F19-03 | PDF signatures | imported transparent signature image | M4 | Tested | Import PNG/JPEG → BGRA stamp |

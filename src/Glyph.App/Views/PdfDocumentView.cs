@@ -5300,10 +5300,130 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
+
+            // Optional smart drawing: offer cleaned shape for freehand strokes.
+            await MaybeOfferStrokeCleanupAsync(pageIndex, points, created);
         }
         catch (Exception ex)
         {
             _status.Text = (_freeformMode ? "Freeform" : "Ink") + " failed: " + ex.Message;
+        }
+    }
+
+    private async Task MaybeOfferStrokeCleanupAsync(
+        int pageIndex,
+        IReadOnlyList<PdfPagePoint> points,
+        PdfAnnotationInfo original)
+    {
+        var recognized = PdfStrokeShapeRecognizer.Recognize(points);
+        if (recognized.Shape == PdfRecognizedStrokeShape.None)
+        {
+            return;
+        }
+
+        var window = _ownerWindow ?? App.CurrentApp.MainWindowInstance;
+        if (window?.Content?.XamlRoot is null)
+        {
+            return;
+        }
+
+        var label = recognized.Shape switch
+        {
+            PdfRecognizedStrokeShape.Line => "line",
+            PdfRecognizedStrokeShape.Rectangle => "rectangle",
+            PdfRecognizedStrokeShape.Ellipse => "ellipse",
+            PdfRecognizedStrokeShape.Triangle => "triangle",
+            _ => "shape",
+        };
+        var dialog = new ContentDialog
+        {
+            Title = "Smart drawing",
+            Content = $"That looked like a {label}. Use a cleaned-up shape, or keep the original stroke?",
+            PrimaryButtonText = "Use cleaned",
+            SecondaryButtonText = "Keep original",
+            CloseButtonText = "Keep original",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        try
+        {
+            await _annotations.RemoveAsync(_document, original.PageIndex, original.AnnotIndex);
+            if (_strokeUndoStack.Count > 0
+                && _strokeUndoStack.Peek().PageIndex == original.PageIndex
+                && _strokeUndoStack.Peek().AnnotIndex == original.AnnotIndex)
+            {
+                _strokeUndoStack.Pop();
+            }
+
+            PdfAnnotationInfo cleaned;
+            switch (recognized.Shape)
+            {
+                case PdfRecognizedStrokeShape.Line:
+                    cleaned = await _annotations.AddShapeAsync(
+                        _document,
+                        pageIndex,
+                        PdfShapeKind.Line,
+                        recognized.Bounds,
+                        _drawStrokeColor,
+                        borderWidthPoints: _drawStrokeWidth);
+                    break;
+                case PdfRecognizedStrokeShape.Rectangle:
+                    cleaned = await _annotations.AddShapeAsync(
+                        _document,
+                        pageIndex,
+                        PdfShapeKind.Rectangle,
+                        recognized.Bounds,
+                        _drawStrokeColor,
+                        fillColor: new PdfAnnotationColor(
+                            _drawStrokeColor.R,
+                            _drawStrokeColor.G,
+                            _drawStrokeColor.B,
+                            40),
+                        borderWidthPoints: _drawStrokeWidth);
+                    break;
+                case PdfRecognizedStrokeShape.Ellipse:
+                    cleaned = await _annotations.AddShapeAsync(
+                        _document,
+                        pageIndex,
+                        PdfShapeKind.Ellipse,
+                        recognized.Bounds,
+                        _drawStrokeColor,
+                        fillColor: new PdfAnnotationColor(
+                            _drawStrokeColor.R,
+                            _drawStrokeColor.G,
+                            _drawStrokeColor.B,
+                            40),
+                        borderWidthPoints: _drawStrokeWidth);
+                    break;
+                case PdfRecognizedStrokeShape.Triangle:
+                    cleaned = await _annotations.AddPolygonAsync(
+                        _document,
+                        pageIndex,
+                        recognized.Vertices ?? [],
+                        _drawStrokeColor,
+                        borderWidthPoints: _drawStrokeWidth);
+                    break;
+                default:
+                    return;
+            }
+
+            _strokeUndoStack.Push(cleaned);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = $"Replaced stroke with cleaned {label}.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Cleanup failed: " + ex.Message;
         }
     }
 
