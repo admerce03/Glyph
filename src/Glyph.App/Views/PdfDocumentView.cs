@@ -7257,22 +7257,49 @@ public sealed class PdfDocumentView : UserControl
 
         var presetBox = new ComboBox
         {
-            Width = 220,
+            Width = 260,
             SelectedIndex = 2,
             Items =
             {
-                "Lossless (re-save only)",
+                "Lossless (full rewrite)",
                 "High quality (200 DPI)",
                 "Balanced (150 DPI)",
                 "Small file (96 DPI + strip attachments)",
+                "Custom",
             },
         };
+
+        var aboveDpiBox = new TextBox { Width = 80, Text = "225", IsEnabled = false };
+        var targetDpiBox = new TextBox { Width = 80, Text = "150", IsEnabled = false };
+        var stripAttachments = new CheckBox { Content = "Remove embedded files", IsEnabled = false };
+        var preserveMono = new CheckBox { Content = "Preserve monochrome images", IsChecked = true, IsEnabled = false };
+
+        void SyncCustomEnabled()
+        {
+            var custom = presetBox.SelectedIndex == 4;
+            aboveDpiBox.IsEnabled = custom;
+            targetDpiBox.IsEnabled = custom;
+            stripAttachments.IsEnabled = custom;
+            preserveMono.IsEnabled = custom;
+            if (!custom)
+            {
+                var preset = SelectedPreset();
+                var opts = PdfOptimizeOptions.FromPreset(preset);
+                aboveDpiBox.Text = opts.DownsampleAboveDpi.ToString("0");
+                targetDpiBox.Text = opts.TargetDpi.ToString("0");
+                stripAttachments.IsChecked = opts.RemoveEmbeddedAttachments;
+                preserveMono.IsChecked = opts.PreserveMonochrome;
+            }
+        }
+
+        presetBox.SelectionChanged += (_, _) => SyncCustomEnabled();
+        SyncCustomEnabled();
 
         var estimateText = new TextBlock
         {
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 420,
-            Text = "Choose a preset, then Estimate or Apply. Images above the DPI threshold are downsampled (JPEG rewrite pending PDFiumCore FILEACCESS fix).",
+            Text = "Choose a preset (or Custom), then Estimate or Apply. JPEG rewrite is pending a PDFiumCore FILEACCESS fix.",
         };
 
         PdfOptimizePreset SelectedPreset() => presetBox.SelectedIndex switch
@@ -7280,15 +7307,46 @@ public sealed class PdfDocumentView : UserControl
             0 => PdfOptimizePreset.Lossless,
             1 => PdfOptimizePreset.HighQuality,
             3 => PdfOptimizePreset.SmallFile,
+            4 => PdfOptimizePreset.Custom,
             _ => PdfOptimizePreset.Balanced,
         };
+
+        PdfOptimizeOptions BuildOptions()
+        {
+            var preset = SelectedPreset();
+            if (preset != PdfOptimizePreset.Custom)
+            {
+                return PdfOptimizeOptions.FromPreset(preset);
+            }
+
+            _ = double.TryParse(aboveDpiBox.Text, out var above);
+            _ = double.TryParse(targetDpiBox.Text, out var target);
+            if (above < 36)
+            {
+                above = 225;
+            }
+
+            if (target < 36)
+            {
+                target = 150;
+            }
+
+            return new PdfOptimizeOptions(
+                Preset: PdfOptimizePreset.Custom,
+                DownsampleImages: true,
+                DownsampleAboveDpi: above,
+                TargetDpi: target,
+                JpegQuality: 75,
+                PreserveMonochrome: preserveMono.IsChecked == true,
+                RemoveEmbeddedAttachments: stripAttachments.IsChecked == true);
+        }
 
         var estimateButton = new Button { Content = "Estimate", Margin = new Thickness(0, 8, 8, 0) };
         estimateButton.Click += (_, _) =>
         {
             try
             {
-                var estimate = _optimize.Estimate(_document, PdfOptimizeOptions.FromPreset(SelectedPreset()));
+                var estimate = _optimize.Estimate(_document, BuildOptions());
                 estimateText.Text =
                     $"Current: {FormatBytes(estimate.CurrentBytes)} · Estimated: {FormatBytes(estimate.EstimatedBytes)} · "
                     + $"{estimate.ImagesEligibleForDownsample} image(s) above DPI threshold · "
@@ -7300,6 +7358,19 @@ public sealed class PdfDocumentView : UserControl
             }
         };
 
+        var customRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock { Text = "Above DPI", VerticalAlignment = VerticalAlignment.Center },
+                aboveDpiBox,
+                new TextBlock { Text = "Target DPI", VerticalAlignment = VerticalAlignment.Center },
+                targetDpiBox,
+            },
+        };
+
         var panel = new StackPanel
         {
             Spacing = 8,
@@ -7307,6 +7378,9 @@ public sealed class PdfDocumentView : UserControl
             {
                 new TextBlock { Text = "Preset" },
                 presetBox,
+                customRow,
+                stripAttachments,
+                preserveMono,
                 estimateButton,
                 estimateText,
             },
@@ -7331,9 +7405,7 @@ public sealed class PdfDocumentView : UserControl
         try
         {
             _status.Text = "Optimizing…";
-            var result = await _optimize.OptimizeAsync(
-                _document,
-                PdfOptimizeOptions.FromPreset(SelectedPreset()));
+            var result = await _optimize.OptimizeAsync(_document, BuildOptions());
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();

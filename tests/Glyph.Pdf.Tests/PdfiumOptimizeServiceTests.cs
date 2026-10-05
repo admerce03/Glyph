@@ -49,6 +49,29 @@ public class PdfiumOptimizeServiceTests
     }
 
     [Fact]
+    public async Task Lossless_full_rewrite_succeeds()
+    {
+        var path = CreateBlankPdf();
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var optimize = new PdfiumOptimizeService();
+            await using var document = await factory.OpenAsync(path);
+
+            var result = await optimize.OptimizeAsync(
+                document,
+                PdfOptimizeOptions.FromPreset(PdfOptimizePreset.Lossless));
+            result.ImagesDownsampled.Should().Be(0);
+            result.BytesBefore.Should().BeGreaterThan(0);
+            result.BytesAfter.Should().BeGreaterThan(0);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task SmallFile_preset_removes_attachments()
     {
         var path = CreateBlankPdf();

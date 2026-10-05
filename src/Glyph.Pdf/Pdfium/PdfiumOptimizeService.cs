@@ -7,6 +7,8 @@ namespace Glyph.Pdf.Pdfium;
 public sealed class PdfiumOptimizeService : IPdfOptimizeService
 {
     private const int PageObjImage = 3;
+    // PDFium FPDF_NO_INCREMENTAL — full rewrite (can drop orphaned objects from unlinked attachments).
+    private const uint SaveNoIncremental = 2;
     private readonly IPdfImageJpegEncoder? _jpegEncoder;
 
     public PdfiumOptimizeService(IPdfImageJpegEncoder? jpegEncoder = null)
@@ -22,7 +24,7 @@ public sealed class PdfiumOptimizeService : IPdfOptimizeService
         lock (PdfiumSync.Gate)
         {
             pdfium.ThrowIfDisposed();
-            var current = PdfiumDocumentSaver.SaveToBytes(pdfium.Handle).LongLength;
+            var current = PdfiumDocumentSaver.SaveToBytes(pdfium.Handle, SaveNoIncremental).LongLength;
             var (eligible, _) = ScanImages(pdfium, opts, mutate: false);
             var attachments = Math.Max(0, fpdf_attachment.FPDFDocGetAttachmentCount(pdfium.Handle));
             // Rough estimate: each downsampled image shrinks ~proportionally to pixel area;
@@ -53,7 +55,7 @@ public sealed class PdfiumOptimizeService : IPdfOptimizeService
                 lock (PdfiumSync.Gate)
                 {
                     pdfium.ThrowIfDisposed();
-                    var before = PdfiumDocumentSaver.SaveToBytes(pdfium.Handle).LongLength;
+                    var before = PdfiumDocumentSaver.SaveToBytes(pdfium.Handle, SaveNoIncremental).LongLength;
                     var (_, downsampled) = ScanImages(pdfium, opts, mutate: true);
                     var attachmentsRemoved = 0;
                     if (opts.RemoveEmbeddedAttachments)
@@ -68,7 +70,7 @@ public sealed class PdfiumOptimizeService : IPdfOptimizeService
                     }
 
                     // RemoveMetadata is deferred — PDFium exposes GetMetaText only (see ADR-015 / F25 edit).
-                    var after = PdfiumDocumentSaver.SaveToBytes(pdfium.Handle).LongLength;
+                    var after = PdfiumDocumentSaver.SaveToBytes(pdfium.Handle, SaveNoIncremental).LongLength;
                     if (downsampled > 0)
                     {
                         pdfium.NotifyAnnotationsChanged();

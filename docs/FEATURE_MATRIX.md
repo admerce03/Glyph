@@ -383,21 +383,21 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F23-02 | PDF security | Create password-protected PDFs. | M7 | Blocked | Needs ADR-015 (PDFium has no write-encrypt API) |
 | F23-03 | PDF security | Set document-open password. | M7 | Blocked | Needs ADR-015 |
 | F23-04 | PDF security | Set permissions/owner password where PDF standard permits. | M7 | Blocked | Needs ADR-015 |
-| F23-05 | PDF security | Restrict: | M7 | Blocked | Needs ADR-015 |
+| F23-05 | PDF security | Restrict: printing/editing/copying/annotation/page extraction | M7 | Blocked | Needs ADR-015 (permission write) |
 | F23-06 | PDF security | Change existing permissions where credentials permit. | M7 | Blocked | Needs ADR-015 |
 | F23-07 | PDF security | Remove protection when authorized. | M7 | Blocked | Needs ADR-015 |
 | F23-08 | PDF security | Display encryption information. | M7 | Implemented | Info dialog + status "Encrypted"; `IPdfDocumentInfoService` permissions||
 | F23-09 | PDF security | Warn about limitations of PDF permission enforcement. | M7 | Implemented | Info dialog notes PDF permission flags are advisory||
-| F24-01 | PDF optimization and compression | Lossless | M7 | Implemented | Optimize dialog preset — re-save / no downsample |
+| F24-01 | PDF optimization and compression | Lossless | M7 | Implemented | Optimize dialog preset — full rewrite via `FPDF_NO_INCREMENTAL` |
 | F24-02 | PDF optimization and compression | High quality | M7 | Implemented | Optimize preset → 200 DPI target when above 300 |
 | F24-03 | PDF optimization and compression | Balanced | M7 | Tested | Optimize preset → 150 DPI; service tests |
 | F24-04 | PDF optimization and compression | Small file | M7 | Tested | Optimize preset → 96 DPI + strip attachments |
-| F24-05 | PDF optimization and compression | Custom | M7 | Implemented | `PdfOptimizeOptions` Custom fields (API; dialog uses presets) |
+| F24-05 | PDF optimization and compression | Custom | M7 | Implemented | Optimize dialog Custom: above/target DPI, strip attachments, preserve mono |
 | F24-06 | PDF optimization and compression | downsample images above selected DPI | M7 | Tested | `DownsampleAboveDpi` + PDFium `SetBitmap` resize |
 | F24-07 | PDF optimization and compression | target DPI | M7 | Tested | `TargetDpi` on presets |
 | F24-08 | PDF optimization and compression | JPEG quality | M7 | Blocked | `IPdfImageJpegEncoder`/Magick wired; `LoadJpegFileInline` FILEACCESS crashes under PDFiumCore — SetBitmap fallback |
 | F24-09 | PDF optimization and compression | preserve monochrome content | M7 | Implemented | Skip 1-bpp images when PreserveMonochrome |
-| F24-10 | PDF optimization and compression | compress streams | M7 | Not Started | Relies on PDFium SaveAsCopy |
+| F24-10 | PDF optimization and compression | compress streams | M7 | Implemented | Optimize measures/saves with `FPDF_NO_INCREMENTAL` full rewrite |
 | F24-11 | PDF optimization and compression | subset fonts where appropriate | M7 | Not Started |  |
 | F24-12 | PDF optimization and compression | remove unused objects | M7 | Not Started |  |
 | F24-13 | PDF optimization and compression | optimize object structure | M7 | Not Started |  |
