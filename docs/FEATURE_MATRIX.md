@@ -633,7 +633,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F42-16 | Scanner support | Insert scanned pages into existing PDF. | M8 | Implemented | Destination → Insert into current PDF |
 | F42-17 | Scanner support | Scan multiple photos separately from a flatbed where detection is practical. | M8 | Implemented | Auto crop → Multiple photos (MultipleRegion) |
 | F43-01 | Webcam/camera import | select webcam | M8 | Implemented | Uses default MediaCapture video device |
-| F43-02 | Webcam/camera import | capture image | M8 | Implemented | File → Capture from Camera; PDF Camera button |
+| F43-02 | Webcam/camera import | capture image | M8 | Tested | File → Capture from Camera; `CaptureFileName.CameraPng` unit tests |
 | F43-03 | Webcam/camera import | crop result | M8 | Implemented | Post-capture Crop… in image view; stamp size on PDF |
 | F43-04 | Webcam/camera import | insert into document | M8 | Implemented | PDF Camera stamps capture; File opens as image tab |
 | F44-01 | Printing | print current page | M8 | Implemented | Print → Current page; Ctrl+P |

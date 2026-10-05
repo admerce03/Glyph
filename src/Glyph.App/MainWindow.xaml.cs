@@ -755,7 +755,7 @@ public sealed partial class MainWindow : Window
             }
 
             var folder = await StorageFolder.GetFolderFromPathAsync(System.IO.Path.GetTempPath());
-            var fileName = $"Camera-{DateTime.Now:yyyyMMdd-HHmmss}.png";
+            var fileName = CaptureFileName.CameraPng(DateTime.Now);
             var file = await folder.CreateFileAsync(fileName, CreationCollisionOption.GenerateUniqueName);
             var png = Glyph.Core.Signatures.SignaturePngEncoder.EncodeBgra(
                 captured.BgraPixels,
@@ -1037,7 +1037,7 @@ public sealed partial class MainWindow : Window
                 default:
                     var pdfPath = System.IO.Path.Combine(
                         sessionFolder.Path,
-                        "Scan-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".pdf");
+                        CaptureFileName.ScanPdf(DateTime.Now));
                     await _imageEncoder.WriteImagesAsPdfAsync(paths, pdfPath);
                     await OpenPathAsync(pdfPath);
                     StatusText.Text = $"Created PDF from {paths.Count} scan(s).";
@@ -1068,7 +1068,7 @@ public sealed partial class MainWindow : Window
 
         var insertPdf = System.IO.Path.Combine(
             System.IO.Path.GetTempPath(),
-            "glyph-scan-insert-" + Guid.NewGuid().ToString("N") + ".pdf");
+            CaptureFileName.ScanInsertTempPdf());
         await _imageEncoder.WriteImagesAsPdfAsync(imagePaths, insertPdf);
         await using var scanDoc = await _pdfFactory.OpenAsync(insertPdf);
         await _pdfPageEditor.InsertPagesAsync(
