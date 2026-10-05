@@ -821,11 +821,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F58-05 | Large-document handling | Efficient page cache. | M2+/M9 | Not Started |  |
 | F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Not Started |  |
 | F58-07 | Large-document handling | Partial OCR. | M2+/M9 | Not Started |  |
-<<<<<<< HEAD
 | F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | In Progress | PDF search cancel + PDF/image OCR Cancel OCR |
-=======
-| F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | In Progress | PDF search cancel + image OCR Cancel OCR |
->>>>>>> 651a040 (Milestone 6: cancelable OCR with progress status)
 | F59-01 | Multi-document workflow | multiple tabs | M1/M3 | Implemented | Tab strip + per-tab document hosts |
 | F59-02 | Multi-document workflow | multiple windows | M1/M3 | Implemented | File → New Window; per-window `WorkspaceState` |
 | F59-03 | Multi-document workflow | drag tabs between windows | M1/M3 | Not Started |  |
