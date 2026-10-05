@@ -61,6 +61,12 @@ public static class PdfZoomCalculator
     }
 
     /// <summary>
+    /// Precision-touchpad / direct pinch ManipulationDelta.Scale factor (F02-22).
+    /// </summary>
+    public static double ApplyManipulationScale(double current, double deltaScale) =>
+        Clamp(current * deltaScale);
+
+    /// <summary>
     /// Scale factor so a display-space selection (at <paramref name="currentScale"/>)
     /// fills the viewport as much as possible without exceeding min/max zoom.
     /// </summary>

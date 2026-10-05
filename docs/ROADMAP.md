@@ -320,6 +320,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - ClipboardImageFileName + DocumentPropertiesRouting + StartupReadyStatus + PdfLoupeSampleRegion; F01-14/21 / F04-30 / F57-01 Tested
 - DocumentSaveStatus + DpiAwarenessDeclaration; F01-16 / F02-18 / F02-20 Tested
 - CaptureFileName camera/scan naming; F43-02 Tested; M3 section status → Tested
+- PdfZoom ApplyManipulationScale + FindAllOpenPdfsStatus; F02-22 / F06-08 Tested
 
 ---
 

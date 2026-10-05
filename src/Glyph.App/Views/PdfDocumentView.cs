@@ -3318,7 +3318,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        await SetScaleAsync(_scale * e.Delta.Scale);
+        await SetScaleAsync(PdfZoomCalculator.ApplyManipulationScale(_scale, e.Delta.Scale));
         e.Handled = true;
     }
 

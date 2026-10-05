@@ -31,6 +31,14 @@ public class ImageZoomCalculatorTests
     }
 
     [Fact]
+    public void Manipulation_scale_clamps()
+    {
+        ImageZoomCalculator.ApplyManipulationScale(1.0, 1.2).Should().BeApproximately(1.2, 0.0001);
+        ImageZoomCalculator.ApplyManipulationScale(1.0, 0.001).Should().Be(ImageZoomCalculator.MinScale);
+        ImageZoomCalculator.ApplyManipulationScale(1.0, 50).Should().Be(ImageZoomCalculator.MaxScale);
+    }
+
+    [Fact]
     public void Fit_picks_limiting_dimension()
     {
         // 800×600 viewport, 24 pad → 776×576 usable; 2000×1000 image → width-limited 0.388

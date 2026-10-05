@@ -56,7 +56,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-19 | Main window and interface | Multi-monitor support. | M1/M9 | Tested | OS multi-monitor + Window → Move to Next Monitor; `MonitorCyclePolicy` unit tests |
 | F02-20 | Main window and interface | Per-monitor DPI awareness. | M1/M9 | Tested | Same `DpiAwarenessDeclaration` / app.manifest PerMonitorV2 check |
 | F02-21 | Main window and interface | Mouse support. | M1/M9 | Implemented | Pointer input throughout document and chrome UI |
-| F02-22 | Main window and interface | Precision touchpad gesture support where useful. | M1/M9 | Implemented | Two-finger ScrollViewer scroll + Ctrl+wheel / Manipulation Scale pinch (PDF + image) |
+| F02-22 | Main window and interface | Precision touchpad gesture support where useful. | M1/M9 | Tested | Ctrl+wheel + Manipulation Scale; `PdfZoomCalculator`/`ImageZoomCalculator` ApplyWheelZoom/ApplyManipulationScale unit tests |
 | F02-23 | Main window and interface | Keyboard-first operation. | M1/M9 | Implemented | Menu accelerators + document Ctrl shortcuts |
 | F02-24 | Main window and interface | Accessibility through Windows UI Automation. | M1/M9 | Implemented | AutomationProperties.Name on chrome and tools |
 | F03-01 | Sidebar modes | Page thumbnails | M2-M5 | Tested | Thumbnail strip; `ThumbnailWidthConstraints` clamp unit tests |
@@ -126,7 +126,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F06-05 | PDF search | Any-word search. | M2/M6 | Tested | `ExactPhrase: false` tokenized match; Pdf.Tests; UI still phrase-default |
 | F06-06 | PDF search | Search all occurrences. | M2/M6 | Tested | Collects every hit per page |
 | F06-07 | PDF search | Search current PDF. | M2/M6 | Tested | Current document path |
-| F06-08 | PDF search | Search all open PDFs. | M2/M6 | Implemented | Edit → Find in all open PDFs (Ctrl+Shift+F) |
+| F06-08 | PDF search | Search all open PDFs. | M2/M6 | Tested | Edit → Find in all open PDFs; `FindAllOpenPdfsStatus` unit tests |
 | F06-09 | PDF search | Highlight matches on pages. | M2/M6 | Implemented | Gold overlays from PDFium char boxes |
 | F06-10 | PDF search | Results sidebar. | M2/M6 | Tested | Results list; `PdfSearchSnippet` pads match context with ellipsis |
 | F06-11 | PDF search | Show contextual snippets around matches. | M2/M6 | Tested | Snippet around match |

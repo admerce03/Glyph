@@ -317,7 +317,7 @@ public sealed partial class MainWindow : Window
             .ToList();
         if (pdfs.Count == 0)
         {
-            StatusText.Text = "No open PDF documents to search.";
+            StatusText.Text = FindAllOpenPdfsStatus.NoDocuments;
             return;
         }
 
@@ -339,11 +339,11 @@ public sealed partial class MainWindow : Window
         var query = (box.Text ?? string.Empty).Trim();
         if (query.Length == 0)
         {
-            StatusText.Text = "Enter search text.";
+            StatusText.Text = FindAllOpenPdfsStatus.EmptyQuery;
             return;
         }
 
-        StatusText.Text = $"Searching {pdfs.Count} PDF(s)…";
+        StatusText.Text = FindAllOpenPdfsStatus.Searching(pdfs.Count);
         var hits = new List<(DocumentSession Doc, PdfSearchHit Hit)>();
         foreach (var doc in pdfs)
         {
@@ -352,7 +352,7 @@ public sealed partial class MainWindow : Window
                 var result = await _pdfSearch.SearchAsync(doc.Path!, query);
                 if (result.Status == PdfSearchStatus.Cancelled)
                 {
-                    StatusText.Text = "Search cancelled.";
+                    StatusText.Text = FindAllOpenPdfsStatus.Cancelled;
                     return;
                 }
 
@@ -369,7 +369,7 @@ public sealed partial class MainWindow : Window
 
         if (hits.Count == 0)
         {
-            StatusText.Text = "No matches in open PDFs.";
+            StatusText.Text = FindAllOpenPdfsStatus.NoMatches;
             return;
         }
 
@@ -384,7 +384,7 @@ public sealed partial class MainWindow : Window
         };
         var results = new ContentDialog
         {
-            Title = $"{hits.Count} match(es) across open PDFs",
+            Title = FindAllOpenPdfsStatus.MatchCount(hits.Count),
             Content = list,
             PrimaryButtonText = "Go to",
             CloseButtonText = "Close",
@@ -395,7 +395,7 @@ public sealed partial class MainWindow : Window
             || list.SelectedIndex < 0
             || list.SelectedIndex >= hits.Count)
         {
-            StatusText.Text = $"{hits.Count} match(es) across open PDFs.";
+            StatusText.Text = FindAllOpenPdfsStatus.MatchCount(hits.Count);
             return;
         }
 
@@ -407,7 +407,7 @@ public sealed partial class MainWindow : Window
             await pdfView.RunExternalFindAsync(query, chosen.Hit.PageIndex);
         }
 
-        StatusText.Text = $"Opened {chosen.Doc.DisplayName} p.{chosen.Hit.PageIndex + 1}.";
+        StatusText.Text = FindAllOpenPdfsStatus.OpenedHit(chosen.Doc.DisplayName, chosen.Hit.PageIndex);
     }
 
     private async void CloseTabMenuItem_Click(object sender, RoutedEventArgs e) => await CloseActiveTabAsync();

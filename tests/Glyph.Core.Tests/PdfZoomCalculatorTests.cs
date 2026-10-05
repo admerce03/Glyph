@@ -38,6 +38,14 @@ public class PdfZoomCalculatorTests
     }
 
     [Fact]
+    public void Manipulation_scale_clamps()
+    {
+        PdfZoomCalculator.ApplyManipulationScale(1.0, 1.5).Should().Be(1.5);
+        PdfZoomCalculator.ApplyManipulationScale(1.0, 0.01).Should().Be(PdfZoomCalculator.MinScale);
+        PdfZoomCalculator.ApplyManipulationScale(1.0, 20).Should().Be(PdfZoomCalculator.MaxScale);
+    }
+
+    [Fact]
     public void Clamp_respects_min_and_max()
     {
         PdfZoomCalculator.Clamp(0.01).Should().Be(PdfZoomCalculator.MinScale);
