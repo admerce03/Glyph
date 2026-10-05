@@ -5,6 +5,29 @@ When a decision needs product/licensing/privacy approval, it is marked **Needs a
 
 ---
 
+## ADR-015 — PDF metadata sidecar and Standard Security protect
+
+**Status:** Accepted (Milestone 7)  
+**Date:** 2026-10-04
+
+### Context
+
+PDFium exposes `FPDF_GetMetaText` but not a public SetMeta API. PDFium also has no public “encrypt on save” API. Glyph still needs editable Info fields and password-protect export for M7.
+
+### Decision
+
+1. Persist editable Title/Author/Subject/Keywords in a sibling sidecar `*.glyph-meta.json`. `IPdfMetadataService.GetAsync` merges sidecar values over native Info dictionary values.
+2. Implement `IPdfSecurityService.ProtectAsync` with an internal PDF Standard Security Handler writer (V=2, R=3, RC4-128) over PDFium `SaveAsCopy` bytes. `RemoveProtectionAsync` rebuilds via `FPDF_ImportPages` into a new document (SaveAsCopy alone can retain `/Encrypt`).
+3. Surface `PdfSecurityInfo.PermissionEnforcementWarning` in UI — PDF permission bits are advisory.
+
+### Consequences
+
+- Sidecar edits are Glyph-local until a future native Info-dict writer lands
+- Protect produces RC4-128 PDFs openable by PDFium; AES-256 protect remains a later enhancement
+- Avoids PdfSharpCore/ImageSharp for encryption
+
+---
+
 ## ADR-001 — Native WinUI / .NET 10 stack
 
 **Status:** Accepted (Phase 0)  

@@ -38,6 +38,10 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfPageEditor _pageEditor;
     private readonly IPdfAnnotationStore _annotationStore;
     private readonly IPdfDocumentFactory _documentFactory;
+    private readonly IPdfMetadataService? _metadata;
+    private readonly IPdfSecurityService? _security;
+    private readonly IPdfRedactionService? _redaction;
+    private readonly IPdfOptimizationService? _optimization;
     private readonly PdfPageOcrService? _pdfOcr;
     private string _ocrText = string.Empty;
     private readonly DocumentViewState _viewState;
@@ -100,7 +104,11 @@ public sealed class PdfDocumentView : UserControl
         IPdfAnnotationStore annotationStore,
         IPdfDocumentFactory documentFactory,
         PdfPageOcrService? pdfOcr = null,
-        DocumentViewState? viewState = null)
+        DocumentViewState? viewState = null,
+        IPdfMetadataService? metadata = null,
+        IPdfSecurityService? security = null,
+        IPdfRedactionService? redaction = null,
+        IPdfOptimizationService? optimization = null)
     {
         _document = document;
         _renderer = renderer;
@@ -113,6 +121,10 @@ public sealed class PdfDocumentView : UserControl
         _annotationStore = annotationStore;
         _documentFactory = documentFactory;
         _pdfOcr = pdfOcr;
+        _metadata = metadata;
+        _security = security;
+        _redaction = redaction;
+        _optimization = optimization;
         _viewState = viewState ?? new DocumentViewState();
         _scale = PdfZoomCalculator.Clamp(_viewState.Zoom <= 0 ? 1.25 : _viewState.Zoom);
         _layoutMode = _viewState.PageLayout;
@@ -261,6 +273,12 @@ public sealed class PdfDocumentView : UserControl
         var recolor = new Button { Content = "Recolor" };
         var saveDoc = new Button { Content = "Save" };
         var ocrPage = new Button { Content = "OCR" };
+        var meta = new Button { Content = "Meta" };
+        var security = new Button { Content = "Security" };
+        var protect = new Button { Content = "Protect" };
+        var markRedact = new Button { Content = "Mark redact" };
+        var applyRedact = new Button { Content = "Apply redact" };
+        var optimize = new Button { Content = "Optimize" };
         var undoEdit = new Button { Content = "Undo" };
         var redoEdit = new Button { Content = "Redo" };
         _markupColorBox = new ComboBox
@@ -299,6 +317,12 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(recolor, "Apply selected color to sidebar annotation");
         ToolTipService.SetToolTip(saveDoc, "Save PDF including markup");
         ToolTipService.SetToolTip(ocrPage, "Offline OCR of the current page (scanned PDFs)");
+        ToolTipService.SetToolTip(meta, "View / edit PDF metadata (title, author, subject, keywords)");
+        ToolTipService.SetToolTip(security, "Show encryption and permission flags (permissions are advisory)");
+        ToolTipService.SetToolTip(protect, "Save a password-protected copy");
+        ToolTipService.SetToolTip(markRedact, "Mark selection or a page rectangle for redaction");
+        ToolTipService.SetToolTip(applyRedact, "Permanently apply pending rededctions (removes underlying content)");
+        ToolTipService.SetToolTip(optimize, "Optimize / re-save PDF with size estimate");
         ToolTipService.SetToolTip(_markupColorBox, "Markup color");
         ToolTipService.SetToolTip(_drawToolBox, "Drawing tool for shapes, ink, and text boxes");
         ToolTipService.SetToolTip(_persistentHighlightBox, "Persistent highlight mode: every text selection is highlighted");
@@ -352,6 +376,12 @@ public sealed class PdfDocumentView : UserControl
         recolor.Click += async (_, _) => await RecolorSelectedAnnotationAsync();
         saveDoc.Click += async (_, _) => await SaveDocumentAsync();
         ocrPage.Click += async (_, _) => await RunPageOcrAsync();
+        meta.Click += async (_, _) => await EditMetadataAsync();
+        security.Click += async (_, _) => await ShowSecurityInfoAsync();
+        protect.Click += async (_, _) => await ProtectDocumentAsync();
+        markRedact.Click += async (_, _) => await MarkRedactionAsync();
+        applyRedact.Click += async (_, _) => await ApplyRedactionsAsync();
+        optimize.Click += async (_, _) => await OptimizeDocumentAsync();
         undoEdit.Click += async (_, _) => await UndoPageEditAsync();
         redoEdit.Click += async (_, _) => await RedoPageEditAsync();
 
@@ -364,6 +394,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 first, prev, _gotoBox, next, last, back, forward,
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy, saveDoc, ocrPage,
+                meta, security, protect, markRedact, applyRedact, optimize,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
                 highlight, underline, strike, note, removeMarkup, recolor, _markupColorBox, _drawToolBox, _persistentHighlightBox,
@@ -2146,6 +2177,314 @@ public sealed class PdfDocumentView : UserControl
         4 => PdfAnnotationColor.Red,
         _ => PdfAnnotationColor.Yellow,
     };
+
+    private async Task EditMetadataAsync()
+    {
+        if (_metadata is null)
+        {
+            _status.Text = "Metadata service unavailable.";
+            return;
+        }
+
+        try
+        {
+            var current = await _metadata.GetAsync(_document);
+            var title = new TextBox { Header = "Title", Text = current.Title ?? string.Empty };
+            var author = new TextBox { Header = "Author", Text = current.Author ?? string.Empty };
+            var subject = new TextBox { Header = "Subject", Text = current.Subject ?? string.Empty };
+            var keywords = new TextBox { Header = "Keywords", Text = current.Keywords ?? string.Empty };
+            var info = new TextBlock
+            {
+                Text =
+                    $"Pages: {current.PageCount} · Encrypted: {current.IsEncrypted} · " +
+                    $"Size: {current.FileSizeBytes?.ToString() ?? "?"} bytes · " +
+                    $"Producer: {current.Producer ?? "(none)"}",
+                TextWrapping = TextWrapping.WrapWholeWords,
+                Opacity = 0.85,
+            };
+            var dialog = new ContentDialog
+            {
+                Title = "PDF metadata",
+                PrimaryButtonText = "Save",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = XamlRoot,
+                Content = new StackPanel
+                {
+                    Spacing = 8,
+                    Children = { info, title, author, subject, keywords },
+                },
+            };
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            {
+                return;
+            }
+
+            await _metadata.SetAsync(_document, title.Text, author.Text, subject.Text, keywords.Text);
+            _status.Text = "Metadata saved (sidecar).";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Metadata failed: " + ex.Message;
+        }
+    }
+
+    private async Task ShowSecurityInfoAsync()
+    {
+        if (_security is null)
+        {
+            _status.Text = "Security service unavailable.";
+            return;
+        }
+
+        try
+        {
+            var info = await _security.GetInfoAsync(_document);
+            var dialog = new ContentDialog
+            {
+                Title = "PDF security",
+                CloseButtonText = "Close",
+                XamlRoot = XamlRoot,
+                Content = new TextBlock
+                {
+                    Text =
+                        $"Encrypted: {info.IsEncrypted}\n" +
+                        $"Handler revision: {info.SecurityHandlerRevision}\n" +
+                        $"Print: {info.CanPrint} · Modify: {info.CanModify} · Copy: {info.CanCopy} · Annotate: {info.CanAnnotate}\n\n" +
+                        PdfSecurityInfo.PermissionEnforcementWarning,
+                    TextWrapping = TextWrapping.WrapWholeWords,
+                },
+            };
+            await dialog.ShowAsync();
+            _status.Text = info.IsEncrypted ? "Document is encrypted." : "Document is not encrypted.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Security info failed: " + ex.Message;
+        }
+    }
+
+    private async Task ProtectDocumentAsync()
+    {
+        if (_security is null)
+        {
+            _status.Text = "Security service unavailable.";
+            return;
+        }
+
+        var passwordBox = new PasswordBox { Header = "Open password" };
+        var ownerBox = new PasswordBox { Header = "Owner password (optional)" };
+        var denyCopy = new CheckBox { Content = "Deny copy", IsChecked = true };
+        var dialog = new ContentDialog
+        {
+            Title = "Protect PDF",
+            PrimaryButtonText = "Save protected copy",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+            Content = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = PdfSecurityInfo.PermissionEnforcementWarning,
+                        TextWrapping = TextWrapping.WrapWholeWords,
+                    },
+                    passwordBox,
+                    ownerBox,
+                    denyCopy,
+                },
+            },
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(passwordBox.Password))
+        {
+            _status.Text = "Password required.";
+            return;
+        }
+
+        var picker = new Windows.Storage.Pickers.FileSavePicker();
+        var window = App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable.");
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+        picker.SuggestedFileName = "protected.pdf";
+        picker.FileTypeChoices.Add("PDF", [".pdf"]);
+        var file = await picker.PickSaveFileAsync();
+        if (file is null)
+        {
+            _status.Text = "Protect cancelled.";
+            return;
+        }
+
+        try
+        {
+            var deny = denyCopy.IsChecked == true ? PdfPermissionFlags.DenyCopy : PdfPermissionFlags.None;
+            await _security.ProtectAsync(
+                _document,
+                file.Path,
+                passwordBox.Password,
+                string.IsNullOrEmpty(ownerBox.Password) ? null : ownerBox.Password,
+                deny);
+            _status.Text = "Protected copy saved.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Protect failed: " + ex.Message;
+        }
+    }
+
+    private async Task MarkRedactionAsync()
+    {
+        if (_redaction is null)
+        {
+            _status.Text = "Redaction service unavailable.";
+            return;
+        }
+
+        try
+        {
+            PdfRect bounds;
+            if (_selectionRect is { } selected)
+            {
+                bounds = selected;
+            }
+            else
+            {
+                var page = _document.GetPage(CurrentPageIndex);
+                // Default mark: centered band on the current page for quick preview/testing.
+                bounds = new PdfRect(
+                    page.WidthPoints * 0.15,
+                    page.HeightPoints * 0.45,
+                    page.WidthPoints * 0.85,
+                    page.HeightPoints * 0.55);
+            }
+
+            var mark = await _redaction.MarkRectAsync(_document, CurrentPageIndex, bounds);
+            var pending = await _redaction.ListAsync(_document);
+            _status.Text = $"Marked redaction {mark.Id} ({pending.Count} pending). Save, then Apply redact.";
+            await RefreshAnnotationSidebarAsync();
+            await RenderVisibleAsync();
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Mark redaction failed: " + ex.Message;
+        }
+    }
+
+    private async Task ApplyRedactionsAsync()
+    {
+        if (_redaction is null)
+        {
+            _status.Text = "Redaction service unavailable.";
+            return;
+        }
+
+        var pending = await _redaction.ListAsync(_document);
+        if (pending.Count == 0)
+        {
+            _status.Text = "No pending rededctions.";
+            return;
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = "Apply rededctions permanently?",
+            Content =
+                $"This removes underlying text/image data under {pending.Count} mark(s) and cannot be undone via Unmark. " +
+                "Use page Undo only if you still have an edit snapshot.",
+            PrimaryButtonText = "Apply",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            _status.Text = "Apply redaction cancelled.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Applying rededctions…";
+            await _redaction.ApplyAsync(_document);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RefreshAnnotationSidebarAsync();
+            await RenderVisibleAsync();
+            _status.Text = $"Applied {pending.Count} redaction(s). Save the document to persist.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Apply redaction failed: " + ex.Message;
+        }
+    }
+
+    private async Task OptimizeDocumentAsync()
+    {
+        if (_optimization is null)
+        {
+            _status.Text = "Optimization service unavailable.";
+            return;
+        }
+
+        try
+        {
+            var estimate = await _optimization.EstimateAsync(
+                _document,
+                new PdfOptimizationOptions(PdfOptimizationPreset.Balanced, RemoveMetadata: false));
+            var dialog = new ContentDialog
+            {
+                Title = "Optimize PDF",
+                PrimaryButtonText = "Save optimized copy",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = XamlRoot,
+                Content = new TextBlock
+                {
+                    Text =
+                        $"Source ≈ {estimate.SourceBytes:N0} bytes\n" +
+                        $"Estimated ≈ {estimate.EstimatedBytes:N0} bytes\n" +
+                        estimate.Detail,
+                    TextWrapping = TextWrapping.WrapWholeWords,
+                },
+            };
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            {
+                return;
+            }
+
+            var picker = new Windows.Storage.Pickers.FileSavePicker();
+            var window = App.CurrentApp.MainWindowInstance
+                ?? throw new InvalidOperationException("Main window unavailable.");
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+            picker.SuggestedFileName = "optimized.pdf";
+            picker.FileTypeChoices.Add("PDF", [".pdf"]);
+            var file = await picker.PickSaveFileAsync();
+            if (file is null)
+            {
+                _status.Text = "Optimize cancelled.";
+                return;
+            }
+
+            await _optimization.OptimizeAsync(
+                _document,
+                new PdfOptimizationOptions(PdfOptimizationPreset.Balanced),
+                file.Path);
+            _status.Text = $"Optimized copy saved ({estimate.EstimatedBytes:N0} bytes est.).";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Optimize failed: " + ex.Message;
+        }
+    }
 
     private async Task RunPageOcrAsync()
     {

@@ -363,66 +363,66 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F20-13 | PDF forms | remember recently entered values, optionally | M4 | Not Started |  |
 | F20-14 | PDF forms | user-defined profile for: | M4 | Not Started |  |
 | F20-15 | PDF forms | optional AutoFill from that application profile | M4 | Not Started |  |
-| F21-01 | Redaction | Mark text for redaction. | M7 | Not Started |  |
-| F21-02 | Redaction | Mark rectangular areas for redaction. | M7 | Not Started |  |
-| F21-03 | Redaction | Preview pending redactions. | M7 | Not Started |  |
-| F21-04 | Redaction | Remove pending redaction. | M7 | Not Started |  |
-| F21-05 | Redaction | Apply redactions permanently. | M7 | Not Started |  |
-| F21-06 | Redaction | Remove underlying text/image data, not merely cover it visually. | M7 | Not Started |  |
-| F21-07 | Redaction | Warn before permanent application. | M7 | Not Started |  |
-| F21-08 | Redaction | Sanitize associated hidden content where practical. | M7 | Not Started |  |
-| F21-09 | Redaction | Option to remove: | M7 | Not Started |  |
-| F21-10 | Redaction | Search and redact matching text, later/advanced. | M7 | Not Started |  |
+| F21-01 | Redaction | Mark text for redaction. | M7 | Tested | Pending Square mark via IPdfRedactionService.MarkRectAsync / MarkTextAsync |
+| F21-02 | Redaction | Mark rectangular areas for redaction. | M7 | Tested | MarkRectAsync stores pending redaction annot |
+| F21-03 | Redaction | Preview pending redactions. | M7 | Implemented | Pending marks listed; black Square preview fill |
+| F21-04 | Redaction | Remove pending redaction. | M7 | Implemented | RemoveAsync deletes pending mark |
+| F21-05 | Redaction | Apply redactions permanently. | M7 | Tested | ApplyAsync permanent apply |
+| F21-06 | Redaction | Remove underlying text/image data, not merely cover it visually. | M7 | Tested | Apply removes intersecting text/image page objects before black fill |
+| F21-07 | Redaction | Warn before permanent application. | M7 | Implemented | Apply redact ContentDialog confirmation |
+| F21-08 | Redaction | Sanitize associated hidden content where practical. | M7 | In Progress | Text/image objects under marks removed; full hidden-content sanitize later |
+| F21-09 | Redaction | Option to remove: | M7 | Not Started | Sanitize options (metadata/annots/embedded) later |
+| F21-10 | Redaction | Search and redact matching text, later/advanced. | M7 | Not Started | Search-and-redact advanced |
 | F22-01 | PDF annotation flattening | highlights | M4 | Not Started |  |
 | F22-02 | PDF annotation flattening | notes as configured | M4 | Not Started |  |
 | F22-03 | PDF annotation flattening | shapes | M4 | Not Started |  |
 | F22-04 | PDF annotation flattening | signatures | M4 | Not Started |  |
 | F22-05 | PDF annotation flattening | text boxes | M4 | Not Started |  |
 | F22-06 | PDF annotation flattening | drawings | M4 | Not Started |  |
-| F23-01 | PDF security | Open encrypted PDFs. | M7 | Not Started |  |
-| F23-02 | PDF security | Create password-protected PDFs. | M7 | Not Started |  |
-| F23-03 | PDF security | Set document-open password. | M7 | Not Started |  |
-| F23-04 | PDF security | Set permissions/owner password where PDF standard permits. | M7 | Not Started |  |
-| F23-05 | PDF security | Restrict: | M7 | Not Started |  |
-| F23-06 | PDF security | Change existing permissions where credentials permit. | M7 | Not Started |  |
-| F23-07 | PDF security | Remove protection when authorized. | M7 | Not Started |  |
-| F23-08 | PDF security | Display encryption information. | M7 | Not Started |  |
-| F23-09 | PDF security | Warn about limitations of PDF permission enforcement. | M7 | Not Started |  |
-| F24-01 | PDF optimization and compression | Lossless | M7 | Not Started |  |
-| F24-02 | PDF optimization and compression | High quality | M7 | Not Started |  |
-| F24-03 | PDF optimization and compression | Balanced | M7 | Not Started |  |
-| F24-04 | PDF optimization and compression | Small file | M7 | Not Started |  |
-| F24-05 | PDF optimization and compression | Custom | M7 | Not Started |  |
+| F23-01 | PDF security | Open encrypted PDFs. | M7 | Tested | Open encrypted PDFs (M2 path) + security info |
+| F23-02 | PDF security | Create password-protected PDFs. | M7 | Tested | IPdfSecurityService.ProtectAsync RC4-128 (ADR-015) |
+| F23-03 | PDF security | Set document-open password. | M7 | Tested | User open password on Protect |
+| F23-04 | PDF security | Set permissions/owner password where PDF standard permits. | M7 | Implemented | Owner password parameter on Protect |
+| F23-05 | PDF security | Restrict: | M7 | Implemented | DenyPrint/Modify/Copy/Annotate flags |
+| F23-06 | PDF security | Change existing permissions where credentials permit. | M7 | Not Started | Change existing permissions |
+| F23-07 | PDF security | Remove protection when authorized. | M7 | Tested | RemoveProtectionAsync via ImportPages rebuild |
+| F23-08 | PDF security | Display encryption information. | M7 | Implemented | Security toolbar dialog |
+| F23-09 | PDF security | Warn about limitations of PDF permission enforcement. | M7 | Implemented | PdfSecurityInfo.PermissionEnforcementWarning in UI |
+| F24-01 | PDF optimization and compression | Lossless | M7 | Implemented | Lossless re-save preset |
+| F24-02 | PDF optimization and compression | High quality | M7 | Implemented | HighQuality maps to re-save |
+| F24-03 | PDF optimization and compression | Balanced | M7 | Implemented | Balanced re-save + estimate UI |
+| F24-04 | PDF optimization and compression | Small file | M7 | In Progress | SmallFile uses re-save today; DPI downsample later |
+| F24-05 | PDF optimization and compression | Custom | M7 | Implemented | Custom options record (RemoveMetadata/TargetDpi/JpegQuality) |
 | F24-06 | PDF optimization and compression | downsample images above selected DPI | M7 | Not Started |  |
 | F24-07 | PDF optimization and compression | target DPI | M7 | Not Started |  |
 | F24-08 | PDF optimization and compression | JPEG quality | M7 | Not Started |  |
 | F24-09 | PDF optimization and compression | preserve monochrome content | M7 | Not Started |  |
-| F24-10 | PDF optimization and compression | compress streams | M7 | Not Started |  |
+| F24-10 | PDF optimization and compression | compress streams | M7 | In Progress | SaveAsCopy recompresses streams |
 | F24-11 | PDF optimization and compression | subset fonts where appropriate | M7 | Not Started |  |
 | F24-12 | PDF optimization and compression | remove unused objects | M7 | Not Started |  |
 | F24-13 | PDF optimization and compression | optimize object structure | M7 | Not Started |  |
 | F24-14 | PDF optimization and compression | linearize / Fast Web View | M7 | Not Started |  |
-| F24-15 | PDF optimization and compression | remove metadata optionally | M7 | Not Started |  |
-| F24-16 | PDF optimization and compression | estimate output size before saving where feasible | M7 | Not Started |  |
-| F25-01 | PDF metadata | title | M7 | Not Started |  |
-| F25-02 | PDF metadata | author | M7 | Not Started |  |
-| F25-03 | PDF metadata | subject | M7 | Not Started |  |
-| F25-04 | PDF metadata | keywords | M7 | Not Started |  |
-| F25-05 | PDF metadata | creator | M7 | Not Started |  |
-| F25-06 | PDF metadata | producer | M7 | Not Started |  |
-| F25-07 | PDF metadata | created date | M7 | Not Started |  |
-| F25-08 | PDF metadata | modified date | M7 | Not Started |  |
-| F25-09 | PDF metadata | page count | M7 | Not Started |  |
-| F25-10 | PDF metadata | PDF version | M7 | Not Started |  |
-| F25-11 | PDF metadata | page dimensions | M7 | Not Started |  |
-| F25-12 | PDF metadata | file size | M7 | Not Started |  |
-| F25-13 | PDF metadata | encryption status | M7 | Not Started |  |
-| F25-14 | PDF metadata | permissions | M7 | Not Started |  |
-| F25-15 | PDF metadata | embedded fonts, optionally | M7 | Not Started |  |
-| F25-16 | PDF metadata | title | M7 | Not Started |  |
-| F25-17 | PDF metadata | author | M7 | Not Started |  |
-| F25-18 | PDF metadata | subject | M7 | Not Started |  |
-| F25-19 | PDF metadata | keywords | M7 | Not Started |  |
+| F24-15 | PDF optimization and compression | remove metadata optionally | M7 | Implemented | RemoveMetadata clears sidecar on optimize output |
+| F24-16 | PDF optimization and compression | estimate output size before saving where feasible | M7 | Tested | EstimateAsync returns source/estimated bytes |
+| F25-01 | PDF metadata | title | M7 | Tested | Title via GetMeta + sidecar |
+| F25-02 | PDF metadata | author | M7 | Tested | Author |
+| F25-03 | PDF metadata | subject | M7 | Tested | Subject |
+| F25-04 | PDF metadata | keywords | M7 | Tested | Keywords |
+| F25-05 | PDF metadata | creator | M7 | Implemented | Creator from Info |
+| F25-06 | PDF metadata | producer | M7 | Implemented | Producer from Info |
+| F25-07 | PDF metadata | created date | M7 | Implemented | CreationDate |
+| F25-08 | PDF metadata | modified date | M7 | Implemented | ModDate |
+| F25-09 | PDF metadata | page count | M7 | Tested | PageCount |
+| F25-10 | PDF metadata | PDF version | M7 | Not Started | PDF version |
+| F25-11 | PDF metadata | page dimensions | M7 | Tested | First page dimensions |
+| F25-12 | PDF metadata | file size | M7 | Tested | FileSizeBytes |
+| F25-13 | PDF metadata | encryption status | M7 | Implemented | IsEncrypted on metadata + security |
+| F25-14 | PDF metadata | permissions | M7 | Implemented | Permissions ulong + flags |
+| F25-15 | PDF metadata | embedded fonts, optionally | M7 | Not Started | Embedded fonts list |
+| F25-16 | PDF metadata | title | M7 | Tested | Edit title sidecar |
+| F25-17 | PDF metadata | author | M7 | Tested | Edit author sidecar |
+| F25-18 | PDF metadata | subject | M7 | Tested | Edit subject sidecar |
+| F25-19 | PDF metadata | keywords | M7 | Tested | Edit keywords sidecar |
 | F26-01 | Image viewing | JPEG/JPG | M5 | Implemented | Magick.NET decoder |
 | F26-02 | Image viewing | PNG | M5 | Tested | Magick open/save round-trip |
 | F26-03 | Image viewing | GIF | M5 | Implemented | Magick.NET decoder |

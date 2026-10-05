@@ -43,6 +43,10 @@ public sealed partial class MainWindow : Window
     private readonly IPdfLinkService _pdfLinks;
     private readonly IPdfPageEditor _pdfPageEditor;
     private readonly IPdfAnnotationStore _pdfAnnotations;
+    private readonly IPdfMetadataService _pdfMetadata;
+    private readonly IPdfSecurityService _pdfSecurity;
+    private readonly IPdfRedactionService _pdfRedaction;
+    private readonly IPdfOptimizationService _pdfOptimization;
     private readonly IImageDecoder _imageDecoder;
     private readonly IImageEncoder _imageEncoder;
     private readonly IImageProcessor _imageProcessor;
@@ -65,6 +69,10 @@ public sealed partial class MainWindow : Window
         IPdfLinkService pdfLinks,
         IPdfPageEditor pdfPageEditor,
         IPdfAnnotationStore pdfAnnotations,
+        IPdfMetadataService pdfMetadata,
+        IPdfSecurityService pdfSecurity,
+        IPdfRedactionService pdfRedaction,
+        IPdfOptimizationService pdfOptimization,
         IImageDecoder imageDecoder,
         IImageEncoder imageEncoder,
         IImageProcessor imageProcessor,
@@ -85,6 +93,10 @@ public sealed partial class MainWindow : Window
         _pdfLinks = pdfLinks;
         _pdfPageEditor = pdfPageEditor;
         _pdfAnnotations = pdfAnnotations;
+        _pdfMetadata = pdfMetadata;
+        _pdfSecurity = pdfSecurity;
+        _pdfRedaction = pdfRedaction;
+        _pdfOptimization = pdfOptimization;
         _imageDecoder = imageDecoder;
         _imageEncoder = imageEncoder;
         _imageProcessor = imageProcessor;
@@ -435,7 +447,11 @@ public sealed partial class MainWindow : Window
                 _pdfAnnotations,
                 _pdfFactory,
                 _pdfOcr,
-                session.ViewState);
+                session.ViewState,
+                _pdfMetadata,
+                _pdfSecurity,
+                _pdfRedaction,
+                _pdfOptimization);
         }
 
         if (session.Kind == DocumentKind.Image && session.Path is not null)
