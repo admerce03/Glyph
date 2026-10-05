@@ -44,6 +44,8 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfFormStore _forms;
     private readonly IPdfDocumentFactory _documentFactory;
     private readonly IOcrEngine? _ocr;
+    private readonly Button _ocrCancelButton;
+    private CancellationTokenSource? _ocrCts;
     private readonly Window? _ownerWindow;
     private readonly DocumentViewState _viewState;
     private readonly DocumentNavigationHistory _history = new();
@@ -225,6 +227,9 @@ public sealed class PdfDocumentView : UserControl
         var ocrPage = new Button { Content = "OCR" };
         ocrPage.Click += async (_, _) => await OnOcrButtonClickAsync();
         ToolTipService.SetToolTip(ocrPage, "Run offline OCR on selected pages or the entire PDF");
+        _ocrCancelButton = new Button { Content = "Cancel OCR", Visibility = Visibility.Collapsed };
+        _ocrCancelButton.Click += (_, _) => CancelOcr();
+        ToolTipService.SetToolTip(_ocrCancelButton, "Cancel the in-flight OCR job");
         var clearSearch = new Button { Content = "Clear" };
         ToolTipService.SetToolTip(clearSearch, "Clear search results");
         clearSearch.Click += async (_, _) => await ClearSearchAsync();
@@ -471,7 +476,7 @@ public sealed class PdfDocumentView : UserControl
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
                 highlight, underline, strikeout, stickyNote, textBox, callout, flatten, sign, formFill, ink, freeform, rect, ellipse, line, arrow,
-                _searchBox, _caseSensitiveBox, searchButton, ocrPage, clearSearch, prevMatch, nextMatch, _status,
+                _searchBox, _caseSensitiveBox, searchButton, ocrPage, _ocrCancelButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
 
@@ -1842,6 +1847,32 @@ public sealed class PdfDocumentView : UserControl
         e.Handled = true;
     }
 
+    private void CancelOcr()
+    {
+        if (_ocrCts is null)
+        {
+            return;
+        }
+
+        _ocrCts.Cancel();
+        _status.Text = "Cancelling OCR…";
+    }
+
+    private void BeginOcrJob()
+    {
+        _ocrCts?.Cancel();
+        _ocrCts?.Dispose();
+        _ocrCts = new CancellationTokenSource();
+        _ocrCancelButton.Visibility = Visibility.Visible;
+    }
+
+    private void EndOcrJob()
+    {
+        _ocrCancelButton.Visibility = Visibility.Collapsed;
+        _ocrCts?.Dispose();
+        _ocrCts = null;
+    }
+
     private async Task OnOcrButtonClickAsync()
     {
         if (_ocr is null)
@@ -1896,6 +1927,8 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        BeginOcrJob();
+        var token = _ocrCts!.Token;
         try
         {
             var sections = new List<string>(pages.Count);
@@ -1904,9 +1937,10 @@ public sealed class PdfDocumentView : UserControl
 
             for (var i = 0; i < pages.Count; i++)
             {
+                token.ThrowIfCancellationRequested();
                 var pageIndex = pages[i];
                 _status.Text = pages.Count == 1
-                    ? $"Running OCR on page {pageIndex + 1}…"
+                    ? $"Running OCR on page {pageIndex + 1}… (1/1)"
                     : $"Running OCR on page {pageIndex + 1} ({i + 1}/{pages.Count})…";
 
                 using var rendered = await _renderer.RenderPageAsync(
@@ -1915,11 +1949,14 @@ public sealed class PdfDocumentView : UserControl
                     new PdfRenderRequest(
                         Scale: 4.0,
                         MaxWidthPixels: OcrMaxEdgePixels,
-                        MaxHeightPixels: OcrMaxEdgePixels));
+                        MaxHeightPixels: OcrMaxEdgePixels),
+                    token);
 
+                token.ThrowIfCancellationRequested();
                 var pixels = rendered.Pixels.ToArray();
                 var result = await _ocr.RecognizeAsync(
-                    new OcrRequest(rendered.Width, rendered.Height, pixels));
+                    new OcrRequest(rendered.Width, rendered.Height, pixels),
+                    token);
 
                 totalLines += result.Lines.Count;
                 totalWords += result.Lines.Sum(l => l.Words.Count);
@@ -1979,9 +2016,17 @@ public sealed class PdfDocumentView : UserControl
                     ? $"OCR page {pages[0] + 1} — {totalLines} line(s)."
                     : $"OCR {pages.Count} pages — {totalLines} line(s).");
         }
+        catch (OperationCanceledException)
+        {
+            _status.Text = "OCR cancelled.";
+        }
         catch (Exception ex)
         {
             _status.Text = "OCR failed: " + ex.Message;
+        }
+        finally
+        {
+            EndOcrJob();
         }
     }
 

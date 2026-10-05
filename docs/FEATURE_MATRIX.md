@@ -812,7 +812,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F57-09 | Performance behavior | large-document virtualization | M2+/M9 | Not Started |  |
 | F57-10 | Performance behavior | low memory usage | M2+/M9 | Not Started |  |
 | F57-11 | Performance behavior | unload distant PDF pages | M2+/M9 | Not Started |  |
-| F57-12 | Performance behavior | cancel long-running operations | M2+/M9 | Not Started |  |
+| F57-12 | Performance behavior | cancel long-running operations | M2+/M9 | In Progress | PDF OCR Cancel OCR + `CancellationToken`; PDF search cancel |
 | F57-13 | Performance behavior | progress indicator for: | M2+/M9 | Not Started |  |
 | F58-01 | Large-document handling | PDFs with thousands of pages. | M2+/M9 | In Progress | Page virtualization via on-demand render + cache |
 | F58-02 | Large-document handling | Very large raster images. | M2+/M9 | Not Started |  |
@@ -821,7 +821,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F58-05 | Large-document handling | Efficient page cache. | M2+/M9 | Not Started |  |
 | F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Not Started |  |
 | F58-07 | Large-document handling | Partial OCR. | M2+/M9 | Not Started |  |
-| F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | Not Started |  |
+| F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | In Progress | PDF search cancel + PDF/image OCR Cancel OCR |
 | F59-01 | Multi-document workflow | multiple tabs | M1/M3 | Implemented | Tab strip + per-tab document hosts |
 | F59-02 | Multi-document workflow | multiple windows | M1/M3 | Implemented | File → New Window; per-window `WorkspaceState` |
 | F59-03 | Multi-document workflow | drag tabs between windows | M1/M3 | Not Started |  |
