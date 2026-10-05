@@ -17,8 +17,8 @@ Open, drag-drop, and recent files work unpackaged. Windows CI sideloads the test
 
 1. **Single-project MSIX** — `src/Glyph.App/Package.appxmanifest` + conditional `GenerateAppxPackageOnBuild` when `-p:GlyphPackage=MSIX`.
 2. **File type declarations** — `uap:FileTypeAssociation` for `.pdf` and common image extensions (`PackageFileAssociationDeclaration`).
-3. **CI package** — Windows workflow publishes test-signed `Glyph.App_*.msix` + `Glyph.CI.TestSign.cer` (artifact `glyph-msix-layout`).
-4. **CI sideload + association probe** — after publish, CI enables AppModelUnlock sideloading and runs `install-msix-test.ps1 -Force -ProbeUserDefaults` (`PackagingDeferredPolicy.MsixSideloadCiAssociationProbe`).
+3. **CI package** — Windows workflow publishes test-signed `Glyph.App_*.msix` + `Glyph.CI.TestSign.cer` for **win-x64** (artifact `glyph-msix-layout`) and **win-arm64** (artifact `glyph-msix-layout-arm64`).
+4. **CI sideload + association probe** — after the x64 publish, CI enables AppModelUnlock sideloading and runs `install-msix-test.ps1 -Force -ProbeUserDefaults` (`PackagingDeferredPolicy.MsixSideloadCiAssociationProbe`). Arm64 packages are publish-only on the x64 runner.
 5. **Sideload helper** — `scripts/install-msix-test.ps1` trusts the CI cert, runs `Add-AppxPackage`, and probes installed `uap:FileType` entries (`-VerifyOnly`, `-ProbeUserDefaults`, `-OpenDefaultApps` supported; Settings UI skipped under `GITHUB_ACTIONS`).
 
 ## Publish (Windows)
@@ -29,9 +29,12 @@ Open, drag-drop, and recent files work unpackaged. Windows CI sideloads the test
 
 # Ephemeral CN=Glyph self-signed cert + .cer (CI / Developer Mode)
 ./scripts/publish-msix.ps1 -Configuration Release -Runtime win-x64 -TestSign
+
+# ARM64 package (CI also publishes this; sideload on an ARM64 Windows host)
+./scripts/publish-msix.ps1 -Configuration Release -Runtime win-arm64 -TestSign -Output artifacts/msix-arm64
 ```
 
-Output: `artifacts/msix/` (`Glyph.App_*.msix`; with `-TestSign`, also `Glyph.CI.TestSign.cer`).
+Output: `artifacts/msix/` (`Glyph.App_*.msix`; with `-TestSign`, also `Glyph.CI.TestSign.cer`). Arm64 CI output: `artifacts/msix-arm64/`.
 
 ## Sideload verify checklist (Windows interactive)
 

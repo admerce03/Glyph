@@ -12,8 +12,14 @@ public static class PackagingDeferredPolicy
     /// <summary>Manifest + publish script + conditional MSIX csproj wiring are in-repo.</summary>
     public const bool MsixScaffoldShipped = true;
 
-    /// <summary>Windows CI <c>GenerateAppxPackageOnBuild</c> emits <c>Glyph.App_*.msix</c>.</summary>
+    /// <summary>Windows CI <c>GenerateAppxPackageOnBuild</c> emits <c>Glyph.App_*.msix</c> (win-x64).</summary>
     public const bool MsixPackageCiProduced = true;
+
+    /// <summary>
+    /// Windows CI also publishes a test-signed <c>win-arm64</c> package (artifact
+    /// <c>glyph-msix-layout-arm64</c>). Sideload/association probe runs on the x64 runner only.
+    /// </summary>
+    public const bool MsixPackageCiArm64Produced = true;
 
     /// <summary>
     /// CI ephemeral self-signed cert (<c>CN=Glyph</c>) signs the package and exports

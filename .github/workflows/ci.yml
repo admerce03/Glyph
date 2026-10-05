@@ -67,6 +67,19 @@ jobs:
           if-no-files-found: warn
           retention-days: 5
 
+      - name: MSIX publish smoke (test-signed win-arm64)
+        run: ./scripts/publish-msix.ps1 -Configuration Release -Runtime win-arm64 -TestSign -Output artifacts/msix-arm64
+        shell: pwsh
+
+      - name: Upload MSIX layout (win-arm64)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: glyph-msix-layout-arm64
+          path: artifacts/msix-arm64/
+          if-no-files-found: warn
+          retention-days: 5
+
   core-linux:
     name: Core libraries on Linux
     runs-on: ubuntu-latest
