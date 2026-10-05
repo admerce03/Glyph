@@ -1524,7 +1524,7 @@ public sealed class ImageDocumentView : UserControl
         try
         {
             _status.Text = "Building searchable PDF…";
-            var tempPng = Path.Combine(Path.GetTempPath(), "glyph-ocr-" + Guid.NewGuid().ToString("N") + ".png");
+            var tempPng = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "glyph-ocr-" + Guid.NewGuid().ToString("N") + ".png");
             try
             {
                 await _encoder.SaveAsAsync(_document, tempPng, ImageEncodeFormat.Png);
