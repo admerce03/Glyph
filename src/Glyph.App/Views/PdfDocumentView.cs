@@ -81,6 +81,7 @@ public sealed class PdfDocumentView : UserControl
     private IReadOnlyList<PdfAnnotationInfo> _annotationItems = [];
     private bool _suppressAnnotationNav;
     private bool _inkMode;
+    private bool _signatureMode;
     private bool _inkDrawing;
     private int _inkPageIndex = -1;
     private readonly List<PdfPagePoint> _inkPoints = [];
@@ -91,6 +92,7 @@ public sealed class PdfDocumentView : UserControl
     private Windows.Foundation.Point _shapeStart;
     private FrameworkElement? _shapePreview;
     private Button? _inkButton;
+    private Button? _signButton;
     private Button? _rectButton;
     private Button? _ellipseButton;
     private Button? _lineButton;
@@ -310,6 +312,7 @@ public sealed class PdfDocumentView : UserControl
         var rect = new Button { Content = "Rect" };
         var ellipse = new Button { Content = "Ellipse" };
         var line = new Button { Content = "Line" };
+        _signButton = sign;
         _inkButton = ink;
         _rectButton = rect;
         _ellipseButton = ellipse;
@@ -333,7 +336,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(stickyNote, "Add a sticky note on the current page");
         ToolTipService.SetToolTip(textBox, "Add a FreeText text box on the current page");
         ToolTipService.SetToolTip(flatten, "Flatten annotations into page content (permanent)");
-        ToolTipService.SetToolTip(sign, "Insert a signature image stamp (import PNG/JPEG; save to library)");
+        ToolTipService.SetToolTip(sign, "Signature: draw with mouse or import PNG/JPEG (saved to library)");
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
         ToolTipService.SetToolTip(rect, "Draw a rectangle annotation");
         ToolTipService.SetToolTip(ellipse, "Draw an ellipse annotation");
@@ -386,7 +389,7 @@ public sealed class PdfDocumentView : UserControl
         stickyNote.Click += async (_, _) => await AddStickyNoteAsync();
         textBox.Click += async (_, _) => await AddTextBoxAsync();
         flatten.Click += async (_, _) => await FlattenAnnotationsAsync();
-        sign.Click += async (_, _) => await InsertSignatureAsync();
+        sign.Click += async (_, _) => await BeginSignatureAsync();
         ink.Click += (_, _) => ToggleInkMode();
         rect.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Rectangle);
         ellipse.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Ellipse);
@@ -1307,7 +1310,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (_inkMode)
+        if (_inkMode || _signatureMode)
         {
             BeginInkStroke(border, pageIndex, e);
             e.Handled = true;
@@ -1342,7 +1345,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (_inkMode && _inkDrawing)
+        if ((_inkMode || _signatureMode) && _inkDrawing)
         {
             if (sender is Border { Tag: int inkPage } inkBorder && inkPage == _inkPageIndex)
             {
@@ -1418,9 +1421,17 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (_inkMode && _inkDrawing && pageIndex == _inkPageIndex)
+        if ((_inkMode || _signatureMode) && _inkDrawing && pageIndex == _inkPageIndex)
         {
-            await EndInkStrokeAsync(border, e);
+            if (_signatureMode)
+            {
+                await EndSignatureStrokeAsync(border, e);
+            }
+            else
+            {
+                await EndInkStrokeAsync(border, e);
+            }
+
             e.Handled = true;
             return;
         }
@@ -2113,6 +2124,7 @@ public sealed class PdfDocumentView : UserControl
     private void ToggleInkMode()
     {
         ClearShapeMode();
+        ClearSignatureMode();
         _inkMode = !_inkMode;
         if (!_inkMode)
         {
@@ -2138,6 +2150,8 @@ public sealed class PdfDocumentView : UserControl
             _inkMode = false;
             CancelInkStroke();
         }
+
+        ClearSignatureMode();
 
         if (_shapeMode == kind)
         {
@@ -2169,12 +2183,28 @@ public sealed class PdfDocumentView : UserControl
         _shapeMode = null;
     }
 
+    private void ClearSignatureMode()
+    {
+        if (!_signatureMode)
+        {
+            return;
+        }
+
+        _signatureMode = false;
+        CancelInkStroke();
+    }
+
     private void RefreshToolButtonChrome()
     {
         var active = new SolidColorBrush(Windows.UI.Color.FromArgb(60, 255, 140, 0));
         if (_inkButton is not null)
         {
             _inkButton.Background = _inkMode ? active : null;
+        }
+
+        if (_signButton is not null)
+        {
+            _signButton.Background = _signatureMode ? active : null;
         }
 
         if (_rectButton is not null)
@@ -2380,8 +2410,8 @@ public sealed class PdfDocumentView : UserControl
         {
             _inkPreview = new Microsoft.UI.Xaml.Shapes.Polyline
             {
-                Stroke = new SolidColorBrush(Colors.OrangeRed),
-                StrokeThickness = 2,
+                Stroke = new SolidColorBrush(_signatureMode ? Colors.Black : Colors.OrangeRed),
+                StrokeThickness = _signatureMode ? 2.5 : 2,
                 Fill = null,
             };
             overlay.Children.Add(_inkPreview);
@@ -2441,12 +2471,151 @@ public sealed class PdfDocumentView : UserControl
         _inkPoints.Clear();
     }
 
-    private async Task InsertSignatureAsync()
+    private async Task BeginSignatureAsync()
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for signature picker.");
+            ?? throw new InvalidOperationException("Main window unavailable for signature dialog.");
 
+        if (_signatureMode)
+        {
+            ClearSignatureMode();
+            RefreshToolButtonChrome();
+            _status.Text = "Signature draw cancelled.";
+            return;
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = "Signature",
+            Content = "Draw with the mouse on the page, or import a transparent PNG/JPEG.",
+            PrimaryButtonText = "Draw",
+            SecondaryButtonText = "Import image",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            StartSignatureDrawMode();
+            return;
+        }
+
+        if (result == ContentDialogResult.Secondary)
+        {
+            await ImportSignatureImageAsync(window);
+            return;
+        }
+
+        _status.Text = "Signature cancelled.";
+    }
+
+    private void StartSignatureDrawMode()
+    {
+        ClearShapeMode();
+        if (_inkMode)
+        {
+            _inkMode = false;
+            CancelInkStroke();
+        }
+
+        if (_cropMode)
+        {
+            CancelCropMode();
+        }
+
+        _signatureMode = true;
+        RefreshToolButtonChrome();
+        _status.Text = "Signature draw — draw on the page, then release to save.";
+    }
+
+    private async Task EndSignatureStrokeAsync(Border border, PointerRoutedEventArgs e)
+    {
+        try { border.ReleasePointerCapture(e.Pointer); } catch { /* ignore */ }
+        ContinueInkStroke(border, e);
+
+        var points = _inkPoints.ToList();
+        var pageIndex = _inkPageIndex;
+        CancelInkStroke();
+        _signatureMode = false;
+        RefreshToolButtonChrome();
+
+        if (points.Count < 2 || pageIndex < 0)
+        {
+            _status.Text = "Signature stroke too short.";
+            return;
+        }
+
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for signature name.");
+
+        var nameBox = new TextBox
+        {
+            Text = "Signature",
+            PlaceholderText = "Signature name",
+        };
+        var nameDialog = new ContentDialog
+        {
+            Title = "Save signature",
+            Content = nameBox,
+            PrimaryButtonText = "Insert",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await nameDialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            _status.Text = "Signature cancelled.";
+            return;
+        }
+
+        var name = string.IsNullOrWhiteSpace(nameBox.Text) ? "Signature" : nameBox.Text.Trim();
+
+        try
+        {
+            _status.Text = "Saving signature…";
+            var stroke = points.Select(p => (p.X, p.Y)).ToList();
+            var raster = SignatureStrokeRasterizer.Rasterize(stroke);
+            var png = SignaturePngEncoder.EncodeBgra(raster.BgraPixels, raster.PixelWidth, raster.PixelHeight);
+            await using (var pngStream = new MemoryStream(png))
+            {
+                await _signatures.SaveAsync(name, pngStream);
+            }
+
+            var minX = points.Min(p => p.X);
+            var maxX = points.Max(p => p.X);
+            var minY = points.Min(p => p.Y);
+            var maxY = points.Max(p => p.Y);
+            var pad = raster.PaddingPoints;
+            var bounds = new PdfRect(minX - pad, minY - pad, maxX + pad, maxY + pad);
+
+            await _annotations.AddStampAsync(
+                _document,
+                pageIndex,
+                bounds,
+                raster.BgraPixels,
+                raster.PixelWidth,
+                raster.PixelHeight);
+
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = "Signature inserted.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Signature failed: " + ex.Message;
+        }
+    }
+
+    private async Task ImportSignatureImageAsync(Window window)
+    {
         var picker = new FileOpenPicker();
         var hwnd = WindowNative.GetWindowHandle(window);
         InitializeWithWindow.Initialize(picker, hwnd);

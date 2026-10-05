@@ -332,7 +332,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F18-08 | Freehand drawing | Delete stroke. | M4 | Not Started |  |
 | F18-09 | Freehand drawing | recognize rough: | M4 | Not Started |  |
 | F18-10 | Freehand drawing | offer cleaned-up shape or original stroke. | M4 | Not Started |  |
-| F19-01 | PDF signatures | mouse | M4 | Not Started |  |
+| F19-01 | PDF signatures | mouse | M4 | Tested | Draw mode → BGRA raster → library + stamp |
 | F19-02 | PDF signatures | webcam photographing a signature on paper | M4 | Not Started |  |
 | F19-03 | PDF signatures | imported transparent signature image | M4 | Tested | Import PNG/JPEG → BGRA stamp |
 | F19-04 | PDF signatures | save signature | M4 | Tested | `FileSignatureLibrary.SaveAsync` |

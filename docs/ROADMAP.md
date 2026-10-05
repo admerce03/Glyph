@@ -195,7 +195,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Shapes: `AddShapeAsync` for rectangle/ellipse (Square/Circle) and line (2-point ink); Rect/Ellipse/Line draw modes.
 - Text boxes: `AddTextBoxAsync` FreeText with Contents + DA; TextBox toolbar dialog; listed in sidebar.
 - Flatten: `FlattenAsync` via `FPDFPage_Flatten` + Flatten toolbar (confirm dialog); editable annots removed after bake.
-- Signatures: `AddStampAsync` (BGRA stamp image) + local `FileSignatureLibrary`; Sign toolbar imports image and inserts stamp.
+- Signatures: `AddStampAsync` (BGRA stamp image) + local `FileSignatureLibrary`; Sign toolbar Draw (mouse stroke → PNG/library/stamp) or Import image.
 
 ---
 
