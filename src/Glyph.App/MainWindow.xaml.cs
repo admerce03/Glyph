@@ -397,7 +397,7 @@ public sealed partial class MainWindow : Window
             Title = FindAllOpenPdfsStatus.MatchCount(hits.Count),
             Content = list,
             PrimaryButtonText = "Go to",
-            CloseButtonText = "Close",
+            CloseButtonText = DialogButtons.Close,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = Content.XamlRoot,
         };
@@ -920,7 +920,7 @@ public sealed partial class MainWindow : Window
                     MaxHeight = 480,
                 },
                 PrimaryButtonText = ScanDialogUi.PrimaryButton,
-                CloseButtonText = "Cancel",
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = Content.XamlRoot,
             };
@@ -1164,7 +1164,7 @@ public sealed partial class MainWindow : Window
                 Title = ReadOnlySavePolicy.DialogTitle,
                 Content = ReadOnlySavePolicy.DialogMessage,
                 PrimaryButtonText = "Save As…",
-                CloseButtonText = "Cancel",
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = Content.XamlRoot,
             };
@@ -1271,7 +1271,7 @@ public sealed partial class MainWindow : Window
                     Content = DocumentClosePolicy.DuplicateSaveFirstPrompt,
                     PrimaryButtonText = "Save & duplicate",
                     SecondaryButtonText = "Duplicate without saving",
-                    CloseButtonText = "Cancel",
+                    CloseButtonText = DialogButtons.Cancel,
                     DefaultButton = ContentDialogButton.Primary,
                     XamlRoot = Content.XamlRoot,
                 };
@@ -1323,7 +1323,7 @@ public sealed partial class MainWindow : Window
                 Title = AppShellStatus.RenameDialogTitle,
                 Content = box,
                 PrimaryButtonText = AppShellStatus.RenameButton,
-                CloseButtonText = "Cancel",
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = Content.XamlRoot,
             };
@@ -1407,7 +1407,7 @@ public sealed partial class MainWindow : Window
                     Title = AppShellStatus.ReplaceExistingTitle,
                     Content = $"“{fileName}” already exists in the destination folder.",
                     PrimaryButtonText = AppShellStatus.ReplaceButton,
-                    CloseButtonText = "Cancel",
+                    CloseButtonText = DialogButtons.Cancel,
                     DefaultButton = ContentDialogButton.Close,
                     XamlRoot = Content.XamlRoot,
                 };
@@ -1993,7 +1993,7 @@ public sealed partial class MainWindow : Window
                 Content = TabTearOffPolicy.UnsavedChangesPrompt(session.DisplayName),
                 PrimaryButtonText = "Save & move",
                 SecondaryButtonText = "Move recovery copy",
-                CloseButtonText = "Cancel",
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = RootGrid.XamlRoot,
             };
@@ -2877,7 +2877,7 @@ public sealed partial class MainWindow : Window
         {
             Title = AppShellStatus.FormatVersionSnapshotsTitle(active.DisplayName),
             Content = panel,
-            CloseButtonText = "Close",
+            CloseButtonText = DialogButtons.Close,
             XamlRoot = RootGrid.XamlRoot,
         };
         openCopy.Click += (_, _) =>
@@ -2943,7 +2943,7 @@ public sealed partial class MainWindow : Window
                 Title = AppShellStatus.RestoreSnapshotTitle,
                 Content = AppShellStatus.RestoreSnapshotBody,
                 PrimaryButtonText = AppShellStatus.RestoreButton,
-                CloseButtonText = "Cancel",
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Close,
                 XamlRoot = RootGrid.XamlRoot,
             };

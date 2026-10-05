@@ -3403,7 +3403,7 @@ public sealed class PdfDocumentView : UserControl
             },
             PrimaryButtonText = OcrPageRangeChooser.PrimaryButton(selected.Count),
             SecondaryButtonText = OcrPageRangeChooser.SecondaryButton,
-            CloseButtonText = "Cancel",
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
         };
@@ -3526,7 +3526,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 Title = OcrResultDialog.Title(pages.Count),
                 Content = panel,
-                CloseButtonText = "Close",
+                CloseButtonText = DialogButtons.Close,
                 XamlRoot = XamlRoot,
             };
             await dialog.ShowAsync();
@@ -3878,7 +3878,7 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = PdfDialogTitles.OcrEntities,
             Content = panel,
-            CloseButtonText = "Close",
+            CloseButtonText = DialogButtons.Close,
             XamlRoot = XamlRoot,
         };
         await dialog.ShowAsync();
@@ -4958,8 +4958,8 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = PdfDialogTitles.HighlightColor,
             Content = list,
-            PrimaryButtonText = "Apply",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Apply,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -5077,8 +5077,8 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = $"Fill — {PdfAnnotationListLabel.Format(item)}",
             Content = list,
-            PrimaryButtonText = "Apply",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Apply,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -5145,8 +5145,8 @@ public sealed class PdfDocumentView : UserControl
             {
                 Title = $"Note color — {PdfAnnotationListLabel.Format(item)}",
                 Content = list,
-                PrimaryButtonText = "Apply",
-                CloseButtonText = "Cancel",
+                PrimaryButtonText = DialogButtons.Apply,
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = window.Content.XamlRoot,
             };
@@ -5180,8 +5180,8 @@ public sealed class PdfDocumentView : UserControl
             {
                 Title = $"Color — {PdfAnnotationListLabel.Format(item)}",
                 Content = list,
-                PrimaryButtonText = "Apply",
-                CloseButtonText = "Cancel",
+                PrimaryButtonText = DialogButtons.Apply,
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = window.Content.XamlRoot,
             };
@@ -5402,8 +5402,8 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = PdfDialogTitles.Callout,
             Content = panel,
-            PrimaryButtonText = "Add",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Add,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -5995,7 +5995,7 @@ public sealed class PdfDocumentView : UserControl
             Title = title,
             Content = panel,
             PrimaryButtonText = "Use",
-            CloseButtonText = "Cancel",
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -6868,7 +6868,7 @@ public sealed class PdfDocumentView : UserControl
         var dialog = new ContentDialog
         {
             Title = PdfDialogTitles.Signature,
-            CloseButtonText = "Cancel",
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -7079,9 +7079,9 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = PdfDialogTitles.Signatures,
             Content = panel,
-            PrimaryButtonText = "Insert",
+            PrimaryButtonText = DialogButtons.Insert,
             SecondaryButtonText = "Draw new",
-            CloseButtonText = "Cancel",
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -7283,8 +7283,8 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = PdfDialogTitles.SaveSignature,
             Content = new StackPanel { Spacing = 8, Children = { nameBox, descBox } },
-            PrimaryButtonText = "Insert",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Insert,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -7449,7 +7449,7 @@ public sealed class PdfDocumentView : UserControl
                     Title = PdfDialogTitles.WebcamUnavailable,
                     Content = "No camera could be opened (or capture cancelled). Import a photo of your signature instead?",
                     PrimaryButtonText = "Import image…",
-                    CloseButtonText = "Cancel",
+                    CloseButtonText = DialogButtons.Cancel,
                     DefaultButton = ContentDialogButton.Primary,
                     XamlRoot = window.Content.XamlRoot,
                 };
@@ -7570,7 +7570,7 @@ public sealed class PdfDocumentView : UserControl
             Title = PdfDialogTitles.FormFill,
             Content = options,
             PrimaryButtonText = "Go",
-            CloseButtonText = "Cancel",
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -7625,8 +7625,8 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = PdfDialogTitles.AutoFillProfile,
             Content = panel,
-            PrimaryButtonText = "Save",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Save,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -7946,9 +7946,9 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = PdfDialogTitles.FormFields,
             Content = list,
-            PrimaryButtonText = "Edit",
+            PrimaryButtonText = DialogButtons.Edit,
             SecondaryButtonText = "Next (Tab)",
-            CloseButtonText = "Close",
+            CloseButtonText = DialogButtons.Close,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -8029,8 +8029,8 @@ public sealed class PdfDocumentView : UserControl
             {
                 Title = caption,
                 Content = $"Open link?\n{action.Uri}",
-                PrimaryButtonText = "Open",
-                CloseButtonText = "Cancel",
+                PrimaryButtonText = DialogButtons.Open,
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = window.Content.XamlRoot,
             };
@@ -8083,7 +8083,7 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = caption,
             Content = info,
-            CloseButtonText = "Close",
+            CloseButtonText = DialogButtons.Close,
             XamlRoot = window.Content.XamlRoot,
         };
         await dlg.ShowAsync();
@@ -8139,9 +8139,9 @@ public sealed class PdfDocumentView : UserControl
                         list,
                     },
                 },
-                PrimaryButtonText = "Insert",
+                PrimaryButtonText = DialogButtons.Insert,
                 SecondaryButtonText = "Draw new",
-                CloseButtonText = "Cancel",
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = window.Content.XamlRoot,
             };
@@ -8153,7 +8153,7 @@ public sealed class PdfDocumentView : UserControl
                 Title = $"Sign {field.Name}",
                 Content = "No saved signatures. Draw a new one to place in this field.",
                 PrimaryButtonText = "Draw",
-                CloseButtonText = "Cancel",
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = window.Content.XamlRoot,
             };
@@ -8315,7 +8315,7 @@ public sealed class PdfDocumentView : UserControl
                 Title = field.Name,
                 Content = currentlyOn ? "Checkbox is checked." : "Checkbox is unchecked.",
                 PrimaryButtonText = currentlyOn ? "Uncheck" : "Check",
-                CloseButtonText = "Cancel",
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = window.Content.XamlRoot,
             };
@@ -8361,8 +8361,8 @@ public sealed class PdfDocumentView : UserControl
                 {
                     Title = $"Select {field.Name}",
                     Content = choiceList,
-                    PrimaryButtonText = "Apply",
-                    CloseButtonText = "Cancel",
+                    PrimaryButtonText = DialogButtons.Apply,
+                    CloseButtonText = DialogButtons.Cancel,
                     DefaultButton = ContentDialogButton.Primary,
                     XamlRoot = window.Content.XamlRoot,
                 };
@@ -8449,8 +8449,8 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = $"Edit {field.Name}",
             Content = content,
-            PrimaryButtonText = "Save",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Save,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -8492,7 +8492,7 @@ public sealed class PdfDocumentView : UserControl
             Title = PdfDialogTitles.FlattenAnnotations,
             Content = "Bake all annotations into page content? This cannot be undone from the annotation layer.",
             PrimaryButtonText = "Flatten",
-            CloseButtonText = "Cancel",
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -8573,13 +8573,13 @@ public sealed class PdfDocumentView : UserControl
         {
             dialog.PrimaryButtonText = PdfRedactionUiCopy.ApplyButton;
             dialog.SecondaryButtonText = PdfRedactionUiCopy.DrawMarksButton;
-            dialog.CloseButtonText = "Cancel";
+            dialog.CloseButtonText = DialogButtons.Cancel;
             dialog.DefaultButton = ContentDialogButton.Close;
         }
         else
         {
             dialog.PrimaryButtonText = PdfRedactionUiCopy.DrawMarksButton;
-            dialog.CloseButtonText = "Cancel";
+            dialog.CloseButtonText = DialogButtons.Cancel;
             dialog.DefaultButton = ContentDialogButton.Primary;
             if (hasFindMatches)
             {
@@ -8980,9 +8980,9 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = PdfRedactionUiCopy.ApplyDialogTitle,
             Content = panel,
-            PrimaryButtonText = "Apply",
+            PrimaryButtonText = DialogButtons.Apply,
             SecondaryButtonText = "Clear marks",
-            CloseButtonText = "Cancel",
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -9089,8 +9089,8 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = PdfDialogTitles.StickyNote,
             Content = panel,
-            PrimaryButtonText = "Add",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Add,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -9227,8 +9227,8 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = PdfTextBoxDialogStatus.Title,
             Content = panel,
-            PrimaryButtonText = "Add",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Add,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -10263,8 +10263,8 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = PdfDialogTitles.TextAlignment,
             Content = alignBox,
-            PrimaryButtonText = "Apply",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Apply,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -10401,8 +10401,8 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = PdfDialogTitles.AnnotationAuthor,
             Content = box,
-            PrimaryButtonText = "Save",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Save,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -10626,8 +10626,8 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = title,
             Content = box,
-            PrimaryButtonText = "Save",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Save,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -10830,8 +10830,8 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = $"Stroke width — {PdfAnnotationListLabel.Format(item)}",
             Content = widthBox,
-            PrimaryButtonText = "Apply",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Apply,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -10895,8 +10895,8 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = $"Opacity — {PdfAnnotationListLabel.Format(item)}",
             Content = panel,
-            PrimaryButtonText = "Apply",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Apply,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -11521,7 +11521,7 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = indexes.Count == 1 ? "Crop page" : $"Crop {indexes.Count} pages",
             PrimaryButtonText = "Crop",
-            CloseButtonText = "Cancel",
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
             Content = new StackPanel
@@ -12129,8 +12129,8 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = PdfDialogTitles.AddBookmark,
             Content = box,
-            PrimaryButtonText = "Add",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Add,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
         };
@@ -12169,8 +12169,8 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = PdfDialogTitles.RenameBookmark,
             Content = box,
-            PrimaryButtonText = "Save",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Save,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
         };
@@ -12319,8 +12319,8 @@ public sealed class PdfDocumentView : UserControl
                         includeNotes,
                     },
                 },
-                PrimaryButtonText = "Print…",
-                CloseButtonText = "Cancel",
+                PrimaryButtonText = DialogButtons.PrintEllipsis,
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = XamlRoot,
             };
@@ -12505,7 +12505,7 @@ public sealed class PdfDocumentView : UserControl
             Title = DocumentExportFormats.DialogTitle,
             Content = panel,
             PrimaryButtonText = DocumentExportFormats.PrimaryButton,
-            CloseButtonText = "Cancel",
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -12792,7 +12792,7 @@ public sealed class PdfDocumentView : UserControl
             Title = PdfOptimizeDialogUi.DialogTitle,
             Content = panel,
             PrimaryButtonText = PdfOptimizeDialogUi.ApplyButton,
-            CloseButtonText = "Cancel",
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };

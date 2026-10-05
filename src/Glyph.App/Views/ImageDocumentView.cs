@@ -2786,7 +2786,7 @@ public sealed class ImageDocumentView : UserControl
             Title = ImageDialogTitles.ResizeImage,
             Content = panel,
             PrimaryButtonText = "Resize",
-            CloseButtonText = "Cancel",
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
         };
@@ -2974,8 +2974,8 @@ public sealed class ImageDocumentView : UserControl
                     includeCurrent,
                 },
             },
-            PrimaryButtonText = "Apply",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Apply,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
         };
@@ -3440,8 +3440,8 @@ public sealed class ImageDocumentView : UserControl
         {
             Title = ImageBackgroundSubjectPolicy.DialogTitle,
             Content = panel,
-            PrimaryButtonText = "Apply",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Apply,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
         };
@@ -3790,8 +3790,8 @@ public sealed class ImageDocumentView : UserControl
                 MaxHeight = 520,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             },
-            PrimaryButtonText = "Apply",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Apply,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
         };
@@ -3909,7 +3909,7 @@ public sealed class ImageDocumentView : UserControl
                     },
                 },
                 PrimaryButtonText = "Stamp",
-                CloseButtonText = "Cancel",
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = XamlRoot,
             };
@@ -4005,8 +4005,8 @@ public sealed class ImageDocumentView : UserControl
                         includeSiblings,
                     },
                 },
-                PrimaryButtonText = "Print…",
-                CloseButtonText = "Cancel",
+                PrimaryButtonText = DialogButtons.PrintEllipsis,
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = XamlRoot,
             };
@@ -4169,8 +4169,8 @@ public sealed class ImageDocumentView : UserControl
         {
             Title = ImageDialogTitles.ConvertImage,
             Content = panel,
-            PrimaryButtonText = "Export…",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.ExportEllipsis,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
         };
@@ -4256,8 +4256,8 @@ public sealed class ImageDocumentView : UserControl
         {
             Title = ImageDialogTitles.ExportJpeg,
             Content = quality,
-            PrimaryButtonText = "Export…",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.ExportEllipsis,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
         };
@@ -4462,7 +4462,7 @@ public sealed class ImageDocumentView : UserControl
                 Title = ImageDialogTitles.ImageMetadata,
                 Content = panel,
                 PrimaryButtonText = "Edit…",
-                CloseButtonText = "Close",
+                CloseButtonText = DialogButtons.Close,
                 DefaultButton = ContentDialogButton.Close,
                 XamlRoot = XamlRoot,
             };
@@ -4571,8 +4571,8 @@ public sealed class ImageDocumentView : UserControl
                     copyright,
                 },
             },
-            PrimaryButtonText = "Apply",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Apply,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
         };
@@ -4609,7 +4609,7 @@ public sealed class ImageDocumentView : UserControl
                 Content = ImageOcrFolderChooser.Prompt(_siblings.Count),
                 PrimaryButtonText = ImageOcrFolderChooser.PrimaryButton,
                 SecondaryButtonText = ImageOcrFolderChooser.SecondaryButton(_siblings.Count),
-                CloseButtonText = "Cancel",
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = XamlRoot,
             };
@@ -4684,7 +4684,7 @@ public sealed class ImageDocumentView : UserControl
             {
                 Title = ImageDialogTitles.OcrResult,
                 Content = panel,
-                CloseButtonText = "Close",
+                CloseButtonText = DialogButtons.Close,
                 XamlRoot = XamlRoot,
             };
             await dialog.ShowAsync();
@@ -4778,7 +4778,7 @@ public sealed class ImageDocumentView : UserControl
         {
             Title = ImageDialogTitles.FolderOcrResults,
             Content = panel,
-            CloseButtonText = "Close",
+            CloseButtonText = DialogButtons.Close,
             XamlRoot = XamlRoot,
         };
         await dialog.ShowAsync();
@@ -4864,7 +4864,7 @@ public sealed class ImageDocumentView : UserControl
             Title = ImageMarkupFlattenPolicy.DialogTitle,
             Content = $"{total} markup item(s) will be baked into pixels before saving.",
             PrimaryButtonText = ImageMarkupFlattenPolicy.PrimaryButton,
-            CloseButtonText = "Cancel",
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
         };
@@ -4926,7 +4926,7 @@ public sealed class ImageDocumentView : UserControl
             Title = ImageDialogTitles.DrawMarkup,
             Content = panel,
             PrimaryButtonText = "Start drawing",
-            CloseButtonText = "Cancel",
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
         };
@@ -4978,7 +4978,7 @@ public sealed class ImageDocumentView : UserControl
                 Title = isCallout ? "Callout markup" : "Text markup",
                 Content = new StackPanel { Spacing = 8, Children = { textBox, fontSlider } },
                 PrimaryButtonText = isCallout ? "Draw callout" : "Place text",
-                CloseButtonText = "Cancel",
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = XamlRoot,
             };
