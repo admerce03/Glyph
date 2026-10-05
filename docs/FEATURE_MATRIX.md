@@ -356,7 +356,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F20-06 | PDF forms | combo boxes | M4 | Tested | `SetTextValueAsync` + option list UI |
 | F20-07 | PDF forms | list boxes | M4 | Tested | `SetTextValueAsync` + `/Opt` picker |
 | F20-08 | PDF forms | buttons where applicable | M4 | Tested | PushButton listed; URI `/A` via PdfPig; Form Overlay/Edit activates (Launcher) |
-| F20-09 | PDF forms | signatures where supported | M4 | Implemented | Sig widgets listed; Form Overlay/Edit places stamp in field bounds (visual, not PKCS#7) |
+| F20-09 | PDF forms | signatures where supported | M4 | Tested | Visual stamp in field bounds; `SignatureFormPlacementPolicy` (no PKCS#7) |
 | F20-10 | PDF forms | tab-order navigation | M4 | Tested | `FocusAdjacentAsync` + Form dialog Next |
 | F20-11 | PDF forms | form-filling mode that overlays text fields manually. | M4 | Tested | Form → Overlay; Tab/Enter/Esc; `FormOverlayModePolicy` unit tests |
 | F20-12 | PDF forms | automatic font sizing | M4 | Tested | `SetTextValueAsync` rewrites text `/DA` to `0 Tf`; `PdfFormDefaultAppearance` |
@@ -532,7 +532,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F34-03 | Image markup | arrows | M5 | Tested | Draw → Line/Arrow overlay with head wings |
 | F34-04 | Image markup | text | M5 | Tested | Draw → Text click-to-place overlay; Flatten draws via Magick Text |
 | F34-05 | Image markup | callouts | M5 | Tested | Draw → Callout box + pointer tip + text; FlattenMarkupAsync |
-| F34-06 | Image markup | signatures | M5 | Implemented | Stamp toolbar → signature library PNG via `PasteFileAsync` |
+| F34-06 | Image markup | signatures | M5 | Tested | Stamp → library PNG; `SignatureLibraryUi.ImageMarkupUsesPasteFile` |
 | F34-07 | Image markup | selection | M5 | Tested | Reuses Select / F28; `ImagePixelSelectionPolicy` |
 | F34-08 | Image markup | crop | M5 | Tested | Reuses Crop… / Crop sel; `ImageCropSelectionPolicy` |
 | F34-09 | Image markup | rotate | M5 | Tested | Reuses rotate L/R/180 toolbar |
@@ -785,7 +785,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-17 | Preferences | animation autoplay | M1/M9 | Tested | Preferences toggle; settings round-trip |
 | F55-18 | Preferences | default annotation colors | M1/M9 | Tested | Highlight/stroke/sticky colors; settings round-trip |
 | F55-19 | Preferences | default line width | M1/M9 | Tested | Default stroke width NumberBox; settings round-trip |
-| F55-20 | Preferences | signature handling | M1/M9 | Implemented | Signature library save/delete/reorder/descriptions + prefs clear |
+| F55-20 | Preferences | signature handling | M1/M9 | Tested | Library save/delete/reorder/descriptions; `SignatureLibraryUi` |
 | F55-21 | Preferences | crash recovery interval | M1/M9 | Tested | Seconds NumberBox; clamped 0–3600 in `JsonSettingsStore` |
 | F55-22 | Preferences | local-only OCR preference | M1/M9 | Tested | Always on-device; `LocalOnlyOcr` asserted true in OCR settings test |
 | F55-23 | Preferences | clear recent files | M1/M9 | Tested | File → Clear Recent; `ClearAsync_empties_persisted_list` |

@@ -263,7 +263,7 @@ public sealed class ImageDocumentView : UserControl
         var resize = new Button { Content = "Resize" };
         var adjust = new Button { Content = "Adjust" };
         var bgRemove = new Button { Content = "BG" };
-        var stamp = new Button { Content = "Stamp" };
+        var stamp = new Button { Content = SignatureLibraryUi.ToolbarStamp };
         var meta = new Button { Content = "Meta" };
         var ocrButton = new Button { Content = "OCR" };
         var rotate180 = new Button { Content = "180°" };
@@ -3888,7 +3888,7 @@ public sealed class ImageDocumentView : UserControl
                 MaxHeight = 240,
                 Width = 320,
             };
-            AutomationProperties.SetName(list, "Saved signatures");
+            AutomationProperties.SetName(list, SignatureLibraryUi.LibraryTitle);
             var dialog = new ContentDialog
             {
                 Title = "Stamp signature",

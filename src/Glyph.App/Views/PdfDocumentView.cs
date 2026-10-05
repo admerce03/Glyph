@@ -8260,7 +8260,8 @@ public sealed class PdfDocumentView : UserControl
             return await ActivatePushButtonAsync(field);
         }
 
-        if (field.Kind == PdfFormFieldKind.Signature)
+        if (field.Kind == PdfFormFieldKind.Signature
+            || SignatureFormPlacementPolicy.IsSignatureWidget(field.Kind.ToString()))
         {
             return await FillFormSignatureFieldAsync(field);
         }
