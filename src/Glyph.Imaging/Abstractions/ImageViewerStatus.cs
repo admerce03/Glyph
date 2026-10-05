@@ -131,4 +131,57 @@ public static class ImageViewerStatus
     public const string AssignedSrgbIcc = "Assigned sRGB ICC profile.";
     public const string ConvertedPixelsToSrgb = "Converted pixels to sRGB.";
     public const string DescriptiveMetadataUpdated = "Descriptive metadata updated (IPTC).";
+    public const string WithCurrentSuffix = " (+ current).";
+
+    public static string FormatMovedSelection(int destX, int destY) =>
+        $"Moved selection to ({destX},{destY}).";
+
+    public static string FormatPastedClipboardImage(int destX, int destY) =>
+        $"Pasted clipboard image at ({destX},{destY}).";
+
+    public static string FormatPastedRect(int width, int height, int destX, int destY) =>
+        $"Pasted {width}×{height} at ({destX},{destY}).";
+
+    public static string FormatClearedOutsideSelection(int width, int height) =>
+        $"Cleared outside selection (kept {width}×{height}).";
+
+    public static string FormatClearedSelection(int width, int height) =>
+        $"Cleared selection {width}×{height}.";
+
+    public static string FormatResized(int width, int height, double dpi) =>
+        $"Resized to {width}×{height} @ {dpi:0.#} DPI.";
+
+    public static string FormatResizedCurrentWithBatch(
+        int width,
+        int height,
+        int batchCount,
+        double pct) =>
+        $"Resized current to {width}×{height}; batch-updated {batchCount} folder image(s) at {pct:0.#}%.";
+
+    public static string FormatConvertedCurrent(string kind) =>
+        $"Converted current image → {kind}.";
+
+    public static string FormatAssignedProfile(string kind) =>
+        $"Assigned {kind} profile to current image.";
+
+    public static string FormatCurrentImage(string label) =>
+        $"Current image: {label}.";
+
+    public static string FormatStamped(string name, int destX, int destY) =>
+        $"Stamped “{name}” at ({destX},{destY}).";
+
+    public static string FormatBatchCancelled(string label, int updated) =>
+        $"Batch {label} cancelled after {updated} file(s).";
+
+    public static string FormatBatchUpdated(string label, int updated, bool includeCurrent) =>
+        $"Batch {label}: updated {updated} folder image(s)"
+        + (includeCurrent ? WithCurrentSuffix : ".");
+
+    public static string FormatSelectedPixels(int width, int height, string kindLabel) =>
+        $"Selected {width}×{height} px ({kindLabel})";
+
+    public static string FormatBackgroundRemoved(int fuzz, bool trimmed) =>
+        trimmed
+            ? $"Background removed (fuzz {fuzz:0}%) and trimmed."
+            : $"Background removed (fuzz {fuzz:0}%).";
 }

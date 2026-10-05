@@ -1139,7 +1139,7 @@ public sealed class ImageDocumentView : UserControl
 
         await MutateAsync(
             () => _processor.MoveRectAsync(_document, sel, destX, destY, _selectionKind, CurrentLassoOrNull()),
-            $"Moved selection to ({destX},{destY}).");
+            ImageViewerStatus.FormatMovedSelection(destX, destY));
         var dxPix = destX - sel.X;
         var dyPix = destY - sel.Y;
         TranslateLasso(dxPix, dyPix);
@@ -1236,7 +1236,7 @@ public sealed class ImageDocumentView : UserControl
                     var destY = _pixelSelection?.Y ?? 0;
                     await MutateAsync(
                         () => _processor.PasteFileAsync(_document, temp, destX, destY),
-                        $"Pasted clipboard image at ({destX},{destY}).");
+                        ImageViewerStatus.FormatPastedClipboardImage(destX, destY));
                     return;
                 }
                 finally
@@ -1344,7 +1344,7 @@ public sealed class ImageDocumentView : UserControl
         var clip = _selectionClipboard;
         await MutateAsync(
             () => _processor.PasteRectAsync(_document, clip, destX, destY),
-            $"Pasted {clip.Width}×{clip.Height} at ({destX},{destY}).");
+            ImageViewerStatus.FormatPastedRect(clip.Width, clip.Height, destX, destY));
     }
 
     private async Task DeleteSelectionAsync()
@@ -1364,8 +1364,8 @@ public sealed class ImageDocumentView : UserControl
                 CurrentLassoOrNull(),
                 _selectionInverted),
             _selectionInverted
-                ? $"Cleared outside selection (kept {sel.Width}×{sel.Height})."
-                : $"Cleared selection {sel.Width}×{sel.Height}.");
+                ? ImageViewerStatus.FormatClearedOutsideSelection(sel.Width, sel.Height)
+                : ImageViewerStatus.FormatClearedSelection(sel.Width, sel.Height));
     }
 
     private async Task CropToSelectionAsync()
@@ -2326,7 +2326,7 @@ public sealed class ImageDocumentView : UserControl
             SyncSelectionOverlayShape();
             ApplySelectionChrome();
             _status.Text =
-                $"Selected {_pixelSelection.Value.Width}×{_pixelSelection.Value.Height} px ({SelectionKindLabel()})";
+                ImageViewerStatus.FormatSelectedPixels(_pixelSelection.Value.Width, _pixelSelection.Value.Height, SelectionKindLabel());
         }
 
         e.Handled = true;
@@ -2474,7 +2474,7 @@ public sealed class ImageDocumentView : UserControl
         var polygon = CurrentLassoOrNull();
         await MutateAsync(
             () => _processor.MoveRectAsync(_document, source, destX, destY, _selectionKind, polygon),
-            $"Moved selection to ({destX},{destY}).");
+            ImageViewerStatus.FormatMovedSelection(destX, destY));
         TranslateLasso(destX - source.X, destY - source.Y);
         SetPixelSelection(new ImageRect(destX, destY, w, h));
         if (IsLassoKind())
@@ -2806,7 +2806,7 @@ public sealed class ImageDocumentView : UserControl
         var options = new ImageResizeOptions(Filter: filter, DensityDpi: ActiveDpi());
         await MutateAsync(
             () => _processor.ResizeAsync(_document, width, height, options),
-            $"Resized to {width}×{height} @ {ActiveDpi():0.#} DPI.");
+            ImageViewerStatus.FormatResized(width, height, ActiveDpi()));
 
         if (batchFolder.IsChecked == true && _decoder is not null && _siblings.Count > 1)
         {
@@ -2821,7 +2821,7 @@ public sealed class ImageDocumentView : UserControl
                 lockAspect.IsChecked == true,
                 options);
             _status.Text =
-                $"Resized current to {width}×{height}; batch-updated {batchCount} folder image(s) at {pct:0.#}%.";
+                ImageViewerStatus.FormatResizedCurrentWithBatch(width, height, batchCount, pct);
         }
     }
 
@@ -3028,12 +3028,12 @@ public sealed class ImageDocumentView : UserControl
                     () => convert
                         ? _processor.ConvertColorProfileAsync(_document, kind)
                         : _processor.AssignColorProfileAsync(_document, kind),
-                    convert ? $"Converted current image → {kind}." : $"Assigned {kind} profile to current image.");
+                    convert ? ImageViewerStatus.FormatConvertedCurrent(kind.ToString()) : ImageViewerStatus.FormatAssignedProfile(kind.ToString()));
             }
 
             var profiled = await BatchColorProfileFolderAsync(kind, convert, includeCurrent.IsChecked == true);
             _status.Text = ImageBatchColorProfilePolicy.UpdatedStatus(profiled)
-                + (includeCurrent.IsChecked == true ? " (+ current)." : ".");
+                + (includeCurrent.IsChecked == true ? ImageViewerStatus.WithCurrentSuffix : ".");
             return;
         }
 
@@ -3066,7 +3066,7 @@ public sealed class ImageDocumentView : UserControl
         var label = opBox.SelectedItem?.ToString() ?? "orientation";
         if (includeCurrent.IsChecked == true)
         {
-            await MutateAsync(() => ApplyAsync(_document), $"Current image: {label}.");
+            await MutateAsync(() => ApplyAsync(_document), ImageViewerStatus.FormatCurrentImage(label));
         }
 
         var current = System.IO.Path.GetFullPath(_document.Path);
@@ -3085,9 +3085,8 @@ public sealed class ImageDocumentView : UserControl
                 return true;
             });
         _status.Text = cancelled
-            ? $"Batch {label} cancelled after {updated} file(s)."
-            : $"Batch {label}: updated {updated} folder image(s)"
-                + (includeCurrent.IsChecked == true ? " (+ current)." : ".");
+            ? ImageViewerStatus.FormatBatchCancelled(label, updated)
+            : ImageViewerStatus.FormatBatchUpdated(label, updated, includeCurrent.IsChecked == true);
     }
 
     /// <summary>
@@ -3459,8 +3458,8 @@ public sealed class ImageDocumentView : UserControl
                         }
                     },
                     trim
-                        ? $"Background removed (fuzz {fuzz:0}%) and trimmed."
-                        : $"Background removed (fuzz {fuzz:0}%).");
+                        ? ImageViewerStatus.FormatBackgroundRemoved(fuzz, trimmed: true)
+                        : ImageViewerStatus.FormatBackgroundRemoved(fuzz, trimmed: false));
                 var format = _document.FormatName;
                 var ext = string.IsNullOrWhiteSpace(_document.Path)
                     ? format
@@ -3925,7 +3924,7 @@ public sealed class ImageDocumentView : UserControl
                 var destY = _pixelSelection?.Y ?? 0;
                 await MutateAsync(
                     () => _processor.PasteFileAsync(_document, temp, destX, destY),
-                    $"Stamped “{entry.Name}” at ({destX},{destY}).");
+                    ImageViewerStatus.FormatStamped(entry.Name, destX, destY));
             }
             finally
             {

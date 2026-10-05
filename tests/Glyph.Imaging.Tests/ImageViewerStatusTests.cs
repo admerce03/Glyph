@@ -21,6 +21,9 @@ public class ImageViewerStatusTests
         ImageViewerStatus.RotatedLeft.Should().Be("Rotated left.");
         ImageViewerStatus.FlippedHorizontally.Should().Contain("horizontally");
         ImageViewerStatus.AssignedSrgbIcc.Should().Contain("sRGB");
+        ImageViewerStatus.FormatMovedSelection(1, 2).Should().Contain("(1,2)");
+        ImageViewerStatus.FormatBatchUpdated("orient", 3, true).Should().Contain("(+ current)");
+        ImageViewerStatus.FormatBackgroundRemoved(12, true).Should().Contain("trimmed");
     }
 }
 
