@@ -13008,28 +13008,28 @@ public sealed class PdfDocumentView : UserControl
             Spacing = 8,
             Children =
             {
-                new TextBlock { Text = "Title" },
+                new TextBlock { Text = PdfDocumentInfoUi.FieldTitle },
                 titleBox,
-                new TextBlock { Text = "Author" },
+                new TextBlock { Text = PdfDocumentInfoUi.FieldAuthor },
                 authorBox,
-                new TextBlock { Text = "Subject" },
+                new TextBlock { Text = PdfDocumentInfoUi.FieldSubject },
                 subjectBox,
-                new TextBlock { Text = "Keywords" },
+                new TextBlock { Text = PdfDocumentInfoUi.FieldKeywords },
                 keywordsBox,
-                new TextBlock { Text = "Creator" },
+                new TextBlock { Text = PdfDocumentInfoUi.FieldCreator },
                 creatorBox,
-                new TextBlock { Text = "Producer" },
+                new TextBlock { Text = PdfDocumentInfoUi.FieldProducer },
                 producerBox,
             },
         };
 
         var dialog = new ContentDialog
         {
-            Title = "Edit document info",
+            Title = PdfDocumentInfoUi.EditDialogTitle,
             Content = panel,
-            PrimaryButtonText = "Save",
-            SecondaryButtonText = "Clear all",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = PdfDocumentInfoUi.SaveButton,
+            SecondaryButtonText = PdfDocumentInfoUi.ClearAllButton,
+            CloseButtonText = PdfDocumentInfoUi.CloseButton,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -13037,7 +13037,7 @@ public sealed class PdfDocumentView : UserControl
         var choice = await dialog.ShowAsync();
         if (choice == ContentDialogResult.None)
         {
-            _status.Text = "Info edit cancelled.";
+            _status.Text = PdfDocumentInfoUi.EditCancelledStatus;
             return;
         }
 
