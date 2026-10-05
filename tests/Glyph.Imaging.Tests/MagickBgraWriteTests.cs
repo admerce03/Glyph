@@ -56,4 +56,40 @@ public class MagickBgraWriteTests
             }
         }
     }
+
+    [Fact]
+    public async Task WriteBgra_embeds_title_and_author_metadata()
+    {
+        var width = 16;
+        var height = 16;
+        var bgra = new byte[width * height * 4];
+        for (var i = 0; i < bgra.Length; i += 4)
+        {
+            bgra[i + 3] = 255;
+        }
+
+        var path = Path.Combine(Path.GetTempPath(), "glyph-meta-" + Guid.NewGuid().ToString("N") + ".png");
+        try
+        {
+            var encoder = new MagickImageEncoder();
+            await encoder.WriteBgraAsync(
+                bgra,
+                width,
+                height,
+                path,
+                ImageEncodeFormat.Png,
+                new ImageEncodeOptions(Title: "Glyph Title", Author: "Glyph Author"));
+
+            using var image = new MagickImage(path);
+            image.GetAttribute("Title").Should().Be("Glyph Title");
+            image.GetAttribute("Artist").Should().Be("Glyph Author");
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
 }

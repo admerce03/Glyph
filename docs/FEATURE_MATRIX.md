@@ -661,13 +661,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F45-01 | Exporting | output format | M5-M9 | Implemented | PDF Export → PNG/JPEG/WebP/TIFF/BMP; image Convert/Export |
 | F45-02 | Exporting | destination | M5-M9 | Implemented | FileSavePicker / FolderPicker for multi-page |
 | F45-03 | Exporting | quality | M5-M9 | Implemented | JPEG/WebP quality slider on PDF Export + image JPEG export |
-| F45-04 | Exporting | compression | M5-M9 | Not Started |  |
+| F45-04 | Exporting | compression | M5-M9 | Implemented | WebP lossless option; codec defaults for PNG/JPEG/AVIF |
 | F45-05 | Exporting | dimensions | M5-M9 | Implemented | PDF Export render DPI control |
-| F45-06 | Exporting | metadata preservation | M5-M9 | Not Started |  |
+| F45-06 | Exporting | metadata preservation | M5-M9 | Tested | PDF Info Title/Author → image Title/Artist on page export |
 | F45-07 | Exporting | color profile | M5-M9 | Not Started |  |
-| F45-08 | Exporting | transparency | M5-M9 | Not Started |  |
-| F45-09 | Exporting | PDF security | M5-M9 | Not Started |  |
-| F45-10 | Exporting | annotation flattening | M5-M9 | Not Started |  |
+| F45-08 | Exporting | transparency | M5-M9 | Implemented | PNG/WebP/TIFF/AVIF keep render alpha; JPEG/JP2/BMP/GIF flatten |
+| F45-09 | Exporting | PDF security | M5-M9 | Blocked | Needs ADR-015 password-write |
+| F45-10 | Exporting | annotation flattening | M5-M9 | Implemented | Raster page export renders annotations into pixels |
 | F46-01 | Sharing and Windows integration | Windows Share UI where available | M9 | Not Started |  |
 | F46-02 | Sharing and Windows integration | Open containing folder | M9 | Not Started |  |
 | F46-03 | Sharing and Windows integration | Copy file path | M9 | Not Started |  |

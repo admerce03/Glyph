@@ -37,7 +37,12 @@ public enum ImageEncodeFormat
 }
 
 /// <summary>
-/// Optional encode knobs. Quality is 1–100 when set (JPEG/WebP).
+/// Optional encode knobs. Quality is 1–100 when set (JPEG/WebP/AVIF).
 /// Lossless applies to WebP when true.
+/// Title/Author are written into image metadata when the codec supports it.
 /// </summary>
-public sealed record ImageEncodeOptions(int? Quality = null, bool? Lossless = null);
+public sealed record ImageEncodeOptions(
+    int? Quality = null,
+    bool? Lossless = null,
+    string? Title = null,
+    string? Author = null);

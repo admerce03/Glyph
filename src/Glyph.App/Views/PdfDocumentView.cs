@@ -7337,6 +7337,26 @@ public sealed class PdfDocumentView : UserControl
             ? new ImageEncodeOptions(Quality: (int)qualityBox.Value)
             : null;
 
+        try
+        {
+            var info = _documentInfo.GetInfo(_document);
+            options = (options ?? new ImageEncodeOptions()) with
+            {
+                Title = info.Title,
+                Author = info.Author,
+            };
+        }
+        catch
+        {
+            // Export still works without Info metadata.
+        }
+
+        // Formats without alpha: drop transparency. PNG/WebP/TIFF/AVIF keep BGRA alpha from the render.
+        if (format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Jpeg2000 or ImageEncodeFormat.Bmp or ImageEncodeFormat.Gif)
+        {
+            // Encoder removes alpha for JPEG/JP2; BMP/GIF flatten via Magick defaults.
+        }
+
         var baseName = _document.Path is null
             ? "page"
             : System.IO.Path.GetFileNameWithoutExtension(_document.Path);

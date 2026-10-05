@@ -129,6 +129,31 @@ public sealed class MagickImageEncoder : IImageEncoder
         {
             image.Settings.SetDefine(MagickFormat.WebP, "lossless", true);
         }
+
+        if (!string.IsNullOrWhiteSpace(options.Title))
+        {
+            image.SetAttribute("Title", options.Title);
+            try
+            {
+                image.SetAttribute("exif:ImageDescription", options.Title);
+            }
+            catch
+            {
+                // Some codecs reject EXIF keys; Title attribute is enough.
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(options.Author))
+        {
+            image.SetAttribute("Artist", options.Author);
+            try
+            {
+                image.SetAttribute("exif:Artist", options.Author);
+            }
+            catch
+            {
+            }
+        }
     }
 
     private static MagickImageDocument RequireMagick(IImageDocument document)
