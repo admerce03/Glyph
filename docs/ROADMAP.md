@@ -224,9 +224,9 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Progress notes
 
-- Magick.NET adapter: `MagickImageDecoder` / `Document` / `Processor` / `Encoder` (open, rotate, flip, crop, resize, color adjust, export PNG/JPEG/WebP/TIFF/BMP/GIF).
-- `ImageDocumentView`: zoom/fit, rotate L/R/180, flip H/V, numeric crop, resize dialog (px/%, aspect lock), Adjust (brightness/contrast/saturation), Convert dialog, save/export; wired from MainWindow for image kinds.
-- Imaging.Tests cover processor round-trips including rotate-right/180, resize, AdjustAsync, and multi-format SaveAs.
+- Magick.NET adapter: `MagickImageDecoder` / `Document` / `Processor` / `Encoder` (open, rotate, flip, crop, resize, color adjust, metadata/EXIF/GPS, export PNG/JPEG/WebP/TIFF/BMP/GIF).
+- `ImageDocumentView`: zoom/fit, rotate L/R/180, flip H/V, numeric crop, resize dialog (px/%, aspect lock), Adjust (brightness/contrast/saturation), Meta (EXIF/GPS copy/map/strip), Convert dialog, save/export; wired from MainWindow for image kinds.
+- Imaging.Tests cover processor round-trips including rotate-right/180, resize, AdjustAsync, multi-format SaveAs, EXIF read, and GPS strip.
 ---
 
 ## Milestone 6 — OCR and scanned-document capabilities
@@ -336,7 +336,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | PDF metadata | §25 | M7 | Not Started |
 | Image viewing/editing | §26–35 | M5 | In Progress |
 | Batch images | §36 | M8 | Not Started |
-| Image metadata/GPS | §37–38 | M5, M8 | Not Started |
+| Image metadata/GPS | §37–38 | M5, M8 | In Progress (EXIF/GPS inspector + strip) |
 | Color management | §39 | M8 | Not Started |
 | Clipboard/screenshots | §40–41 | M1, M5 | Not Started |
 | Scanner/webcam | §42–43 | M8 | Not Started |
