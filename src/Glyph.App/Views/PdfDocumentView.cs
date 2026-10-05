@@ -5098,7 +5098,7 @@ public sealed class PdfDocumentView : UserControl
         };
         var dialog = new ContentDialog
         {
-            Title = $"Fill — {FormatAnnotationLabel(item)}",
+            Title = $"Fill — {PdfAnnotationListLabel.Format(item)}",
             Content = list,
             PrimaryButtonText = "Apply",
             CloseButtonText = "Cancel",
@@ -5166,7 +5166,7 @@ public sealed class PdfDocumentView : UserControl
             list.SelectedIndex = 0;
             var dialog = new ContentDialog
             {
-                Title = $"Note color — {FormatAnnotationLabel(item)}",
+                Title = $"Note color — {PdfAnnotationListLabel.Format(item)}",
                 Content = list,
                 PrimaryButtonText = "Apply",
                 CloseButtonText = "Cancel",
@@ -5201,7 +5201,7 @@ public sealed class PdfDocumentView : UserControl
             list.SelectedIndex = 0;
             var dialog = new ContentDialog
             {
-                Title = $"Color — {FormatAnnotationLabel(item)}",
+                Title = $"Color — {PdfAnnotationListLabel.Format(item)}",
                 Content = list,
                 PrimaryButtonText = "Apply",
                 CloseButtonText = "Cancel",
@@ -5250,7 +5250,7 @@ public sealed class PdfDocumentView : UserControl
 
             _suppressAnnotationNav = true;
             _annotationList.ItemsSource = _annotationItems
-                .Select(FormatAnnotationLabel)
+                .Select(PdfAnnotationListLabel.Format)
                 .ToList();
             _suppressAnnotationNav = false;
         }
@@ -5291,75 +5291,6 @@ public sealed class PdfDocumentView : UserControl
         }
     }
 
-    private static string FormatAnnotationLabel(PdfAnnotationInfo info)
-    {
-        var group = string.IsNullOrEmpty(info.GroupId) ? string.Empty : "[G] ";
-        if (info.IsCallout)
-        {
-            var preview = string.IsNullOrWhiteSpace(info.Contents)
-                ? "(empty)"
-                : TrimForStatus(info.Contents);
-            var ul = info.IsUnderlined ? " · U" : string.Empty;
-            return $"{group}Callout{ul} · p.{info.PageIndex + 1}: {preview}";
-        }
-
-        if (info.IsStickyNote)
-        {
-            var preview = string.IsNullOrWhiteSpace(info.Contents)
-                ? "(empty)"
-                : TrimForStatus(info.Contents);
-            var author = string.IsNullOrWhiteSpace(info.Author) ? string.Empty : $" · {info.Author}";
-            return $"{group}Note{author} · p.{info.PageIndex + 1}: {preview}";
-        }
-
-        if (info.IsTextBox)
-        {
-            var preview = string.IsNullOrWhiteSpace(info.Contents)
-                ? "(empty)"
-                : TrimForStatus(info.Contents);
-            var ul = info.IsUnderlined ? " · U" : string.Empty;
-            return $"{group}Text{ul} · p.{info.PageIndex + 1}: {preview}";
-        }
-
-        if (info.IsStamp)
-        {
-            return $"{group}Signature · p.{info.PageIndex + 1}";
-        }
-
-        if (info.ShapeKind is { } shape)
-        {
-            var shapeName = shape switch
-            {
-                PdfShapeKind.Rectangle => "Rect",
-                PdfShapeKind.RoundedRectangle => "Round",
-                PdfShapeKind.HighlightRectangle => "Area",
-                PdfShapeKind.Ellipse => "Ellipse",
-                PdfShapeKind.Line => "Line",
-                PdfShapeKind.Arrow => "Arrow",
-                PdfShapeKind.Freeform => "Freeform",
-                PdfShapeKind.Star => "Star",
-                PdfShapeKind.Polygon => "Polygon",
-                PdfShapeKind.SpeechBubble => "Bubble",
-                PdfShapeKind.Loupe => "Loupe",
-                _ => "Shape",
-            };
-            return $"{group}{shapeName} · p.{info.PageIndex + 1}";
-        }
-
-        if (info.IsInk)
-        {
-            return $"{group}Ink · p.{info.PageIndex + 1}";
-        }
-
-        var kind = info.TextMarkupKind switch
-        {
-            PdfTextMarkupKind.Highlight => "Highlight",
-            PdfTextMarkupKind.Underline => "Underline",
-            PdfTextMarkupKind.StrikeOut => "Strike",
-            _ => "Markup",
-        };
-        return $"{group}{kind} · p.{info.PageIndex + 1}";
-    }
 
     private void ToggleCalloutMode()
     {
@@ -5673,7 +5604,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = $"Erased {FormatAnnotationLabel(hit)}.";
+            _status.Text = $"Erased {PdfAnnotationListLabel.Format(hit)}.";
         }
         catch (Exception ex)
         {
@@ -6865,7 +6796,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = $"Undid {FormatAnnotationLabel(target)}.";
+            _status.Text = $"Undid {PdfAnnotationListLabel.Format(target)}.";
         }
         catch (Exception ex)
         {
@@ -9446,7 +9377,7 @@ public sealed class PdfDocumentView : UserControl
                 continue;
             }
 
-            var index = _annotationItems.FindIndex(a => FormatAnnotationLabel(a) == label);
+            var index = _annotationItems.FindIndex(a => PdfAnnotationListLabel.Format(a) == label);
             if (index >= 0)
             {
                 _selectedAnnots.Add(_annotationItems[index]);
@@ -9471,7 +9402,7 @@ public sealed class PdfDocumentView : UserControl
 
         await GoToPageAsync(_selectedAnnot.PageIndex, recordHistory: true);
         _status.Text = _selectedAnnots.Count == 1
-            ? $"Jumped to {FormatAnnotationLabel(_selectedAnnot)}."
+            ? $"Jumped to {PdfAnnotationListLabel.Format(_selectedAnnot)}."
             : $"Selected {_selectedAnnots.Count} annotations.";
     }
 
@@ -9505,7 +9436,7 @@ public sealed class PdfDocumentView : UserControl
             }
 
             _status.Text = _selectedAnnots.Count <= 1
-                ? $"Selected {FormatAnnotationLabel(_selectedAnnot)}."
+                ? $"Selected {PdfAnnotationListLabel.Format(_selectedAnnot)}."
                 : $"Selected {_selectedAnnots.Count} annotations (Ctrl+click to toggle).";
         }
         else
@@ -9572,7 +9503,7 @@ public sealed class PdfDocumentView : UserControl
 
         _status.Text = _selectedAnnots.Count > 1
             ? $"Selected {_selectedAnnots.Count} annotations. Drag to move together."
-            : $"Selected {FormatAnnotationLabel(hit)}. Drag to move; handles resize.";
+            : $"Selected {PdfAnnotationListLabel.Format(hit)}. Drag to move; handles resize.";
     }
 
     private async Task GroupSelectedAnnotationsAsync()
@@ -9685,8 +9616,8 @@ public sealed class PdfDocumentView : UserControl
         SyncSidebarSelectionMulti();
         DrawAnnotSelection(hit);
         _status.Text = PdfAnnotationResize.IsEndpointHandle(handle)
-            ? $"Adjusting {FormatAnnotationLabel(hit)} endpoint…"
-            : $"Resizing {FormatAnnotationLabel(hit)}…";
+            ? $"Adjusting {PdfAnnotationListLabel.Format(hit)} endpoint…"
+            : $"Resizing {PdfAnnotationListLabel.Format(hit)}…";
     }
 
     private void ContinueAnnotDrag(Border border, PointerRoutedEventArgs e)
@@ -10229,7 +10160,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         ExpandStickyNote(item);
-        _status.Text = $"Expanded {FormatAnnotationLabel(item)}.";
+        _status.Text = $"Expanded {PdfAnnotationListLabel.Format(item)}.";
     }
 
     private void CollapseSelectedStickyNote()
@@ -10257,7 +10188,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         RedrawStickyNotePopups();
-        _status.Text = $"Collapsed {FormatAnnotationLabel(item)}.";
+        _status.Text = $"Collapsed {PdfAnnotationListLabel.Format(item)}.";
     }
 
     private async Task ExportNotesAsync()
@@ -10786,7 +10717,7 @@ public sealed class PdfDocumentView : UserControl
             _selectedAnnot = updated;
             SyncSidebarSelection(updated);
             DrawAnnotSelection(updated);
-            _status.Text = $"Updated {FormatAnnotationLabel(updated)}.";
+            _status.Text = $"Updated {PdfAnnotationListLabel.Format(updated)}.";
         }
         catch (Exception ex)
         {
@@ -10820,7 +10751,7 @@ public sealed class PdfDocumentView : UserControl
             _selectedAnnot = copy;
             SyncSidebarSelection(copy);
             DrawAnnotSelection(copy);
-            _status.Text = $"Duplicated {FormatAnnotationLabel(item)}.";
+            _status.Text = $"Duplicated {PdfAnnotationListLabel.Format(item)}.";
         }
         catch (Exception ex)
         {
@@ -10857,7 +10788,7 @@ public sealed class PdfDocumentView : UserControl
 
         _annotClipboard = (item.PageIndex, item.AnnotIndex);
         _annotClipboardIsCut = false;
-        _status.Text = $"Copied {FormatAnnotationLabel(item)}.";
+        _status.Text = $"Copied {PdfAnnotationListLabel.Format(item)}.";
     }
 
     private void CutSelectedAnnotationToClipboard()
@@ -10870,7 +10801,7 @@ public sealed class PdfDocumentView : UserControl
 
         _annotClipboard = (item.PageIndex, item.AnnotIndex);
         _annotClipboardIsCut = true;
-        _status.Text = $"Cut {FormatAnnotationLabel(item)} (removed on paste).";
+        _status.Text = $"Cut {PdfAnnotationListLabel.Format(item)} (removed on paste).";
     }
 
     private async Task PasteAnnotationClipboardAsync()
@@ -10910,8 +10841,8 @@ public sealed class PdfDocumentView : UserControl
             SyncSidebarSelection(pasted);
             DrawAnnotSelection(pasted);
             _status.Text = wasCut
-                ? $"Pasted {FormatAnnotationLabel(pasted)} (cut)."
-                : $"Pasted {FormatAnnotationLabel(pasted)}.";
+                ? $"Pasted {PdfAnnotationListLabel.Format(pasted)} (cut)."
+                : $"Pasted {PdfAnnotationListLabel.Format(pasted)}.";
         }
         catch (Exception ex)
         {
@@ -10958,7 +10889,7 @@ public sealed class PdfDocumentView : UserControl
         };
         var dialog = new ContentDialog
         {
-            Title = $"Stroke width — {FormatAnnotationLabel(item)}",
+            Title = $"Stroke width — {PdfAnnotationListLabel.Format(item)}",
             Content = widthBox,
             PrimaryButtonText = "Apply",
             CloseButtonText = "Cancel",
@@ -11023,7 +10954,7 @@ public sealed class PdfDocumentView : UserControl
         var panel = new StackPanel { Spacing = 4, Children = { label, slider } };
         var dialog = new ContentDialog
         {
-            Title = $"Opacity — {FormatAnnotationLabel(item)}",
+            Title = $"Opacity — {PdfAnnotationListLabel.Format(item)}",
             Content = panel,
             PrimaryButtonText = "Apply",
             CloseButtonText = "Cancel",
@@ -11085,7 +11016,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
             _status.Text = toRemove.Count == 1
-                ? $"Deleted {FormatAnnotationLabel(toRemove[0])}."
+                ? $"Deleted {PdfAnnotationListLabel.Format(toRemove[0])}."
                 : $"Deleted {toRemove.Count} annotations.";
         }
         catch (Exception ex)

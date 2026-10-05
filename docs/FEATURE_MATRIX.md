@@ -63,7 +63,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-02 | Sidebar modes | Table of contents | M2-M5 | Implemented | Outline TreeView when bookmarks present |
 | F03-03 | Sidebar modes | Search results | M2-M5 | Implemented | Find hits list under Search header |
 | F03-04 | Sidebar modes | Bookmarks | M2-M5 | Tested | PDF sidebar Bookmarks list; view-state bookmark round-trip |
-| F03-05 | Sidebar modes | Highlights and annotations | M2-M5 | Implemented | PDF sidebar Annotations list (markup, notes, ink, shapes, signatures) |
+| F03-05 | Sidebar modes | Highlights and annotations | M2-M5 | Tested | PDF sidebar Annotations list; `PdfAnnotationListLabel` unit-tested |
 | F03-06 | Sidebar modes | Image list | M2-M5 | Implemented | Image viewer folder sibling ListView (`ImageFolderNavigator`) |
 | F03-07 | Sidebar modes | Contact sheet | M2-M5 | Implemented | Layout → Contact sheet grid; click page returns to continuous |
 | F03-08 | Sidebar modes | Document attachments, if supported | M2-M5 | Tested | PDF sidebar Attachments list + Save…; `ListAttachments` unit test |
