@@ -13,4 +13,5 @@ public enum PdfShapeKind
     RoundedRectangle = 5,
     HighlightRectangle = 6,
     Star = 7,
+    Polygon = 8,
 }

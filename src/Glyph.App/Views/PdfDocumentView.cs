@@ -104,6 +104,10 @@ public sealed class PdfDocumentView : UserControl
     private bool _inkMode;
     private bool _eraserMode;
     private bool _freeformMode;
+    private bool _polygonMode;
+    private int _polygonPageIndex = -1;
+    private readonly List<PdfPagePoint> _polygonVertices = [];
+    private Microsoft.UI.Xaml.Shapes.Polyline? _polygonPreview;
     private PdfAnnotationColor _drawStrokeColor = PdfAnnotationColor.InkRed;
     private float _drawStrokeWidth = 2f;
     private bool _highlightMode;
@@ -124,6 +128,7 @@ public sealed class PdfDocumentView : UserControl
     private FrameworkElement? _shapePreview;
     private Button? _inkButton;
     private Button? _freeformButton;
+    private Button? _polygonButton;
     private Button? _eraserButton;
     private Button? _highlightButton;
     private Button? _formButton;
@@ -441,6 +446,7 @@ public sealed class PdfDocumentView : UserControl
         var formFill = new Button { Content = "Form" };
         var ink = new Button { Content = "Ink" };
         var freeform = new Button { Content = "Freeform" };
+        var polygon = new Button { Content = "Polygon" };
         var eraser = new Button { Content = "Eraser" };
         var rect = new Button { Content = "Rect" };
         var roundRect = new Button { Content = "Round" };
@@ -452,6 +458,7 @@ public sealed class PdfDocumentView : UserControl
         _signButton = sign;
         _inkButton = ink;
         _freeformButton = freeform;
+        _polygonButton = polygon;
         _eraserButton = eraser;
         _highlightButton = highlight;
         _formButton = formFill;
@@ -556,6 +563,7 @@ public sealed class PdfDocumentView : UserControl
         formFill.Click += async (_, _) => await OnFormButtonClickAsync();
         ink.Click += async (_, _) => await ToggleInkModeAsync();
         freeform.Click += async (_, _) => await ToggleFreeformModeAsync();
+        polygon.Click += async (_, _) => await TogglePolygonModeAsync();
         eraser.Click += (_, _) => ToggleEraserMode();
         rect.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Rectangle);
         roundRect.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.RoundedRectangle);
@@ -578,7 +586,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, sign, formFill, ink, freeform, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star,
                 _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -1270,6 +1278,22 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (_polygonMode && e.Key == VirtualKey.Escape)
+        {
+            ClearPolygonMode();
+            RefreshToolButtonChrome();
+            _status.Text = "Polygon cancelled.";
+            e.Handled = true;
+            return;
+        }
+
+        if (_polygonMode && e.Key == VirtualKey.Enter)
+        {
+            await FinishPolygonAsync();
+            e.Handled = true;
+            return;
+        }
+
         if (_formOverlayMode && e.Key == VirtualKey.Tab)
         {
             var shiftDownTab = Microsoft.UI.Input.InputKeyboardSource
@@ -1626,6 +1650,13 @@ public sealed class PdfDocumentView : UserControl
         if (_inkMode || _freeformMode || _signatureMode)
         {
             BeginInkStroke(border, pageIndex, e);
+            e.Handled = true;
+            return;
+        }
+
+        if (_polygonMode)
+        {
+            await AddPolygonVertexAsync(border, pageIndex, e);
             e.Handled = true;
             return;
         }
@@ -3399,6 +3430,7 @@ public sealed class PdfDocumentView : UserControl
 
         ClearCalloutMode();
         ClearFreeformMode();
+        ClearPolygonMode();
         if (_inkMode)
         {
             _inkMode = false;
@@ -3709,6 +3741,7 @@ public sealed class PdfDocumentView : UserControl
                 PdfShapeKind.Arrow => "Arrow",
                 PdfShapeKind.Freeform => "Freeform",
                 PdfShapeKind.Star => "Star",
+                PdfShapeKind.Polygon => "Polygon",
                 _ => "Shape",
             };
             return $"{shapeName} · p.{info.PageIndex + 1}";
@@ -3742,6 +3775,7 @@ public sealed class PdfDocumentView : UserControl
         ClearSignatureMode();
         ClearHighlightMode();
         ClearFreeformMode();
+        ClearPolygonMode();
         if (_formOverlayMode)
         {
             ClearFormOverlayMode();
@@ -3907,6 +3941,7 @@ public sealed class PdfDocumentView : UserControl
         ClearHighlightMode();
         ClearCalloutMode();
         ClearFreeformMode();
+        ClearPolygonMode();
         ClearEraserMode();
         if (_formOverlayMode)
         {
@@ -3949,6 +3984,7 @@ public sealed class PdfDocumentView : UserControl
         ClearHighlightMode();
         ClearCalloutMode();
         ClearFreeformMode();
+        ClearPolygonMode();
         if (_inkMode)
         {
             _inkMode = false;
@@ -4066,6 +4102,7 @@ public sealed class PdfDocumentView : UserControl
         ClearHighlightMode();
         ClearCalloutMode();
         ClearEraserMode();
+        ClearPolygonMode();
         if (_inkMode)
         {
             _inkMode = false;
@@ -4115,6 +4152,189 @@ public sealed class PdfDocumentView : UserControl
         CancelInkStroke();
     }
 
+    private async Task TogglePolygonModeAsync()
+    {
+        ClearRedactionMode();
+        ClearShapeMode();
+        ClearSignatureMode();
+        ClearHighlightMode();
+        ClearCalloutMode();
+        ClearEraserMode();
+        ClearFreeformMode();
+        ClearPolygonMode();
+        if (_inkMode)
+        {
+            _inkMode = false;
+            CancelInkStroke();
+        }
+
+        if (_formOverlayMode)
+        {
+            ClearFormOverlayMode();
+        }
+
+        if (_polygonMode)
+        {
+            ClearPolygonMode();
+            _status.Text = "Polygon mode off.";
+            RefreshToolButtonChrome();
+            return;
+        }
+
+        var picked = await PickStrokeStyleAsync("Polygon stroke");
+        if (picked is null)
+        {
+            _status.Text = "Polygon mode cancelled.";
+            return;
+        }
+
+        _drawStrokeColor = picked.Value.Color;
+        _drawStrokeWidth = picked.Value.WidthPoints;
+        if (_cropMode)
+        {
+            CancelCropMode();
+        }
+
+        _polygonMode = true;
+        _polygonPageIndex = -1;
+        _polygonVertices.Clear();
+        ClearPolygonPreview();
+        RefreshToolButtonChrome();
+        _status.Text = "Polygon mode — click vertices; Enter to close (Esc cancels).";
+    }
+
+    private void ClearPolygonMode()
+    {
+        if (!_polygonMode && _polygonVertices.Count == 0 && _polygonPreview is null)
+        {
+            return;
+        }
+
+        _polygonMode = false;
+        _polygonPageIndex = -1;
+        _polygonVertices.Clear();
+        ClearPolygonPreview();
+    }
+
+    private void ClearPolygonPreview()
+    {
+        if (_polygonPreview is not null &&
+            _polygonPageIndex >= 0 &&
+            _pageOverlays.TryGetValue(_polygonPageIndex, out var overlay))
+        {
+            overlay.Children.Remove(_polygonPreview);
+        }
+
+        _polygonPreview = null;
+    }
+
+    private async Task AddPolygonVertexAsync(Border border, int pageIndex, PointerRoutedEventArgs e)
+    {
+        var page = _document.GetPage(pageIndex);
+        var ui = e.GetCurrentPoint(border).Position;
+        var pdf = new PdfPagePoint(ui.X / _scale, page.HeightPoints - (ui.Y / _scale));
+
+        if (_polygonPageIndex >= 0 && _polygonPageIndex != pageIndex)
+        {
+            _status.Text = "Finish the current page polygon first (Enter), or Esc to cancel.";
+            return;
+        }
+
+        if (_polygonVertices.Count >= 3)
+        {
+            var first = _polygonVertices[0];
+            var dx = pdf.X - first.X;
+            var dy = pdf.Y - first.Y;
+            if (((dx * dx) + (dy * dy)) <= 64) // within ~8 pt of first vertex → close
+            {
+                await FinishPolygonAsync();
+                return;
+            }
+        }
+
+        _polygonPageIndex = pageIndex;
+        _polygonVertices.Add(pdf);
+        RedrawPolygonPreview();
+        _status.Text = _polygonVertices.Count < 3
+            ? $"Polygon vertex {_polygonVertices.Count} — need at least 3."
+            : $"Polygon vertex {_polygonVertices.Count} — Enter to close, or click near first vertex.";
+    }
+
+    private void RedrawPolygonPreview()
+    {
+        ClearPolygonPreview();
+        if (_polygonPageIndex < 0 ||
+            _polygonVertices.Count == 0 ||
+            !_pageOverlays.TryGetValue(_polygonPageIndex, out var overlay))
+        {
+            return;
+        }
+
+        var page = _document.GetPage(_polygonPageIndex);
+        var points = new PointCollection();
+        foreach (var p in _polygonVertices)
+        {
+            points.Add(new Windows.Foundation.Point(p.X * _scale, (page.HeightPoints - p.Y) * _scale));
+        }
+
+        if (_polygonVertices.Count >= 3)
+        {
+            var first = _polygonVertices[0];
+            points.Add(new Windows.Foundation.Point(first.X * _scale, (page.HeightPoints - first.Y) * _scale));
+        }
+
+        var stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(
+            _drawStrokeColor.A,
+            _drawStrokeColor.R,
+            _drawStrokeColor.G,
+            _drawStrokeColor.B));
+        _polygonPreview = new Microsoft.UI.Xaml.Shapes.Polyline
+        {
+            Points = points,
+            Stroke = stroke,
+            StrokeThickness = Math.Max(1, _drawStrokeWidth * _scale / 1.5),
+            Fill = null,
+        };
+        overlay.Children.Add(_polygonPreview);
+    }
+
+    private async Task FinishPolygonAsync()
+    {
+        if (!_polygonMode)
+        {
+            return;
+        }
+
+        if (_polygonVertices.Count < 3 || _polygonPageIndex < 0)
+        {
+            _status.Text = "Polygon needs at least three vertices.";
+            return;
+        }
+
+        var pageIndex = _polygonPageIndex;
+        var vertices = _polygonVertices.ToList();
+        var color = _drawStrokeColor;
+        var width = _drawStrokeWidth;
+        ClearPolygonMode();
+        RefreshToolButtonChrome();
+
+        try
+        {
+            _status.Text = "Saving polygon…";
+            await _annotations.AddPolygonAsync(_document, pageIndex, vertices, color, width);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = "Polygon added.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Polygon failed: " + ex.Message;
+        }
+    }
+
     private async Task ToggleShapeModeAsync(PdfShapeKind kind)
     {
         ClearRedactionMode();
@@ -4125,6 +4345,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         ClearFreeformMode();
+        ClearPolygonMode();
         ClearSignatureMode();
         ClearHighlightMode();
         ClearCalloutMode();
@@ -4284,6 +4505,11 @@ public sealed class PdfDocumentView : UserControl
         if (_freeformButton is not null)
         {
             _freeformButton.Background = _freeformMode ? active : null;
+        }
+
+        if (_polygonButton is not null)
+        {
+            _polygonButton.Background = _polygonMode ? active : null;
         }
 
         if (_eraserButton is not null)
@@ -4810,6 +5036,7 @@ public sealed class PdfDocumentView : UserControl
         ClearHighlightMode();
         ClearCalloutMode();
         ClearFreeformMode();
+        ClearPolygonMode();
         if (_formOverlayMode)
         {
             ClearFormOverlayMode();
@@ -5044,6 +5271,7 @@ public sealed class PdfDocumentView : UserControl
         ClearHighlightMode();
         ClearCalloutMode();
         ClearFreeformMode();
+        ClearPolygonMode();
         if (_inkMode)
         {
             _inkMode = false;
@@ -5671,6 +5899,7 @@ public sealed class PdfDocumentView : UserControl
         ClearHighlightMode();
         ClearCalloutMode();
         ClearFreeformMode();
+        ClearPolygonMode();
         if (_formOverlayMode)
         {
             ClearFormOverlayMode();

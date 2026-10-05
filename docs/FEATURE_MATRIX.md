@@ -233,7 +233,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-07 | PDF annotations | Rectangles | M4 | Tested | `AddShapeAsync(Rectangle)` + Rect draw mode |
 | F13-08 | PDF annotations | Rounded rectangles | M4 | Tested | `AddShapeAsync(RoundedRectangle)` via Square + `FPDFAnnot_SetBorder` radii |
 | F13-09 | PDF annotations | Ellipses | M4 | Tested | `AddShapeAsync(Ellipse)` + Ellipse draw mode |
-| F13-10 | PDF annotations | Polygons | M4 | Not Started |  |
+| F13-10 | PDF annotations | Polygons | M4 | Tested | `AddPolygonAsync` click-to-place vertices + Polygon toolbar |
 | F13-11 | PDF annotations | Callouts | M4 | Tested | `AddCalloutAsync` FreeText+ink pointer; Callout draw mode |
 | F13-12 | PDF annotations | Text boxes | M4 | Tested | `AddTextBoxAsync` FreeText + TextBox toolbar |
 | F13-13 | PDF annotations | Sticky notes | M4 | Tested | Same as F15-01 `AddStickyNoteAsync` |
@@ -306,7 +306,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F17-03 | Shapes | rectangle | M4 | Tested | Same as F13-07 Rect draw mode |
 | F17-04 | Shapes | rounded rectangle | M4 | Tested | Same as F13-08 Round draw mode |
 | F17-05 | Shapes | ellipse | M4 | Tested | Same as F13-09 Ellipse draw mode |
-| F17-06 | Shapes | polygon | M4 | Implemented | Freeform closed ink path |
+| F17-06 | Shapes | polygon | M4 | Tested | `AddPolygonAsync` click vertices / Enter to close; Freeform remains freehand |
 | F17-07 | Shapes | star | M4 | Tested | `AddShapeAsync(Star)` closed ink path + Star draw mode |
 | F17-08 | Shapes | speech bubble/callout | M4 | Not Started | Distinct from FreeText callout (F13-11); bubble shape TBD |
 | F17-09 | Shapes | translucent highlight rectangle | M4 | Tested | `AddShapeAsync(HighlightRectangle)` + Area toolbar; translucent fill |

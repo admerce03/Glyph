@@ -370,6 +370,52 @@ public class PdfiumAnnotationServiceTests
     }
 
     [Fact]
+    public async Task Add_polygon_survives_save()
+    {
+        var path = CreateTextPdf("Polygon host page");
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-polygon-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var created = await annots.AddPolygonAsync(
+                    document,
+                    0,
+                    [
+                        new PdfPagePoint(100, 100),
+                        new PdfPagePoint(200, 110),
+                        new PdfPagePoint(180, 200),
+                        new PdfPagePoint(90, 180),
+                    ],
+                    new PdfAnnotationColor(40, 160, 60));
+                created.ShapeKind.Should().Be(PdfShapeKind.Polygon);
+                created.IsInk.Should().BeTrue();
+                created.Contents.Should().Be("Polygon");
+
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var listed = await annots.ListAsync(reopened, 0);
+                listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Polygon && a.Contents == "Polygon");
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Add_callout_survives_save_and_lists_as_callout()
     {
         var path = CreateTextPdf("Callout host page");

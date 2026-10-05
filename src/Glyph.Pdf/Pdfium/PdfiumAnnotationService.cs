@@ -390,6 +390,39 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         return created with { ShapeKind = PdfShapeKind.Freeform, IsInk = true };
     }
 
+    public async Task<PdfAnnotationInfo> AddPolygonAsync(
+        IPdfDocument document,
+        int pageIndex,
+        IReadOnlyList<PdfPagePoint> vertices,
+        PdfAnnotationColor color,
+        float borderWidthPoints = 2f,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(vertices);
+        if (vertices.Count < 3)
+        {
+            throw new ArgumentException("Polygon requires at least three vertices.", nameof(vertices));
+        }
+
+        var closed = vertices.ToList();
+        var first = closed[0];
+        var last = closed[^1];
+        if (Math.Abs(first.X - last.X) > 0.5 || Math.Abs(first.Y - last.Y) > 0.5)
+        {
+            closed.Add(first);
+        }
+
+        var created = await AddLabeledInkAsync(
+            document,
+            pageIndex,
+            [closed],
+            color,
+            borderWidthPoints,
+            contents: "Polygon",
+            cancellationToken);
+        return created with { ShapeKind = PdfShapeKind.Polygon, IsInk = true };
+    }
+
     public Task<PdfAnnotationInfo> AddShapeAsync(
         IPdfDocument document,
         int pageIndex,
@@ -2058,6 +2091,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             "Arrow" => PdfShapeKind.Arrow,
             "Freeform" => PdfShapeKind.Freeform,
             "Star" => PdfShapeKind.Star,
+            "Polygon" => PdfShapeKind.Polygon,
             _ => null,
         };
 

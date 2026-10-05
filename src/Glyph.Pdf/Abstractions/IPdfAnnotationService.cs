@@ -42,6 +42,17 @@ public interface IPdfAnnotationService
         float borderWidthPoints = 2f,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Closed polygon from explicit vertices (click-to-place). Distinct from freehand freeform.
+    /// </summary>
+    Task<PdfAnnotationInfo> AddPolygonAsync(
+        IPdfDocument document,
+        int pageIndex,
+        IReadOnlyList<PdfPagePoint> vertices,
+        PdfAnnotationColor color,
+        float borderWidthPoints = 2f,
+        CancellationToken cancellationToken = default);
+
     Task<PdfAnnotationInfo> AddShapeAsync(
         IPdfDocument document,
         int pageIndex,
