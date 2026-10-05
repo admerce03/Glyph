@@ -356,7 +356,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 - Prefs, toolbar customization, session restore, crash recovery, version snapshots, a11y Names, cold-start timing shipped in matrix
 - MSIX / file associations still Deferred (ADR-012)
-- Matrix: essentially no In Progress rows left; remaining Blocked = ADR-015 password-write + PDFium Quadding + JPEG rewrite; F64-00 is product framing
+- Matrix: essentially no In Progress rows left; remaining Blocked = ADR-015 password-write + PDFium Quadding `/Q`; F64-00 is product framing
 
 ---
 
@@ -379,7 +379,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Redaction | §21 | M7 | Implemented (mark/preview/apply + sanitize options; password-write separate) |
 | Flattening | §22 | M4 | Tested (`FlattenAsync` / FPDFPage_Flatten) |
 | PDF security | §23 | M7 | In Progress (open + info/permissions; write-protect blocked on ADR-015) |
-| Optimization | §24 | M7 | In Progress (presets + downsample + estimate + page export/ICC; JPEG rewrite blocked) |
+| Optimization | §24 | M7 | Implemented (presets + downsample + JPEG quality + estimate + page export/ICC; font subset/linearize → ADR-016) |
 | PDF metadata | §25 | M7 | Implemented (read + edit title/author/subject/keywords) |
 | Image viewing/editing | §26–35 | M5 | Implemented (HDR/HEIF deferred) |
 | Batch images | §36 | M8 | Implemented (ops + progress/cancel) |
