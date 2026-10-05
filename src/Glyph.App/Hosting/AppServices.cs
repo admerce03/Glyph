@@ -1,11 +1,11 @@
 using Glyph.Core.Workspace;
+using Glyph.Imaging.Abstractions;
+using Glyph.Imaging.Magick;
 using Glyph.Infrastructure.Documents;
 using Glyph.Infrastructure.Paths;
 using Glyph.Infrastructure.RecentFiles;
 using Glyph.Infrastructure.Recovery;
 using Glyph.Infrastructure.Settings;
-using Glyph.Imaging.Abstractions;
-using Glyph.Imaging.Magick;
 using Glyph.Ocr.Abstractions;
 using Glyph.Ocr.Pdf;
 using Glyph.Ocr.Tesseract;

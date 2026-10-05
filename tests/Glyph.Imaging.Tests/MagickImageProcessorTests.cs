@@ -2,7 +2,6 @@ using FluentAssertions;
 using Glyph.Imaging.Abstractions;
 using Glyph.Imaging.Magick;
 using ImageMagick;
-using Xunit;
 
 namespace Glyph.Imaging.Tests;
 
