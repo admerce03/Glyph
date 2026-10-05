@@ -2,8 +2,9 @@ namespace Glyph.Core.Documents;
 
 /// <summary>
 /// Packaging items deferred on ADR-012 (F01-06/07).
-/// Windows CI produces a test-signed <c>.msix</c> via <c>scripts/publish-msix.ps1 -TestSign</c>;
-/// Explorer associations stay deferred until sideload default-app assignment is verified.
+/// Windows CI produces a test-signed <c>.msix</c> via <c>scripts/publish-msix.ps1 -TestSign</c>,
+/// sideloads it, and probes installed manifest associations; Explorer default-app assignment
+/// (UserChoice) stays deferred until interactive verify.
 /// Manual update check (F55-04) is shipped separately via <see cref="AppUpdateCheckPolicy"/>.
 /// </summary>
 public static class PackagingDeferredPolicy
@@ -22,7 +23,6 @@ public static class PackagingDeferredPolicy
 
     /// <summary>
     /// <c>scripts/install-msix-test.ps1</c> trusts the CI test cert and runs <c>Add-AppxPackage</c>.
-    /// Associations stay deferred until that install is verified on a Windows machine.
     /// </summary>
     public const bool MsixSideloadHelperShipped = true;
 
@@ -31,6 +31,12 @@ public static class PackagingDeferredPolicy
     /// (and via <c>-VerifyOnly</c>). Explorer default-app assignment is still manual.
     /// </summary>
     public const bool MsixSideloadAssociationProbeShipped = true;
+
+    /// <summary>
+    /// Windows CI enables AppModelUnlock sideloading, runs <c>install-msix-test.ps1 -Force -ProbeUserDefaults</c>,
+    /// and fails the job if installed <c>uap:FileType</c> associations are incomplete.
+    /// </summary>
+    public const bool MsixSideloadCiAssociationProbe = true;
 
     public const bool NativeFileAssociationsShipped = false;
     public const bool ConfigurableDefaultAssociationsShipped = false;
@@ -41,7 +47,7 @@ public static class PackagingDeferredPolicy
     public const string Adr = "ADR-012";
 
     public const string Reason =
-        "Test-signed .msix + sideload helper/association probe shipped; Explorer defaults wait on verified sideload.";
+        "Test-signed .msix + CI sideload/association probe shipped; Explorer UserChoice defaults wait on interactive verify.";
 
     public const string PublishScript = "scripts/publish-msix.ps1";
     public const string InstallScript = "scripts/install-msix-test.ps1";

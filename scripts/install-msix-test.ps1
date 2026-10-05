@@ -104,6 +104,11 @@ function Show-GlyphUserDefaultProbe {
 }
 
 function Open-DefaultAppsSettings {
+    if ($env:GITHUB_ACTIONS -eq 'true' -or $env:CI -eq 'true') {
+        Write-Host 'Skipping ms-settings:defaultapps on CI (no interactive Settings UI).'
+        return
+    }
+
     Write-Host 'Opening ms-settings:defaultapps …'
     Start-Process 'ms-settings:defaultapps'
 }

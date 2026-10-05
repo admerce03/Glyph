@@ -43,6 +43,21 @@ jobs:
         run: ./scripts/publish-msix.ps1 -Configuration Release -Runtime win-x64 -TestSign
         shell: pwsh
 
+      - name: Enable MSIX sideloading (CI)
+        run: |
+          $path = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock'
+          if (-not (Test-Path -LiteralPath $path)) {
+            New-Item -Path $path -Force | Out-Null
+          }
+          New-ItemProperty -Path $path -Name AllowDevelopmentWithoutDevLicense -PropertyType DWord -Value 1 -Force | Out-Null
+          New-ItemProperty -Path $path -Name AllowAllTrustedApps -PropertyType DWord -Value 1 -Force | Out-Null
+          Write-Host 'AppModelUnlock sideloading policy enabled for CI runner.'
+        shell: pwsh
+
+      - name: MSIX sideload + association probe
+        run: ./scripts/install-msix-test.ps1 -PackageDir artifacts/msix -Force -ProbeUserDefaults
+        shell: pwsh
+
       - name: Upload MSIX layout
         if: success()
         uses: actions/upload-artifact@v4

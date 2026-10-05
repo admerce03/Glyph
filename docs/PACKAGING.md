@@ -8,17 +8,18 @@ Policy flags: `PackagingDeferredPolicy` (unit-tested).
 | Mode | When | How |
 | --- | --- | --- |
 | **Unpackaged** (default) | Day-to-day F5 / `dotnet run` | `WindowsPackageType=None` (ADR-006) |
-| **Test-signed MSIX** | CI artifact + Developer Mode sideload | `scripts/publish-msix.ps1 -TestSign` → `scripts/install-msix-test.ps1` |
+| **Test-signed MSIX** | CI artifact + Developer Mode / CI sideload | `scripts/publish-msix.ps1 -TestSign` → `scripts/install-msix-test.ps1` |
 | **Production / Store** | Product decision (escalation) | Trusted cert or Partner Center; not wired in CI |
 
-Open, drag-drop, and recent files work unpackaged. Explorer double-click / default-app assignment remain **Deferred** (F01-06/07) until a Windows machine verifies sideload defaults.
+Open, drag-drop, and recent files work unpackaged. Windows CI sideloads the test-signed package and probes installed `uap:FileType` associations. Explorer double-click / default-app **UserChoice** assignment remain **Deferred** (F01-06/07) until interactive verify.
 
 ## What is shipped
 
 1. **Single-project MSIX** — `src/Glyph.App/Package.appxmanifest` + conditional `GenerateAppxPackageOnBuild` when `-p:GlyphPackage=MSIX`.
 2. **File type declarations** — `uap:FileTypeAssociation` for `.pdf` and common image extensions (`PackageFileAssociationDeclaration`).
 3. **CI package** — Windows workflow publishes test-signed `Glyph.App_*.msix` + `Glyph.CI.TestSign.cer` (artifact `glyph-msix-layout`).
-4. **Sideload helper** — `scripts/install-msix-test.ps1` trusts the CI cert, runs `Add-AppxPackage`, and probes installed `uap:FileType` entries (`-VerifyOnly`, `-ProbeUserDefaults`, `-OpenDefaultApps` supported).
+4. **CI sideload + association probe** — after publish, CI enables AppModelUnlock sideloading and runs `install-msix-test.ps1 -Force -ProbeUserDefaults` (`PackagingDeferredPolicy.MsixSideloadCiAssociationProbe`).
+5. **Sideload helper** — `scripts/install-msix-test.ps1` trusts the CI cert, runs `Add-AppxPackage`, and probes installed `uap:FileType` entries (`-VerifyOnly`, `-ProbeUserDefaults`, `-OpenDefaultApps` supported; Settings UI skipped under `GITHUB_ACTIONS`).
 
 ## Publish (Windows)
 
@@ -48,7 +49,7 @@ Then manually confirm:
 2. Double-click a sample `.pdf` and a sample image opens in Glyph.
 3. Re-run `-VerifyOnly` after reboot if associations look stale.
 
-Until those steps pass on a real Windows host, keep F01-06/07 **Deferred**.
+Until those steps pass on a real Windows host, keep F01-06/07 **Deferred** (CI already covers install + manifest association probe).
 
 Full interactive proof checklist (associations + M1/M2 screenshots + M3 §11 DnD
 recording + Store signing / ADR-015 escalate): [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md).
