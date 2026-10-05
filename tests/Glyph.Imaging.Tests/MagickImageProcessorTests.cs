@@ -187,9 +187,22 @@ public class MagickImageProcessorTests
                 1,
                 "Hi",
                 14);
+            var callout = new ImageMarkupShape(
+                ImageMarkupShapeKind.Callout,
+                10,
+                4,
+                28,
+                16,
+                255,
+                40,
+                40,
+                200,
+                2,
+                "Tip",
+                12);
             await processor.FlattenMarkupAsync(
                 document,
-                new ImageMarkupLayer([stroke], [rect, arrow, text]));
+                new ImageMarkupLayer([stroke], [rect, arrow, text, callout]));
             document.PixelWidth.Should().Be(40);
             document.PixelHeight.Should().Be(30);
         }

@@ -552,6 +552,30 @@ public sealed class MagickImageProcessor : IImageProcessor
                     .Draw(image);
                 return;
             }
+            case ImageMarkupShapeKind.Callout:
+            {
+                var left = Math.Min(x1, x2);
+                var top = Math.Min(y1, y2);
+                var right = Math.Max(x1, x2);
+                var bottom = Math.Max(y1, y2);
+                var midX = (left + right) / 2.0;
+                var tipY = bottom + Math.Max(12, (bottom - top) * 0.25);
+                var tipSpread = Math.Max(8, (right - left) * 0.12);
+                var label = string.IsNullOrWhiteSpace(shape.Text) ? "Callout" : shape.Text;
+                new Drawables()
+                    .StrokeColor(color)
+                    .StrokeWidth(shape.WidthPixels)
+                    .FillColor(MagickColors.Transparent)
+                    .Rectangle(left, top, right, bottom)
+                    .Line(midX - tipSpread, bottom, midX, tipY)
+                    .Line(midX + tipSpread, bottom, midX, tipY)
+                    .FillColor(color)
+                    .StrokeColor(MagickColors.Transparent)
+                    .FontPointSize(shape.FontSizePixels)
+                    .Text(left + 4, top + shape.FontSizePixels + 2, label)
+                    .Draw(image);
+                return;
+            }
         }
 
         drawables.Draw(image);

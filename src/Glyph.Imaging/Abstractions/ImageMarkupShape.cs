@@ -55,6 +55,7 @@ public enum ImageMarkupShapeKind
     Line = 2,
     Arrow = 3,
     Text = 4,
+    Callout = 5,
 }
 
 /// <summary>

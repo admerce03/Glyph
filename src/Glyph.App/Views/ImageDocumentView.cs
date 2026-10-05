@@ -2221,7 +2221,7 @@ public sealed class ImageDocumentView : UserControl
         {
             Header = "Tool",
             Width = 200,
-            ItemsSource = new[] { "Freehand", "Rectangle", "Ellipse", "Line", "Arrow", "Text" },
+            ItemsSource = new[] { "Freehand", "Rectangle", "Ellipse", "Line", "Arrow", "Text", "Callout" },
             SelectedIndex = 0,
         };
         var widthSlider = new Slider
@@ -2272,14 +2272,16 @@ public sealed class ImageDocumentView : UserControl
             3 => ImageMarkupShapeKind.Line,
             4 => ImageMarkupShapeKind.Arrow,
             5 => ImageMarkupShapeKind.Text,
+            6 => ImageMarkupShapeKind.Callout,
             _ => null,
         };
-        if (_markupShapeTool == ImageMarkupShapeKind.Text)
+        if (_markupShapeTool is ImageMarkupShapeKind.Text or ImageMarkupShapeKind.Callout)
         {
+            var isCallout = _markupShapeTool == ImageMarkupShapeKind.Callout;
             var textBox = new TextBox
             {
-                Header = "Text",
-                Text = "Label",
+                Header = isCallout ? "Callout text" : "Text",
+                Text = isCallout ? "Note" : "Label",
                 Width = 280,
             };
             var fontSlider = new Slider
@@ -2287,15 +2289,15 @@ public sealed class ImageDocumentView : UserControl
                 Header = "Font size (px)",
                 Minimum = 8,
                 Maximum = 96,
-                Value = 24,
+                Value = isCallout ? 18 : 24,
                 StepFrequency = 1,
                 Width = 240,
             };
             var textDialog = new ContentDialog
             {
-                Title = "Text markup",
+                Title = isCallout ? "Callout markup" : "Text markup",
                 Content = new StackPanel { Spacing = 8, Children = { textBox, fontSlider } },
-                PrimaryButtonText = "Place text",
+                PrimaryButtonText = isCallout ? "Draw callout" : "Place text",
                 CloseButtonText = "Cancel",
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = XamlRoot,
@@ -2305,9 +2307,13 @@ public sealed class ImageDocumentView : UserControl
                 return;
             }
 
-            _pendingText = string.IsNullOrWhiteSpace(textBox.Text) ? "Label" : textBox.Text.Trim();
+            _pendingText = string.IsNullOrWhiteSpace(textBox.Text)
+                ? (isCallout ? "Note" : "Label")
+                : textBox.Text.Trim();
             _pendingFontSize = fontSlider.Value;
-            _status.Text = "Text markup — click on image to place (Esc exits).";
+            _status.Text = isCallout
+                ? "Callout markup — drag a box on the image (Esc exits)."
+                : "Text markup — click on image to place (Esc exits).";
         }
         else
         {
@@ -2511,6 +2517,61 @@ public sealed class ImageDocumentView : UserControl
                 };
                 Canvas.SetLeft(label, x1);
                 Canvas.SetTop(label, y1);
+                _markupOverlay.Children.Add(label);
+                break;
+            }
+            case ImageMarkupShapeKind.Callout:
+            {
+                var left = Math.Min(x1, x2);
+                var top = Math.Min(y1, y2);
+                var w = Math.Abs(x2 - x1);
+                var h = Math.Abs(y2 - y1);
+                var rect = new Rectangle
+                {
+                    Stroke = brush,
+                    StrokeThickness = thickness,
+                    Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, shape.R, shape.G, shape.B)),
+                    Width = w,
+                    Height = h,
+                    IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(rect, left);
+                Canvas.SetTop(rect, top);
+                _markupOverlay.Children.Add(rect);
+                var midX = left + (w / 2.0);
+                var tipY = top + h + Math.Max(12, h * 0.25);
+                var tipSpread = Math.Max(8, w * 0.12);
+                _markupOverlay.Children.Add(new Line
+                {
+                    X1 = midX - tipSpread,
+                    Y1 = top + h,
+                    X2 = midX,
+                    Y2 = tipY,
+                    Stroke = brush,
+                    StrokeThickness = thickness,
+                    IsHitTestVisible = false,
+                });
+                _markupOverlay.Children.Add(new Line
+                {
+                    X1 = midX + tipSpread,
+                    Y1 = top + h,
+                    X2 = midX,
+                    Y2 = tipY,
+                    Stroke = brush,
+                    StrokeThickness = thickness,
+                    IsHitTestVisible = false,
+                });
+                var label = new TextBlock
+                {
+                    Text = string.IsNullOrWhiteSpace(shape.Text) ? "Callout" : shape.Text,
+                    Foreground = brush,
+                    FontSize = Math.Max(8, shape.FontSizePixels * ((scaleX + scaleY) / 2.0)),
+                    IsHitTestVisible = false,
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = Math.Max(20, w - 8),
+                };
+                Canvas.SetLeft(label, left + 4);
+                Canvas.SetTop(label, top + 2);
                 _markupOverlay.Children.Add(label);
                 break;
             }
@@ -2742,7 +2803,9 @@ public sealed class ImageDocumentView : UserControl
                     _drawColor.R,
                     _drawColor.G,
                     _drawColor.B,
-                    _drawWidthPixels);
+                    _drawWidthPixels,
+                    kind == ImageMarkupShapeKind.Callout ? (_pendingText ?? "Note") : null,
+                    kind == ImageMarkupShapeKind.Callout ? _pendingFontSize : 16);
                 _markupShapes.Add(shape);
                 _markupUndoWasShape.Add(true);
                 RebuildMarkupOverlay();
