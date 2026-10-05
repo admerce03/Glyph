@@ -605,16 +605,16 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F39-08 | Color management | Gamut-warning option, advanced. | M8 | Deferred | Needs gamut visualization overlay |
 | F39-09 | Color management | Rendering intent selection: | M8 | Implemented | Meta Intent combo (Perceptual/Relative/Saturation/Absolute) |
 | F40-01 | Clipboard integration | PDF text → text | M1/M5 | Implemented | Copy / Ctrl+C selected or page text |
-| F40-02 | Clipboard integration | PDF region → bitmap | M1/M5 | Not Started |  |
+| F40-02 | Clipboard integration | PDF region → bitmap | M1/M5 | Implemented | Selection → Copy as Image / `CopyRegionAsBitmapAsync` |
 | F40-03 | Clipboard integration | image selection → image | M1/M5 | Implemented | Copy sel / Ctrl+C with selection → clipboard PNG |
 | F40-04 | Clipboard integration | whole image → image | M1/M5 | Implemented | Copy toolbar / Ctrl+C without selection → clipboard PNG |
 | F40-05 | Clipboard integration | recognized OCR text → text | M1/M5 | Implemented | OCR dialog / Copy OCR toolbar → clipboard text |
-| F40-06 | Clipboard integration | annotation where possible | M1/M5 | Not Started |  |
+| F40-06 | Clipboard integration | annotation where possible | M1/M5 | Implemented | Annot copy/cut/paste clipboard + Ctrl+V |
 | F40-07 | Clipboard integration | image from clipboard into image document | M1/M5 | Implemented | Paste / Ctrl+V → system bitmap or selection clipboard via `PasteFileAsync` |
 | F40-08 | Clipboard integration | image clipboard → create new image | M1/M5 | Implemented | File → New from Clipboard → temp PNG tab |
-| F40-09 | Clipboard integration | text into annotation/text field | M1/M5 | Not Started |  |
-| F40-10 | Clipboard integration | file paths where appropriate | M1/M5 | Not Started |  |
-| F41-00 | Screenshot workflow | (see FEATURES.md §41) | M1/M5 | Not Started | |
+| F40-09 | Clipboard integration | text into annotation/text field | M1/M5 | Implemented | Note/textbox/form dialogs seed from clipboard + TextBox Ctrl+V |
+| F40-10 | Clipboard integration | file paths where appropriate | M1/M5 | Implemented | Copy File Path / Copy File; Ctrl+V opens path when empty |
+| F41-00 | Screenshot workflow | (see FEATURES.md §41) | M1/M5 | Implemented | Win+Shift+S → Ctrl+V (empty window / Edit → Paste) → untitled image |
 | F42-01 | Scanner support | Discover connected scanners. | M8 | Implemented | `ImageScanner.GetDeviceSelector` + DeviceInformation |
 | F42-02 | Scanner support | Flatbed scanner. | M8 | Implemented | Scan dialog → Flatbed source |
 | F42-03 | Scanner support | Automatic document feeder. | M8 | Implemented | Scan dialog → Feeder (ADF) |
@@ -785,11 +785,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-17 | Preferences | animation autoplay | M1/M9 | Not Started |  |
 | F55-18 | Preferences | default annotation colors | M1/M9 | Not Started |  |
 | F55-19 | Preferences | default line width | M1/M9 | Not Started |  |
-| F55-20 | Preferences | signature handling | M1/M9 | Not Started |  |
+| F55-20 | Preferences | signature handling | M1/M9 | Implemented | Signature library save/delete/reorder/descriptions + prefs clear |
 | F55-21 | Preferences | crash recovery interval | M1/M9 | Implemented | Seconds NumberBox (0 = off) |
 | F55-22 | Preferences | local-only OCR preference | M1/M9 | Not Started |  |
-| F55-23 | Preferences | clear recent files | M1/M9 | Not Started |  |
-| F55-24 | Preferences | clear saved signatures | M1/M9 | Not Started |  |
+| F55-23 | Preferences | clear recent files | M1/M9 | Implemented | File → Clear Recent + Preferences Privacy button |
+| F55-24 | Preferences | clear saved signatures | M1/M9 | Implemented | Preferences → Clear saved signatures (`ClearAllAsync`) |
 | F55-25 | Preferences | strip metadata defaults | M1/M9 | Not Started |  |
 | F56-01 | Accessibility | Windows UI Automation. | M9 | Implemented | WinUI Automation tree; toolbar `AutomationProperties.Name` |
 | F56-02 | Accessibility | Keyboard-accessible controls. | M9 | In Progress | Menus/accelerators; document tools keyboard paths |

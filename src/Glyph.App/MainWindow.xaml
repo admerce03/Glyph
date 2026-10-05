@@ -88,6 +88,12 @@
             </MenuBarItem>
 
             <MenuBarItem Title="Edit">
+                <MenuFlyoutItem x:Name="PasteMenuItem" Text="Paste" Click="PasteMenuItem_Click" AutomationProperties.Name="Paste">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="V" Modifiers="Control" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutSeparator />
                 <MenuFlyoutItem x:Name="FindAllPdfsMenuItem" Text="Find in all open PDFs…" Click="FindAllPdfsMenuItem_Click">
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="F" Modifiers="Control,Shift" />
@@ -210,7 +216,7 @@
                         <TextBlock Text="Open a PDF or image to begin"
                                    FontSize="20"
                                    HorizontalAlignment="Center" />
-                        <TextBlock Text="File → Open, drag files here, or pick a recent document."
+                        <TextBlock Text="File → Open, drag files here, Win+Shift+S then Ctrl+V, or pick a recent document."
                                    Opacity="0.7"
                                    HorizontalAlignment="Center"
                                    TextWrapping="WrapWholeWords" />

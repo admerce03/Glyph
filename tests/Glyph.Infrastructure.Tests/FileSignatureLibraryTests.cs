@@ -44,6 +44,35 @@ public class FileSignatureLibraryTests
     }
 
     [Fact]
+    public async Task ClearAll_removes_entries_and_files()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "glyph-sigs-clear-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var library = new FileSignatureLibrary(dir);
+            string id;
+            await using (var png = new MemoryStream(new byte[] { 0x89, 0x50, 0x4E, 0x47 }))
+            {
+                id = (await library.SaveAsync("ToClear", png)).Id;
+            }
+
+            var pngPath = Path.Combine(dir, id + ".png");
+            File.Exists(pngPath).Should().BeTrue();
+
+            await library.ClearAllAsync();
+            (await library.ListAsync()).Should().BeEmpty();
+            File.Exists(pngPath).Should().BeFalse();
+        }
+        finally
+        {
+            if (Directory.Exists(dir))
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Reorder_persists_new_order()
     {
         var dir = Path.Combine(Path.GetTempPath(), "glyph-sigs-reorder-" + Guid.NewGuid().ToString("N"));

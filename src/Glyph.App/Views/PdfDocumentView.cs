@@ -1792,6 +1792,18 @@ public sealed class PdfDocumentView : UserControl
         }
     }
 
+    /// <summary>Paste annotation clipboard if set; otherwise paste copied PDF pages.</summary>
+    public async Task PasteFromClipboardAsync()
+    {
+        if (_annotClipboard is not null)
+        {
+            await PasteAnnotationClipboardAsync();
+            return;
+        }
+
+        await PastePagesAsync();
+    }
+
     private async Task PastePagesAsync()
     {
         if (!PdfPageClipboard.HasPages)
@@ -4094,6 +4106,37 @@ public sealed class PdfDocumentView : UserControl
         }
     }
 
+    /// <summary>
+    /// When a note/textbox dialog opens empty, seed from clipboard text (F40-09).
+    /// Native TextBox Ctrl+V also works once the field is focused.
+    /// </summary>
+    private static async Task SeedTextBoxFromClipboardAsync(TextBox box)
+    {
+        if (box is null || !string.IsNullOrEmpty(box.Text))
+        {
+            return;
+        }
+
+        try
+        {
+            var content = Clipboard.GetContent();
+            if (!content.Contains(StandardDataFormats.Text))
+            {
+                return;
+            }
+
+            var text = await content.GetTextAsync();
+            if (!string.IsNullOrEmpty(text))
+            {
+                box.Text = text;
+            }
+        }
+        catch
+        {
+            // Clipboard may be locked by another app; leave the box empty.
+        }
+    }
+
     private static string FormatAnnotationLabel(PdfAnnotationInfo info)
     {
         var group = string.IsNullOrEmpty(info.GroupId) ? string.Empty : "[G] ";
@@ -4241,6 +4284,7 @@ public sealed class PdfDocumentView : UserControl
             Height = 100,
             PlaceholderText = "Callout text",
         };
+        await SeedTextBoxFromClipboardAsync(box);
         var fontSizeBox = new NumberBox
         {
             Header = "Font size (pt)",
@@ -7280,6 +7324,7 @@ public sealed class PdfDocumentView : UserControl
             Height = 100,
             PlaceholderText = field.Name,
         };
+        await SeedTextBoxFromClipboardAsync(box);
         var suggestions = _formValueHistory.GetSuggestions(field.Name);
         UIElement content = box;
         if (suggestions.Count > 0)
@@ -7925,6 +7970,7 @@ public sealed class PdfDocumentView : UserControl
             Height = 120,
             PlaceholderText = "Note text",
         };
+        await SeedTextBoxFromClipboardAsync(box);
         var authorBox = new TextBox
         {
             Text = _annotationAuthor,
@@ -8015,6 +8061,7 @@ public sealed class PdfDocumentView : UserControl
             Height = 120,
             PlaceholderText = "Text box contents",
         };
+        await SeedTextBoxFromClipboardAsync(box);
         var fontSizeBox = new NumberBox
         {
             Header = "Font size (pt)",
@@ -9269,6 +9316,7 @@ public sealed class PdfDocumentView : UserControl
             Text = item.Contents ?? string.Empty,
             PlaceholderText = item.IsStickyNote ? "Note text" : "Text contents",
         };
+        await SeedTextBoxFromClipboardAsync(box);
         var title = item.IsCallout ? "Edit callout" : item.IsStickyNote ? "Edit sticky note" : "Edit text box";
         var dialog = new ContentDialog
         {

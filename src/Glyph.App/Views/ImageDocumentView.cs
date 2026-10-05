@@ -1191,6 +1191,9 @@ public sealed class ImageDocumentView : UserControl
         }
     }
 
+    /// <summary>Paste system clipboard image (or selection clipboard) into this document.</summary>
+    public Task PasteFromClipboardAsync() => PasteImageAsync();
+
     private async Task PasteImageAsync()
     {
         try

@@ -149,6 +149,29 @@ public sealed class FileSignatureLibrary : ISignatureLibrary
         }
     }
 
+    public async Task ClearAllAsync(CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var list = await ReadIndexAsync(cancellationToken);
+            foreach (var entry in list)
+            {
+                var path = Path.Combine(_directory, entry.FileName);
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+
+            await WriteIndexAsync([], cancellationToken);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task ReorderAsync(IReadOnlyList<string> orderedIds, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(orderedIds);

@@ -378,12 +378,12 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Smart selection / BG | §29 | M8 | In Progress (flood-fill remove; ML subject deferred) |
 | Image metadata/GPS | §37–38 | M5, M8 | In Progress (EXIF/GPS inspector + strip) |
 | Color management | §39 | M8 | In Progress (display ICC→sRGB + soft-proof; monitor ICC deferred) |
-| Clipboard/screenshots | §40–41 | M1, M5 | Not Started |
+| Clipboard/screenshots | §40–41 | M1, M5 | Implemented (region/annot/image clipboard + Snipping Tool Ctrl+V) |
 | Scanner/webcam | §42–43 | M8 | In Progress (webcam + scanner WinRT + paper size; hardware validation TBD) |
 | Printing | §44 | M8 | Implemented (system Print UI + 1/2/4-up) |
 | Export/share/integration | §45–48 | M5–M9 | In Progress (PDF page export formats/DPI/quality/metadata/ICC/alpha) |
 | Undo/autosave/snapshots | §49–51 | M1–M4, M9 | In Progress | F50 recovery + F51 version snapshots; F49 app-wide undo later |
-| Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Not Started |
+| Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | In Progress (prefs + clear recent/signatures; more shortcuts later) |
 | Accessibility | §56 | M9 | In Progress (toolbar UIA names) |
 | Performance/large docs | §57–58 | M2+, M9 | In Progress |
 | Multi-doc workflows | §59–60 | M1, M3 | In Progress (tabs/windows/page DnD/clipboard/undo; tab tear-off + §60 context cmds open) |

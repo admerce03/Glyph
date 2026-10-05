@@ -19,6 +19,7 @@ using Glyph.Pdf.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Windows.ApplicationModel.DataTransfer;
@@ -335,6 +336,80 @@ public sealed partial class MainWindow : Window
         await _recentFiles.ClearAsync();
         RefreshRecentList();
         StatusText.Text = "Recent files cleared.";
+    }
+
+    private async void PasteMenuItem_Click(object sender, RoutedEventArgs e) => await HandlePasteAsync();
+
+    private async Task HandlePasteAsync()
+    {
+        if (DocumentTabs.SelectedItem is TabViewItem { Content: ImageDocumentView imageView })
+        {
+            await imageView.PasteFromClipboardAsync();
+            return;
+        }
+
+        if (DocumentTabs.SelectedItem is TabViewItem { Content: PdfDocumentView pdfView })
+        {
+            await pdfView.PasteFromClipboardAsync();
+            return;
+        }
+
+        await PasteWhenNoDocumentAsync();
+    }
+
+    private async Task PasteWhenNoDocumentAsync()
+    {
+        try
+        {
+            var content = Clipboard.GetContent();
+            if (content.Contains(StandardDataFormats.Bitmap))
+            {
+                await NewFromClipboardAsync();
+                return;
+            }
+
+            if (content.Contains(StandardDataFormats.StorageItems))
+            {
+                var items = await content.GetStorageItemsAsync();
+                var opened = 0;
+                foreach (var item in items.OfType<StorageFile>())
+                {
+                    await OpenPathAsync(item.Path);
+                    opened++;
+                }
+
+                if (opened > 0)
+                {
+                    StatusText.Text = opened == 1
+                        ? "Opened file from clipboard."
+                        : $"Opened {opened} files from clipboard.";
+                    return;
+                }
+            }
+
+            if (content.Contains(StandardDataFormats.Text))
+            {
+                var text = (await content.GetTextAsync())?.Trim();
+                if (!string.IsNullOrWhiteSpace(text)
+                    && text.IndexOfAny(System.IO.Path.GetInvalidPathChars()) < 0
+                    && (File.Exists(text) || Directory.Exists(text)))
+                {
+                    if (File.Exists(text))
+                    {
+                        await OpenPathAsync(text);
+                        StatusText.Text = "Opened path from clipboard.";
+                        return;
+                    }
+                }
+            }
+
+            StatusText.Text = "Clipboard has no image or openable file path.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Paste when empty failed");
+            StatusText.Text = "Paste failed.";
+        }
     }
 
     private void ExitMenuItem_Click(object sender, RoutedEventArgs e) => App.CurrentApp.CloseAllWindows();
@@ -2406,6 +2481,52 @@ public sealed partial class MainWindow : Window
             IsChecked = settings.CompactToolbar,
         };
 
+        var clearRecentButton = new Button
+        {
+            Content = "Clear recent files",
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        AutomationProperties.SetName(clearRecentButton, "Clear recent files");
+        clearRecentButton.Click += async (_, _) =>
+        {
+            await _recentFiles.ClearAsync();
+            RefreshRecentList();
+            StatusText.Text = "Recent files cleared.";
+        };
+
+        var clearSignaturesButton = new Button
+        {
+            Content = "Clear saved signatures",
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        AutomationProperties.SetName(clearSignaturesButton, "Clear saved signatures");
+        clearSignaturesButton.Click += async (_, _) =>
+        {
+            var confirm = new ContentDialog
+            {
+                Title = "Clear saved signatures?",
+                Content = "This permanently deletes all signatures in the local library.",
+                PrimaryButtonText = "Clear",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = RootGrid.XamlRoot,
+            };
+            if (await confirm.ShowAsync() != ContentDialogResult.Primary)
+            {
+                return;
+            }
+
+            await _signatures.ClearAllAsync();
+            StatusText.Text = "Saved signatures cleared.";
+        };
+
+        var privacyHeader = new TextBlock
+        {
+            Text = "Privacy",
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Margin = new Thickness(0, 8, 0, 0),
+        };
+
         var panel = new StackPanel
         {
             Spacing = 12,
@@ -2413,6 +2534,7 @@ public sealed partial class MainWindow : Window
             {
                 restoreBox, autoSaveBox, intervalBox, recentBox, snapshotsBox, snapshotCapBox,
                 separateWindowsBox, authorBox, compactToolbarBox,
+                privacyHeader, clearRecentButton, clearSignaturesButton,
             },
         };
         var dialog = new ContentDialog

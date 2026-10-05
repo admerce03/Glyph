@@ -19,6 +19,9 @@ public interface ISignatureLibrary
 
     Task DeleteAsync(string id, CancellationToken cancellationToken = default);
 
+    /// <summary>Delete every saved signature and clear the library index.</summary>
+    Task ClearAllAsync(CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Rewrite library order to match <paramref name="orderedIds"/> (must be a permutation of current ids).
     /// </summary>
