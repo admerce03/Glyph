@@ -128,7 +128,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F06-07 | PDF search | Search current PDF. | M2/M6 | Tested | Current document path |
 | F06-08 | PDF search | Search all open PDFs. | M2/M6 | Implemented | Edit → Find in all open PDFs (Ctrl+Shift+F) |
 | F06-09 | PDF search | Highlight matches on pages. | M2/M6 | Implemented | Gold overlays from PDFium char boxes |
-| F06-10 | PDF search | Results sidebar. | M2/M6 | Implemented | Results list in viewer sidebar |
+| F06-10 | PDF search | Results sidebar. | M2/M6 | Tested | Results list; `PdfSearchSnippet` pads match context with ellipsis |
 | F06-11 | PDF search | Show contextual snippets around matches. | M2/M6 | Tested | Snippet around match |
 | F06-12 | PDF search | Sort results by: | M2/M6 | Implemented | Page order (document scan order); relevance sort deferred |
 | F06-13 | PDF search | Next match. | M2/M6 | Tested | Toolbar next; `PdfSearchHitNav.WrapIndex` unit tests |
