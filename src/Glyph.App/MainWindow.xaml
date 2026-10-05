@@ -243,7 +243,7 @@
         <Grid Grid.Row="3" Padding="16,8" ColumnDefinitions="*,Auto">
             <TextBlock x:Name="StatusText" Text="Ready" Opacity="0.75" FontSize="12" />
             <TextBlock Grid.Column="1"
-                       Text="Milestone 2 PDF viewer"
+                       Text="Native Windows document preview"
                        Opacity="0.55"
                        FontSize="12" />
         </Grid>
