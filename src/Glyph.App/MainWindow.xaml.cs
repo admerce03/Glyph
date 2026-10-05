@@ -561,7 +561,19 @@ public sealed partial class MainWindow : Window
                 SelectedIndex = 2,
             };
             var duplex = new CheckBox { Content = "Duplex (feeder)" };
-            var autoCrop = new CheckBox { Content = "Auto crop", IsChecked = true };
+            var cropBox = new ComboBox
+            {
+                Header = "Auto crop",
+                Width = 320,
+                ItemsSource = new[]
+                {
+                    "Off",
+                    "Single region",
+                    "Multiple photos (flatbed)",
+                },
+                SelectedIndex = 1,
+            };
+            var straighten = new CheckBox { Content = "Straighten (deskew after scan)" };
             var paperBox = new ComboBox
             {
                 Header = "Paper size",
@@ -628,7 +640,7 @@ public sealed partial class MainWindow : Window
                         Spacing = 8,
                         Children =
                         {
-                            deviceBox, sourceBox, colorBox, dpiBox, paperBox, duplex, autoCrop, pagesBox, destBox, brightness, contrast,
+                            deviceBox, sourceBox, colorBox, dpiBox, paperBox, duplex, cropBox, straighten, pagesBox, destBox, brightness, contrast,
                         },
                     },
                     MaxHeight = 480,
@@ -692,7 +704,8 @@ public sealed partial class MainWindow : Window
                     ColorMode: color,
                     Dpi: dpi,
                     Duplex: duplex.IsChecked == true,
-                    AutoCrop: autoCrop.IsChecked == true,
+                    AutoCrop: cropBox.SelectedIndex > 0,
+                    MultiPhoto: cropBox.SelectedIndex == 2,
                     Brightness: (int)brightness.Value == 0 ? null : (int)brightness.Value,
                     Contrast: (int)contrast.Value == 0 ? null : (int)contrast.Value,
                     MaxPages: (uint)Math.Clamp(pagesBox.Value, 1, 50),
@@ -706,6 +719,23 @@ public sealed partial class MainWindow : Window
             }
 
             var paths = files.Select(f => f.Path).ToList();
+            if (straighten.IsChecked == true)
+            {
+                StatusText.Text = $"Straightening {paths.Count} scan(s)…";
+                foreach (var path in paths)
+                {
+                    try
+                    {
+                        await using var doc = await _imageDecoder.OpenAsync(path);
+                        await _imageProcessor.DeskewAsync(doc, thresholdPercent: 40, crop: true);
+                        await _imageEncoder.SaveAsync(doc, path);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Deskew failed for {Path}", path);
+                    }
+                }
+            }
             switch (destBox.SelectedIndex)
             {
                 case 0:

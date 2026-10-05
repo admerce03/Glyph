@@ -14,6 +14,8 @@ public sealed record ScannerOptions(
     uint Dpi = 300,
     bool Duplex = false,
     bool AutoCrop = false,
+    /// <summary>When true with AutoCrop, prefer MultipleRegion (separate photos on flatbed).</summary>
+    bool MultiPhoto = false,
     int? Brightness = null,
     int? Contrast = null,
     uint MaxPages = 1,
@@ -164,9 +166,20 @@ public static class ScannerCaptureHelper
 
         try
         {
-            config.AutoCroppingMode = options.AutoCrop
-                ? ImageScannerAutoCroppingMode.SingleRegion
+            var mode = options.AutoCrop
+                ? (options.MultiPhoto
+                    ? ImageScannerAutoCroppingMode.MultipleRegion
+                    : ImageScannerAutoCroppingMode.SingleRegion)
                 : ImageScannerAutoCroppingMode.Disabled;
+            if (mode != ImageScannerAutoCroppingMode.Disabled
+                && !config.IsAutoCroppingModeSupported(mode)
+                && mode == ImageScannerAutoCroppingMode.MultipleRegion
+                && config.IsAutoCroppingModeSupported(ImageScannerAutoCroppingMode.SingleRegion))
+            {
+                mode = ImageScannerAutoCroppingMode.SingleRegion;
+            }
+
+            config.AutoCroppingMode = mode;
         }
         catch
         {

@@ -252,6 +252,7 @@ public sealed class ImageDocumentView : UserControl
         var ocrButton = new Button { Content = "OCR" };
         var rotate180 = new Button { Content = "180°" };
         var orient = new Button { Content = "Orient" };
+        var straighten = new Button { Content = "Straighten" };
         var batchOrient = new Button { Content = "Batch…" };
         var fullscreen = new Button { Content = "Fullscreen" };
         var save = new Button { Content = "Save" };
@@ -297,6 +298,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(ocrButton, "Run offline OCR on this image");
         ToolTipService.SetToolTip(rotate180, "Rotate 180°");
         ToolTipService.SetToolTip(orient, "Apply EXIF orientation into pixels");
+        ToolTipService.SetToolTip(straighten, "Deskew / straighten scanned page (Magick)");
         ToolTipService.SetToolTip(batchOrient, "Batch folder: rotate/flip/orient, convert/export, or strip metadata");
         ToolTipService.SetToolTip(fullscreen, "Toggle window fullscreen");
         ToolTipService.SetToolTip(exportPng, "Export as PNG");
@@ -330,7 +332,7 @@ public sealed class ImageDocumentView : UserControl
             _selectButton, _selectionKindBox, _selectAllButton, _invertSelButton, _deselectButton,
             _copySelButton, _cutSelButton, _pasteSelButton, _deleteSelButton, _cropSelButton,
             _drawButton, _flattenMarkupButton, resize, adjust, bgRemove, stamp, meta, ocrButton,
-            rotate180, orient, batchOrient, fullscreen, save, exportPng, exportJpeg, convert,
+            rotate180, orient, straighten, batchOrient, fullscreen, save, exportPng, exportJpeg, convert,
             printImage, copyImage, pasteImage, _prevButton, _nextButton, _slideshowButton,
             _animPlayButton, _animPrevButton, _animNextButton, _animRestartButton, _animExtractButton,
             _animLoopBox, _undoButton);
@@ -343,6 +345,9 @@ public sealed class ImageDocumentView : UserControl
         rotateRight.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 90), "Rotated right.");
         rotate180.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 180), "Rotated 180°.");
         orient.Click += async (_, _) => await MutateAsync(() => _processor.NormalizeOrientationAsync(_document), "Orientation normalized.");
+        straighten.Click += async (_, _) => await MutateAsync(
+            () => _processor.DeskewAsync(_document, thresholdPercent: 40, crop: true),
+            "Straightened (deskew).");
         batchOrient.Click += async (_, _) => await BatchOrientFolderAsync();
         fullscreen.Click += (_, _) => ToggleFullscreen();
         flipH.Click += async (_, _) => await MutateAsync(() => _processor.FlipHorizontalAsync(_document), "Flipped horizontally.");
@@ -426,7 +431,7 @@ public sealed class ImageDocumentView : UserControl
             {
                 _prevButton, _nextButton, _slideshowButton,
                 _animPlayButton, _animPrevButton, _animNextButton, _animRestartButton, _animLoopBox, _animFrameLabel, _animExtractButton,
-                _undoButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, batchOrient, fullscreen, flipH, flipV,
+                _undoButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, straighten, batchOrient, fullscreen, flipH, flipV,
                 _cropBox, crop, _interactiveCropButton, _cropAspectBox, _applyCropButton, _cancelCropButton,
                 _selectButton, _selectionKindBox, _selectAllButton, _invertSelButton, _deselectButton, _copySelButton, _cutSelButton, _pasteSelButton, _deleteSelButton, _cropSelButton,
                 _drawButton, _flattenMarkupButton,

@@ -137,6 +137,16 @@ public interface IImageProcessor
     /// or fully transparent.
     /// </summary>
     Task TrimTransparentAsync(IImageDocument document, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deskews a scanned page using Magick deskew (threshold percent 0–100). When
+    /// <paramref name="crop"/> is true, uses DeskewAndCrop to drop empty borders (F42-11).
+    /// </summary>
+    Task DeskewAsync(
+        IImageDocument document,
+        double thresholdPercent = 40,
+        bool crop = true,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

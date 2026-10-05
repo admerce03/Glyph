@@ -324,7 +324,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Background/subject: BG dialog corner flood-fill + fuzz, optional trim; extract to clipboard or PNG; Smart lasso covers F29-01/02 (F29-05 ML deferred).
 - Printing: PDF/image Print… + Ctrl+P via WinUI `PrintManager`/`PrintDocument` (scope/range/scale/grayscale/center/auto-rotate; annotations in render; optional notes page; 1/2/4-up pages-per-sheet). System UI covers printer/copies/collate/duplex/paper (F44).
 - Webcam import: File → Capture from Camera… opens PNG tab; PDF Camera stamps capture onto current page (F43). Signature webcam path unchanged.
-- Scanner: File → Scan… discovers WinRT ImageScanner devices; flatbed/ADF, color/gray/B&W, DPI, duplex, auto-crop, brightness/contrast, paper size (Letter/Legal/A4/… + feeder auto-detect); destinations images / new PDF / insert into open PDF (F42). Multi-photo flatbed region deferred.
+- Scanner: File → Scan… discovers WinRT ImageScanner devices; flatbed/ADF, color/gray/B&W, DPI, duplex, auto-crop (single/multi-photo), straighten (Magick deskew), brightness/contrast, paper size (Letter/Legal/A4/… + feeder auto-detect); destinations images / new PDF / insert into open PDF (F42).
 - Share/Explorer: File → Share / Show in File Explorer / Copy path|file / Open With / Send Email (F46–F47).
 - Webcam signature capture already shipped in M4; HDR display (F26-24) still deferred.
 

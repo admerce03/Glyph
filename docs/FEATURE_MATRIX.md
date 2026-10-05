@@ -625,13 +625,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F42-08 | Scanner support | Resolution/DPI. | M8 | Implemented | DesiredResolution 150–600 |
 | F42-09 | Scanner support | Paper size. | M8 | Implemented | Scan dialog paper size + feeder `PageSize` / flatbed region |
 | F42-10 | Scanner support | Auto crop. | M8 | Implemented | AutoCroppingMode SingleRegion toggle |
-| F42-11 | Scanner support | Auto straighten. | M8 | Deferred | No WinRT straighten API; post-process TBD |
+| F42-11 | Scanner support | Auto straighten. | M8 | Implemented | Magick DeskewAndCrop; Scan checkbox + image Straighten |
 | F42-12 | Scanner support | Brightness/contrast where hardware supports it. | M8 | Implemented | Scan dialog brightness/contrast sliders |
 | F42-13 | Scanner support | Scan one page. | M8 | Implemented | Flatbed / MaxPages=1 |
 | F42-14 | Scanner support | Scan multiple pages. | M8 | Implemented | Feeder MaxPages |
 | F42-15 | Scanner support | Scan directly into new PDF. | M8 | Tested | Destination → New PDF via Magick collection |
 | F42-16 | Scanner support | Insert scanned pages into existing PDF. | M8 | Implemented | Destination → Insert into current PDF |
-| F42-17 | Scanner support | Scan multiple photos separately from a flatbed where detection is practical. | M8 | Deferred | MultipleRegion when device supports; not exposed yet |
+| F42-17 | Scanner support | Scan multiple photos separately from a flatbed where detection is practical. | M8 | Implemented | Auto crop → Multiple photos (MultipleRegion) |
 | F43-01 | Webcam/camera import | select webcam | M8 | Implemented | Uses default MediaCapture video device |
 | F43-02 | Webcam/camera import | capture image | M8 | Implemented | File → Capture from Camera; PDF Camera button |
 | F43-03 | Webcam/camera import | crop result | M8 | Implemented | Post-capture Crop… in image view; stamp size on PDF |

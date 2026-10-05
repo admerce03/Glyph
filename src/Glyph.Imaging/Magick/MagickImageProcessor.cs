@@ -848,6 +848,31 @@ public sealed class MagickImageProcessor : IImageProcessor
             cancellationToken);
     }
 
+    public Task DeskewAsync(
+        IImageDocument document,
+        double thresholdPercent = 40,
+        bool crop = true,
+        CancellationToken cancellationToken = default)
+    {
+        var magick = RequireMagick(document);
+        var threshold = Math.Clamp(thresholdPercent, 0, 100);
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var pct = new Percentage(threshold);
+                if (crop)
+                {
+                    magick.Native.DeskewAndCrop(pct);
+                }
+                else
+                {
+                    magick.Native.Deskew(pct);
+                }
+            },
+            cancellationToken);
+    }
+
     internal static void RemoveBackgroundCore(MagickImage image, double fuzzPercent)
     {
         image.Alpha(AlphaOption.Set);

@@ -876,6 +876,43 @@ public class MagickImageProcessorTests
         }
     }
 
+    [Fact]
+    public async Task Deskew_does_not_throw_on_axis_aligned_image()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-deskew-" + Guid.NewGuid().ToString("N") + ".png");
+        try
+        {
+            using (var image = new MagickImage(MagickColors.White, 80, 60))
+            {
+                new Drawables()
+                    .FillColor(MagickColors.Black)
+                    .Rectangle(10, 10, 70, 50)
+                    .Draw(image);
+                image.Format = MagickFormat.Png;
+                image.Write(path);
+            }
+
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            await using var document = await decoder.OpenAsync(path);
+            var beforeW = document.PixelWidth;
+            var beforeH = document.PixelHeight;
+            await processor.DeskewAsync(document, thresholdPercent: 40, crop: true);
+            document.PixelWidth.Should().BeGreaterThan(0);
+            document.PixelHeight.Should().BeGreaterThan(0);
+            // Axis-aligned content should stay roughly the same size.
+            document.PixelWidth.Should().BeLessThanOrEqualTo(beforeW + 4);
+            document.PixelHeight.Should().BeLessThanOrEqualTo(beforeH + 4);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
     private static string CreateSolidPng(int width, int height)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-src-" + Guid.NewGuid().ToString("N") + ".png");
