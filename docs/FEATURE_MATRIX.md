@@ -461,7 +461,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F28-01 | Image selection tools | Rectangular selection. | M5 | Implemented | Select toolbar → drag rectangle overlay |
 | F28-02 | Image selection tools | Elliptical selection. | M5 | Tested | Select → Ellipse shape; extract/clear/move use oval mask |
 | F28-03 | Image selection tools | Freeform lasso. | M5 | Tested | Select → Lasso drag polyline; extract/clear/move use polygon mask |
-| F28-04 | Image selection tools | Smart lasso. | M5 | Not Started |  |
+| F28-04 | Image selection tools | Smart lasso. | M5 | Implemented | Select → Smart; edge-snapping polyline (Sobel), polygon mask |
 | F28-05 | Image selection tools | Select all. | M5 | Implemented | Select → All / Ctrl+A |
 | F28-06 | Image selection tools | Invert selection. | M5 | Tested | Select → Invert; extract/clear apply outside mask |
 | F28-07 | Image selection tools | Deselect. | M5 | Implemented | Deselect / Esc |

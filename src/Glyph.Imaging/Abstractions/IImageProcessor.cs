@@ -121,6 +121,8 @@ public enum ImageSelectionKind
     Rectangle = 0,
     Ellipse = 1,
     Freeform = 2,
+    /// <summary>Freeform polygon with edge-snapped vertices (UI); processor treats like Freeform.</summary>
+    Smart = 3,
 }
 
 public enum ImageResizeFilter

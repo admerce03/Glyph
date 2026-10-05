@@ -408,7 +408,8 @@ public sealed class MagickImageProcessor : IImageProcessor
         {
             ApplyEllipseAlphaMask(clone);
         }
-        else if (kind == ImageSelectionKind.Freeform && polygon is { Count: >= 3 })
+        else if ((kind == ImageSelectionKind.Freeform || kind == ImageSelectionKind.Smart)
+            && polygon is { Count: >= 3 })
         {
             ApplyPolygonAlphaMask(clone, pixels, polygon);
         }
@@ -525,7 +526,8 @@ public sealed class MagickImageProcessor : IImageProcessor
             return drawables.Ellipse(originX, originY, radiusX, radiusY, 0, 360);
         }
 
-        if (kind == ImageSelectionKind.Freeform && polygon is { Count: >= 3 })
+        if ((kind == ImageSelectionKind.Freeform || kind == ImageSelectionKind.Smart)
+            && polygon is { Count: >= 3 })
         {
             var coords = polygon.Select(p => new PointD(p.X, p.Y)).ToArray();
             return drawables.Polygon(coords);

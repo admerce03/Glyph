@@ -298,6 +298,13 @@ public class MagickImageProcessorTests
             // AABB corner (5,5) is outside the inset triangle → transparent.
             extracted.BgraPixels[3].Should().Be(0);
 
+            var smartExtract = await processor.ExtractRectAsync(
+                document,
+                bounds,
+                ImageSelectionKind.Smart,
+                polygon);
+            smartExtract.BgraPixels[3].Should().Be(0);
+
             await processor.ClearRectAsync(
                 document,
                 bounds,
