@@ -8,11 +8,14 @@ namespace Glyph.Core.Tests;
 public class PackagingDeferredPolicyTests
 {
     [Fact]
-    public void Associations_and_updates_wait_on_msix()
+    public void Associations_and_updates_wait_on_verified_msix()
     {
+        PackagingDeferredPolicy.MsixScaffoldShipped.Should().BeTrue();
         PackagingDeferredPolicy.NativeFileAssociationsShipped.Should().BeFalse();
         PackagingDeferredPolicy.InAppUpdateCheckShipped.Should().BeFalse();
         PackagingDeferredPolicy.Adr.Should().Be("ADR-012");
+        PackagingDeferredPolicy.PublishScript.Should().Contain("publish-msix");
+        PackagingDeferredPolicy.ManifestPath.Should().Contain("Package.appxmanifest");
     }
 }
 
