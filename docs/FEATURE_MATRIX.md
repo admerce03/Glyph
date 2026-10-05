@@ -423,21 +423,21 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F25-17 | PDF metadata | author | M7 | Not Started |  |
 | F25-18 | PDF metadata | subject | M7 | Not Started |  |
 | F25-19 | PDF metadata | keywords | M7 | Not Started |  |
-| F26-01 | Image viewing | JPEG/JPG | M5 | Not Started |  |
-| F26-02 | Image viewing | PNG | M5 | Not Started |  |
-| F26-03 | Image viewing | GIF | M5 | Not Started |  |
-| F26-04 | Image viewing | BMP | M5 | Not Started |  |
-| F26-05 | Image viewing | TIFF | M5 | Not Started |  |
-| F26-06 | Image viewing | WebP | M5 | Not Started |  |
+| F26-01 | Image viewing | JPEG/JPG | M5 | Implemented | Magick.NET decoder |
+| F26-02 | Image viewing | PNG | M5 | Implemented | Magick.NET decoder |
+| F26-03 | Image viewing | GIF | M5 | Implemented | Magick.NET decoder (first frame) |
+| F26-04 | Image viewing | BMP | M5 | Implemented | Magick.NET decoder |
+| F26-05 | Image viewing | TIFF | M5 | Implemented | Magick.NET decoder |
+| F26-06 | Image viewing | WebP | M5 | Implemented | Magick.NET decoder |
 | F26-07 | Image viewing | HEIF/HEIC where codecs are available | M5 | Not Started |  |
 | F26-08 | Image viewing | AVIF where practical | M5 | Not Started |  |
 | F26-09 | Image viewing | ICO | M5 | Not Started |  |
 | F26-10 | Image viewing | JPEG 2000 where practical | M5 | Not Started |  |
 | F26-11 | Image viewing | fast opening | M5 | Not Started |  |
-| F26-12 | Image viewing | zoom | M5 | Not Started |  |
-| F26-13 | Image viewing | pan | M5 | Not Started |  |
-| F26-14 | Image viewing | fit image | M5 | Not Started |  |
-| F26-15 | Image viewing | actual size | M5 | Not Started |  |
+| F26-12 | Image viewing | zoom | M5 | Implemented | ImageDocumentView ± zoom |
+| F26-13 | Image viewing | pan | M5 | Implemented | ScrollViewer pan |
+| F26-14 | Image viewing | fit image | M5 | Implemented | Fit toolbar |
+| F26-15 | Image viewing | actual size | M5 | Implemented | 100% toolbar |
 | F26-16 | Image viewing | fullscreen | M5 | Not Started |  |
 | F26-17 | Image viewing | next/previous image | M5 | Not Started |  |
 | F26-18 | Image viewing | image list sidebar | M5 | Not Started |  |
@@ -503,7 +503,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F31-11 | Image resizing | Estimated resulting dimensions. | M5 | Not Started |  |
 | F31-12 | Image resizing | Estimated file size. | M5 | Not Started |  |
 | F31-13 | Image resizing | Batch resize selected images. | M5 | Not Started |  |
-| F32-01 | Image orientation | Rotate left 90°. | M5 | Not Started |  |
+| F32-01 | Image orientation | Rotate left 90°. | M5 | Tested | MagickImageProcessor.RotateAsync |
 | F32-02 | Image orientation | Rotate right 90°. | M5 | Not Started |  |
 | F32-03 | Image orientation | Rotate 180°. | M5 | Not Started |  |
 | F32-04 | Image orientation | Flip horizontal. | M5 | Not Started |  |
@@ -538,7 +538,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F34-09 | Image markup | rotate | M5 | Not Started |  |
 | F34-10 | Image markup | Save/export to a flat image format, or | M5 | Not Started |  |
 | F34-11 | Image markup | user explicitly flattens. | M5 | Not Started |  |
-| F35-01 | Image format conversion | PNG | M5 | Not Started |  |
+| F35-01 | Image format conversion | PNG | M5 | Tested | MagickImageEncoder → PNG |
 | F35-02 | Image format conversion | JPEG | M5 | Not Started |  |
 | F35-03 | Image format conversion | WebP | M5 | Not Started |  |
 | F35-04 | Image format conversion | TIFF | M5 | Not Started |  |
