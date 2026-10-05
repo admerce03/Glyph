@@ -38,7 +38,9 @@ namespace Glyph.App.Views;
 /// </summary>
 public sealed class PdfDocumentView : UserControl
 {
-    private const double ThumbnailWidth = 108;
+    private const double DefaultThumbnailWidth = 108;
+    private const double MinThumbnailWidth = 72;
+    private const double MaxThumbnailWidth = 180;
     private const int OcrMaxEdgePixels = 2048;
 
     private readonly IPdfDocument _document;
@@ -107,6 +109,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly Dictionary<int, Image> _thumbnailImages = new();
     private readonly Dictionary<int, Border> _thumbnailBorders = new();
     private readonly SemaphoreSlim _renderGate = new(1, 1);
+    private double _thumbnailWidth = DefaultThumbnailWidth;
     private double _scale = 1.25;
     private PageLayoutMode _layoutMode = PageLayoutMode.Continuous;
     private int _renderGeneration;
@@ -267,6 +270,10 @@ public sealed class PdfDocumentView : UserControl
         }
 
         ApplyAnnotationDefaults(settings);
+        if (settings is not null)
+        {
+            _thumbnailWidth = Math.Clamp(settings.ThumbnailWidth, MinThumbnailWidth, MaxThumbnailWidth);
+        }
 
         var defaultZoom = settings?.DefaultZoom > 0 ? settings.DefaultZoom : 1.25;
         _scale = PdfZoomCalculator.Clamp(_viewState.Zoom <= 0 ? defaultZoom : _viewState.Zoom);
@@ -362,7 +369,7 @@ public sealed class PdfDocumentView : UserControl
 
         var sidePanel = new Grid
         {
-            Width = 180,
+            Width = Math.Max(180, _thumbnailWidth + 48),
             RowDefinitions =
             {
                 new RowDefinition { Height = GridLength.Auto },
@@ -377,7 +384,8 @@ public sealed class PdfDocumentView : UserControl
                 new RowDefinition { Height = new GridLength(120) },
             },
         };
-        sidePanel.Children.Add(new TextBlock { Text = "Pages", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(8, 8, 8, 4) });
+        _sidePanel = sidePanel;
+        sidePanel.Children.Add(BuildPagesHeader());
         Grid.SetRow(_thumbnailScroll, 1);
         sidePanel.Children.Add(_thumbnailScroll);
         var tocHeader = new TextBlock { Text = "Contents", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(8, 8, 8, 4) };
@@ -1031,10 +1039,10 @@ public sealed class PdfDocumentView : UserControl
         for (var i = 0; i < _document.PageCount; i++)
         {
             var page = _document.GetPage(i);
-            var thumbScale = ThumbnailWidth / Math.Max(1, page.WidthPoints);
+            var thumbScale = _thumbnailWidth / Math.Max(1, page.WidthPoints);
             var image = new Image
             {
-                Width = ThumbnailWidth,
+                Width = _thumbnailWidth,
                 Height = Math.Max(1, page.HeightPoints * thumbScale),
                 Stretch = Stretch.Uniform,
             };
@@ -9418,6 +9426,84 @@ public sealed class PdfDocumentView : UserControl
         _drawStrokeWidth = (float)Math.Clamp(settings.DefaultStrokeWidthPoints, 0.5, 12);
     }
 
+    private UIElement BuildPagesHeader()
+    {
+        var small = new Button { Content = "S", Width = 28, Padding = new Thickness(0), Tag = 72.0 };
+        var medium = new Button { Content = "M", Width = 28, Padding = new Thickness(0), Tag = 108.0 };
+        var large = new Button { Content = "L", Width = 28, Padding = new Thickness(0), Tag = 156.0 };
+        ToolTipService.SetToolTip(small, "Small page thumbnails");
+        ToolTipService.SetToolTip(medium, "Medium page thumbnails");
+        ToolTipService.SetToolTip(large, "Large page thumbnails");
+        AutomationProperties.SetName(small, "Small page thumbnails");
+        AutomationProperties.SetName(medium, "Medium page thumbnails");
+        AutomationProperties.SetName(large, "Large page thumbnails");
+
+        async void OnSizeClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button { Tag: double width })
+            {
+                await SetThumbnailWidthAsync(width);
+            }
+        }
+
+        small.Click += OnSizeClick;
+        medium.Click += OnSizeClick;
+        large.Click += OnSizeClick;
+
+        return new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            Margin = new Thickness(8, 8, 8, 4),
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = "Pages",
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+                small,
+                medium,
+                large,
+            },
+        };
+    }
+
+    private async Task SetThumbnailWidthAsync(double width)
+    {
+        var clamped = Math.Clamp(width, MinThumbnailWidth, MaxThumbnailWidth);
+        if (Math.Abs(clamped - _thumbnailWidth) < 0.5)
+        {
+            return;
+        }
+
+        _thumbnailWidth = clamped;
+        try
+        {
+            var settings = TryGetSettings();
+            if (settings is not null)
+            {
+                settings.ThumbnailWidth = clamped;
+                var store = App.Services.GetService<ISettingsStore>();
+                if (store is not null)
+                {
+                    await store.SaveAsync(settings);
+                }
+            }
+        }
+        catch
+        {
+            // Persistence is best-effort.
+        }
+
+        _cache.ClearDocument(_thumbnailKey);
+        BuildThumbnailPlaceholders();
+        RefreshThumbnailSelectionChrome();
+        _ = RenderThumbnailsAsync();
+        _status.Text = $"Thumbnail size {_thumbnailWidth:0}px.";
+    }
+
     private string ResolveDefaultStickyNoteColorName()
     {
         var settings = TryGetSettings();
@@ -10822,7 +10908,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var page = _document.GetPage(pageIndex);
-        var thumbScale = ThumbnailWidth / Math.Max(1, page.WidthPoints);
+        var thumbScale = _thumbnailWidth / Math.Max(1, page.WidthPoints);
 
         if (_cache.TryGet(_thumbnailKey, pageIndex, thumbScale, out var cached) && cached is not null)
         {
@@ -10833,7 +10919,7 @@ public sealed class PdfDocumentView : UserControl
         var result = await _renderer.RenderPageAsync(
             _document,
             pageIndex,
-            new PdfRenderRequest(thumbScale, MaxWidthPixels: (int)ThumbnailWidth));
+            new PdfRenderRequest(thumbScale, MaxWidthPixels: (int)_thumbnailWidth));
 
         _cache.Set(_thumbnailKey, pageIndex, thumbScale, result);
         image.Source = await ToWriteableBitmapAsync(result);

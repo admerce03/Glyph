@@ -19,6 +19,9 @@ public sealed class AppSettings
     /// <summary>Sidebar width in DIPs when visible (F02-07).</summary>
     public double SidebarWidth { get; set; } = 220;
 
+    /// <summary>PDF page thumbnail width in DIPs (F03-11).</summary>
+    public double ThumbnailWidth { get; set; } = 108;
+
     /// <summary>When true, each File → Open path opens in a new window (F01-03).</summary>
     public bool OpenFilesInSeparateWindows { get; set; }
 

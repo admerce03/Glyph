@@ -69,7 +69,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-08 | Sidebar modes | Document attachments, if supported | M2-M5 | Not Started |  |
 | F03-09 | Sidebar modes | Metadata/properties where useful | M2-M5 | Not Started |  |
 | F03-10 | Sidebar modes | Switch sidebar mode without opening another window. | M2-M5 | In Progress | Thumbs/TOC/search coexist in one panel; dedicated mode switcher later |
-| F03-11 | Sidebar modes | Resize thumbnail size. | M2-M5 | Not Started |  |
+| F03-11 | Sidebar modes | Resize thumbnail size. | M2-M5 | Implemented | Pages S/M/L buttons; `ThumbnailWidth` persisted |
 | F03-12 | Sidebar modes | Multi-select sidebar items. | M2-M5 | Not Started |  |
 | F03-13 | Sidebar modes | Shift-click range selection. | M2-M5 | Not Started |  |
 | F03-14 | Sidebar modes | Ctrl-click noncontiguous selection. | M2-M5 | Not Started |  |

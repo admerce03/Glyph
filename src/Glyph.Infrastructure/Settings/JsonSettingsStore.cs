@@ -102,6 +102,15 @@ public sealed class JsonSettingsStore : ISettingsStore
             settings.SidebarWidth = 480;
         }
 
+        if (double.IsNaN(settings.ThumbnailWidth) || settings.ThumbnailWidth < 72)
+        {
+            settings.ThumbnailWidth = 72;
+        }
+        else if (settings.ThumbnailWidth > 180)
+        {
+            settings.ThumbnailWidth = 180;
+        }
+
         if (settings.VersionSnapshotCapacity < 1)
         {
             settings.VersionSnapshotCapacity = 1;
@@ -174,6 +183,7 @@ public sealed class JsonSettingsStore : ISettingsStore
         AutoSaveToOriginal = settings.AutoSaveToOriginal,
         CrashRecoveryIntervalSeconds = settings.CrashRecoveryIntervalSeconds,
         SidebarWidth = settings.SidebarWidth,
+        ThumbnailWidth = settings.ThumbnailWidth,
         VersionSnapshotsEnabled = settings.VersionSnapshotsEnabled,
         VersionSnapshotCapacity = settings.VersionSnapshotCapacity,
         OpenFilesInSeparateWindows = settings.OpenFilesInSeparateWindows,
