@@ -465,7 +465,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F28-05 | Image selection tools | Select all. | M5 | Implemented | Select → All / Ctrl+A |
 | F28-06 | Image selection tools | Invert selection. | M5 | Not Started |  |
 | F28-07 | Image selection tools | Deselect. | M5 | Implemented | Deselect / Esc |
-| F28-08 | Image selection tools | Move selected pixels. | M5 | Implemented | Drag inside selection / arrow keys → `MoveRectAsync` |
+| F28-08 | Image selection tools | Move selected pixels. | M5 | Tested | Drag inside selection / arrow keys → `MoveRectAsync` |
 | F28-09 | Image selection tools | Copy. | M5 | Implemented | Copy sel / Ctrl+C → clipboard PNG via `ExtractRectAsync` |
 | F28-10 | Image selection tools | Cut. | M5 | Implemented | Cut sel / Ctrl+X → copy + `ClearRectAsync` |
 | F28-11 | Image selection tools | Paste. | M5 | Tested | Paste / Ctrl+V → `PasteRectAsync` at selection origin |
@@ -514,8 +514,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F33-01 | Image color adjustments | Auto Levels | M5 | Tested | Adjust dialog → `AutoLevels` → Magick `AutoLevel` |
 | F33-02 | Image color adjustments | Exposure | M5 | Implemented | Adjust dialog Brightness (Magick BrightnessContrast) |
 | F33-03 | Image color adjustments | Contrast | M5 | Tested | Adjust dialog → AdjustAsync Contrast |
-| F33-04 | Image color adjustments | Highlights | M5 | Implemented | Adjust dialog Highlights → tone CLUT |
-| F33-05 | Image color adjustments | Shadows | M5 | Implemented | Adjust dialog Shadows → tone CLUT |
+| F33-04 | Image color adjustments | Highlights | M5 | Tested | Adjust dialog Highlights → tone CLUT |
+| F33-05 | Image color adjustments | Shadows | M5 | Tested | Adjust dialog Shadows → tone CLUT |
 | F33-06 | Image color adjustments | Saturation | M5 | Tested | Adjust dialog → AdjustAsync Saturation |
 | F33-07 | Image color adjustments | Temperature | M5 | Tested | Adjust dialog Temperature → ColorMatrix RGB gain |
 | F33-08 | Image color adjustments | Tint | M5 | Tested | Adjust dialog Tint → ColorMatrix green/magenta |
