@@ -25,6 +25,12 @@ public static class PackagingDeferredPolicy
     /// </summary>
     public const bool MsixSideloadHelperShipped = true;
 
+    /// <summary>
+    /// Sideload helper probes installed <c>Get-AppxPackageManifest</c> file types after install
+    /// (and via <c>-VerifyOnly</c>). Explorer default-app assignment is still manual.
+    /// </summary>
+    public const bool MsixSideloadAssociationProbeShipped = true;
+
     public const bool NativeFileAssociationsShipped = false;
     public const bool ConfigurableDefaultAssociationsShipped = false;
     public const bool InAppUpdateCheckShipped = false;
@@ -32,7 +38,7 @@ public static class PackagingDeferredPolicy
     public const string Adr = "ADR-012";
 
     public const string Reason =
-        "Test-signed .msix + sideload helper shipped; durable file associations and update channel wait on verified sideload.";
+        "Test-signed .msix + sideload helper/association probe shipped; Explorer defaults and update channel wait on verified sideload.";
 
     public const string PublishScript = "scripts/publish-msix.ps1";
     public const string InstallScript = "scripts/install-msix-test.ps1";
