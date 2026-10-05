@@ -73,6 +73,20 @@ public sealed class PdfDocumentView : UserControl
     private int _dragPageIndex = -1;
     private string _searchQuery = string.Empty;
     private bool _searchCaseSensitive;
+    private bool _cropMode;
+    private int _cropPageIndex = -1;
+    private double _cropMarginLeftPt;
+    private double _cropMarginTopPt;
+    private double _cropMarginRightPt;
+    private double _cropMarginBottomPt;
+    private string? _cropDragHandle;
+    private Windows.Foundation.Point _cropPointerStart;
+    private double _cropDragStartLeft;
+    private double _cropDragStartTop;
+    private double _cropDragStartRight;
+    private double _cropDragStartBottom;
+    private StackPanel? _cropChrome;
+    private PdfLengthUnit _cropUnit = PdfLengthUnit.Points;
 
     public PdfDocumentView(
         IPdfDocument document,
@@ -221,6 +235,7 @@ public sealed class PdfDocumentView : UserControl
         var extract = new Button { Content = "Extract" };
         var merge = new Button { Content = "Merge" };
         var split = new Button { Content = "Split" };
+        var crop = new Button { Content = "Crop" };
         var undoEdit = new Button { Content = "Undo" };
         var redoEdit = new Button { Content = "Redo" };
         ToolTipService.SetToolTip(rotateLeft, "Rotate selected pages left");
@@ -233,6 +248,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(extract, "Extract selected pages to a new PDF file");
         ToolTipService.SetToolTip(merge, "Merge other PDF files into this document");
         ToolTipService.SetToolTip(split, "Split document before each selected page");
+        ToolTipService.SetToolTip(crop, "Interactive CropBox crop (visual handles; numeric via Crop → Numeric)");
         ToolTipService.SetToolTip(undoEdit, "Undo last page edit (Ctrl+Z)");
         ToolTipService.SetToolTip(redoEdit, "Redo page edit (Ctrl+Y)");
 
@@ -274,6 +290,7 @@ public sealed class PdfDocumentView : UserControl
         extract.Click += async (_, _) => await ExtractSelectedAsync();
         merge.Click += async (_, _) => await MergePdfsAsync();
         split.Click += async (_, _) => await SplitDocumentAsync();
+        crop.Click += async (_, _) => await BeginCropModeAsync();
         undoEdit.Click += async (_, _) => await UndoPageEditAsync();
         redoEdit.Click += async (_, _) => await RedoPageEditAsync();
 
@@ -287,7 +304,7 @@ public sealed class PdfDocumentView : UserControl
                 first, prev, _gotoBox, next, last, back, forward,
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
-                rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split,
+                rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -348,6 +365,11 @@ public sealed class PdfDocumentView : UserControl
     {
         PdfPageDragRegistry.Unregister(_documentKey);
         ClearDropHighlight();
+        if (_cropMode)
+        {
+            CancelCropMode();
+        }
+
         _searchCoordinator.Cancel();
         _cache.ClearDocument(_documentKey);
         _cache.ClearDocument(_thumbnailKey);
@@ -597,8 +619,8 @@ public sealed class PdfDocumentView : UserControl
         var deferral = request.GetDeferral();
         try
         {
-            var tempPath = Path.Combine(
-                Path.GetTempPath(),
+            var tempPath = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
                 "Glyph-pages-" + Guid.NewGuid().ToString("N") + ".pdf");
             await using (var extracted = await _pageEditor.ExtractPagesAsync(_document, pageIndexes))
             {
@@ -901,6 +923,20 @@ public sealed class PdfDocumentView : UserControl
 
     private async void PdfDocumentView_KeyDown(object sender, KeyRoutedEventArgs e)
     {
+        if (_cropMode && e.Key == VirtualKey.Escape)
+        {
+            CancelCropMode();
+            e.Handled = true;
+            return;
+        }
+
+        if (_cropMode && e.Key == VirtualKey.Enter)
+        {
+            await ApplyCropModeAsync();
+            e.Handled = true;
+            return;
+        }
+
         var ctrlDown = Microsoft.UI.Input.InputKeyboardSource
             .GetKeyStateForCurrentThread(VirtualKey.Control)
             .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
@@ -1029,6 +1065,17 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (_cropMode)
+        {
+            if (pageIndex == _cropPageIndex)
+            {
+                BeginCropPointerDrag(border, e);
+            }
+
+            e.Handled = true;
+            return;
+        }
+
         _dragSelecting = true;
         _dragPageIndex = pageIndex;
         _dragStart = e.GetCurrentPoint(border).Position;
@@ -1037,6 +1084,19 @@ public sealed class PdfDocumentView : UserControl
 
     private void PageBorder_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
+        if (_cropMode)
+        {
+            if (sender is Border { Tag: int cropPage } cropBorder &&
+                cropPage == _cropPageIndex &&
+                _cropDragHandle is not null)
+            {
+                UpdateCropPointerDrag(cropBorder, e);
+                e.Handled = true;
+            }
+
+            return;
+        }
+
         if (!_dragSelecting || sender is not Border { Tag: int pageIndex } border || pageIndex != _dragPageIndex)
         {
             return;
@@ -1075,6 +1135,19 @@ public sealed class PdfDocumentView : UserControl
     {
         if (sender is not Border { Tag: int pageIndex } border)
         {
+            return;
+        }
+
+        if (_cropMode)
+        {
+            if (pageIndex == _cropPageIndex)
+            {
+                _cropDragHandle = null;
+                try { border.ReleasePointerCapture(e.Pointer); } catch { /* ignore */ }
+                RedrawCropOverlay();
+            }
+
+            e.Handled = true;
             return;
         }
 
@@ -1692,6 +1765,133 @@ public sealed class PdfDocumentView : UserControl
         _status.Text = $"Extracted {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")} to {file.Name}.";
     }
 
+    private async Task BeginCropModeAsync()
+    {
+        if (_document.PageCount == 0)
+        {
+            return;
+        }
+
+        await GoToPageAsync(CurrentPageIndex, recordHistory: false);
+        _cropMode = true;
+        _cropPageIndex = CurrentPageIndex;
+        var page = _document.GetPage(_cropPageIndex);
+        var inset = Math.Min(36, Math.Min(page.WidthPoints, page.HeightPoints) / 10);
+        _cropMarginLeftPt = inset;
+        _cropMarginTopPt = inset;
+        _cropMarginRightPt = inset;
+        _cropMarginBottomPt = inset;
+        _cropDragHandle = null;
+
+        EnsureCropChrome();
+        if (_pageOverlays.TryGetValue(_cropPageIndex, out var overlay))
+        {
+            overlay.IsHitTestVisible = true;
+        }
+
+        RedrawCropOverlay();
+        _status.Text = "Crop mode — drag handles, Enter to apply, Esc to cancel.";
+    }
+
+    private void EnsureCropChrome()
+    {
+        if (_cropChrome is not null)
+        {
+            _cropChrome.Visibility = Visibility.Visible;
+            return;
+        }
+
+        var apply = new Button { Content = "Apply crop" };
+        var cancel = new Button { Content = "Cancel" };
+        var numeric = new Button { Content = "Numeric…" };
+        var exportCropped = new Button { Content = "Export cropped…" };
+        apply.Click += async (_, _) => await ApplyCropModeAsync();
+        cancel.Click += (_, _) => CancelCropMode();
+        numeric.Click += async (_, _) => await CropNumericDialogAsync();
+        exportCropped.Click += async (_, _) => await ExportCroppedAsync();
+        ToolTipService.SetToolTip(exportCropped, "Export selected pages with a permanent MediaBox crop");
+        _cropChrome = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Padding = new Thickness(8, 0, 8, 8),
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = "Crop handles",
+                    VerticalAlignment = VerticalAlignment.Center,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                },
+                apply,
+                cancel,
+                numeric,
+                exportCropped,
+            },
+        };
+
+        if (Content is Grid root)
+        {
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            Grid.SetRow(_cropChrome, root.RowDefinitions.Count - 1);
+            root.Children.Add(_cropChrome);
+        }
+    }
+
+    private void CancelCropMode()
+    {
+        _cropMode = false;
+        _cropDragHandle = null;
+        if (_cropPageIndex >= 0 && _pageOverlays.TryGetValue(_cropPageIndex, out var overlay))
+        {
+            overlay.Children.Clear();
+            overlay.IsHitTestVisible = false;
+        }
+
+        _cropPageIndex = -1;
+        if (_cropChrome is not null)
+        {
+            _cropChrome.Visibility = Visibility.Collapsed;
+        }
+
+        _status.Text = "Crop cancelled.";
+    }
+
+    private async Task ApplyCropModeAsync()
+    {
+        if (!_cropMode)
+        {
+            return;
+        }
+
+        var indexes = SelectedOrCurrentPages();
+        if (indexes.Count == 0)
+        {
+            indexes = [_cropPageIndex];
+        }
+
+        var margins = new PdfCropMargins(
+            _cropMarginLeftPt,
+            _cropMarginTopPt,
+            _cropMarginRightPt,
+            _cropMarginBottomPt);
+
+        try
+        {
+            _status.Text = "Cropping…";
+            await RunPageEditAsync(() => _pageEditor.CropPagesAsync(_document, indexes, margins));
+            CancelCropMode();
+            await ReloadAfterPageEditAsync();
+            _status.Text = indexes.Count == 1
+                ? "Cropped 1 page."
+                : $"Cropped {indexes.Count} pages.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Crop failed: " + ex.Message;
+        }
+    }
+
     private async Task MergePdfsAsync()
     {
         var window = App.CurrentApp.MainWindowInstance
@@ -1784,7 +1984,7 @@ public sealed class PdfDocumentView : UserControl
         var parts = await _pageEditor.SplitDocumentAsync(_document, splitBefore);
         try
         {
-            var baseName = Path.GetFileNameWithoutExtension(_document.Path) ?? "Glyph";
+            var baseName = System.IO.Path.GetFileNameWithoutExtension(_document.Path) ?? "Glyph";
             for (var i = 0; i < parts.Count; i++)
             {
                 var name = $"{baseName}-part{i + 1}.pdf";
@@ -1801,6 +2001,430 @@ public sealed class PdfDocumentView : UserControl
                 await part.DisposeAsync();
             }
         }
+    }
+
+    private async Task ExportCroppedAsync()
+    {
+        var indexes = SelectedOrCurrentPages();
+        if (indexes.Count == 0)
+        {
+            return;
+        }
+
+        if (_cropMode && _cropPageIndex >= 0 && !indexes.Contains(_cropPageIndex))
+        {
+            indexes = indexes.Append(_cropPageIndex).OrderBy(i => i).ToList();
+        }
+
+        var window = App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+        var picker = new Windows.Storage.Pickers.FileSavePicker();
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+        picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+        picker.SuggestedFileName = "Cropped pages";
+        picker.FileTypeChoices.Add("PDF", [".pdf"]);
+
+        var file = await picker.PickSaveFileAsync();
+        if (file is null)
+        {
+            _status.Text = "Export cancelled.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Exporting permanently cropped PDF…";
+            await using var extracted = await _pageEditor.ExtractPagesAsync(_document, indexes);
+
+            // Stamp in-progress visual margins onto the exported copy without mutating the open doc.
+            if (_cropMode && _cropPageIndex >= 0)
+            {
+                var local = indexes.IndexOf(_cropPageIndex);
+                if (local >= 0)
+                {
+                    await _pageEditor.CropPagesAsync(
+                        extracted,
+                        [local],
+                        new PdfCropMargins(
+                            _cropMarginLeftPt,
+                            _cropMarginTopPt,
+                            _cropMarginRightPt,
+                            _cropMarginBottomPt));
+                }
+            }
+
+            var partIndexes = Enumerable.Range(0, extracted.PageCount).ToList();
+            await _pageEditor.PermanentCropPagesAsync(extracted, partIndexes);
+            await _pageEditor.SaveAsync(extracted, file.Path);
+            _status.Text = $"Exported cropped PDF to {file.Name}.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Export failed: " + ex.Message;
+        }
+    }
+
+    private async Task CropNumericDialogAsync()
+    {
+        var indexes = SelectedOrCurrentPages();
+        if (indexes.Count == 0)
+        {
+            return;
+        }
+
+        var unitBox = new ComboBox
+        {
+            Header = "Units",
+            ItemsSource = new[] { "Points (pt)", "Inches (in)", "Centimeters (cm)", "Millimeters (mm)" },
+            SelectedIndex = (int)_cropUnit,
+            Width = 220,
+        };
+        var leftBox = new NumberBox
+        {
+            Header = "Left",
+            Value = PdfLengthUnits.FromPoints(_cropMode ? _cropMarginLeftPt : 36, _cropUnit),
+            Minimum = 0,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
+        };
+        var topBox = new NumberBox
+        {
+            Header = "Top",
+            Value = PdfLengthUnits.FromPoints(_cropMode ? _cropMarginTopPt : 36, _cropUnit),
+            Minimum = 0,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
+        };
+        var rightBox = new NumberBox
+        {
+            Header = "Right",
+            Value = PdfLengthUnits.FromPoints(_cropMode ? _cropMarginRightPt : 36, _cropUnit),
+            Minimum = 0,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
+        };
+        var bottomBox = new NumberBox
+        {
+            Header = "Bottom",
+            Value = PdfLengthUnits.FromPoints(_cropMode ? _cropMarginBottomPt : 36, _cropUnit),
+            Minimum = 0,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
+        };
+        var allPages = new CheckBox { Content = "Apply to all pages", IsChecked = false };
+        var note = new TextBlock
+        {
+            Text = "Non-destructive CropBox inset. Visual handles remain available from Crop.",
+            TextWrapping = TextWrapping.WrapWholeWords,
+            Opacity = 0.75,
+            FontSize = 12,
+        };
+
+        void RefreshHeaders()
+        {
+            var unit = (PdfLengthUnit)Math.Clamp(unitBox.SelectedIndex, 0, 3);
+            var abbr = PdfLengthUnits.Abbreviation(unit);
+            leftBox.Header = $"Left ({abbr})";
+            topBox.Header = $"Top ({abbr})";
+            rightBox.Header = $"Right ({abbr})";
+            bottomBox.Header = $"Bottom ({abbr})";
+        }
+
+        unitBox.SelectionChanged += (_, _) =>
+        {
+            var previous = _cropUnit;
+            var next = (PdfLengthUnit)Math.Clamp(unitBox.SelectedIndex, 0, 3);
+            leftBox.Value = PdfLengthUnits.FromPoints(PdfLengthUnits.ToPoints(leftBox.Value, previous), next);
+            topBox.Value = PdfLengthUnits.FromPoints(PdfLengthUnits.ToPoints(topBox.Value, previous), next);
+            rightBox.Value = PdfLengthUnits.FromPoints(PdfLengthUnits.ToPoints(rightBox.Value, previous), next);
+            bottomBox.Value = PdfLengthUnits.FromPoints(PdfLengthUnits.ToPoints(bottomBox.Value, previous), next);
+            _cropUnit = next;
+            RefreshHeaders();
+        };
+        RefreshHeaders();
+
+        var dialog = new ContentDialog
+        {
+            Title = indexes.Count == 1 ? "Crop page" : $"Crop {indexes.Count} pages",
+            PrimaryButtonText = "Crop",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+            Content = new StackPanel
+            {
+                Spacing = 8,
+                Children = { unitBox, leftBox, topBox, rightBox, bottomBox, allPages, note },
+            },
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        _cropUnit = (PdfLengthUnit)Math.Clamp(unitBox.SelectedIndex, 0, 3);
+        var margins = new PdfCropMargins(
+            PdfLengthUnits.ToPoints(leftBox.Value, _cropUnit),
+            PdfLengthUnits.ToPoints(topBox.Value, _cropUnit),
+            PdfLengthUnits.ToPoints(rightBox.Value, _cropUnit),
+            PdfLengthUnits.ToPoints(bottomBox.Value, _cropUnit));
+
+        if (_cropMode)
+        {
+            _cropMarginLeftPt = margins.LeftPoints;
+            _cropMarginTopPt = margins.TopPoints;
+            _cropMarginRightPt = margins.RightPoints;
+            _cropMarginBottomPt = margins.BottomPoints;
+            RedrawCropOverlay();
+            return;
+        }
+
+        if (allPages.IsChecked == true)
+        {
+            indexes = Enumerable.Range(0, _document.PageCount).ToList();
+        }
+
+        try
+        {
+            _status.Text = "Cropping…";
+            await RunPageEditAsync(() => _pageEditor.CropPagesAsync(_document, indexes, margins));
+            await ReloadAfterPageEditAsync();
+            _status.Text = indexes.Count == 1
+                ? "Cropped 1 page."
+                : $"Cropped {indexes.Count} pages.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Crop failed: " + ex.Message;
+        }
+    }
+
+    private void BeginCropPointerDrag(Border border, PointerRoutedEventArgs e)
+    {
+        var pos = e.GetCurrentPoint(border).Position;
+        _cropDragHandle = HitTestCropHandle(pos) ?? "move";
+        if (_cropDragHandle == "move" && !IsInsideCropRect(pos))
+        {
+            _cropDragHandle = null;
+            return;
+        }
+
+        _cropPointerStart = pos;
+        _cropDragStartLeft = _cropMarginLeftPt;
+        _cropDragStartTop = _cropMarginTopPt;
+        _cropDragStartRight = _cropMarginRightPt;
+        _cropDragStartBottom = _cropMarginBottomPt;
+        border.CapturePointer(e.Pointer);
+    }
+
+    private void UpdateCropPointerDrag(Border border, PointerRoutedEventArgs e)
+    {
+        if (_cropDragHandle is null || _cropPageIndex < 0)
+        {
+            return;
+        }
+
+        var page = _document.GetPage(_cropPageIndex);
+        var pos = e.GetCurrentPoint(border).Position;
+        var dx = (pos.X - _cropPointerStart.X) / _scale;
+        var dy = (pos.Y - _cropPointerStart.Y) / _scale;
+        var minSize = 12.0;
+
+        var left = _cropDragStartLeft;
+        var top = _cropDragStartTop;
+        var right = _cropDragStartRight;
+        var bottom = _cropDragStartBottom;
+
+        switch (_cropDragHandle)
+        {
+            case "move":
+                left = ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, _cropDragStartRight, minSize);
+                right = ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
+                top = ClampMargin(_cropDragStartTop + dy, page.HeightPoints, _cropDragStartBottom, minSize);
+                bottom = ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
+                // Keep width/height by shifting as a block.
+                left = _cropDragStartLeft + dx;
+                right = _cropDragStartRight - dx;
+                top = _cropDragStartTop + dy;
+                bottom = _cropDragStartBottom - dy;
+                if (left < 0) { right += left; left = 0; }
+                if (right < 0) { left += right; right = 0; }
+                if (top < 0) { bottom += top; top = 0; }
+                if (bottom < 0) { top += bottom; bottom = 0; }
+                if (left + right > page.WidthPoints - minSize)
+                {
+                    left = _cropDragStartLeft;
+                    right = _cropDragStartRight;
+                }
+
+                if (top + bottom > page.HeightPoints - minSize)
+                {
+                    top = _cropDragStartTop;
+                    bottom = _cropDragStartBottom;
+                }
+
+                break;
+            case "w":
+                left = ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, right, minSize);
+                break;
+            case "e":
+                right = ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
+                break;
+            case "n":
+                top = ClampMargin(_cropDragStartTop + dy, page.HeightPoints, bottom, minSize);
+                break;
+            case "s":
+                bottom = ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
+                break;
+            case "nw":
+                left = ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, right, minSize);
+                top = ClampMargin(_cropDragStartTop + dy, page.HeightPoints, bottom, minSize);
+                break;
+            case "ne":
+                right = ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
+                top = ClampMargin(_cropDragStartTop + dy, page.HeightPoints, bottom, minSize);
+                break;
+            case "sw":
+                left = ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, right, minSize);
+                bottom = ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
+                break;
+            case "se":
+                right = ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
+                bottom = ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
+                break;
+        }
+
+        _cropMarginLeftPt = Math.Max(0, left);
+        _cropMarginTopPt = Math.Max(0, top);
+        _cropMarginRightPt = Math.Max(0, right);
+        _cropMarginBottomPt = Math.Max(0, bottom);
+        RedrawCropOverlay();
+    }
+
+    private static double ClampMargin(double value, double pageExtent, double opposite, double minSize) =>
+        Math.Clamp(value, 0, Math.Max(0, pageExtent - opposite - minSize));
+
+    private bool IsInsideCropRect(Windows.Foundation.Point pos)
+    {
+        if (_cropPageIndex < 0)
+        {
+            return false;
+        }
+
+        var page = _document.GetPage(_cropPageIndex);
+        var left = _cropMarginLeftPt * _scale;
+        var top = _cropMarginTopPt * _scale;
+        var right = (page.WidthPoints - _cropMarginRightPt) * _scale;
+        var bottom = (page.HeightPoints - _cropMarginBottomPt) * _scale;
+        return pos.X >= left && pos.X <= right && pos.Y >= top && pos.Y <= bottom;
+    }
+
+    private string? HitTestCropHandle(Windows.Foundation.Point pos)
+    {
+        if (_cropPageIndex < 0)
+        {
+            return null;
+        }
+
+        var page = _document.GetPage(_cropPageIndex);
+        var left = _cropMarginLeftPt * _scale;
+        var top = _cropMarginTopPt * _scale;
+        var right = (page.WidthPoints - _cropMarginRightPt) * _scale;
+        var bottom = (page.HeightPoints - _cropMarginBottomPt) * _scale;
+        const double hit = 10;
+        bool Near(double x, double y) => Math.Abs(pos.X - x) <= hit && Math.Abs(pos.Y - y) <= hit;
+
+        if (Near(left, top)) return "nw";
+        if (Near(right, top)) return "ne";
+        if (Near(left, bottom)) return "sw";
+        if (Near(right, bottom)) return "se";
+        if (Near(left, (top + bottom) / 2)) return "w";
+        if (Near(right, (top + bottom) / 2)) return "e";
+        if (Near((left + right) / 2, top)) return "n";
+        if (Near((left + right) / 2, bottom)) return "s";
+        return null;
+    }
+
+    private void RedrawCropOverlay()
+    {
+        if (!_cropMode || _cropPageIndex < 0 || !_pageOverlays.TryGetValue(_cropPageIndex, out var overlay))
+        {
+            return;
+        }
+
+        var page = _document.GetPage(_cropPageIndex);
+        var width = page.WidthPoints * _scale;
+        var height = page.HeightPoints * _scale;
+        var left = _cropMarginLeftPt * _scale;
+        var top = _cropMarginTopPt * _scale;
+        var right = (page.WidthPoints - _cropMarginRightPt) * _scale;
+        var bottom = (page.HeightPoints - _cropMarginBottomPt) * _scale;
+        left = Math.Clamp(left, 0, width);
+        top = Math.Clamp(top, 0, height);
+        right = Math.Clamp(right, left + 4, width);
+        bottom = Math.Clamp(bottom, top + 4, height);
+
+        overlay.Children.Clear();
+        overlay.IsHitTestVisible = true;
+
+        void AddDim(double x, double y, double w, double h)
+        {
+            if (w <= 0 || h <= 0)
+            {
+                return;
+            }
+
+            var dim = new Microsoft.UI.Xaml.Shapes.Rectangle
+            {
+                Width = w,
+                Height = h,
+                Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(120, 0, 0, 0)),
+                IsHitTestVisible = false,
+            };
+            Canvas.SetLeft(dim, x);
+            Canvas.SetTop(dim, y);
+            overlay.Children.Add(dim);
+        }
+
+        AddDim(0, 0, width, top);
+        AddDim(0, bottom, width, height - bottom);
+        AddDim(0, top, left, bottom - top);
+        AddDim(right, top, width - right, bottom - top);
+
+        var frame = new Microsoft.UI.Xaml.Shapes.Rectangle
+        {
+            Width = right - left,
+            Height = bottom - top,
+            Stroke = new SolidColorBrush(Colors.Orange),
+            StrokeThickness = 2,
+            Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(20, 255, 165, 0)),
+            IsHitTestVisible = false,
+        };
+        Canvas.SetLeft(frame, left);
+        Canvas.SetTop(frame, top);
+        overlay.Children.Add(frame);
+
+        void AddHandle(double x, double y)
+        {
+            var handle = new Microsoft.UI.Xaml.Shapes.Ellipse
+            {
+                Width = 10,
+                Height = 10,
+                Fill = new SolidColorBrush(Colors.White),
+                Stroke = new SolidColorBrush(Colors.Orange),
+                StrokeThickness = 2,
+                IsHitTestVisible = false,
+            };
+            Canvas.SetLeft(handle, x - 5);
+            Canvas.SetTop(handle, y - 5);
+            overlay.Children.Add(handle);
+        }
+
+        AddHandle(left, top);
+        AddHandle(right, top);
+        AddHandle(left, bottom);
+        AddHandle(right, bottom);
+        AddHandle(left, (top + bottom) / 2);
+        AddHandle(right, (top + bottom) / 2);
+        AddHandle((left + right) / 2, top);
+        AddHandle((left + right) / 2, bottom);
     }
 
     private async Task ReloadAfterPageEditAsync()
