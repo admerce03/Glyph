@@ -173,7 +173,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Highlights / underline / strikethrough
 - Notes, text boxes, callouts
 - Shapes and freehand mouse drawing
-- Signatures (mouse / image import; webcam later)
+- Signatures (mouse / image import / webcam)
 - AcroForm fill + overlay form mode
 - Annotation sidebar
 - Flatten annotations
@@ -198,7 +198,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Text boxes: `AddTextBoxAsync` FreeText with Contents + DA + optional fill/border; TextBox toolbar dialog (font family/size/bold/italic/underline, text/fill/border color); listed in sidebar.
 - Callouts: `AddCalloutAsync` FreeText (`Subj=Callout`) + ink pointer; Callout draw mode (drag tip → box) with font + text color dialog; underline via `SetUnderlineAsync`.
 - Flatten: `FlattenAsync` via `FPDFPage_Flatten` + Flatten toolbar (confirm dialog); editable annots removed after bake.
-- Signatures: `AddStampAsync` (BGRA stamp image) + local `FileSignatureLibrary`; Sign toolbar Draw (mouse stroke → PNG/library/stamp) or Import image; library dialog lists saved signatures with ↑/↓ reorder + Insert/Delete; `DuplicateAsync` clones stamp pixels with offset.
+- Signatures: `AddStampAsync` (BGRA stamp image) + local `FileSignatureLibrary`; Sign toolbar Draw (mouse stroke → PNG/library/stamp), Import image, or Webcam (`MediaCapture` preview + capture with near-white paper keying via `SignaturePaperKeying`); library dialog lists saved signatures with ↑/↓ reorder + Insert/Delete; `DuplicateAsync` clones stamp pixels with offset.
 - AcroForm: `IPdfFormStore` / `PdfiumFormStore` lists widgets, sets text/combo/list `/V`, toggles checkboxes (`/V`+`/AS`), selects radios (mutual exclusion by field name), exposes choice `/Opt` via PdfPig, tab-adjacent focus; Form toolbar Overlay mode (clickable field boxes) or list dialog; recent text values via `IFormValueHistory` (`form-values.json`); AutoFill profile (name/address/email/phone) via `IFormAutofillProfileStore`; text fill sets `/DA` to `0 Tf` (automatic font sizing) via `PdfFormDefaultAppearance`; push buttons resolve URI `/A` (`PdfFormButtonAction`) and activate from Form UI; signature fields accept visual stamp fill from the signature library; Pdf.Tests sample AcroForm.
 - Annotation selection: click annot on page (or sidebar) to select; Ctrl+click / Extended list multi-select; Group/Ungroup persists `GlyphGroup` and selects/moves members together; drag moves via `MoveAsync` (multi moves together); corner/edge handles resize; line/arrow endpoint handles; Rotate 90° via `RotateAsync` (stamp/ink/FreeText/shapes); Dup clones (offset); Color / Opacity / Width via `SetColorAsync` / `SetOpacityAsync` / `SetBorderWidthAsync`; Delete removes all selected; selection chrome on overlay.
 

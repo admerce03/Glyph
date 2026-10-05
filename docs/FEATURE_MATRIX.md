@@ -333,7 +333,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F18-09 | Freehand drawing | recognize rough: | M4 | Tested | `PdfStrokeShapeRecognizer` line/rect/ellipse/triangle |
 | F18-10 | Freehand drawing | offer cleaned-up shape or original stroke. | M4 | Implemented | Dialog after ink/freeform when shape recognized |
 | F19-01 | PDF signatures | mouse | M4 | Tested | Draw mode → BGRA raster → library + stamp |
-| F19-02 | PDF signatures | webcam photographing a signature on paper | M4 | Not Started |  |
+| F19-02 | PDF signatures | webcam photographing a signature on paper | M4 | Implemented | Sign → Webcam (`MediaCapture` preview + capture); `SignaturePaperKeying` keys near-white paper; stamp + library |
 | F19-03 | PDF signatures | imported transparent signature image | M4 | Tested | Import PNG/JPEG → BGRA stamp |
 | F19-04 | PDF signatures | save signature | M4 | Tested | `FileSignatureLibrary.SaveAsync` |
 | F19-05 | PDF signatures | name signature | M4 | Tested | Named on save |

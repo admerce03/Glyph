@@ -17,8 +17,11 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.ApplicationModel.DataTransfer.DragDrop;
 using Windows.Graphics.Imaging;
+using Windows.Media.Capture;
+using Windows.Media.MediaProperties;
 using Windows.Storage;
 using Windows.Storage.Pickers;
+using Windows.Storage.Streams;
 using Windows.System;
 using WinRT.Interop;
 
@@ -5588,24 +5591,52 @@ public sealed class PdfDocumentView : UserControl
         var dialog = new ContentDialog
         {
             Title = "Signature",
-            Content = "Draw with the mouse on the page, or import a transparent PNG/JPEG.",
-            PrimaryButtonText = "Draw",
-            SecondaryButtonText = "Import image",
             CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
+            DefaultButton = ContentDialogButton.Close,
             XamlRoot = window.Content.XamlRoot,
         };
 
-        var result = await dialog.ShowAsync();
-        if (result == ContentDialogResult.Primary)
+        ContentDialogResult? choice = null;
+        var drawBtn = new Button { Content = "Draw with mouse", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 4, 0, 0) };
+        var importBtn = new Button { Content = "Import image…", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 4, 0, 0) };
+        var webcamBtn = new Button { Content = "Webcam…", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 4, 0, 0) };
+        ToolTipService.SetToolTip(webcamBtn, "Photograph a signature on paper with the webcam");
+        drawBtn.Click += (_, _) => { choice = ContentDialogResult.Primary; dialog.Hide(); };
+        importBtn.Click += (_, _) => { choice = ContentDialogResult.Secondary; dialog.Hide(); };
+        webcamBtn.Click += (_, _) => { choice = (ContentDialogResult)2; dialog.Hide(); };
+        dialog.Content = new StackPanel
+        {
+            Spacing = 4,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = "Draw with the mouse, import a PNG/JPEG, or photograph a signature on paper.",
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(0, 0, 0, 8),
+                },
+                drawBtn,
+                importBtn,
+                webcamBtn,
+            },
+        };
+
+        await dialog.ShowAsync();
+        if (choice == ContentDialogResult.Primary)
         {
             StartSignatureDrawMode();
             return;
         }
 
-        if (result == ContentDialogResult.Secondary)
+        if (choice == ContentDialogResult.Secondary)
         {
             await ImportSignatureImageAsync(window);
+            return;
+        }
+
+        if (choice == (ContentDialogResult)2)
+        {
+            await CaptureWebcamSignatureAsync(window);
             return;
         }
 
@@ -5726,18 +5757,37 @@ public sealed class PdfDocumentView : UserControl
         };
 
         var importBtn = new Button { Content = "Import image…", HorizontalAlignment = HorizontalAlignment.Left };
+        var webcamBtn = new Button { Content = "Webcam…", HorizontalAlignment = HorizontalAlignment.Left };
+        ToolTipService.SetToolTip(webcamBtn, "Photograph a signature on paper with the webcam");
         var importRequested = false;
+        var webcamRequested = false;
         importBtn.Click += (_, _) =>
         {
             importRequested = true;
             dialog.Hide();
         };
-        panel.Children.Add(importBtn);
+        webcamBtn.Click += (_, _) =>
+        {
+            webcamRequested = true;
+            dialog.Hide();
+        };
+        panel.Children.Add(new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Children = { importBtn, webcamBtn },
+        });
 
         var result = await dialog.ShowAsync();
         if (importRequested)
         {
             await ImportSignatureImageAsync(window);
+            return;
+        }
+
+        if (webcamRequested)
+        {
+            await CaptureWebcamSignatureAsync(window);
             return;
         }
 
@@ -5978,33 +6028,180 @@ public sealed class PdfDocumentView : UserControl
                 // Library save is best-effort; insertion can still proceed.
             }
 
-            var page = _document.GetPage(CurrentPageIndex);
-            var targetWidth = Math.Min(180, page.WidthPoints * 0.35);
-            var aspect = height / (double)width;
-            var targetHeight = Math.Clamp(targetWidth * aspect, 24, page.HeightPoints * 0.25);
-            var left = Math.Max(36, page.WidthPoints - targetWidth - 48);
-            var bottom = Math.Max(36, 48.0);
-            var bounds = new PdfRect(left, bottom, left + targetWidth, bottom + targetHeight);
-
-            await _annotations.AddStampAsync(
-                _document,
-                CurrentPageIndex,
-                bounds,
-                pixels,
-                width,
-                height);
-
-            _cache.ClearDocument(_documentKey);
-            _cache.ClearDocument(_thumbnailKey);
-            await RenderVisibleAsync();
-            await RenderThumbnailsAsync();
-            await RefreshAnnotationSidebarAsync();
-            _status.Text = "Signature inserted.";
+            await InsertSignaturePixelsAsync(pixels, width, height, statusOnSuccess: "Signature inserted.");
         }
         catch (Exception ex)
         {
             _status.Text = "Signature failed: " + ex.Message;
         }
+    }
+
+    private async Task CaptureWebcamSignatureAsync(Window window)
+    {
+        MediaCapture? capture = null;
+        try
+        {
+            _status.Text = "Starting webcam…";
+            capture = new MediaCapture();
+            await capture.InitializeAsync(new MediaCaptureInitializationSettings
+            {
+                StreamingCaptureMode = StreamingCaptureMode.Video,
+                PhotoCaptureSource = PhotoCaptureSource.Auto,
+            });
+        }
+        catch (Exception ex)
+        {
+            capture?.Dispose();
+            _status.Text = "Webcam unavailable: " + ex.Message;
+            var fallback = new ContentDialog
+            {
+                Title = "Webcam unavailable",
+                Content = "No camera could be opened. Import a photo of your signature instead?",
+                PrimaryButtonText = "Import image…",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = window.Content.XamlRoot,
+            };
+            if (await fallback.ShowAsync() == ContentDialogResult.Primary)
+            {
+                await ImportSignatureImageAsync(window);
+            }
+
+            return;
+        }
+
+        try
+        {
+            var preview = new CaptureElement
+            {
+                Source = capture,
+                Stretch = Stretch.Uniform,
+                Width = 420,
+                Height = 280,
+            };
+            await capture.StartPreviewAsync();
+
+            var dialog = new ContentDialog
+            {
+                Title = "Photograph signature",
+                Content = new StackPanel
+                {
+                    Spacing = 8,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = "Point the camera at a signature on paper, then Capture. Near-white paper is keyed out.",
+                            TextWrapping = TextWrapping.Wrap,
+                        },
+                        preview,
+                    },
+                },
+                PrimaryButtonText = "Capture",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = window.Content.XamlRoot,
+            };
+
+            var result = await dialog.ShowAsync();
+            try { await capture.StopPreviewAsync(); } catch { /* ignore */ }
+            preview.Source = null;
+
+            if (result != ContentDialogResult.Primary)
+            {
+                _status.Text = "Webcam signature cancelled.";
+                return;
+            }
+
+            _status.Text = "Capturing…";
+            using var stream = new InMemoryRandomAccessStream();
+            var props = ImageEncodingProperties.CreateJpeg();
+            await capture.CapturePhotoToStreamAsync(props, stream);
+            stream.Seek(0);
+
+            var decoder = await BitmapDecoder.CreateAsync(stream);
+            var pixelData = await decoder.GetPixelDataAsync(
+                BitmapPixelFormat.Bgra8,
+                BitmapAlphaMode.Straight,
+                new BitmapTransform(),
+                ExifOrientationMode.IgnoreExifOrientation,
+                ColorManagementMode.DoNotColorManage);
+            var pixels = pixelData.DetachPixelData();
+            var width = (int)decoder.PixelWidth;
+            var height = (int)decoder.PixelHeight;
+            if (width <= 0 || height <= 0)
+            {
+                _status.Text = "Webcam capture is empty.";
+                return;
+            }
+
+            SignaturePaperKeying.KeyOutNearWhite(pixels, width, height);
+
+            try
+            {
+                var png = SignaturePngEncoder.EncodeBgra(pixels, width, height);
+                await using var pngStream = new MemoryStream(png);
+                await _signatures.SaveAsync(
+                    $"Webcam {DateTime.Now:yyyy-MM-dd HH:mm}",
+                    pngStream);
+            }
+            catch
+            {
+                // Library save is best-effort.
+            }
+
+            await InsertSignaturePixelsAsync(pixels, width, height, statusOnSuccess: "Webcam signature inserted.");
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Webcam signature failed: " + ex.Message;
+        }
+        finally
+        {
+            try
+            {
+                if (capture is not null)
+                {
+                    await capture.StopPreviewAsync();
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+
+            capture?.Dispose();
+        }
+    }
+
+    private async Task InsertSignaturePixelsAsync(
+        byte[] pixels,
+        int width,
+        int height,
+        string statusOnSuccess)
+    {
+        var page = _document.GetPage(CurrentPageIndex);
+        var targetWidth = Math.Min(180, page.WidthPoints * 0.35);
+        var aspect = height / (double)width;
+        var targetHeight = Math.Clamp(targetWidth * aspect, 24, page.HeightPoints * 0.25);
+        var left = Math.Max(36, page.WidthPoints - targetWidth - 48);
+        var bottom = Math.Max(36, 48.0);
+        var bounds = new PdfRect(left, bottom, left + targetWidth, bottom + targetHeight);
+
+        await _annotations.AddStampAsync(
+            _document,
+            CurrentPageIndex,
+            bounds,
+            pixels,
+            width,
+            height);
+
+        _cache.ClearDocument(_documentKey);
+        _cache.ClearDocument(_thumbnailKey);
+        await RenderVisibleAsync();
+        await RenderThumbnailsAsync();
+        await RefreshAnnotationSidebarAsync();
+        _status.Text = statusOnSuccess;
     }
 
     private async Task OnFormButtonClickAsync()
