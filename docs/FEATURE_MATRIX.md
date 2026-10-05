@@ -707,8 +707,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F49-11 | Undo and redo | form filling | M1-M4 | Not Started |  |
 | F49-12 | Undo and redo | signature placement | M1-M4 | Not Started |  |
 | F49-13 | Undo and redo | redaction before permanent application | M1-M4 | Implemented | Ctrl+Z / Undo undoes last pending redaction mark |
-| F49-14 | Undo and redo | Ctrl+Z | M1-M4 | Not Started |  |
-| F49-15 | Undo and redo | Ctrl+Y / Ctrl+Shift+Z | M1-M4 | Not Started |  |
+| F49-14 | Undo and redo | Ctrl+Z | M1-M4 | Implemented | PDF: pending redaction → stroke → page edit; image undo |
+| F49-15 | Undo and redo | Ctrl+Y / Ctrl+Shift+Z | M1-M4 | Implemented | PDF page-edit redo (Ctrl+Y) |
 | F50-01 | Autosave and recovery | edits remain in memory until Save. | M1/M9 | Implemented | Default; AutoSaveToOriginal opt-in |
 | F50-02 | Autosave and recovery | periodic crash-recovery snapshot. | M1/M9 | Implemented | DispatcherTimer → `FileCrashRecoveryStore` |
 | F50-03 | Autosave and recovery | closing unsaved file prompts user. | M1/M9 | Implemented | Close tab dirty / HasUnsavedEdits prompt |
