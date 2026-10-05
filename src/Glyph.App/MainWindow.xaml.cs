@@ -2240,6 +2240,12 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    /// <summary>One-shot cold-start timing from <see cref="App.OnLaunched"/> (F57-01).</summary>
+    public void ReportStartupDuration(long elapsedMilliseconds)
+    {
+        StatusText.Text = $"Ready — started in {elapsedMilliseconds} ms. File → Open or drop files here";
+    }
+
     private bool TabHasUnsavedEdits(DocumentId id)
     {
         var tab = DocumentTabs.TabItems.OfType<TabViewItem>()

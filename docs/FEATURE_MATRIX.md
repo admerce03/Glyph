@@ -802,7 +802,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F56-09 | Accessibility | Custom description/alt text for images where PDF/image format supports it. | M9 | Implemented | IPTC/EXIF description → AutomationProperties.Name on image |
 | F56-10 | Accessibility | Signature descriptions. | M9 | Implemented | Library Description + stamp `/Contents` for a11y |
 | F56-11 | Accessibility | Zoom without breaking UI layout. | M9 | Implemented | Document zoom scales page bitmaps; chrome uses layout panels |
-| F57-01 | Performance behavior | very fast startup | M2+/M9 | In Progress | WinUI shell; cold-start metrics TBD |
+| F57-01 | Performance behavior | very fast startup | M2+/M9 | Implemented | Cold-start Stopwatch to first window; status + Debug/ILogger ms |
 | F57-02 | Performance behavior | fast first-page PDF display | M2+/M9 | Implemented | Visible-page render before off-screen thumbs |
 | F57-03 | Performance behavior | render visible pages before off-screen pages | M2+/M9 | Implemented | Visible-page biased render + LRU cache |
 | F57-04 | Performance behavior | asynchronous thumbnail generation | M2+/M9 | Implemented | Async render; near-current pages first; Yield between thumbs |
