@@ -47,6 +47,7 @@ public interface IPdfAnnotationService
         string contents,
         PdfAnnotationColor textColor,
         PdfAnnotationColor? borderColor = null,
+        PdfAnnotationColor? fillColor = null,
         float fontSizePoints = 12f,
         CancellationToken cancellationToken = default);
 

@@ -193,7 +193,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Sticky notes: `AddStickyNoteAsync` + Note toolbar dialog (text + color presets); Contents/color/move APIs; notes appear in sidebar.
 - Freehand ink: `AddInkAsync` + Ink draw mode on page surface (stroke color + width picker); listed in annotation sidebar.
 - Shapes: `AddShapeAsync` for rectangle/ellipse (Square/Circle), line, and arrow (ink strokes; arrow adds head wings); Rect/Ellipse/Line/Arrow draw modes with border/fill color and width picker.
-- Text boxes: `AddTextBoxAsync` FreeText with Contents + DA; TextBox toolbar dialog; listed in sidebar.
+- Text boxes: `AddTextBoxAsync` FreeText with Contents + DA + optional fill/border; TextBox toolbar dialog; listed in sidebar.
 - Flatten: `FlattenAsync` via `FPDFPage_Flatten` + Flatten toolbar (confirm dialog); editable annots removed after bake.
 - Signatures: `AddStampAsync` (BGRA stamp image) + local `FileSignatureLibrary`; Sign toolbar Draw (mouse stroke → PNG/library/stamp) or Import image.
 - AcroForm: `IPdfFormStore` / `PdfiumFormStore` lists widgets, sets text/combo/list `/V`, toggles checkboxes (`/V`+`/AS`), selects radios (mutual exclusion by field name), exposes choice `/Opt` via PdfPig, tab-adjacent focus; Form toolbar Overlay mode (clickable field boxes) or list dialog; Pdf.Tests sample AcroForm.

@@ -3936,13 +3936,39 @@ public sealed class PdfDocumentView : UserControl
         {
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
-            Height = 140,
+            Height = 120,
             PlaceholderText = "Text box contents",
+        };
+        var fillList = new ListView
+        {
+            Height = 120,
+            SelectionMode = ListViewSelectionMode.Single,
+            ItemsSource = new[] { "None", "White", "Yellow", "Light blue", "Light green" }.ToList(),
+            SelectedIndex = 1,
+        };
+        var borderList = new ListView
+        {
+            Height = 100,
+            SelectionMode = ListViewSelectionMode.Single,
+            ItemsSource = PdfAnnotationColor.StrokePresets.Select(p => p.Name).ToList(),
+            SelectedIndex = 5, // Black
+        };
+        var panel = new StackPanel
+        {
+            Spacing = 6,
+            Children =
+            {
+                box,
+                new TextBlock { Text = "Fill", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                fillList,
+                new TextBlock { Text = "Border", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                borderList,
+            },
         };
         var dialog = new ContentDialog
         {
             Title = "Text box",
-            Content = box,
+            Content = panel,
             PrimaryButtonText = "Add",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
@@ -3955,6 +3981,17 @@ public sealed class PdfDocumentView : UserControl
             _status.Text = "Text box cancelled.";
             return;
         }
+
+        PdfAnnotationColor? fill = fillList.SelectedIndex switch
+        {
+            1 => new PdfAnnotationColor(255, 255, 255),
+            2 => new PdfAnnotationColor(255, 250, 180),
+            3 => new PdfAnnotationColor(200, 230, 255),
+            4 => new PdfAnnotationColor(210, 245, 210),
+            _ => null,
+        };
+        var border = PdfAnnotationColor.StrokePresets[
+            Math.Clamp(borderList.SelectedIndex, 0, PdfAnnotationColor.StrokePresets.Count - 1)].Color;
 
         var page = _document.GetPage(CurrentPageIndex);
         var width = Math.Min(240, page.WidthPoints * 0.45);
@@ -3971,7 +4008,9 @@ public sealed class PdfDocumentView : UserControl
                 CurrentPageIndex,
                 bounds,
                 box.Text ?? string.Empty,
-                new PdfAnnotationColor(20, 20, 20));
+                new PdfAnnotationColor(20, 20, 20),
+                borderColor: border,
+                fillColor: fill);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
