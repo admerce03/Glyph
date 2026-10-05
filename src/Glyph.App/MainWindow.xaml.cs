@@ -4,6 +4,7 @@ using Glyph.App.Sharing;
 using Glyph.App.Views;
 using Glyph.Core.Documents;
 using Glyph.Core.IO;
+using Glyph.Core.Pdf;
 using Glyph.Core.Signatures;
 using Glyph.Core.Workspace;
 using Glyph.Imaging.Abstractions;
@@ -1831,7 +1832,7 @@ public sealed partial class MainWindow : Window
                 isRetry: attempt > 0);
             if (password is null)
             {
-                StatusText.Text = "PDF open cancelled — password required.";
+                StatusText.Text = PdfPasswordPromptUi.CancelledStatus;
                 return null;
             }
 
@@ -1841,20 +1842,20 @@ public sealed partial class MainWindow : Window
             }
             catch (PdfPasswordRequiredException)
             {
-                StatusText.Text = "Incorrect PDF password.";
+                StatusText.Text = PdfPasswordPromptUi.IncorrectStatus;
             }
         }
 
-        StatusText.Text = "Could not open password-protected PDF.";
+        StatusText.Text = PdfPasswordPromptUi.FailedStatus;
         return null;
     }
 
     private async Task<string?> PromptForPdfPasswordAsync(string fileName, bool isRetry)
     {
-        var box = new PasswordBox { Width = 280, PlaceholderText = "Password" };
+        var box = new PasswordBox { Width = 280, PlaceholderText = PdfPasswordPromptUi.Placeholder };
         var dialog = new ContentDialog
         {
-            Title = isRetry ? "Incorrect password" : "Password required",
+            Title = PdfPasswordPromptUi.DialogTitle(isRetry),
             Content = new StackPanel
             {
                 Spacing = 8,
@@ -1862,13 +1863,13 @@ public sealed partial class MainWindow : Window
                 {
                     new TextBlock
                     {
-                        Text = $"Enter the password for “{fileName}”.",
+                        Text = PdfPasswordPromptUi.PromptBody(fileName),
                         TextWrapping = TextWrapping.WrapWholeWords,
                     },
                     box,
                 },
             },
-            PrimaryButtonText = "Open",
+            PrimaryButtonText = PdfPasswordPromptUi.PrimaryButton,
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = RootGrid.XamlRoot,
