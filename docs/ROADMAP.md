@@ -167,9 +167,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 4 — PDF markup and editing
 
-**Status:** In Progress · Depends on M2
-
-### Scope (`FEATURES.md` §13–20, §22)
+**Status:** Tested · Depends on M2
 
 - Highlights / underline / strikethrough
 - Notes, text boxes, callouts
