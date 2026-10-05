@@ -10118,40 +10118,40 @@ public sealed class PdfDocumentView : UserControl
     {
         if (!TryGetSelectedAnnotation(out var item) || !item.IsStickyNote)
         {
-            _status.Text = "Select a sticky note to expand.";
+            _status.Text = StickyNoteExpandPolicy.SelectToExpand;
             return;
         }
 
         ExpandStickyNote(item);
-        _status.Text = $"Expanded {PdfAnnotationListLabel.Format(item)}.";
+        _status.Text = StickyNoteExpandPolicy.Expanded(PdfAnnotationListLabel.Format(item));
     }
 
     private void CollapseSelectedStickyNote()
     {
-        if (!TryGetSelectedAnnotation(out var item) || !item.IsStickyNote)
+        var hasSelectedSticky = TryGetSelectedAnnotation(out var item) && item.IsStickyNote;
+        if (!hasSelectedSticky)
         {
-            // Collapse all if nothing specific selected.
-            if (_expandedStickyNotes.Count == 0)
+            if (!StickyNoteExpandPolicy.ShouldCollapseAll(false, _expandedStickyNotes.Count))
             {
-                _status.Text = "No expanded sticky notes.";
+                _status.Text = StickyNoteExpandPolicy.NoExpandedNotes;
                 return;
             }
 
             _expandedStickyNotes.Clear();
             RedrawStickyNotePopups();
-            _status.Text = "Collapsed all sticky notes.";
+            _status.Text = StickyNoteExpandPolicy.CollapsedAll;
             return;
         }
 
         var key = (item.PageIndex, item.AnnotIndex);
         if (!_expandedStickyNotes.Remove(key))
         {
-            _status.Text = "Note is already collapsed.";
+            _status.Text = StickyNoteExpandPolicy.AlreadyCollapsed;
             return;
         }
 
         RedrawStickyNotePopups();
-        _status.Text = $"Collapsed {PdfAnnotationListLabel.Format(item)}.";
+        _status.Text = StickyNoteExpandPolicy.Collapsed(PdfAnnotationListLabel.Format(item));
     }
 
     private async Task ExportNotesAsync()
