@@ -433,18 +433,18 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-08 | Image viewing | AVIF where practical | M5 | Tested | Magick.NET decode; Open picker + `MagickImageDecoderFormatTests` |
 | F26-09 | Image viewing | ICO | M5 | Tested | Magick.NET decoder + open picker |
 | F26-10 | Image viewing | JPEG 2000 where practical | M5 | Tested | Magick.NET decode `.jp2`/`.j2k`; Open picker + decoder tests |
-| F26-11 | Image viewing | fast opening | M5 | Implemented | `GetPixelsAsync(maxEdge)` caps decode (256–8192) so large files open without full decode |
-| F26-12 | Image viewing | zoom | M5 | Implemented | ImageDocumentView ± zoom |
+| F26-11 | Image viewing | fast opening | M5 | Tested | `GetPixelsAsync(maxEdge)`; `ImageZoomCalculator.DecodeTargetEdge` unit tests |
+| F26-12 | Image viewing | zoom | M5 | Tested | ± zoom / Ctrl+wheel; `ImageZoomCalculator` unit tests |
 | F26-13 | Image viewing | pan | M5 | Implemented | ScrollViewer pan |
-| F26-14 | Image viewing | fit image | M5 | Implemented | Fit toolbar |
-| F26-15 | Image viewing | actual size | M5 | Implemented | 100% toolbar |
+| F26-14 | Image viewing | fit image | M5 | Tested | Fit toolbar; `ImageZoomCalculator.Fit` unit tests |
+| F26-15 | Image viewing | actual size | M5 | Tested | 100% toolbar; `ActualSizePixels`/`ActualSizePrint` unit tests |
 | F26-16 | Image viewing | fullscreen | M5 | Implemented | Fullscreen toolbar → MainWindow.ToggleFullscreen |
 | F26-17 | Image viewing | next/previous image | M5 | Tested | ◀/▶ + `ImageFolderNavigator` Previous/Next unit tests |
 | F26-18 | Image viewing | image list sidebar | M5 | Tested | Folder ListView; `ImageFolderNavigator.ListSiblings` unit tests |
 | F26-19 | Image viewing | open group of images together | M5 | Implemented | Open With picker PickMultipleFilesAsync |
 | F26-20 | Image viewing | slideshow | M5 | Implemented | Slideshow toolbar: 3s loop through folder; Esc / Stop show; resumes across sibling opens via `ViewState.IsSlideshowActive` |
 | F26-21 | Image viewing | drag-and-drop navigation | M5 | Implemented | Shell drop opens images (`DropHost`); horizontal swipe on image → prev/next in folder |
-| F26-22 | Image viewing | high-resolution image support | M5 | Implemented | Same maxEdge progressive decode; zoom re-decodes up to 8192 edge |
+| F26-22 | Image viewing | high-resolution image support | M5 | Tested | Progressive maxEdge decode up to 8192; `DecodeTargetEdge` unit tests |
 | F26-23 | Image viewing | alpha transparency | M5 | Implemented | BGRA32 decode via Magick → WriteableBitmap |
 | F26-24 | Image viewing | HDR display where Windows/display stack supports it | M5 | Deferred | Needs WinUI HDR display pipeline; revisit with F39 |
 | F26-25 | Image viewing | color-managed display | M5 | Implemented | Via M8 F39-02: GetPixelsAsync ICC→sRGB (Meta toggle) |
@@ -816,7 +816,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F57-12 | Performance behavior | cancel long-running operations | M2+/M9 | Implemented | PDF OCR Cancel OCR + `CancellationToken`; PDF search cancel |
 | F57-13 | Performance behavior | progress indicator for: | M2+/M9 | Implemented | Toolbar `ProgressBar` for OCR/export/optimize; batch image dialog ProgressBar (F36) |
 | F58-01 | Large-document handling | PDFs with thousands of pages. | M2+/M9 | Tested | Page virtualization via `ContinuousPageWindow` + on-demand render/cache |
-| F58-02 | Large-document handling | Very large raster images. | M2+/M9 | Implemented | Display decode capped (max edge 8192); full pixels retained in Magick doc |
+| F58-02 | Large-document handling | Very large raster images. | M2+/M9 | Tested | Display decode capped (max edge 8192); `ImageZoomCalculator.DecodeTargetEdge` |
 | F58-03 | Large-document handling | Progressive rendering. | M2+/M9 | Implemented | Image viewer: low-res preview then refine for large rasters |
 | F58-04 | Large-document handling | Avoid loading entire PDF rasterized into memory. | M2+/M9 | Tested | Visible-window render only + LRU `PageRenderCache` |
 | F58-05 | Large-document handling | Efficient page cache. | M2+/M9 | Tested | `PageRenderCache` LRU (capacity 32) |

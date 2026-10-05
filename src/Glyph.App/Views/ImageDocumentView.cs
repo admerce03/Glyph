@@ -352,8 +352,8 @@ public sealed class ImageDocumentView : UserControl
             _animPlayButton, _animPrevButton, _animNextButton, _animRestartButton, _animExtractButton,
             _animLoopBox, _undoButton);
 
-        zoomOut.Click += async (_, _) => await SetZoomAsync(_zoom / 1.25);
-        zoomIn.Click += async (_, _) => await SetZoomAsync(_zoom * 1.25);
+        zoomOut.Click += async (_, _) => await SetZoomAsync(ImageZoomCalculator.ZoomOut(_zoom));
+        zoomIn.Click += async (_, _) => await SetZoomAsync(ImageZoomCalculator.ZoomIn(_zoom));
         fit.Click += async (_, _) => await FitAsync();
         actual.Click += async (_, _) => await ZoomActualSizeAsync();
         rotateLeft.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, -90), "Rotated left.");
@@ -1054,14 +1054,14 @@ public sealed class ImageDocumentView : UserControl
 
         if (ctrl && (e.Key == Windows.System.VirtualKey.Add || e.Key == (Windows.System.VirtualKey)187))
         {
-            _ = SetZoomAsync(_zoom * 1.25);
+            _ = SetZoomAsync(ImageZoomCalculator.ZoomIn(_zoom));
             e.Handled = true;
             return;
         }
 
         if (ctrl && (e.Key == Windows.System.VirtualKey.Subtract || e.Key == (Windows.System.VirtualKey)189))
         {
-            _ = SetZoomAsync(_zoom / 1.25);
+            _ = SetZoomAsync(ImageZoomCalculator.ZoomOut(_zoom));
             e.Handled = true;
             return;
         }
@@ -1530,7 +1530,7 @@ public sealed class ImageDocumentView : UserControl
     {
         var generation = ++_refreshGeneration;
         var nativeMax = Math.Max(_document.PixelWidth, _document.PixelHeight);
-        var targetEdge = (int)Math.Clamp(nativeMax * _zoom, 256, 8192);
+        var targetEdge = ImageZoomCalculator.DecodeTargetEdge(nativeMax, _zoom);
 
         // Progressive decode for large rasters (F58-02/03): quick preview, then refine.
         const int previewEdge = 1280;
@@ -1631,7 +1631,7 @@ public sealed class ImageDocumentView : UserControl
 
     private async Task SetZoomAsync(double zoom)
     {
-        _zoom = Math.Clamp(zoom, 0.05, 8.0);
+        _zoom = ImageZoomCalculator.Clamp(zoom);
         await RefreshAsync();
         UpdateStatus();
     }
@@ -1644,8 +1644,7 @@ public sealed class ImageDocumentView : UserControl
         }
 
         var delta = e.GetCurrentPoint(_scrollViewer).Properties.MouseWheelDelta;
-        var factor = delta > 0 ? 1.1 : 1.0 / 1.1;
-        await SetZoomAsync(_zoom * factor);
+        await SetZoomAsync(ImageZoomCalculator.ApplyWheelZoom(_zoom, delta));
         e.Handled = true;
     }
 
@@ -1656,7 +1655,7 @@ public sealed class ImageDocumentView : UserControl
             return;
         }
 
-        await SetZoomAsync(_zoom * e.Delta.Scale);
+        await SetZoomAsync(ImageZoomCalculator.ApplyManipulationScale(_zoom, e.Delta.Scale));
         e.Handled = true;
     }
 
@@ -1693,11 +1692,11 @@ public sealed class ImageDocumentView : UserControl
             }
 
             var screenDpi = 96.0 * (XamlRoot?.RasterizationScale ?? 1.0);
-            await SetZoomAsync(screenDpi / Math.Max(1.0, imageDpi));
+            await SetZoomAsync(ImageZoomCalculator.ActualSizePrint(screenDpi, imageDpi));
             return;
         }
 
-        await SetZoomAsync(1.0);
+        await SetZoomAsync(ImageZoomCalculator.ActualSizePixels());
     }
 
     private static int ResolveDefaultInterpolationIndex()
@@ -1721,11 +1720,11 @@ public sealed class ImageDocumentView : UserControl
 
     private async Task FitAsync()
     {
-        var availableW = Math.Max(1, _scrollViewer.ActualWidth - 24);
-        var availableH = Math.Max(1, _scrollViewer.ActualHeight - 24);
-        var scaleW = availableW / _document.PixelWidth;
-        var scaleH = availableH / _document.PixelHeight;
-        await SetZoomAsync(Math.Min(scaleW, scaleH));
+        await SetZoomAsync(ImageZoomCalculator.Fit(
+            _scrollViewer.ActualWidth,
+            _scrollViewer.ActualHeight,
+            _document.PixelWidth,
+            _document.PixelHeight));
     }
 
     private async Task CropAsync()
