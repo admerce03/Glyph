@@ -703,7 +703,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F49-07 | Undo and redo | crop | M1-M4 | Tested | PDF crop via `PdfPageEditHistory`; image crop undo stack |
 | F49-08 | Undo and redo | resizing | M1-M4 | Implemented | Image resize undo checkpoints |
 | F49-09 | Undo and redo | image adjustments | M1-M4 | Implemented | Image adjust undo checkpoints |
-| F49-10 | Undo and redo | metadata editing | M1-M4 | Tested | Image IPTC/GPS via `MutateAsync`; PDF Info `_infoUndoStack` |
+| F49-10 | Undo and redo | metadata editing | M1-M4 | Tested | Image IPTC/GPS via `MutateAsync`; PDF Info `DocumentInfoUndoStack` |
 | F49-11 | Undo and redo | form filling | M1-M4 | Tested | Ctrl+Z restores prior AcroForm value via `FormFillUndoStack` unit tests |
 | F49-12 | Undo and redo | signature placement | M1-M4 | Tested | Signature stamps push onto `AnnotationUndoStack` (Ctrl+Z) |
 | F49-13 | Undo and redo | redaction before permanent application | M1-M4 | Tested | `UndoLastPending` unit tests; Ctrl+Z prefers pending marks |

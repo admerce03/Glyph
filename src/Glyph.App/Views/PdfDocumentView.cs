@@ -11,6 +11,7 @@ using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Annotations;
 using Glyph.Pdf.Editing;
 using Glyph.Pdf.Forms;
+using Glyph.Pdf.Info;
 using Glyph.Pdf.Rendering;
 using Glyph.Pdf.Text;
 using Microsoft.Extensions.DependencyInjection;
@@ -146,7 +147,7 @@ public sealed class PdfDocumentView : UserControl
     /// <summary>Previous form field values for F49-11 Ctrl+Z undo.</summary>
     private readonly FormFillUndoStack _formUndoStack = new();
     /// <summary>Previous Info dictionary fields for F49-10 Ctrl+Z undo after Edit document info.</summary>
-    private readonly Stack<PdfDocumentInfoUpdate> _infoUndoStack = new();
+    private readonly DocumentInfoUndoStack _infoUndoStack = new();
     private PdfAnnotationColor _drawStrokeColor = PdfAnnotationColor.InkRed;
     private float _drawStrokeWidth = 2f;
     private PdfInkLineStyle _drawInkLineStyle = PdfInkLineStyle.Solid;
@@ -11264,12 +11265,11 @@ public sealed class PdfDocumentView : UserControl
 
     private async Task UndoLastInfoEditAsync()
     {
-        if (_infoUndoStack.Count == 0)
+        if (!_infoUndoStack.TryPop(out var previous))
         {
             return;
         }
 
-        var previous = _infoUndoStack.Pop();
         try
         {
             _documentInfo.SetInfo(_document, previous);
@@ -13358,11 +13358,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            if (_infoUndoStack.Count > 0)
-            {
-                _infoUndoStack.Pop();
-            }
-
+            _infoUndoStack.TryDiscardTop();
             _status.Text = "Info edit failed: " + ex.Message;
         }
     }
