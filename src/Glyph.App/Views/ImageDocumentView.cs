@@ -1845,14 +1845,14 @@ public sealed class ImageDocumentView : UserControl
     private void Image_DragStarting(UIElement sender, DragStartingEventArgs args)
     {
         var path = _document.Path;
-        if (string.IsNullOrWhiteSpace(path) || !System.IO.File.Exists(path))
+        if (!ImageDragSemantics.CanDragFile(path))
         {
             args.Cancel = true;
             return;
         }
 
         // Deferred StorageItems so Explorer and other Glyph windows/tabs receive the file on drop (F59-05).
-        var sourcePath = path;
+        var sourcePath = path!;
         args.Data.SetDataProvider(
             Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems,
             async request =>
@@ -1873,7 +1873,7 @@ public sealed class ImageDocumentView : UserControl
                 }
             });
         args.Data.RequestedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
-        _status.Text = "Dragging image…";
+        _status.Text = ImageDragSemantics.DraggingStatus;
     }
 
     private void SelectAllPixels()

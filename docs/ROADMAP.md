@@ -307,6 +307,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Merge prepend + undo-after-insert + PageReorder→ReorderPagesAsync edge tests
 - Crop undo restores page size via `PdfPageEditHistory` (F12-08 / F49-07)
 - Permanent crop undo + F59-01/02/09 multi-doc workflow rows Tested
+- Contact sheet layout extract + merge undo; F59-05 / F61 non-destructive rows Tested
 
 ---
 

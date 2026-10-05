@@ -212,6 +212,35 @@ public class PdfPageEditHistoryTests
         }
     }
 
+    [Fact]
+    public async Task Undo_restores_page_count_after_merge()
+    {
+        var destPath = CreatePdf(pageCount: 2);
+        var srcPath = CreatePdf(pageCount: 1);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var editor = new PdfiumPageEditor();
+            var history = new PdfPageEditHistory();
+            await using var dest = await factory.OpenAsync(destPath);
+            await using var src = await factory.OpenAsync(srcPath);
+
+            await history.ExecuteAsync(
+                dest,
+                editor,
+                () => editor.MergeDocumentsAsync(dest, [src], insertIndex: dest.PageCount));
+            dest.PageCount.Should().Be(3);
+
+            await history.UndoAsync(dest, editor);
+            dest.PageCount.Should().Be(2);
+        }
+        finally
+        {
+            File.Delete(destPath);
+            File.Delete(srcPath);
+        }
+    }
+
     private static string CreatePdf(int pageCount)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-undo-" + Guid.NewGuid().ToString("N") + ".pdf");

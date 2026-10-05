@@ -1198,16 +1198,16 @@ public sealed class PdfDocumentView : UserControl
     private void BuildContactSheet()
     {
         _contactSheetHost.Children.Clear();
-        const int columns = 4;
+        const int columns = ContactSheetLayout.DefaultColumns;
         StackPanel? row = null;
         for (var i = 0; i < _document.PageCount; i++)
         {
-            if (i % columns == 0)
+            if (ContactSheetLayout.StartsRow(i, columns))
             {
                 row = new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
-                    Spacing = 12,
+                    Spacing = ContactSheetLayout.DefaultSpacing,
                     HorizontalAlignment = HorizontalAlignment.Center,
                 };
                 _contactSheetHost.Children.Add(row);
@@ -1216,7 +1216,7 @@ public sealed class PdfDocumentView : UserControl
             var pageIndex = i;
             var image = new Image
             {
-                Width = 140,
+                Width = ContactSheetLayout.DefaultCellWidth,
                 Stretch = Stretch.Uniform,
                 Tag = pageIndex,
             };

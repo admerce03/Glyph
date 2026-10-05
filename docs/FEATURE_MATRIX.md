@@ -65,7 +65,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-04 | Sidebar modes | Bookmarks | M2-M5 | Tested | PDF sidebar Bookmarks list; view-state bookmark round-trip |
 | F03-05 | Sidebar modes | Highlights and annotations | M2-M5 | Tested | PDF sidebar Annotations list; `PdfAnnotationListLabel` unit-tested |
 | F03-06 | Sidebar modes | Image list | M2-M5 | Tested | Image viewer folder sibling ListView; `ImageFolderNavigator` unit tests |
-| F03-07 | Sidebar modes | Contact sheet | M2-M5 | Implemented | Layout → Contact sheet grid; click page returns to continuous |
+| F03-07 | Sidebar modes | Contact sheet | M2-M5 | Tested | Layout → Contact sheet; `ContactSheetLayout` grid unit tests |
 | F03-08 | Sidebar modes | Document attachments, if supported | M2-M5 | Tested | PDF sidebar Attachments list + Save…; `ListAttachments` unit test |
 | F03-09 | Sidebar modes | Metadata/properties where useful | M2-M5 | Tested | PDF sidebar Properties; `DisplayValue`/`PdfPageSizeFormat`/`ByteSizeFormat`; GetInfo unit tests (F48) |
 | F03-10 | Sidebar modes | Switch sidebar mode without opening another window. | M2-M5 | Implemented | Sidebar mode ComboBox: Pages/Contents/Bookmarks/Search/Annotations/Properties/Attachments |
@@ -827,7 +827,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F59-02 | Multi-document workflow | multiple windows | M1/M3 | Tested | File → New Window; independent `WorkspaceState` per window (reuse/close tests) |
 | F59-03 | Multi-document workflow | drag tabs between windows | M1/M3 | Implemented | `CanDragTabs` + `AllowDropTabs` cross-window; drop outside → new window |
 | F59-04 | Multi-document workflow | drag PDF pages between documents | M1/M3 | Tested | Cross-tab/window insert via `PdfPageDragRegistry` unit tests |
-| F59-05 | Multi-document workflow | drag images between compatible contexts | M1/M3 | Implemented | Image surface drag exposes file via deferred StorageItems; window drop opens |
+| F59-05 | Multi-document workflow | drag images between compatible contexts | M1/M3 | Tested | Image surface deferred StorageItems; `ImageDragSemantics.CanDragFile` unit tests |
 | F59-06 | Multi-document workflow | copy/paste between documents | M1/M3 | Tested | Ctrl+C/V pages via `PdfPageClipboard` extract/open unit tests |
 | F59-07 | Multi-document workflow | side-by-side windows using Windows Snap | M1/M3 | Implemented | Multi-window shell; Snap is OS-native |
 | F59-08 | Multi-document workflow | maintain independent undo history for each document | M1/M3 | Tested | Per-view `PdfPageEditHistory`; history unit tests |
@@ -841,13 +841,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F60-07 | Context-sensitive commands | Duplicate | M1/M3 | Implemented | Page right-click Duplicate selected annotation |
 | F60-08 | Context-sensitive commands | Delete | M1/M3 | Implemented | Page right-click Delete selected annotation |
 | F60-09 | Context-sensitive commands | Copy | M1/M3 | Implemented | Page right-click Copy annotation + Ctrl+C |
-| F61-01 | Non-destructive editing where practical | PDF annotations | M3-M5 | Implemented | Annotation objects editable until Flatten / Save |
-| F61-02 | Non-destructive editing where practical | image markup | M3-M5 | Implemented | Draw overlay until Flatten/Save (F34) |
+| F61-01 | Non-destructive editing where practical | PDF annotations | M3-M5 | Tested | Editable until Flatten / Save; `FlattenAsync` unit tests |
+| F61-02 | Non-destructive editing where practical | image markup | M3-M5 | Tested | Overlay until Flatten/Save; `FlattenMarkupAsync` (F34) |
 | F61-03 | Non-destructive editing where practical | crops | M3-M5 | Tested | CropBox-only until optional permanent export |
 | F61-04 | Non-destructive editing where practical | adjustments | M3-M5 | Tested | Adjust live preview checkpoint; Apply skips when `IsIdentity` |
-| F61-05 | Non-destructive editing where practical | signatures | M3-M5 | Implemented | Stamp annotations until Flatten / Save |
-| F61-06 | Non-destructive editing where practical | shapes | M3-M5 | Implemented | Shape annotations until Flatten / Save |
-| F61-07 | Non-destructive editing where practical | text | M3-M5 | Implemented | Text box / callout annotations until Flatten / Save |
+| F61-05 | Non-destructive editing where practical | signatures | M3-M5 | Tested | Stamp annotations until Flatten / Save; flatten unit path |
+| F61-06 | Non-destructive editing where practical | shapes | M3-M5 | Tested | Shape annotations until Flatten / Save; flatten unit path |
+| F61-07 | Non-destructive editing where practical | text | M3-M5 | Tested | Text box / callout until Flatten / Save; flatten unit path |
 | F62-01 | Supported output formats | PDF | M5/M7 | Implemented | Save / Extract / OCR→PDF / cropped export |
 | F62-02 | Supported output formats | PNG | M5/M7 | Tested | Image export + PDF page Export (`WriteBgraAsync`) |
 | F62-03 | Supported output formats | JPEG | M5/M7 | Tested | Image JPEG quality export + PDF page Export |
