@@ -565,13 +565,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F36-08 | Batch image operations | rename, optionally | M8 | Implemented | Batch… → Rename pattern `{name}-{n:000}` |
 | F36-09 | Batch image operations | Show batch progress. | M8 | Implemented | Progress dialog + Cancel for folder Batch ops |
 | F37-01 | Image metadata | dimensions | M5 | Tested | GetMetadataAsync PixelWidth/Height |
-| F37-02 | Image metadata | pixel count | M5 | Implemented | Derived from dimensions |
+| F37-02 | Image metadata | pixel count | M5 | Tested | Derived from PixelWidth×Height; GetMetadata dimensions tests |
 | F37-03 | Image metadata | DPI | M5 | Tested | Density → DpiX/DpiY |
-| F37-04 | Image metadata | bit depth | M5 | Implemented | Magick Depth |
-| F37-05 | Image metadata | color space | M5 | Implemented | Magick ColorSpace |
-| F37-06 | Image metadata | ICC profile | M5 | Implemented | HasIccProfile flag |
-| F37-07 | Image metadata | file format | M5 | Implemented | FormatName |
-| F37-08 | Image metadata | compression | M5 | Implemented | Magick Compression |
+| F37-04 | Image metadata | bit depth | M5 | Tested | Magick Depth via GetMetadataAsync unit tests |
+| F37-05 | Image metadata | color space | M5 | Tested | Magick ColorSpace via GetMetadataAsync |
+| F37-06 | Image metadata | ICC profile | M5 | Tested | HasIccProfile; WriteBgra embeds sRGB ICC tests |
+| F37-07 | Image metadata | file format | M5 | Tested | FormatName via GetMetadataAsync |
+| F37-08 | Image metadata | compression | M5 | Tested | Magick Compression via GetMetadataAsync |
 | F37-09 | Image metadata | file size | M5 | Tested | FileSizeBytes from path |
 | F37-10 | Image metadata | camera make/model | M5 | Tested | EXIF Make/Model |
 | F37-11 | Image metadata | lens information | M5 | Implemented | EXIF LensModel when present |
@@ -580,7 +580,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F37-14 | Image metadata | ISO | M5 | Tested | EXIF ISOSpeedRatings |
 | F37-15 | Image metadata | focal length | M5 | Tested | EXIF FocalLength |
 | F37-16 | Image metadata | capture date | M5 | Tested | EXIF DateTimeOriginal |
-| F37-17 | Image metadata | orientation | M5 | Implemented | EXIF Orientation |
+| F37-17 | Image metadata | orientation | M5 | Tested | EXIF Orientation; `MagickImageOrientationTests` auto-orient |
 | F37-18 | Image metadata | GPS coordinates | M5 | Tested | GPSLatitude/Longitude |
 | F37-19 | Image metadata | EXIF | M5 | Tested | Magick ExifProfile |
 | F37-20 | Image metadata | IPTC | M5 | Tested | Magick IptcProfile → Title/Caption/Keywords/Copyright |

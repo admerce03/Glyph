@@ -81,7 +81,10 @@ public class PageLayoutCalculatorTests
     public void Last_page_index_normalizes_to_spread_left_in_facing_modes()
     {
         PageLayoutCalculator.FirstPageIndex(PageLayoutMode.TwoPage, 10).Should().Be(0);
+        // TwoPage pairs 0-1…8-9 → last left is 8.
         PageLayoutCalculator.LastPageIndex(PageLayoutMode.TwoPage, 10).Should().Be(8);
-        PageLayoutCalculator.LastPageIndex(PageLayoutMode.TwoPageWithCover, 10).Should().Be(8);
+        // TwoPageWithCover: 0 alone, then 1-2…7-8, trailing 9 alone → last left is 9.
+        PageLayoutCalculator.LastPageIndex(PageLayoutMode.TwoPageWithCover, 10).Should().Be(9);
+        PageLayoutCalculator.LastPageIndex(PageLayoutMode.TwoPageWithCover, 9).Should().Be(7);
     }
 }

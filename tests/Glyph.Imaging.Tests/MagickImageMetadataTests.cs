@@ -20,6 +20,10 @@ public class MagickImageMetadataTests
             meta.PixelWidth.Should().Be(40);
             meta.PixelHeight.Should().Be(30);
             meta.FormatName.Should().NotBeNullOrWhiteSpace();
+            meta.BitDepth.Should().NotBeNull();
+            meta.BitDepth!.Value.Should().BeGreaterThan(0);
+            meta.ColorSpace.Should().NotBeNullOrWhiteSpace();
+            meta.Compression.Should().NotBeNullOrWhiteSpace();
             meta.DpiX.Should().BeApproximately(72, 0.1);
             meta.DpiY.Should().BeApproximately(72, 0.1);
             meta.Make.Should().Be("GlyphCam");
