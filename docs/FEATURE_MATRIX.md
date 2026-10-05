@@ -11,7 +11,6 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-01 | Application and file handling | Open files through: | M1/M9 | In Progress | Open / Open Multiple / drag-drop in shell |
 | F01-02 | Application and file handling | Open multiple files simultaneously. | M1/M9 | In Progress | Multi-tab + multi-select open |
 | F01-03 | Application and file handling | Open multiple files: | M1/M9 | Implemented | Tabs by default; Preferences → separate windows |
-| F01-14 | Application and file handling | File → New from Clipboard. | M1/M9 | Implemented | Menu + Ctrl+Shift+N; clipboard → temp PNG image tab |
 | F01-04 | Application and file handling | Reopen recently used files. | M1/M9 | Tested | JsonRecentFilesStore covered by unit tests |
 | F01-05 | Application and file handling | Restore previously open tabs/windows after restart, optionally. | M1/M9 | Implemented | `JsonSessionStore` + Preferences toggle; restores tabs on startup |
 | F01-06 | Application and file handling | Native Windows file associations. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
@@ -22,7 +21,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-11 | Application and file handling | Normal Windows long-path and Unicode filename support. | M1/M9 | Not Started |  |
 | F01-12 | Application and file handling | Read-only file detection. | M1/M9 | Implemented | Sets session.IsReadOnly; tab header + status |
 | F01-13 | Application and file handling | Warn when attempting to overwrite a read-only file. | M1/M9 | Implemented | Save prompts Save As when target is read-only |
-| F01-14 | Application and file handling | File → New from Clipboard. | M1/M9 | In Progress | Menu + Ctrl+Shift+N; clipboard bitmap → temp PNG dirty tab |
+| F01-14 | Application and file handling | File → New from Clipboard. | M1/M9 | Implemented | Menu + Ctrl+Shift+N; clipboard → temp PNG image tab |
 | F01-15 | Application and file handling | File → Duplicate. | M1/M9 | Implemented | File → Duplicate / Ctrl+Shift+D copies on disk and opens |
 | F01-16 | Application and file handling | File → Save. | M1/M9 | Implemented | File → Save / Ctrl+S (PDF + image) |
 | F01-17 | Application and file handling | File → Save As. | M1/M9 | Implemented | File → Save As / Ctrl+Shift+S |
@@ -707,7 +706,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F49-10 | Undo and redo | metadata editing | M1-M4 | Not Started |  |
 | F49-11 | Undo and redo | form filling | M1-M4 | Not Started |  |
 | F49-12 | Undo and redo | signature placement | M1-M4 | Not Started |  |
-| F49-13 | Undo and redo | redaction before permanent application | M1-M4 | Not Started |  |
+| F49-13 | Undo and redo | redaction before permanent application | M1-M4 | Implemented | Ctrl+Z / Undo undoes last pending redaction mark |
 | F49-14 | Undo and redo | Ctrl+Z | M1-M4 | Not Started |  |
 | F49-15 | Undo and redo | Ctrl+Y / Ctrl+Shift+Z | M1-M4 | Not Started |  |
 | F50-01 | Autosave and recovery | edits remain in memory until Save. | M1/M9 | Implemented | Default; AutoSaveToOriginal opt-in |
