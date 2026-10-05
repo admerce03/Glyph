@@ -509,8 +509,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F32-04 | Image orientation | Flip horizontal. | M5 | Tested | Flip H + FlipHorizontalAsync |
 | F32-05 | Image orientation | Flip vertical. | M5 | Tested | Flip V + FlipVerticalAsync |
 | F32-06 | Image orientation | Batch operations on selected images. | M5 | Not Started |  |
-| F32-07 | Image orientation | Respect EXIF orientation. | M5 | Not Started |  |
-| F32-08 | Image orientation | Option to normalize EXIF orientation into pixels. | M5 | Not Started |  |
+| F32-07 | Image orientation | Respect EXIF orientation. | M5 | Tested | MagickImageDecoder AutoOrient on open |
+| F32-08 | Image orientation | Option to normalize EXIF orientation into pixels. | M5 | Tested | Orient toolbar + NormalizeOrientationAsync |
 | F33-01 | Image color adjustments | Auto Levels | M5 | Not Started |  |
 | F33-02 | Image color adjustments | Exposure | M5 | Implemented | Adjust dialog Brightness (Magick BrightnessContrast) |
 | F33-03 | Image color adjustments | Contrast | M5 | Tested | Adjust dialog → AdjustAsync Contrast |

@@ -13,6 +13,9 @@ public sealed class MagickImageDecoder : IImageDecoder
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var image = new MagickImage(path);
+                // Bake EXIF orientation into pixels so dimensions match what users see.
+                image.AutoOrient();
+                ClearExifOrientation(image);
                 return (IImageDocument)new MagickImageDocument(path, image);
             },
             cancellationToken);
@@ -29,5 +32,18 @@ public sealed class MagickImageDecoder : IImageDecoder
                 return new ImageInfo(checked((int)info.Width), checked((int)info.Height), info.Format.ToString());
             },
             cancellationToken);
+    }
+
+    internal static void ClearExifOrientation(IMagickImage<ushort> image)
+    {
+        image.Orientation = OrientationType.TopLeft;
+        var exif = image.GetExifProfile();
+        if (exif is null)
+        {
+            return;
+        }
+
+        exif.SetValue(ExifTag.Orientation, (ushort)1);
+        image.SetProfile(exif);
     }
 }

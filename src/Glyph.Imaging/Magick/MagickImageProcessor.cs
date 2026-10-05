@@ -148,6 +148,19 @@ public sealed class MagickImageProcessor : IImageProcessor
             cancellationToken);
     }
 
+    public Task NormalizeOrientationAsync(IImageDocument document, CancellationToken cancellationToken = default)
+    {
+        var magick = RequireMagick(document);
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                magick.Native.AutoOrient();
+                MagickImageDecoder.ClearExifOrientation(magick.Native);
+            },
+            cancellationToken);
+    }
+
     private static MagickImageDocument RequireMagick(IImageDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);

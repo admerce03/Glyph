@@ -115,6 +115,7 @@ public sealed class ImageDocumentView : UserControl
         var adjust = new Button { Content = "Adjust" };
         var meta = new Button { Content = "Meta" };
         var rotate180 = new Button { Content = "180°" };
+        var orient = new Button { Content = "Orient" };
         var save = new Button { Content = "Save" };
         var exportPng = new Button { Content = "→PNG" };
         var exportJpeg = new Button { Content = "→JPEG" };
@@ -128,6 +129,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(adjust, "Brightness / contrast / saturation");
         ToolTipService.SetToolTip(meta, "Image metadata, EXIF, and GPS");
         ToolTipService.SetToolTip(rotate180, "Rotate 180°");
+        ToolTipService.SetToolTip(orient, "Apply EXIF orientation into pixels");
         ToolTipService.SetToolTip(exportPng, "Export as PNG");
         ToolTipService.SetToolTip(exportJpeg, "Export as JPEG");
         ToolTipService.SetToolTip(convert, "Export as WebP, TIFF, BMP, or GIF");
@@ -141,6 +143,7 @@ public sealed class ImageDocumentView : UserControl
         rotateLeft.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, -90), "Rotated left.");
         rotateRight.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 90), "Rotated right.");
         rotate180.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 180), "Rotated 180°.");
+        orient.Click += async (_, _) => await MutateAsync(() => _processor.NormalizeOrientationAsync(_document), "Orientation normalized.");
         flipH.Click += async (_, _) => await MutateAsync(() => _processor.FlipHorizontalAsync(_document), "Flipped horizontally.");
         flipV.Click += async (_, _) => await MutateAsync(() => _processor.FlipVerticalAsync(_document), "Flipped vertically.");
         crop.Click += async (_, _) => await CropAsync();
@@ -169,7 +172,7 @@ public sealed class ImageDocumentView : UserControl
             Padding = new Thickness(8),
             Children =
             {
-                _prevButton, _nextButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, flipH, flipV,
+                _prevButton, _nextButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, flipH, flipV,
                 _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, save, exportPng, exportJpeg, convert, _status,
             },
         };

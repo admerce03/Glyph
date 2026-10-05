@@ -18,6 +18,11 @@ public interface IImageProcessor
     /// Removes GPS EXIF tags when present. Other metadata is left intact.
     /// </summary>
     Task RemoveGpsMetadataAsync(IImageDocument document, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Applies EXIF orientation into pixel data and resets the orientation tag.
+    /// </summary>
+    Task NormalizeOrientationAsync(IImageDocument document, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
