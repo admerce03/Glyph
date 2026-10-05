@@ -80,6 +80,15 @@ public sealed class PdfDocumentView : UserControl
     private int _inkPageIndex = -1;
     private readonly List<PdfPagePoint> _inkPoints = [];
     private Microsoft.UI.Xaml.Shapes.Polyline? _inkPreview;
+    private PdfShapeKind? _shapeMode;
+    private bool _shapeDrawing;
+    private int _shapePageIndex = -1;
+    private Windows.Foundation.Point _shapeStart;
+    private FrameworkElement? _shapePreview;
+    private Button? _inkButton;
+    private Button? _rectButton;
+    private Button? _ellipseButton;
+    private Button? _lineButton;
     private bool _dragSelecting;
     private Windows.Foundation.Point _dragStart;
     private int _dragPageIndex = -1;
@@ -288,6 +297,13 @@ public sealed class PdfDocumentView : UserControl
         var strikeout = new Button { Content = "Strike" };
         var stickyNote = new Button { Content = "Note" };
         var ink = new Button { Content = "Ink" };
+        var rect = new Button { Content = "Rect" };
+        var ellipse = new Button { Content = "Ellipse" };
+        var line = new Button { Content = "Line" };
+        _inkButton = ink;
+        _rectButton = rect;
+        _ellipseButton = ellipse;
+        _lineButton = line;
         var undoEdit = new Button { Content = "Undo" };
         var redoEdit = new Button { Content = "Redo" };
         ToolTipService.SetToolTip(rotateLeft, "Rotate selected pages left");
@@ -306,6 +322,9 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(strikeout, "Strike through selected text");
         ToolTipService.SetToolTip(stickyNote, "Add a sticky note on the current page");
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
+        ToolTipService.SetToolTip(rect, "Draw a rectangle annotation");
+        ToolTipService.SetToolTip(ellipse, "Draw an ellipse annotation");
+        ToolTipService.SetToolTip(line, "Draw a line (stored as a 2-point ink stroke)");
         ToolTipService.SetToolTip(undoEdit, "Undo last page edit (Ctrl+Z)");
         ToolTipService.SetToolTip(redoEdit, "Redo page edit (Ctrl+Y)");
 
@@ -352,7 +371,10 @@ public sealed class PdfDocumentView : UserControl
         underline.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.Underline);
         strikeout.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.StrikeOut);
         stickyNote.Click += async (_, _) => await AddStickyNoteAsync();
-        ink.Click += (_, _) => ToggleInkMode(ink);
+        ink.Click += (_, _) => ToggleInkMode();
+        rect.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Rectangle);
+        ellipse.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Ellipse);
+        line.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Line);
         undoEdit.Click += async (_, _) => await UndoPageEditAsync();
         redoEdit.Click += async (_, _) => await RedoPageEditAsync();
 
@@ -367,7 +389,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, ink,
+                highlight, underline, strikeout, stickyNote, ink, rect, ellipse, line,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -1276,6 +1298,13 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (_shapeMode is not null)
+        {
+            BeginShapeDrag(border, pageIndex, e);
+            e.Handled = true;
+            return;
+        }
+
         _dragSelecting = true;
         _dragPageIndex = pageIndex;
         _dragStart = e.GetCurrentPoint(border).Position;
@@ -1302,6 +1331,17 @@ public sealed class PdfDocumentView : UserControl
             if (sender is Border { Tag: int inkPage } inkBorder && inkPage == _inkPageIndex)
             {
                 ContinueInkStroke(inkBorder, e);
+                e.Handled = true;
+            }
+
+            return;
+        }
+
+        if (_shapeMode is not null && _shapeDrawing)
+        {
+            if (sender is Border { Tag: int shapePage } shapeBorder && shapePage == _shapePageIndex)
+            {
+                ContinueShapeDrag(shapeBorder, e);
                 e.Handled = true;
             }
 
@@ -1365,6 +1405,13 @@ public sealed class PdfDocumentView : UserControl
         if (_inkMode && _inkDrawing && pageIndex == _inkPageIndex)
         {
             await EndInkStrokeAsync(border, e);
+            e.Handled = true;
+            return;
+        }
+
+        if (_shapeMode is not null && _shapeDrawing && pageIndex == _shapePageIndex)
+        {
+            await EndShapeDragAsync(border, e);
             e.Handled = true;
             return;
         }
@@ -1980,7 +2027,7 @@ public sealed class PdfDocumentView : UserControl
         {
             var all = await _annotations.ListAsync(_document);
             _annotationItems = all
-                .Where(a => a.TextMarkupKind is not null || a.IsStickyNote || a.IsInk)
+                .Where(a => a.TextMarkupKind is not null || a.IsStickyNote || a.IsInk || a.ShapeKind is not null)
                 .OrderBy(a => a.PageIndex)
                 .ThenBy(a => a.AnnotIndex)
                 .ToList();
@@ -2007,6 +2054,18 @@ public sealed class PdfDocumentView : UserControl
             return $"Note · p.{info.PageIndex + 1}: {preview}";
         }
 
+        if (info.ShapeKind is { } shape)
+        {
+            var shapeName = shape switch
+            {
+                PdfShapeKind.Rectangle => "Rect",
+                PdfShapeKind.Ellipse => "Ellipse",
+                PdfShapeKind.Line => "Line",
+                _ => "Shape",
+            };
+            return $"{shapeName} · p.{info.PageIndex + 1}";
+        }
+
         if (info.IsInk)
         {
             return $"Ink · p.{info.PageIndex + 1}";
@@ -2022,14 +2081,15 @@ public sealed class PdfDocumentView : UserControl
         return $"{kind} · p.{info.PageIndex + 1}";
     }
 
-    private void ToggleInkMode(Button inkButton)
+    private void ToggleInkMode()
     {
+        ClearShapeMode();
         _inkMode = !_inkMode;
         if (!_inkMode)
         {
             CancelInkStroke();
             _status.Text = "Ink mode off.";
-            inkButton.Background = null;
+            RefreshToolButtonChrome();
             return;
         }
 
@@ -2038,8 +2098,221 @@ public sealed class PdfDocumentView : UserControl
             CancelCropMode();
         }
 
-        inkButton.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(60, 255, 140, 0));
+        RefreshToolButtonChrome();
         _status.Text = "Ink mode on — draw on the page.";
+    }
+
+    private void ToggleShapeMode(PdfShapeKind kind)
+    {
+        if (_inkMode)
+        {
+            _inkMode = false;
+            CancelInkStroke();
+        }
+
+        if (_shapeMode == kind)
+        {
+            ClearShapeMode();
+            _status.Text = "Shape mode off.";
+            RefreshToolButtonChrome();
+            return;
+        }
+
+        if (_cropMode)
+        {
+            CancelCropMode();
+        }
+
+        CancelShapeDrag();
+        _shapeMode = kind;
+        RefreshToolButtonChrome();
+        _status.Text = kind switch
+        {
+            PdfShapeKind.Rectangle => "Rectangle mode — drag on the page.",
+            PdfShapeKind.Ellipse => "Ellipse mode — drag on the page.",
+            _ => "Line mode — drag on the page.",
+        };
+    }
+
+    private void ClearShapeMode()
+    {
+        CancelShapeDrag();
+        _shapeMode = null;
+    }
+
+    private void RefreshToolButtonChrome()
+    {
+        var active = new SolidColorBrush(Windows.UI.Color.FromArgb(60, 255, 140, 0));
+        if (_inkButton is not null)
+        {
+            _inkButton.Background = _inkMode ? active : null;
+        }
+
+        if (_rectButton is not null)
+        {
+            _rectButton.Background = _shapeMode == PdfShapeKind.Rectangle ? active : null;
+        }
+
+        if (_ellipseButton is not null)
+        {
+            _ellipseButton.Background = _shapeMode == PdfShapeKind.Ellipse ? active : null;
+        }
+
+        if (_lineButton is not null)
+        {
+            _lineButton.Background = _shapeMode == PdfShapeKind.Line ? active : null;
+        }
+    }
+
+    private void BeginShapeDrag(Border border, int pageIndex, PointerRoutedEventArgs e)
+    {
+        CancelShapeDrag();
+        _shapeDrawing = true;
+        _shapePageIndex = pageIndex;
+        _shapeStart = e.GetCurrentPoint(border).Position;
+        border.CapturePointer(e.Pointer);
+        ContinueShapeDrag(border, e);
+    }
+
+    private void ContinueShapeDrag(Border border, PointerRoutedEventArgs e)
+    {
+        if (_shapePageIndex < 0 || !_pageOverlays.TryGetValue(_shapePageIndex, out var overlay) || _shapeMode is null)
+        {
+            return;
+        }
+
+        var current = e.GetCurrentPoint(border).Position;
+        if (_shapePreview is not null)
+        {
+            overlay.Children.Remove(_shapePreview);
+            _shapePreview = null;
+        }
+
+        var left = Math.Min(_shapeStart.X, current.X);
+        var top = Math.Min(_shapeStart.Y, current.Y);
+        var width = Math.Abs(current.X - _shapeStart.X);
+        var height = Math.Abs(current.Y - _shapeStart.Y);
+        var stroke = new SolidColorBrush(Colors.DodgerBlue);
+
+        FrameworkElement preview = _shapeMode switch
+        {
+            PdfShapeKind.Ellipse => new Microsoft.UI.Xaml.Shapes.Ellipse
+            {
+                Width = Math.Max(1, width),
+                Height = Math.Max(1, height),
+                Stroke = stroke,
+                StrokeThickness = 2,
+                Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 30, 144, 255)),
+            },
+            PdfShapeKind.Line => new Microsoft.UI.Xaml.Shapes.Line
+            {
+                X1 = _shapeStart.X,
+                Y1 = _shapeStart.Y,
+                X2 = current.X,
+                Y2 = current.Y,
+                Stroke = stroke,
+                StrokeThickness = 2,
+            },
+            _ => new Microsoft.UI.Xaml.Shapes.Rectangle
+            {
+                Width = Math.Max(1, width),
+                Height = Math.Max(1, height),
+                Stroke = stroke,
+                StrokeThickness = 2,
+                Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 30, 144, 255)),
+            },
+        };
+
+        if (preview is not Microsoft.UI.Xaml.Shapes.Line)
+        {
+            Canvas.SetLeft(preview, left);
+            Canvas.SetTop(preview, top);
+        }
+
+        overlay.Children.Add(preview);
+        _shapePreview = preview;
+    }
+
+    private async Task EndShapeDragAsync(Border border, PointerRoutedEventArgs e)
+    {
+        try { border.ReleasePointerCapture(e.Pointer); } catch { /* ignore */ }
+        ContinueShapeDrag(border, e);
+
+        var kind = _shapeMode;
+        var pageIndex = _shapePageIndex;
+        var start = _shapeStart;
+        var end = e.GetCurrentPoint(border).Position;
+        CancelShapeDrag();
+
+        if (kind is null || pageIndex < 0)
+        {
+            return;
+        }
+
+        var page = _document.GetPage(pageIndex);
+        double ToPdfX(double x) => x / _scale;
+        double ToPdfY(double y) => page.HeightPoints - (y / _scale);
+
+        PdfRect bounds;
+        if (kind == PdfShapeKind.Line)
+        {
+            bounds = new PdfRect(
+                ToPdfX(start.X),
+                ToPdfY(start.Y),
+                ToPdfX(end.X),
+                ToPdfY(end.Y));
+        }
+        else
+        {
+            var left = Math.Min(ToPdfX(start.X), ToPdfX(end.X));
+            var right = Math.Max(ToPdfX(start.X), ToPdfX(end.X));
+            var bottom = Math.Min(ToPdfY(start.Y), ToPdfY(end.Y));
+            var top = Math.Max(ToPdfY(start.Y), ToPdfY(end.Y));
+            bounds = new PdfRect(left, bottom, right, top);
+        }
+
+        try
+        {
+            _status.Text = "Saving shape…";
+            await _annotations.AddShapeAsync(
+                _document,
+                pageIndex,
+                kind.Value,
+                bounds,
+                new PdfAnnotationColor(30, 144, 255),
+                fillColor: kind == PdfShapeKind.Line
+                    ? null
+                    : new PdfAnnotationColor(30, 144, 255, 40));
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = kind switch
+            {
+                PdfShapeKind.Rectangle => "Rectangle added.",
+                PdfShapeKind.Ellipse => "Ellipse added.",
+                _ => "Line added.",
+            };
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Shape failed: " + ex.Message;
+        }
+    }
+
+    private void CancelShapeDrag()
+    {
+        if (_shapePreview is not null &&
+            _shapePageIndex >= 0 &&
+            _pageOverlays.TryGetValue(_shapePageIndex, out var overlay))
+        {
+            overlay.Children.Remove(_shapePreview);
+        }
+
+        _shapePreview = null;
+        _shapeDrawing = false;
+        _shapePageIndex = -1;
     }
 
     private void BeginInkStroke(Border border, int pageIndex, PointerRoutedEventArgs e)

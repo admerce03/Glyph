@@ -343,6 +343,150 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             cancellationToken);
     }
 
+    public Task<PdfAnnotationInfo> AddShapeAsync(
+        IPdfDocument document,
+        int pageIndex,
+        PdfShapeKind kind,
+        PdfRect bounds,
+        PdfAnnotationColor borderColor,
+        PdfAnnotationColor? fillColor = null,
+        float borderWidthPoints = 1.5f,
+        CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        ArgumentOutOfRangeException.ThrowIfNegative(pageIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(pageIndex, pdfium.PageCount);
+        if (borderWidthPoints <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(borderWidthPoints));
+        }
+
+        // PDFium exposes GetLine but not SetLine; straight lines are stored as 2-point ink strokes.
+        if (kind == PdfShapeKind.Line)
+        {
+            var dx = Math.Abs(bounds.Right - bounds.Left);
+            var dy = Math.Abs(bounds.Top - bounds.Bottom);
+            if (dx < 1 && dy < 1)
+            {
+                throw new ArgumentException("Line endpoints must be distinct.", nameof(bounds));
+            }
+
+            return AddLineAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, cancellationToken);
+        }
+
+        if (bounds.Width < 1 || bounds.Height < 1)
+        {
+            throw new ArgumentException("Shape bounds must have positive width and height.", nameof(bounds));
+        }
+
+        var subtype = kind switch
+        {
+            PdfShapeKind.Rectangle => PdfiumAnnotSubtypes.Square,
+            PdfShapeKind.Ellipse => PdfiumAnnotSubtypes.Circle,
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        };
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
+                    if (page is null)
+                    {
+                        throw new InvalidOperationException($"Failed to load page {pageIndex} for shape.");
+                    }
+
+                    try
+                    {
+                        if (fpdf_annot.FPDFAnnotIsSupportedSubtype(subtype) == 0)
+                        {
+                            throw new NotSupportedException($"PDFium does not support shape subtype {subtype}.");
+                        }
+
+                        var annot = fpdf_annot.FPDFPageCreateAnnot(page, subtype);
+                        if (annot is null)
+                        {
+                            throw new InvalidOperationException("FPDFPage_CreateAnnot failed for shape.");
+                        }
+
+                        try
+                        {
+                            using var rect = new FS_RECTF_();
+                            rect.Left = (float)bounds.Left;
+                            rect.Bottom = (float)bounds.Bottom;
+                            rect.Right = (float)bounds.Right;
+                            rect.Top = (float)bounds.Top;
+                            if (fpdf_annot.FPDFAnnotSetRect(annot, rect) == 0)
+                            {
+                                throw new InvalidOperationException("FPDFAnnot_SetRect failed for shape.");
+                            }
+
+                            if (fpdf_annot.FPDFAnnotSetColor(
+                                    annot,
+                                    FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_Color,
+                                    borderColor.R,
+                                    borderColor.G,
+                                    borderColor.B,
+                                    borderColor.A) == 0)
+                            {
+                                throw new InvalidOperationException("FPDFAnnot_SetColor failed for shape border.");
+                            }
+
+                            if (fillColor is { } fill)
+                            {
+                                if (fpdf_annot.FPDFAnnotSetColor(
+                                        annot,
+                                        FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_InteriorColor,
+                                        fill.R,
+                                        fill.G,
+                                        fill.B,
+                                        fill.A) == 0)
+                                {
+                                    throw new InvalidOperationException("FPDFAnnot_SetColor failed for shape fill.");
+                                }
+                            }
+
+                            if (PdfiumNative.AnnotSetBorder(annot.__Instance, 0, 0, borderWidthPoints) == 0)
+                            {
+                                throw new InvalidOperationException("FPDFAnnot_SetBorder failed for shape.");
+                            }
+
+                            var index = fpdf_annot.FPDFPageGetAnnotIndex(page, annot);
+                            if (index < 0)
+                            {
+                                throw new InvalidOperationException("Created shape annotation has no page index.");
+                            }
+
+                            pdfium.NotifyAnnotationsChanged();
+                            return new PdfAnnotationInfo(
+                                pageIndex,
+                                index,
+                                TextMarkupKind: null,
+                                bounds,
+                                borderColor,
+                                Contents: null,
+                                IsStickyNote: false,
+                                IsInk: false,
+                                ShapeKind: kind);
+                        }
+                        finally
+                        {
+                            fpdf_annot.FPDFPageCloseAnnot(annot);
+                        }
+                    }
+                    finally
+                    {
+                        fpdfview.FPDF_ClosePage(page);
+                    }
+                }
+            },
+            cancellationToken);
+    }
+
     public Task SetContentsAsync(
         IPdfDocument document,
         int pageIndex,
@@ -547,7 +691,17 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                     var contents = PdfiumAnnotStrings.GetString(annot, "Contents");
                     var isSticky = subtype == PdfiumAnnotSubtypes.Text;
                     var isInk = subtype == PdfiumAnnotSubtypes.Ink;
-                    results.Add(new PdfAnnotationInfo(pageIndex, i, kind, bounds, color, contents, isSticky, isInk));
+                    var shapeKind = FromShapeSubtype(subtype);
+                    results.Add(new PdfAnnotationInfo(
+                        pageIndex,
+                        i,
+                        kind,
+                        bounds,
+                        color,
+                        contents,
+                        isSticky,
+                        isInk,
+                        shapeKind));
                 }
                 finally
                 {
@@ -645,6 +799,36 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             PdfiumAnnotSubtypes.Highlight => PdfTextMarkupKind.Highlight,
             PdfiumAnnotSubtypes.Underline => PdfTextMarkupKind.Underline,
             PdfiumAnnotSubtypes.StrikeOut => PdfTextMarkupKind.StrikeOut,
+            _ => null,
+        };
+
+    private async Task<PdfAnnotationInfo> AddLineAsInkAsync(
+        IPdfDocument document,
+        int pageIndex,
+        PdfRect bounds,
+        PdfAnnotationColor borderColor,
+        float borderWidthPoints,
+        CancellationToken cancellationToken)
+    {
+        var created = await AddInkAsync(
+            document,
+            pageIndex,
+            [
+                new PdfPagePoint(bounds.Left, bounds.Bottom),
+                new PdfPagePoint(bounds.Right, bounds.Top),
+            ],
+            borderColor,
+            borderWidthPoints,
+            cancellationToken);
+        return created with { ShapeKind = PdfShapeKind.Line };
+    }
+
+    private static PdfShapeKind? FromShapeSubtype(int subtype) =>
+        subtype switch
+        {
+            PdfiumAnnotSubtypes.Square => PdfShapeKind.Rectangle,
+            PdfiumAnnotSubtypes.Circle => PdfShapeKind.Ellipse,
+            PdfiumAnnotSubtypes.Line => PdfShapeKind.Line,
             _ => null,
         };
 
