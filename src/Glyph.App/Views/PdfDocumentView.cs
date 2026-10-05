@@ -2362,6 +2362,32 @@ public sealed class PdfDocumentView : UserControl
 
             color = picked.Value;
         }
+        else if (item.IsStickyNote)
+        {
+            var list = new ListView
+            {
+                Height = 220,
+                SelectionMode = ListViewSelectionMode.Single,
+                ItemsSource = PdfAnnotationColor.StickyNotePresets.Select(p => p.Name).ToList(),
+            };
+            list.SelectedIndex = 0;
+            var dialog = new ContentDialog
+            {
+                Title = $"Note color — {FormatAnnotationLabel(item)}",
+                Content = list,
+                PrimaryButtonText = "Apply",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = window.Content.XamlRoot,
+            };
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            {
+                return;
+            }
+
+            color = PdfAnnotationColor.StickyNotePresets[
+                Math.Clamp(list.SelectedIndex, 0, PdfAnnotationColor.StickyNotePresets.Count - 1)].Color;
+        }
         else
         {
             // Simple presets for non-highlight annots.
@@ -3837,10 +3863,27 @@ public sealed class PdfDocumentView : UserControl
             Height = 120,
             PlaceholderText = "Note text",
         };
+        var colorList = new ListView
+        {
+            Height = 140,
+            SelectionMode = ListViewSelectionMode.Single,
+            ItemsSource = PdfAnnotationColor.StickyNotePresets.Select(p => p.Name).ToList(),
+            SelectedIndex = 0,
+        };
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                box,
+                new TextBlock { Text = "Color", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                colorList,
+            },
+        };
         var dialog = new ContentDialog
         {
             Title = "Sticky note",
-            Content = box,
+            Content = panel,
             PrimaryButtonText = "Add",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
@@ -3854,6 +3897,8 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        var colorIndex = Math.Clamp(colorList.SelectedIndex, 0, PdfAnnotationColor.StickyNotePresets.Count - 1);
+        var color = PdfAnnotationColor.StickyNotePresets[colorIndex].Color;
         var page = _document.GetPage(CurrentPageIndex);
         var x = Math.Max(24, page.WidthPoints * 0.5 - 10);
         var y = Math.Max(24, page.HeightPoints * 0.5 - 10);
@@ -3867,7 +3912,7 @@ public sealed class PdfDocumentView : UserControl
                 x,
                 y,
                 box.Text ?? string.Empty,
-                PdfAnnotationColor.StickyNoteYellow);
+                color);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();

@@ -31,6 +31,24 @@ public readonly record struct PdfAnnotationColor(byte R, byte G, byte B, byte A 
 
     public static PdfAnnotationColor StickyNoteYellow { get; } = new(255, 220, 80, 255);
 
+    public static PdfAnnotationColor StickyNoteGreen { get; } = new(160, 230, 120, 255);
+
+    public static PdfAnnotationColor StickyNotePink { get; } = new(255, 170, 200, 255);
+
+    public static PdfAnnotationColor StickyNoteBlue { get; } = new(150, 200, 255, 255);
+
+    public static PdfAnnotationColor StickyNoteOrange { get; } = new(255, 190, 100, 255);
+
+    /// <summary>Preset colors for sticky notes.</summary>
+    public static IReadOnlyList<(string Name, PdfAnnotationColor Color)> StickyNotePresets { get; } =
+    [
+        ("Yellow", StickyNoteYellow),
+        ("Green", StickyNoteGreen),
+        ("Pink", StickyNotePink),
+        ("Blue", StickyNoteBlue),
+        ("Orange", StickyNoteOrange),
+    ];
+
     public static PdfAnnotationColor InkRed { get; } = new(220, 60, 40);
 
     public static PdfAnnotationColor StrokeBlue { get; } = new(30, 144, 255);
