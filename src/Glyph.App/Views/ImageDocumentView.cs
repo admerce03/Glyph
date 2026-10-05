@@ -187,6 +187,10 @@ public sealed class ImageDocumentView : UserControl
             _navDragging = false;
             _selectionMoving = false;
         };
+        // Precision-touchpad pinch often arrives as Ctrl+wheel; Manipulation Scale covers direct pinch (F53).
+        _scrollViewer.PointerWheelChanged += ScrollViewer_PointerWheelChanged;
+        _scrollViewer.ManipulationMode = ManipulationModes.Scale;
+        _scrollViewer.ManipulationDelta += ScrollViewer_ManipulationDelta;
         _status = new TextBlock { Opacity = 0.75, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
         _cropBox = new TextBox
         {
@@ -1582,6 +1586,30 @@ public sealed class ImageDocumentView : UserControl
         _zoom = Math.Clamp(zoom, 0.05, 8.0);
         await RefreshAsync();
         UpdateStatus();
+    }
+
+    private async void ScrollViewer_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
+    {
+        if (!e.KeyModifiers.HasFlag(Windows.System.VirtualKeyModifiers.Control))
+        {
+            return;
+        }
+
+        var delta = e.GetCurrentPoint(_scrollViewer).Properties.MouseWheelDelta;
+        var factor = delta > 0 ? 1.1 : 1.0 / 1.1;
+        await SetZoomAsync(_zoom * factor);
+        e.Handled = true;
+    }
+
+    private async void ScrollViewer_ManipulationDelta(object sender, ManipulationDeltaRoutedEventArgs e)
+    {
+        if (Math.Abs(e.Delta.Scale - 1.0) < 0.001)
+        {
+            return;
+        }
+
+        await SetZoomAsync(_zoom * e.Delta.Scale);
+        e.Handled = true;
     }
 
     private async Task ZoomActualSizeAsync()
@@ -4650,6 +4678,35 @@ public sealed class ImageDocumentView : UserControl
             return;
         }
 
+        var ocrFolder = false;
+        if (_siblings.Count > 1 && _decoder is not null)
+        {
+            var chooser = new ContentDialog
+            {
+                Title = "OCR",
+                Content = $"OCR this image, or all {_siblings.Count} images in the folder?",
+                PrimaryButtonText = "This image",
+                SecondaryButtonText = $"Folder ({_siblings.Count})",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = XamlRoot,
+            };
+            var choice = await chooser.ShowAsync();
+            if (choice == ContentDialogResult.None)
+            {
+                _status.Text = "OCR cancelled.";
+                return;
+            }
+
+            ocrFolder = choice == ContentDialogResult.Secondary;
+        }
+
+        if (ocrFolder)
+        {
+            await RunFolderOcrAsync();
+            return;
+        }
+
         try
         {
             _status.Text = "Running OCR…";
@@ -4717,6 +4774,95 @@ public sealed class ImageDocumentView : UserControl
         {
             _status.Text = "OCR failed: " + ex.Message;
         }
+    }
+
+    private async Task RunFolderOcrAsync()
+    {
+        if (_ocr is null || _decoder is null || _siblings.Count == 0)
+        {
+            _status.Text = "Folder OCR unavailable.";
+            return;
+        }
+
+        string? languageTag = null;
+        try
+        {
+            languageTag = App.Services.GetService<ISettingsStore>()?.Current.OcrLanguageTag;
+        }
+        catch
+        {
+            // DI may be unavailable.
+        }
+
+        var sections = new List<string>(_siblings.Count);
+        var (updated, cancelled) = await RunBatchWithProgressAsync(
+            "OCR folder images",
+            _siblings.ToList(),
+            async (path, _, ct) =>
+            {
+                ct.ThrowIfCancellationRequested();
+                await using var doc = await _decoder.OpenAsync(path, ct);
+                var buffer = await doc.GetPixelsAsync(maxEdge: 4096, ct);
+                var result = await _ocr.RecognizeAsync(
+                    new OcrRequest(buffer.Width, buffer.Height, buffer.BgraPixels, LanguageTag: languageTag),
+                    ct);
+                var name = System.IO.Path.GetFileName(path);
+                var body = string.IsNullOrWhiteSpace(result.Text) ? "(no text recognized)" : result.Text.Trim();
+                sections.Add($"--- {name} ---\n{body}");
+                return true;
+            });
+
+        if (sections.Count == 0)
+        {
+            _status.Text = cancelled ? "Folder OCR cancelled." : "Folder OCR produced no results.";
+            return;
+        }
+
+        var combined = string.Join("\n\n", sections);
+        var box = new TextBox
+        {
+            Text = combined,
+            IsReadOnly = true,
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            Width = 520,
+            Height = 360,
+        };
+        var copy = new Button { Content = "Copy all", Margin = new Thickness(0, 8, 0, 0) };
+        copy.Click += (_, _) =>
+        {
+            var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            package.SetText(combined);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+            _status.Text = "Folder OCR text copied.";
+        };
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = cancelled
+                        ? $"Cancelled after {updated} image(s)."
+                        : $"OCR’d {updated} image(s).",
+                    Opacity = 0.75,
+                },
+                box,
+                copy,
+            },
+        };
+        var dialog = new ContentDialog
+        {
+            Title = "Folder OCR results",
+            Content = panel,
+            CloseButtonText = "Close",
+            XamlRoot = XamlRoot,
+        };
+        await dialog.ShowAsync();
+        _status.Text = cancelled
+            ? $"Folder OCR cancelled after {updated} image(s)."
+            : $"Folder OCR finished — {updated} image(s).";
     }
 
     private async Task SaveAsync()

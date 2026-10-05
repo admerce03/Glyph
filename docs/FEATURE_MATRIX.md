@@ -56,7 +56,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-19 | Main window and interface | Multi-monitor support. | M1/M9 | Not Started |  |
 | F02-20 | Main window and interface | Per-monitor DPI awareness. | M1/M9 | In Progress | PerMonitorV2 declared in app.manifest |
 | F02-21 | Main window and interface | Mouse support. | M1/M9 | Implemented | Pointer input throughout document and chrome UI |
-| F02-22 | Main window and interface | Precision touchpad gesture support where useful. | M1/M9 | Not Started |  |
+| F02-22 | Main window and interface | Precision touchpad gesture support where useful. | M1/M9 | Implemented | Two-finger ScrollViewer scroll + Ctrl+wheel / Manipulation Scale pinch (PDF + image) |
 | F02-23 | Main window and interface | Keyboard-first operation. | M1/M9 | In Progress | Menu accelerators + document Ctrl shortcuts |
 | F02-24 | Main window and interface | Accessibility through Windows UI Automation. | M1/M9 | In Progress | AutomationProperties.Name on chrome and tools |
 | F03-01 | Sidebar modes | Page thumbnails | M2-M5 | Implemented | Thumbnail strip in PDF viewer sidebar |
@@ -157,7 +157,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F08-06 | OCR / Live Text equivalent | OCR current page. | M6 | Implemented | PdfDocumentView OCR uses selected-or-current pages |
 | F08-07 | OCR / Live Text equivalent | OCR selected pages. | M6 | Implemented | Multi-select thumbnails → OCR concatenates page sections |
 | F08-08 | OCR / Live Text equivalent | OCR entire PDF. | M6 | Implemented | OCR chooser Secondary = entire document page range |
-| F08-09 | OCR / Live Text equivalent | OCR multiple images. | M6 | Not Started |  |
+| F08-09 | OCR / Live Text equivalent | OCR multiple images. | M6 | Implemented | Image OCR → Folder (N) runs siblings via batch progress dialog |
 | F08-10 | OCR / Live Text equivalent | Optionally embed OCR text layer into PDF. | M6 | Implemented | OCR→PDF export via `OcrSearchablePdfWriter` invisible text |
 | F08-11 | OCR / Live Text equivalent | Preserve image underneath the OCR layer. | M6 | Implemented | Full-bleed page render under invisible text layer |
 | F08-12 | OCR / Live Text equivalent | URLs | M6 | Implemented | `OcrEntityDetector` + Entities dialog Open |
@@ -743,9 +743,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F52-20 | Keyboard shortcuts | Delete — Delete selected annotation/page when appropriate | M1/M9 | Implemented | PDF Delete key |
 | F52-21 | Keyboard shortcuts | arrow keys — navigation | M1/M9 | Implemented | PDF page selection; image selection nudge |
 | F52-22 | Keyboard shortcuts | Page Up/Page Down — page navigation | M1/M9 | Implemented | PDF view |
-| F53-01 | Precision touchpad behavior | two-finger scroll | M1/M2 | Not Started |  |
-| F53-02 | Precision touchpad behavior | pinch zoom on supported precision touchpads | M1/M2 | Not Started |  |
-| F53-03 | Precision touchpad behavior | standard Windows touchpad gestures where they map naturally to application navigation | M1/M2 | Not Started |  |
+| F53-01 | Precision touchpad behavior | two-finger scroll | M1/M2 | Implemented | Native ScrollViewer pan on PDF + image views |
+| F53-02 | Precision touchpad behavior | pinch zoom on supported precision touchpads | M1/M2 | Implemented | Ctrl+wheel + Manipulation Scale on PDF + image |
+| F53-03 | Precision touchpad behavior | standard Windows touchpad gestures where they map naturally to application navigation | M1/M2 | Implemented | Scroll/pinch map to pan/zoom; no touchscreen/pen gestures |
 | F54-01 | Toolbar customization | sidebar | M1/M9 | Not Started |  |
 | F54-02 | Toolbar customization | previous | M1/M9 | Not Started |  |
 | F54-03 | Toolbar customization | next | M1/M9 | Not Started |  |
