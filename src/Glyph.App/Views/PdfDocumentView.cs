@@ -12835,28 +12835,28 @@ public sealed class PdfDocumentView : UserControl
         {
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 460,
-            Text =
-                $"Title: {DisplayValue.OrEmDash(info.Title)}\n"
-                + $"Author: {DisplayValue.OrEmDash(info.Author)}\n"
-                + $"Subject: {DisplayValue.OrEmDash(info.Subject)}\n"
-                + $"Keywords: {DisplayValue.OrEmDash(info.Keywords)}\n"
-                + $"Creator: {DisplayValue.OrEmDash(info.Creator)}\n"
-                + $"Producer: {DisplayValue.OrEmDash(info.Producer)}\n"
-                + $"Created: {DisplayValue.OrEmDash(info.CreationDate)}\n"
-                + $"Modified: {DisplayValue.OrEmDash(info.ModificationDate)}\n"
-                + $"Pages: {info.PageCount}\n"
-                + $"Annotations: {annotationCount}\n"
-                + $"PDF version: {DisplayValue.OrEmDash(info.PdfVersion)}\n"
-                + $"Page size: {PdfPageSizeFormat.FormatPoints(info.PageWidthPoints, info.PageHeightPoints)}\n"
-                + $"Fonts: {(info.Fonts.Count == 0 ? DisplayValue.EmDash : string.Join(", ", info.Fonts))}\n"
-                + $"Embedded files: {info.EmbeddedAttachmentCount}\n"
-                + $"Path: {DisplayValue.OrEmDash(info.FilePath)}\n"
-                + $"File: {DisplayValue.OrEmDash(info.FilePath is null ? null : System.IO.Path.GetFileName(info.FilePath))}\n"
-                + $"Size: {Bytes(info.FileSizeBytes)}\n"
-                + $"{PdfDocumentPermissions.InfoEncryptedLine(info.IsEncrypted)}\n"
-                + $"Security handler revision: {(info.SecurityHandlerRevision < 0 ? "none" : info.SecurityHandlerRevision.ToString())}\n"
-                + $"Permission flags: 0x{info.PermissionFlags:X8}\n\n"
-                + perms.FormatSection(),
+            Text = PdfDocumentInfoUi.FormatDialogBody(
+                DisplayValue.OrEmDash(info.Title),
+                DisplayValue.OrEmDash(info.Author),
+                DisplayValue.OrEmDash(info.Subject),
+                DisplayValue.OrEmDash(info.Keywords),
+                DisplayValue.OrEmDash(info.Creator),
+                DisplayValue.OrEmDash(info.Producer),
+                DisplayValue.OrEmDash(info.CreationDate),
+                DisplayValue.OrEmDash(info.ModificationDate),
+                info.PageCount,
+                annotationCount,
+                DisplayValue.OrEmDash(info.PdfVersion),
+                PdfPageSizeFormat.FormatPoints(info.PageWidthPoints, info.PageHeightPoints),
+                info.Fonts.Count == 0 ? DisplayValue.EmDash : string.Join(", ", info.Fonts),
+                info.EmbeddedAttachmentCount,
+                DisplayValue.OrEmDash(info.FilePath),
+                DisplayValue.OrEmDash(info.FilePath is null ? null : System.IO.Path.GetFileName(info.FilePath)),
+                Bytes(info.FileSizeBytes),
+                PdfDocumentPermissions.InfoEncryptedLine(info.IsEncrypted),
+                info.SecurityHandlerRevision < 0 ? "none" : info.SecurityHandlerRevision.ToString(),
+                $"0x{info.PermissionFlags:X8}",
+                perms.FormatSection()),
         };
 
         var dialog = new ContentDialog

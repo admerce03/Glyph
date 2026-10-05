@@ -20,5 +20,9 @@ public class PdfDocumentInfoUiTests
         PdfDocumentInfoUi.FormatSidebarSummary(
                 "T", "A", "S", "C", "P", 3, "Letter", "a.pdf", "1 KB", "1.7", "", 2)
             .Should().Contain("Attachments: 2");
+        PdfDocumentInfoUi.FormatDialogBody(
+                "T", "A", "S", "K", "C", "P", "c", "m", 2, 1, "1.7", "Letter", "Helvetica",
+                0, "/tmp/a.pdf", "a.pdf", "1 KB", "Encrypted: no", "none", "0x0", "Perms")
+            .Should().Contain("Pages: 2").And.Contain("Perms");
     }
 }

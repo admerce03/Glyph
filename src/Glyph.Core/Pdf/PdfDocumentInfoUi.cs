@@ -68,4 +68,48 @@ public static class PdfDocumentInfoUi
 
         return text;
     }
+
+    public static string FormatDialogBody(
+        string title,
+        string author,
+        string subject,
+        string keywords,
+        string creator,
+        string producer,
+        string created,
+        string modified,
+        int pageCount,
+        int annotationCount,
+        string pdfVersion,
+        string pageSize,
+        string fonts,
+        int embeddedAttachmentCount,
+        string path,
+        string fileName,
+        string fileSize,
+        string encryptedLine,
+        string securityHandlerRevision,
+        string permissionFlagsHex,
+        string permissionsSection) =>
+        $"{FieldTitle}: {title}\n"
+        + $"{FieldAuthor}: {author}\n"
+        + $"{FieldSubject}: {subject}\n"
+        + $"{FieldKeywords}: {keywords}\n"
+        + $"{FieldCreator}: {creator}\n"
+        + $"{FieldProducer}: {producer}\n"
+        + $"Created: {created}\n"
+        + $"Modified: {modified}\n"
+        + $"Pages: {pageCount}\n"
+        + $"Annotations: {annotationCount}\n"
+        + $"PDF version: {pdfVersion}\n"
+        + $"Page size: {pageSize}\n"
+        + $"Fonts: {fonts}\n"
+        + $"Embedded files: {embeddedAttachmentCount}\n"
+        + $"Path: {path}\n"
+        + $"File: {fileName}\n"
+        + $"Size: {fileSize}\n"
+        + $"{encryptedLine}\n"
+        + $"Security handler revision: {securityHandlerRevision}\n"
+        + $"Permission flags: {permissionFlagsHex}\n\n"
+        + permissionsSection;
 }
