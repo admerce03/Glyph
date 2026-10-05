@@ -10752,10 +10752,30 @@ public sealed class PdfDocumentView : UserControl
 
         RedrawStickyNotePopups();
     }
+    private int _thumbnailGeneration;
+
     private async Task RenderThumbnailsAsync()
     {
-        for (var i = 0; i < _document.PageCount; i++)
+        var generation = ++_thumbnailGeneration;
+        var count = _document.PageCount;
+        if (count <= 0)
         {
+            return;
+        }
+
+        // Prefer pages near the current view so the sidebar fills usefully first (F57-04).
+        var ordered = Enumerable.Range(0, count)
+            .OrderBy(i => Math.Abs(i - CurrentPageIndex))
+            .ThenBy(i => i)
+            .ToList();
+
+        foreach (var i in ordered)
+        {
+            if (generation != _thumbnailGeneration)
+            {
+                return;
+            }
+
             try
             {
                 await RenderThumbnailAsync(i);
@@ -10764,6 +10784,9 @@ public sealed class PdfDocumentView : UserControl
             {
                 // Thumbnail failures must not break viewing.
             }
+
+            // Yield so page renders and input stay responsive on large docs.
+            await Task.Yield();
         }
     }
 

@@ -18,7 +18,7 @@
             </StackPanel>
         </Grid>
 
-        <MenuBar Grid.Row="1" Margin="8,0,8,4">
+        <MenuBar Grid.Row="1" Margin="8,0,8,4" TabIndex="1" XYFocusKeyboardNavigation="Enabled">
             <MenuBarItem Title="File">
                 <MenuFlyoutItem x:Name="OpenMenuItem" Text="Open…" Click="OpenMenuItem_Click">
                     <MenuFlyoutItem.KeyboardAccelerators>

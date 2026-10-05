@@ -795,9 +795,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F56-02 | Accessibility | Keyboard-accessible controls. | M9 | In Progress | Menus/accelerators; document tools keyboard paths |
 | F56-03 | Accessibility | Visible focus indicators. | M9 | In Progress | WinUI default focus visuals |
 | F56-04 | Accessibility | Screen-reader labels. | M9 | Implemented | Toolbar/search/annot/signature controls mirror ToolTips as Name |
-| F56-05 | Accessibility | High-contrast mode. | M9 | Not Started |  |
-| F56-06 | Accessibility | Windows text scaling. | M9 | Not Started |  |
-| F56-07 | Accessibility | Logical tab order. | M9 | Not Started |  |
+| F56-05 | Accessibility | High-contrast mode. | M9 | Implemented | WinUI ThemeResources follow system high-contrast |
+| F56-06 | Accessibility | Windows text scaling. | M9 | Implemented | WinUI layout scales with system text size / XamlRoot |
+| F56-07 | Accessibility | Logical tab order. | M9 | In Progress | Menus + document IsTabStop; toolbar TabIndex polish open |
 | F56-08 | Accessibility | Descriptive names for toolbar icons. | M9 | Implemented | PDF/image toolbars set AutomationProperties.Name |
 | F56-09 | Accessibility | Custom description/alt text for images where PDF/image format supports it. | M9 | Implemented | IPTC/EXIF description → AutomationProperties.Name on image |
 | F56-10 | Accessibility | Signature descriptions. | M9 | Implemented | Library Description + stamp `/Contents` for a11y |
@@ -805,7 +805,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F57-01 | Performance behavior | very fast startup | M2+/M9 | Not Started |  |
 | F57-02 | Performance behavior | fast first-page PDF display | M2+/M9 | Not Started |  |
 | F57-03 | Performance behavior | render visible pages before off-screen pages | M2+/M9 | In Progress | Visible-page biased render + LRU cache |
-| F57-04 | Performance behavior | asynchronous thumbnail generation | M2+/M9 | Not Started |  |
+| F57-04 | Performance behavior | asynchronous thumbnail generation | M2+/M9 | Implemented | Async render; near-current pages first; Yield between thumbs |
 | F57-05 | Performance behavior | background text indexing | M2+/M9 | Not Started |  |
 | F57-06 | Performance behavior | lazy OCR | M2+/M9 | Not Started |  |
 | F57-07 | Performance behavior | GPU acceleration where appropriate | M2+/M9 | Not Started |  |
