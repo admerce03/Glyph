@@ -37,6 +37,9 @@ public sealed class AppSettings
     /// <summary>When true, document toolbars use tighter padding (F02-04 / F54-20).</summary>
     public bool CompactToolbar { get; set; }
 
+    /// <summary>When true, document toolbars are visible (F02-05). Persisted like sidebar.</summary>
+    public bool ToolbarVisible { get; set; } = true;
+
     /// <summary>
     /// Toolbar command ids to hide (F54). Empty = default toolbar (all catalog commands visible).
     /// </summary>

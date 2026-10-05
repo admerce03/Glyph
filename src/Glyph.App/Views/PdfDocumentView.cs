@@ -1091,6 +1091,7 @@ public sealed class PdfDocumentView : UserControl
         ToolbarCommandApplicator.Tag(_ocrEntitiesButton, ToolbarCommands.Ocr);
         _toolbarDefaults = _toolbar.Children.Cast<UIElement>().ToList();
         ToolbarCommandApplicator.Apply(_toolbar, settings, _toolbarDefaults);
+        SetToolbarVisible(settings?.ToolbarVisible != false);
 
         var body = new Grid
         {
@@ -13005,20 +13006,29 @@ public sealed class PdfDocumentView : UserControl
 
     public void ToggleToolbarVisibility()
     {
+        SetToolbarVisible(!IsToolbarVisible);
+        _status.Text = IsToolbarVisible ? AnnotationMutationStatus.ToolbarShown : AnnotationMutationStatus.ToolbarHidden;
+    }
+
+    public void SetToolbarVisible(bool visible)
+    {
         if (_toolbar is null)
         {
             return;
         }
 
-        _toolbar.Visibility = _toolbar.Visibility == Visibility.Visible
-            ? Visibility.Collapsed
-            : Visibility.Visible;
-        _status.Text = _toolbar.Visibility == Visibility.Visible ? AnnotationMutationStatus.ToolbarShown : AnnotationMutationStatus.ToolbarHidden;
+        _toolbar.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>Re-apply F54 hide/reorder (+ compact spacing) from Preferences without reopening.</summary>
-    public void ApplyToolbarCustomization(AppSettings? settings) =>
+    public void ApplyToolbarCustomization(AppSettings? settings)
+    {
         ToolbarCommandApplicator.Apply(_toolbar, settings, _toolbarDefaults);
+        if (settings is not null)
+        {
+            SetToolbarVisible(settings.ToolbarVisible);
+        }
+    }
 
     public bool IsToolbarVisible => _toolbar?.Visibility != Visibility.Collapsed;
 

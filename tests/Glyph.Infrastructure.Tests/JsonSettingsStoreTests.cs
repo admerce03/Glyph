@@ -289,12 +289,14 @@ public class JsonSettingsStoreTests
             await store.SaveAsync(new AppSettings
             {
                 SidebarVisible = false,
+                ToolbarVisible = false,
                 SidebarWidth = 240,
                 ThumbnailWidth = 120,
             });
 
             var settings = await new JsonSettingsStore(path).LoadAsync();
             settings.SidebarVisible.Should().BeFalse();
+            settings.ToolbarVisible.Should().BeFalse();
             settings.SidebarWidth.Should().Be(240);
             settings.ThumbnailWidth.Should().Be(120);
         }

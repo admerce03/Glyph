@@ -37,9 +37,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-27 | Application and file handling | Do not silently overwrite originals by default. | M1/M9 | Tested | Autosave-to-original opt-in off by default (prefs default unit test) |
 | F02-01 | Main window and interface | Standard Windows title bar. | M1/M9 | Tested | WinUI AppWindow system title bar; `SystemTitleBarPolicy` unit tests |
 | F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | Tested | MenuBar File/Edit/View/Window; `ShellMenuCatalog` unit tests |
-| F02-03 | Main window and interface | Customizable toolbar. | M1/M9 | Tested | ToolbarCommands catalog + hide/reorder prefs (`ToolbarOrderPolicy`) |
-| F02-04 | Main window and interface | Optional compact toolbar. | M1/M9 | Tested | `CompactToolbar` prefs round-trip unit test |
-| F02-05 | Main window and interface | Hide/show toolbar. | M1/M9 | Tested | View → Hide/Show Toolbar; `ToolbarVisibilityLabel` unit tests |
+| F02-03 | Main window and interface | Customizable toolbar. | M1/M9 | Tested | ToolbarCommands catalog + hide/reorder prefs + live apply (`ToolbarOrderPolicy`) |
+| F02-04 | Main window and interface | Optional compact toolbar. | M1/M9 | Tested | `CompactToolbar` prefs; live-applied with F54 |
+| F02-05 | Main window and interface | Hide/show toolbar. | M1/M9 | Tested | View → Hide/Show Toolbar; `ToolbarVisible` prefs round-trip + open-doc apply |
 | F02-06 | Main window and interface | Hide/show sidebar. | M1/M9 | Tested | View → Hide/Show Sidebar; `SidebarVisible` prefs round-trip |
 | F02-07 | Main window and interface | Resizable sidebar. | M1/M9 | Tested | Drag splitter; `SidebarWidth` clamp + prefs unit tests |
 | F02-08 | Main window and interface | Resizable document area. | M1/M9 | Tested | Content pane `*` column; `DocumentAreaLayout` XAML unit test |
