@@ -149,7 +149,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F07-11 | PDF text interaction | Rectangular selection for copying a region as an image. | M2/M6 | Not Started |  |
 | F07-12 | PDF text interaction | Copy selected PDF region to clipboard as bitmap. | M2/M6 | Not Started |  |
 | F07-13 | PDF text interaction | Drag selected text where supported. | M2/M6 | Not Started |  |
-| F08-01 | OCR / Live Text equivalent | Detect text automatically or on demand. | M6 | Not Started |  |
+| F08-01 | OCR / Live Text equivalent | Detect text automatically or on demand. | M6 | Implemented | OCR toolbar on image/PDF |
 | F08-02 | OCR / Live Text equivalent | Select detected text directly over the image. | M6 | Not Started |  |
 | F08-03 | OCR / Live Text equivalent | Copy text. | M6 | Not Started |  |
 | F08-04 | OCR / Live Text equivalent | Copy all recognized text. | M6 | Not Started |  |
