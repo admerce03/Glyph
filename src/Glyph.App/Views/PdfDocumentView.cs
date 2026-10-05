@@ -7330,6 +7330,11 @@ public sealed class PdfDocumentView : UserControl
             ? _annotationItems[primaryIndex]
             : _selectedAnnots[^1];
         DrawAnnotSelection(_selectedAnnot);
+        if (_selectedAnnot.IsStickyNote)
+        {
+            ExpandStickyNote(_selectedAnnot);
+        }
+
         await GoToPageAsync(_selectedAnnot.PageIndex, recordHistory: true);
         _status.Text = _selectedAnnots.Count == 1
             ? $"Jumped to {FormatAnnotationLabel(_selectedAnnot)}."
@@ -9215,6 +9220,13 @@ public sealed class PdfDocumentView : UserControl
         {
             DrawFormOverlays();
         }
+
+        if (_selectedAnnot is not null)
+        {
+            DrawAnnotSelection(_selectedAnnot);
+        }
+
+        RedrawStickyNotePopups();
     }
     private async Task RenderThumbnailsAsync()
     {
