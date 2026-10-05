@@ -37,6 +37,7 @@ public sealed class ImageDocumentView : UserControl
     private readonly Button _applyCropButton;
     private readonly Button _cancelCropButton;
     private readonly Button _copyOcrButton;
+    private readonly Button _ocrEntitiesButton;
     private readonly Button _clearOcrButton;
     private IReadOnlyList<string> _siblings = Array.Empty<string>();
     private double _zoom = 1.0;
@@ -134,6 +135,7 @@ public sealed class ImageDocumentView : UserControl
         var meta = new Button { Content = "Meta" };
         var ocrButton = new Button { Content = "OCR" };
         _copyOcrButton = new Button { Content = "Copy OCR", Visibility = Visibility.Collapsed };
+        _ocrEntitiesButton = new Button { Content = "Entities", Visibility = Visibility.Collapsed };
         _clearOcrButton = new Button { Content = "Clear OCR", Visibility = Visibility.Collapsed };
         var rotate180 = new Button { Content = "180°" };
         var orient = new Button { Content = "Orient" };
@@ -152,6 +154,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(meta, "Image metadata, EXIF, and GPS");
         ToolTipService.SetToolTip(ocrButton, "Run offline OCR and select text over the image");
         ToolTipService.SetToolTip(_copyOcrButton, "Copy selected OCR words (or all recognized text)");
+        ToolTipService.SetToolTip(_ocrEntitiesButton, "Review detected URLs, emails, phones, dates, and times");
         ToolTipService.SetToolTip(_clearOcrButton, "Hide OCR word overlays");
         ToolTipService.SetToolTip(rotate180, "Rotate 180°");
         ToolTipService.SetToolTip(orient, "Apply EXIF orientation into pixels");
@@ -182,6 +185,7 @@ public sealed class ImageDocumentView : UserControl
         meta.Click += async (_, _) => await ShowMetadataAsync();
         ocrButton.Click += async (_, _) => await RunOcrAsync();
         _copyOcrButton.Click += (_, _) => CopySelectedOcrText();
+        _ocrEntitiesButton.Click += async (_, _) => await ShowOcrEntitiesAsync();
         _clearOcrButton.Click += (_, _) => ClearOcrOverlay();
         save.Click += async (_, _) => await SaveAsync();
         exportPng.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Png, ".png");
@@ -203,7 +207,7 @@ public sealed class ImageDocumentView : UserControl
             Children =
             {
                 _prevButton, _nextButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
-                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, _copyOcrButton, _clearOcrButton, save, exportPng, exportJpeg, convert, _status,
+                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, _copyOcrButton, _ocrEntitiesButton, _clearOcrButton, save, exportPng, exportJpeg, convert, _status,
             },
         };
 
@@ -995,6 +999,7 @@ public sealed class ImageDocumentView : UserControl
         {
             _ocrOverlay.IsHitTestVisible = false;
             _copyOcrButton.Visibility = Visibility.Collapsed;
+            _ocrEntitiesButton.Visibility = Visibility.Collapsed;
             _clearOcrButton.Visibility = Visibility.Collapsed;
             return;
         }
@@ -1039,6 +1044,7 @@ public sealed class ImageDocumentView : UserControl
         var hasWords = _ocrVisuals.Count > 0;
         _ocrOverlay.IsHitTestVisible = hasWords && !_cropMode;
         _copyOcrButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
+        _ocrEntitiesButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
         _clearOcrButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -1123,6 +1129,123 @@ public sealed class ImageDocumentView : UserControl
         _status.Text = _selectedOcrIndices.Count == 0
             ? "All OCR text copied."
             : $"Copied {_selectedOcrIndices.Count} OCR word(s).";
+    }
+
+    private async Task ShowOcrEntitiesAsync()
+    {
+        if (_ocrResult is null)
+        {
+            _status.Text = "Run OCR first.";
+            return;
+        }
+
+        var entities = OcrEntityDetector.Detect(_ocrResult.Text);
+        if (entities.Count == 0)
+        {
+            _status.Text = "No URLs, emails, phones, dates, or times detected.";
+            return;
+        }
+
+        var list = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            Width = 440,
+            MaxHeight = 320,
+            ItemsSource = entities
+                .Select(e => $"{e.Kind}: {e.Value}")
+                .ToList(),
+        };
+
+        var copy = new Button { Content = "Copy value", Margin = new Thickness(0, 8, 8, 0) };
+        var open = new Button { Content = "Open / mail", Margin = new Thickness(0, 8, 0, 0) };
+        copy.Click += (_, _) =>
+        {
+            if (list.SelectedIndex < 0 || list.SelectedIndex >= entities.Count)
+            {
+                return;
+            }
+
+            var entity = entities[list.SelectedIndex];
+            var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            package.SetText(entity.Value);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+            _status.Text = $"Copied {entity.Kind}.";
+        };
+        open.Click += async (_, _) =>
+        {
+            if (list.SelectedIndex < 0 || list.SelectedIndex >= entities.Count)
+            {
+                return;
+            }
+
+            await ActOnOcrEntityAsync(entities[list.SelectedIndex]);
+        };
+
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = $"{entities.Count} entity(ies) in OCR text",
+                    Opacity = 0.75,
+                },
+                list,
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Children = { copy, open },
+                },
+            },
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = "OCR entities",
+            Content = panel,
+            CloseButtonText = "Close",
+            XamlRoot = XamlRoot,
+        };
+        await dialog.ShowAsync();
+    }
+
+    private async Task ActOnOcrEntityAsync(OcrEntity entity)
+    {
+        try
+        {
+            switch (entity.Kind)
+            {
+                case OcrEntityKind.Url:
+                {
+                    var href = entity.Value.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                        ? entity.Value
+                        : "https://" + entity.Value;
+                    await Windows.System.Launcher.LaunchUriAsync(new Uri(href));
+                    _status.Text = "Opened URL.";
+                    break;
+                }
+                case OcrEntityKind.Email:
+                    await Windows.System.Launcher.LaunchUriAsync(new Uri("mailto:" + entity.Value));
+                    _status.Text = "Opened mail compose.";
+                    break;
+                case OcrEntityKind.Phone:
+                case OcrEntityKind.Date:
+                case OcrEntityKind.Time:
+                default:
+                {
+                    var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                    package.SetText(entity.Value);
+                    Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+                    _status.Text = $"Copied {entity.Kind}.";
+                    break;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Entity action failed: " + ex.Message;
+        }
     }
 
     private void ClearOcrOverlay()

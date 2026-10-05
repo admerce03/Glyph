@@ -251,14 +251,14 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 - `IOcrEngine` / `OcrRequest` / `OcrResult` abstractions in `Glyph.Ocr`
 - `WindowsOcrEngine` (Windows.Media.Ocr) registered in App DI; **OCR** toolbar on `ImageDocumentView` with Live Text word-box overlay (click/Ctrl+click select + Copy OCR)
-- `UnsupportedOcrEngine` + Fake engine + overlay mapper coverage in `Glyph.Ocr.Tests` (Linux)
+- `UnsupportedOcrEngine` + Fake engine + overlay mapper + entity detector coverage in `Glyph.Ocr.Tests` (Linux)
 - PDF **OCR** current/selected/entire document on `PdfDocumentView` (chooser → render → BGRA → engine + result dialog)
 - **Cancel OCR** + `n/m` status progress for multi-page PDF recognition
 - Document **Find** merges session OCR page text (`PdfPageTextSearch`) when OCR has been run
 - Find on image-only PDFs offers OCR-current-page fallback; **Find sel** searches the text selection
 - PDF **Live Text** word-box overlay after OCR (click/Ctrl+click select + **Copy OCR**)
 - **OCR→PDF** exports OCR'd pages as a searchable PDF (image + invisible text via `OcrSearchablePdfWriter`)
-- **Entities** dialog on PDF OCR text (URL/email/phone/address/date/time + maps/calendar/search web)
+- **Entities** dialog on PDF + image OCR text (URL/email/phone/address/date/time + maps/calendar/search web)
 - Right-click selected text → Copy / Find selection / Search web / Copy region as image
 - Multi-line drag selects across lines in reading order; Alt/wide drag keeps column rect selection
 - Drag selected text out of the page (OLE/text drag) when a selection exists
