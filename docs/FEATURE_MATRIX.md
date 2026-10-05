@@ -10,7 +10,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | --- | --- | --- | --- | --- | --- |
 | F01-01 | Application and file handling | Open files through: | M1/M9 | In Progress | Open / Open Multiple / drag-drop in shell |
 | F01-02 | Application and file handling | Open multiple files simultaneously. | M1/M9 | In Progress | Multi-tab + multi-select open |
-| F01-03 | Application and file handling | Open multiple files: | M1/M9 | Not Started |  |
+| F01-03 | Application and file handling | Open multiple files: | M1/M9 | Implemented | Tabs by default; Preferences → separate windows |
+| F01-14 | Application and file handling | File → New from Clipboard. | M1/M9 | Implemented | Menu + Ctrl+Shift+N; clipboard → temp PNG image tab |
 | F01-04 | Application and file handling | Reopen recently used files. | M1/M9 | Tested | JsonRecentFilesStore covered by unit tests |
 | F01-05 | Application and file handling | Restore previously open tabs/windows after restart, optionally. | M1/M9 | Implemented | `JsonSessionStore` + Preferences toggle; restores tabs on startup |
 | F01-06 | Application and file handling | Native Windows file associations. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |

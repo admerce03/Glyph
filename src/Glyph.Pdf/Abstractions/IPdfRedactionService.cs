@@ -13,6 +13,9 @@ public interface IPdfRedactionService
 
     bool RemovePending(IPdfDocument document, Guid redactionId);
 
+    /// <summary>Undo the most recently added pending mark (F49-13).</summary>
+    PdfPendingRedaction? UndoLastPending(IPdfDocument document);
+
     void ClearPending(IPdfDocument document);
 
     Task<PdfRedactionApplyResult> ApplyAsync(

@@ -19,6 +19,9 @@ public sealed class AppSettings
     /// <summary>Sidebar width in DIPs when visible (F02-07).</summary>
     public double SidebarWidth { get; set; } = 220;
 
+    /// <summary>When true, each File → Open path opens in a new window (F01-03).</summary>
+    public bool OpenFilesInSeparateWindows { get; set; }
+
     /// <summary>When true, each successful Save keeps a local version snapshot (F51).</summary>
     public bool VersionSnapshotsEnabled { get; set; }
 

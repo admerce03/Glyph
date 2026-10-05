@@ -37,6 +37,35 @@ public class PdfiumRedactionServiceTests
     }
 
     [Fact]
+    public async Task Undo_last_pending_removes_most_recent_mark()
+    {
+        var path = CreateTextPdf("Secret data here");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var redaction = new PdfiumRedactionService();
+            await using var document = await factory.OpenAsync(path);
+
+            var first = redaction.MarkRectangle(document, 0, new PdfRect(50, 700, 100, 740), "a");
+            var second = redaction.MarkTextRegion(document, 0, new PdfRect(120, 700, 200, 740), "b");
+            redaction.GetPending(document).Should().HaveCount(2);
+
+            var undone = redaction.UndoLastPending(document);
+            undone.Should().NotBeNull();
+            undone!.Id.Should().Be(second.Id);
+            redaction.GetPending(document).Should().ContainSingle(m => m.Id == first.Id);
+
+            redaction.UndoLastPending(document)!.Id.Should().Be(first.Id);
+            redaction.GetPending(document).Should().BeEmpty();
+            redaction.UndoLastPending(document).Should().BeNull();
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Mark_text_regions_for_each_search_hit_then_apply()
     {
         var path = CreateTextPdf("alpha SECRET beta SECRET gamma");

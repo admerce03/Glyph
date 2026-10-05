@@ -1440,6 +1440,17 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
+            // Prefer a new window when configured and this window already has tabs (F01-03).
+            if (_settingsStore.Current.OpenFilesInSeparateWindows
+                && _workspace.Documents.Count > 0
+                && _workspace.FindByPath(path) is null)
+            {
+                var window = App.CurrentApp.OpenNewWindow();
+                await window.OpenDocumentPathAsync(path);
+                StatusText.Text = "Opened in a new window: " + System.IO.Path.GetFileName(path);
+                return;
+            }
+
             var kind = FileFormatDetector.DetectKind(path);
             var displayName = System.IO.Path.GetFileName(path);
             var existing = _workspace.FindByPath(path);
@@ -2377,11 +2388,16 @@ public sealed partial class MainWindow : Window
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
             Width = 280,
         };
+        var separateWindowsBox = new CheckBox
+        {
+            Content = "Open each file in a separate window",
+            IsChecked = settings.OpenFilesInSeparateWindows,
+        };
 
         var panel = new StackPanel
         {
             Spacing = 12,
-            Children = { restoreBox, autoSaveBox, intervalBox, recentBox, snapshotsBox, snapshotCapBox },
+            Children = { restoreBox, autoSaveBox, intervalBox, recentBox, snapshotsBox, snapshotCapBox, separateWindowsBox },
         };
         var dialog = new ContentDialog
         {
@@ -2403,6 +2419,7 @@ public sealed partial class MainWindow : Window
         settings.RecentFileCapacity = (int)Math.Clamp(recentBox.Value, 1, 100);
         settings.VersionSnapshotsEnabled = snapshotsBox.IsChecked == true;
         settings.VersionSnapshotCapacity = (int)Math.Clamp(snapshotCapBox.Value, 1, 50);
+        settings.OpenFilesInSeparateWindows = separateWindowsBox.IsChecked == true;
         await _settingsStore.SaveAsync(settings);
         ConfigureRecoveryTimer();
         await PersistSessionAsync();

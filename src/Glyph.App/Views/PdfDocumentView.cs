@@ -751,17 +751,7 @@ public sealed class PdfDocumentView : UserControl
         bubble.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.SpeechBubble);
         loupe.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Loupe);
         fullscreen.Click += (_, _) => ToggleFullscreen();
-        undoEdit.Click += async (_, _) =>
-        {
-            if (_strokeUndoStack.Count > 0)
-            {
-                await UndoLastStrokeAsync();
-            }
-            else
-            {
-                await UndoPageEditAsync();
-            }
-        };
+        undoEdit.Click += async (_, _) => await UndoMostRecentAsync();
         redoEdit.Click += async (_, _) => await RedoPageEditAsync();
 
         _toolbar = new StackPanel
@@ -1588,15 +1578,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (ctrlDown && e.Key == VirtualKey.Z)
         {
-            if (_strokeUndoStack.Count > 0)
-            {
-                await UndoLastStrokeAsync();
-            }
-            else
-            {
-                await UndoPageEditAsync();
-            }
-
+            await UndoMostRecentAsync();
             e.Handled = true;
             return;
         }
@@ -9536,6 +9518,32 @@ public sealed class PdfDocumentView : UserControl
         {
             return HasUnsavedEdits;
         }
+    }
+
+    private async Task UndoMostRecentAsync()
+    {
+        // Prefer pending redaction undo (F49-13), then stroke, then page-edit history.
+        if (_redaction.GetPending(_document).Count > 0)
+        {
+            var removed = _redaction.UndoLastPending(_document);
+            if (removed is not null)
+            {
+                RefreshPendingRedactionOverlay(removed.PageIndex);
+                var remaining = _redaction.GetPending(_document).Count;
+                _status.Text = remaining == 0
+                    ? "Undid pending redaction mark."
+                    : $"Undid pending redaction ({remaining} remaining).";
+                return;
+            }
+        }
+
+        if (_strokeUndoStack.Count > 0)
+        {
+            await UndoLastStrokeAsync();
+            return;
+        }
+
+        await UndoPageEditAsync();
     }
 
     private async Task UndoPageEditAsync()

@@ -43,6 +43,9 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
     public bool RemovePending(IPdfDocument document, Guid redactionId)
         => _store.Remove(RequirePdfium(document), redactionId);
 
+    public PdfPendingRedaction? UndoLastPending(IPdfDocument document)
+        => _store.RemoveLast(RequirePdfium(document));
+
     public void ClearPending(IPdfDocument document)
         => _store.Clear(RequirePdfium(document));
 

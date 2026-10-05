@@ -122,6 +122,7 @@ public sealed class JsonSettingsStore : ISettingsStore
         SidebarWidth = settings.SidebarWidth,
         VersionSnapshotsEnabled = settings.VersionSnapshotsEnabled,
         VersionSnapshotCapacity = settings.VersionSnapshotCapacity,
+        OpenFilesInSeparateWindows = settings.OpenFilesInSeparateWindows,
         SidebarVisible = settings.SidebarVisible,
     };
 }

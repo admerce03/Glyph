@@ -51,6 +51,26 @@ internal sealed class PdfRedactionPendingStore
         }
     }
 
+    public PdfPendingRedaction? RemoveLast(IPdfDocument document)
+    {
+        if (!_pending.TryGetValue(document, out var list))
+        {
+            return null;
+        }
+
+        lock (list)
+        {
+            if (list.Count == 0)
+            {
+                return null;
+            }
+
+            var last = list[^1];
+            list.RemoveAt(list.Count - 1);
+            return last;
+        }
+    }
+
     public void Clear(IPdfDocument document)
     {
         _pending.TryRemove(document, out _);
