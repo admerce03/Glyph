@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.Core.Documents;
 using Glyph.Core.Signatures;
+using Glyph.Imaging.Abstractions;
 using Glyph.Ocr.Abstractions;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Editing;
@@ -43,6 +44,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfRedactionService _redaction;
     private readonly IPdfDocumentInfoService _documentInfo;
     private readonly IPdfOptimizeService _optimize;
+    private readonly IImageEncoder _imageEncoder;
     private readonly ISignatureLibrary _signatures;
     private readonly IPdfFormStore _forms;
     private readonly IPdfDocumentFactory _documentFactory;
@@ -178,6 +180,7 @@ public sealed class PdfDocumentView : UserControl
         IPdfRedactionService redaction,
         IPdfDocumentInfoService documentInfo,
         IPdfOptimizeService optimize,
+        IImageEncoder imageEncoder,
         ISignatureLibrary signatures,
         IPdfFormStore forms,
         IPdfDocumentFactory documentFactory,
@@ -197,6 +200,7 @@ public sealed class PdfDocumentView : UserControl
         _redaction = redaction;
         _documentInfo = documentInfo;
         _optimize = optimize;
+        _imageEncoder = imageEncoder;
         _signatures = signatures;
         _forms = forms;
         _documentFactory = documentFactory;
@@ -403,6 +407,7 @@ public sealed class PdfDocumentView : UserControl
         var redact = new Button { Content = "Redact" };
         var info = new Button { Content = "Info" };
         var optimize = new Button { Content = "Optimize" };
+        var export = new Button { Content = "Export" };
         var sign = new Button { Content = "Sign" };
         var formFill = new Button { Content = "Form" };
         var ink = new Button { Content = "Ink" };
@@ -445,6 +450,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(redact, "Mark areas/text for redaction; apply permanently removes content");
         ToolTipService.SetToolTip(info, "Document metadata, encryption, and permissions");
         ToolTipService.SetToolTip(optimize, "Downsample images / shrink PDF (presets)");
+        ToolTipService.SetToolTip(export, "Export selected/current page(s) as PNG, JPEG, WebP, TIFF, or BMP");
         ToolTipService.SetToolTip(sign, "Signature: draw with mouse or import PNG/JPEG (saved to library)");
         ToolTipService.SetToolTip(formFill, "Form fill: overlay mode or field list (Tab order)");
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
@@ -505,6 +511,7 @@ public sealed class PdfDocumentView : UserControl
         redact.Click += async (_, _) => await OnRedactButtonClickAsync();
         info.Click += async (_, _) => await ShowDocumentInfoAsync();
         optimize.Click += async (_, _) => await ShowOptimizeDialogAsync();
+        export.Click += async (_, _) => await ExportPagesAsImagesAsync();
         sign.Click += async (_, _) => await BeginSignatureAsync();
         formFill.Click += async (_, _) => await OnFormButtonClickAsync();
         ink.Click += async (_, _) => await ToggleInkModeAsync();
@@ -527,7 +534,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, sign, formFill, ink, freeform, rect, ellipse, line, arrow,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, sign, formFill, ink, freeform, rect, ellipse, line, arrow,
                 _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -7247,6 +7254,161 @@ public sealed class PdfDocumentView : UserControl
         var encrypted = _document.IsEncrypted ? "    Encrypted" : string.Empty;
         _status.Text =
             $"Page {CurrentPageIndex + 1} / {_document.PageCount}    Zoom {(int)Math.Round(_scale * 100)}%    {_layoutMode}{encrypted}";
+    }
+
+    private async Task ExportPagesAsImagesAsync()
+    {
+        var indexes = SelectedOrCurrentPages();
+        if (indexes.Count == 0)
+        {
+            return;
+        }
+
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for export.");
+
+        var formatBox = new ComboBox
+        {
+            Width = 180,
+            SelectedIndex = 0,
+            Items = { "PNG", "JPEG", "WebP", "TIFF", "BMP" },
+        };
+        var dpiBox = new TextBox { Width = 80, Text = "144" };
+        var qualityBox = new Slider
+        {
+            Minimum = 1,
+            Maximum = 100,
+            Value = 85,
+            Width = 180,
+            Header = "JPEG/WebP quality",
+        };
+
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock { Text = $"Export {indexes.Count} page(s) as image(s)" },
+                new TextBlock { Text = "Format" },
+                formatBox,
+                new TextBlock { Text = "Render DPI" },
+                dpiBox,
+                qualityBox,
+            },
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = "Export pages",
+            Content = panel,
+            PrimaryButtonText = "Export…",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            _status.Text = "Export cancelled.";
+            return;
+        }
+
+        var formatName = formatBox.SelectedItem as string ?? "PNG";
+        var (format, extension) = formatName switch
+        {
+            "JPEG" => (ImageEncodeFormat.Jpeg, ".jpg"),
+            "WebP" => (ImageEncodeFormat.Webp, ".webp"),
+            "TIFF" => (ImageEncodeFormat.Tiff, ".tif"),
+            "BMP" => (ImageEncodeFormat.Bmp, ".bmp"),
+            _ => (ImageEncodeFormat.Png, ".png"),
+        };
+
+        if (!double.TryParse(dpiBox.Text, out var dpi) || dpi < 36 || dpi > 600)
+        {
+            dpi = 144;
+        }
+
+        var scale = dpi / 72.0;
+        ImageEncodeOptions? options = format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Webp
+            ? new ImageEncodeOptions(Quality: (int)qualityBox.Value)
+            : null;
+
+        var baseName = _document.Path is null
+            ? "page"
+            : System.IO.Path.GetFileNameWithoutExtension(_document.Path);
+
+        try
+        {
+            if (indexes.Count == 1)
+            {
+                var picker = new FileSavePicker();
+                var hwnd = WindowNative.GetWindowHandle(window);
+                InitializeWithWindow.Initialize(picker, hwnd);
+                picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
+                picker.FileTypeChoices.Add(formatName, [extension]);
+                picker.SuggestedFileName = $"{baseName}-p{indexes[0] + 1}";
+                var file = await picker.PickSaveFileAsync();
+                if (file is null)
+                {
+                    _status.Text = "Export cancelled.";
+                    return;
+                }
+
+                _status.Text = "Exporting page…";
+                await ExportPageImageAsync(indexes[0], scale, file.Path, format, options);
+                _status.Text = $"Exported page {indexes[0] + 1} to {file.Name}.";
+                return;
+            }
+
+            var folderPicker = new FolderPicker();
+            var folderHwnd = WindowNative.GetWindowHandle(window);
+            InitializeWithWindow.Initialize(folderPicker, folderHwnd);
+            folderPicker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
+            folderPicker.FileTypeFilter.Add("*");
+            var folder = await folderPicker.PickSingleFolderAsync();
+            if (folder is null)
+            {
+                _status.Text = "Export cancelled.";
+                return;
+            }
+
+            _status.Text = $"Exporting {indexes.Count} pages…";
+            var written = 0;
+            foreach (var pageIndex in indexes)
+            {
+                var name = $"{baseName}-p{pageIndex + 1}{extension}";
+                var path = System.IO.Path.Combine(folder.Path, name);
+                await ExportPageImageAsync(pageIndex, scale, path, format, options);
+                written++;
+            }
+
+            _status.Text = $"Exported {written} page image(s) to {folder.Name}.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Export failed: " + ex.Message;
+        }
+    }
+
+    private async Task ExportPageImageAsync(
+        int pageIndex,
+        double scale,
+        string path,
+        ImageEncodeFormat format,
+        ImageEncodeOptions? options)
+    {
+        using var rendered = await _renderer.RenderPageAsync(
+            _document,
+            pageIndex,
+            new PdfRenderRequest(scale));
+        await _imageEncoder.WriteBgraAsync(
+            rendered.Pixels.ToArray(),
+            rendered.Width,
+            rendered.Height,
+            path,
+            format,
+            options);
     }
 
     private async Task ShowOptimizeDialogAsync()

@@ -10,6 +10,18 @@ public interface IImageEncoder
         ImageEncodeFormat format,
         ImageEncodeOptions? options = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Encode tightly packed BGRA32 pixels (e.g. PDF page renders) to an image file.
+    /// </summary>
+    Task WriteBgraAsync(
+        ReadOnlyMemory<byte> bgra,
+        int width,
+        int height,
+        string path,
+        ImageEncodeFormat format,
+        ImageEncodeOptions? options = null,
+        CancellationToken cancellationToken = default);
 }
 
 public enum ImageEncodeFormat

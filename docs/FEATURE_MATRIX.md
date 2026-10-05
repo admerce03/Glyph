@@ -658,11 +658,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F44-21 | Printing | print notes optionally | M8 | Not Started |  |
 | F44-22 | Printing | grayscale | M8 | Not Started |  |
 | F44-23 | Printing | Windows printer properties integration | M8 | Not Started |  |
-| F45-01 | Exporting | output format | M5-M9 | Not Started |  |
-| F45-02 | Exporting | destination | M5-M9 | Not Started |  |
-| F45-03 | Exporting | quality | M5-M9 | Not Started |  |
+| F45-01 | Exporting | output format | M5-M9 | Implemented | PDF Export → PNG/JPEG/WebP/TIFF/BMP; image Convert/Export |
+| F45-02 | Exporting | destination | M5-M9 | Implemented | FileSavePicker / FolderPicker for multi-page |
+| F45-03 | Exporting | quality | M5-M9 | Implemented | JPEG/WebP quality slider on PDF Export + image JPEG export |
 | F45-04 | Exporting | compression | M5-M9 | Not Started |  |
-| F45-05 | Exporting | dimensions | M5-M9 | Not Started |  |
+| F45-05 | Exporting | dimensions | M5-M9 | Implemented | PDF Export render DPI control |
 | F45-06 | Exporting | metadata preservation | M5-M9 | Not Started |  |
 | F45-07 | Exporting | color profile | M5-M9 | Not Started |  |
 | F45-08 | Exporting | transparency | M5-M9 | Not Started |  |
@@ -847,12 +847,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F61-05 | Non-destructive editing where practical | signatures | M3-M5 | Not Started |  |
 | F61-06 | Non-destructive editing where practical | shapes | M3-M5 | Not Started |  |
 | F61-07 | Non-destructive editing where practical | text | M3-M5 | Not Started |  |
-| F62-01 | Supported output formats | PDF | M5/M7 | Not Started |  |
-| F62-02 | Supported output formats | PNG | M5/M7 | Not Started |  |
-| F62-03 | Supported output formats | JPEG | M5/M7 | Not Started |  |
-| F62-04 | Supported output formats | WebP | M5/M7 | Not Started |  |
-| F62-05 | Supported output formats | TIFF | M5/M7 | Not Started |  |
-| F62-06 | Supported output formats | BMP | M5/M7 | Not Started |  |
+| F62-01 | Supported output formats | PDF | M5/M7 | Implemented | Save / Extract / OCR→PDF / cropped export |
+| F62-02 | Supported output formats | PNG | M5/M7 | Tested | Image export + PDF page Export (`WriteBgraAsync`) |
+| F62-03 | Supported output formats | JPEG | M5/M7 | Tested | Image JPEG quality export + PDF page Export |
+| F62-04 | Supported output formats | WebP | M5/M7 | Tested | Image Convert + PDF page Export |
+| F62-05 | Supported output formats | TIFF | M5/M7 | Tested | Image Convert + PDF page Export |
+| F62-06 | Supported output formats | BMP | M5/M7 | Tested | Image Convert + PDF page Export |
 | F62-07 | Supported output formats | HEIF/HEIC | M5/M7 | Not Started |  |
 | F62-08 | Supported output formats | AVIF | M5/M7 | Not Started |  |
 | F62-09 | Supported output formats | GIF | M5/M7 | Not Started |  |

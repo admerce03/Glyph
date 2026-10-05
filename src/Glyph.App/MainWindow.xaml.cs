@@ -629,6 +629,7 @@ public sealed partial class MainWindow : Window
                 _pdfRedaction,
                 _pdfInfo,
                 _pdfOptimize,
+                _imageEncoder,
                 _signatures,
                 _pdfForms,
                 _pdfFactory,
