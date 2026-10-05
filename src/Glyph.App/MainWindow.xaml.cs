@@ -29,7 +29,6 @@ using Windows.Graphics;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
-using Windows.System;
 using WinRT.Interop;
 
 namespace Glyph.App;
