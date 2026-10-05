@@ -92,10 +92,10 @@ Key abstractions:
 - `IPdfPage` (size, rotation, boxes, text runs, links)
 - `IPdfRenderer` (page → bitmap tile/surface at a scale)
 - `IPdfPageEditor` (insert/delete/reorder/rotate/extract/merge/split)
-- `IPdfAnnotationStore`
+- `IPdfAnnotationService`
 - `IPdfFormStore`
-- `IPdfSecurityService`
-- `IPdfExportService`
+- `IPdfSecurityService` (write-protect blocked on ADR-015; `BlockedPdfSecurityService`)
+- `IPdfExportService` (page → image; app host implements with Magick/WIC)
 
 ### 4.4 Imaging subsystem (`Glyph.Imaging`)
 
@@ -106,13 +106,12 @@ Primary stack:
 
 ImageSharp is intentionally **not** a default dependency because of its split commercial license.
 
-Abstractions as:
+Abstracted as:
 
-- `IImageDocument`
+- `IImageDocument` (includes `GetMetadataAsync` for EXIF/IPTC/GPS)
 - `IImageDecoder` / `IImageEncoder`
-- `IImageProcessor` (crop/resize/rotate/flip/adjust)
-- `IImageMetadataService`
-- `IImageMarkupLayer`
+- `IImageProcessor` (crop/resize/rotate/flip/adjust + `FlattenMarkupAsync`)
+- `ImageMarkupLayer` (strokes/shapes baked via processor)
 
 ### 4.5 OCR subsystem (`Glyph.Ocr`)
 

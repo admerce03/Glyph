@@ -659,12 +659,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F44-21 | Printing | print notes optionally | M8 | Tested | Print → Append notes; `PrintNotesUi.IncludeCheckbox` |
 | F44-22 | Printing | grayscale | M8 | Tested | Print dialog Grayscale (`ImagePixelOps`) |
 | F44-23 | Printing | Windows printer properties integration | M8 | Tested | PrintManager / PrintTask; `PrintSystemCapabilities` |
-| F45-01 | Exporting | output format | M5-M9 | Tested | PDF Export formats; `DocumentExportFormats.PageImageFormatNames` |
-| F45-02 | Exporting | destination | M5-M9 | Tested | FileSavePicker / FolderPicker; `DocumentExportFormats` export dialog |
-| F45-03 | Exporting | quality | M5-M9 | Tested | JPEG/WebP/AVIF quality; `DocumentExportFormats.ClampQuality` |
+| F45-01 | Exporting | output format | M5-M9 | Tested | PDF Export formats; `IPdfExportService` + `DocumentExportFormats.PageImageFormatNames` |
+| F45-02 | Exporting | destination | M5-M9 | Tested | FileSavePicker / FolderPicker; `IPdfExportService` |
+| F45-03 | Exporting | quality | M5-M9 | Tested | JPEG/WebP/AVIF quality; `PdfPageImageExportOptions.Quality` / `DocumentExportFormats.ClampQuality` |
 | F45-04 | Exporting | compression | M5-M9 | Tested | WebP lossless; `DocumentExportFormats.SupportsLosslessCompression` |
-| F45-05 | Exporting | dimensions | M5-M9 | Tested | PDF Export render DPI; `DocumentExportFormats.ParseDpi` |
-| F45-06 | Exporting | metadata preservation | M5-M9 | Tested | PDF Info Title/Author → image Title/Artist on page export |
+| F45-05 | Exporting | dimensions | M5-M9 | Tested | PDF Export render DPI; `PdfPageImageExportOptions.Dpi` / `DocumentExportFormats.ParseDpi` |
+| F45-06 | Exporting | metadata preservation | M5-M9 | Tested | PDF Info Title/Author → `PdfPageImageExportOptions` Title/Author on page export |
 | F45-07 | Exporting | color profile | M5-M9 | Tested | PDF page Export embeds sRGB ICC (`EmbedSrgbProfile`; PNG `preserve-iCCP`); JP2 may drop profile |
 | F45-08 | Exporting | transparency | M5-M9 | Tested | `DocumentExportFormats.FlattensTransparency` (JPEG/JP2/BMP/GIF) |
 | F45-09 | Exporting | PDF security | M5-M9 | Blocked | ADR-015; `PdfPasswordWriteBlockedPolicy` |
