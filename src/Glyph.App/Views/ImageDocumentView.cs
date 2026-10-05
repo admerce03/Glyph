@@ -3334,20 +3334,8 @@ public sealed class ImageDocumentView : UserControl
             {
                 ct.ThrowIfCancellationRequested();
                 await using var doc = await _decoder.OpenAsync(sibling, ct);
-                var ext = System.IO.Path.GetExtension(sibling);
-                var format = ext.ToLowerInvariant() switch
-                {
-                    ".jpg" or ".jpeg" => ImageEncodeFormat.Jpeg,
-                    ".webp" => ImageEncodeFormat.Webp,
-                    ".tif" or ".tiff" => ImageEncodeFormat.Tiff,
-                    ".bmp" => ImageEncodeFormat.Bmp,
-                    ".gif" => ImageEncodeFormat.Gif,
-                    ".avif" => ImageEncodeFormat.Avif,
-                    ".jp2" or ".j2k" => ImageEncodeFormat.Jpeg2000,
-                    ".heic" or ".heif" => ImageEncodeFormat.Heic,
-                    _ => ImageEncodeFormat.Png,
-                };
-                var temp = sibling + ".glyph-strip-tmp" + ext;
+                var format = ImageEncodeFormatResolver.FromExtension(System.IO.Path.GetExtension(sibling));
+                var temp = sibling + ".glyph-strip-tmp" + System.IO.Path.GetExtension(sibling);
                 await _encoder.SaveAsAsync(
                     doc,
                     temp,
@@ -4649,38 +4637,8 @@ public sealed class ImageDocumentView : UserControl
         }
     }
 
-    private static (ImageEncodeFormat Format, string Extension) GuessSaveFormat(string formatName)
-    {
-        var name = formatName ?? string.Empty;
-        if (name.Contains("Jpeg", StringComparison.OrdinalIgnoreCase)
-            || name.Contains("Jpg", StringComparison.OrdinalIgnoreCase))
-        {
-            return (ImageEncodeFormat.Jpeg, ".jpg");
-        }
-
-        if (name.Contains("WebP", StringComparison.OrdinalIgnoreCase)
-            || name.Contains("Webp", StringComparison.OrdinalIgnoreCase))
-        {
-            return (ImageEncodeFormat.Webp, ".webp");
-        }
-
-        if (name.Contains("Tif", StringComparison.OrdinalIgnoreCase))
-        {
-            return (ImageEncodeFormat.Tiff, ".tiff");
-        }
-
-        if (name.Contains("Bmp", StringComparison.OrdinalIgnoreCase))
-        {
-            return (ImageEncodeFormat.Bmp, ".bmp");
-        }
-
-        if (name.Contains("Gif", StringComparison.OrdinalIgnoreCase))
-        {
-            return (ImageEncodeFormat.Gif, ".gif");
-        }
-
-        return (ImageEncodeFormat.Png, ".png");
-    }
+    private static (ImageEncodeFormat Format, string Extension) GuessSaveFormat(string formatName) =>
+        ImageEncodeFormatResolver.FromFormatName(formatName);
 
     private async Task EditDescriptiveMetadataAsync(ImageMetadataInfo current)
     {
