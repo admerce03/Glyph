@@ -3701,21 +3701,6 @@ public sealed class ImageDocumentView : UserControl
             WhitePoint: whitePoint.Value,
             Gamma: gamma.Value);
 
-        static bool IsIdentity(ImageAdjustments a) =>
-            !a.AutoLevels
-            && !a.Sepia
-            && Math.Abs(a.Brightness) < 0.0001
-            && Math.Abs(a.Contrast) < 0.0001
-            && Math.Abs(a.Saturation) < 0.0001
-            && Math.Abs(a.Highlights) < 0.0001
-            && Math.Abs(a.Shadows) < 0.0001
-            && Math.Abs(a.BlackPoint) < 0.0001
-            && Math.Abs(a.WhitePoint - 100) < 0.0001
-            && Math.Abs(a.Gamma - 1.0) < 0.0001
-            && Math.Abs(a.Temperature) < 0.0001
-            && Math.Abs(a.Tint) < 0.0001
-            && Math.Abs(a.Sharpness) < 0.0001;
-
         IImageEditCheckpoint? baseline = null;
         var previewBusy = false;
         var previewQueued = false;
@@ -3779,7 +3764,7 @@ public sealed class ImageDocumentView : UserControl
                     var snap = baseline.Clone();
                     _document.RestoreCheckpoint(snap);
                     var adj = BuildAdjustments();
-                    if (!IsIdentity(adj))
+                    if (!adj.IsIdentity)
                     {
                         await _processor.AdjustAsync(_document, adj);
                     }
@@ -3890,7 +3875,7 @@ public sealed class ImageDocumentView : UserControl
             }
 
             var final = BuildAdjustments();
-            if (IsIdentity(final))
+            if (final.IsIdentity)
             {
                 if (baseline is not null)
                 {

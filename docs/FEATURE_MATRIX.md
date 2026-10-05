@@ -523,8 +523,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F33-10 | Image color adjustments | Sepia | M5 | Tested | Adjust dialog Sepia → Magick `SepiaTone` |
 | F33-11 | Image color adjustments | Black point / levels | M5 | Tested | Adjust dialog Black/White point → Magick `Level` |
 | F33-12 | Image color adjustments | Gamma where useful | M5 | Tested | Adjust dialog Gamma → Magick `Level` gamma |
-| F33-13 | Image color adjustments | Reset individual adjustment | M5 | Implemented | Adjust dialog ↺ per slider |
-| F33-14 | Image color adjustments | Reset all | M5 | Implemented | Adjust dialog Reset all |
+| F33-13 | Image color adjustments | Reset individual adjustment | M5 | Tested | Adjust ↺ per slider; `ImageAdjustments.IsIdentity` unit tests |
+| F33-14 | Image color adjustments | Reset all | M5 | Tested | Adjust Reset all → identity; `ImageAdjustments.IsIdentity` |
 | F33-15 | Image color adjustments | live preview | M5 | Implemented | Adjust dialog previews via checkpoint clone/restore |
 | F33-16 | Image color adjustments | histogram | M5 | Implemented | Adjust dialog luminance histogram (64 bins) |
 | F34-01 | Image markup | mouse drawing | M5 | Tested | Draw toolbar → non-destructive overlay; Flatten / Save bakes via `FlattenMarkupAsync` |
@@ -844,7 +844,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F61-01 | Non-destructive editing where practical | PDF annotations | M3-M5 | Implemented | Annotation objects editable until Flatten / Save |
 | F61-02 | Non-destructive editing where practical | image markup | M3-M5 | Implemented | Draw overlay until Flatten/Save (F34) |
 | F61-03 | Non-destructive editing where practical | crops | M3-M5 | Tested | CropBox-only until optional permanent export |
-| F61-04 | Non-destructive editing where practical | adjustments | M3-M5 | Implemented | Image Adjust live preview via checkpoint clone; Apply/Cancel |
+| F61-04 | Non-destructive editing where practical | adjustments | M3-M5 | Tested | Adjust live preview checkpoint; Apply skips when `IsIdentity` |
 | F61-05 | Non-destructive editing where practical | signatures | M3-M5 | Implemented | Stamp annotations until Flatten / Save |
 | F61-06 | Non-destructive editing where practical | shapes | M3-M5 | Implemented | Shape annotations until Flatten / Save |
 | F61-07 | Non-destructive editing where practical | text | M3-M5 | Implemented | Text box / callout annotations until Flatten / Save |

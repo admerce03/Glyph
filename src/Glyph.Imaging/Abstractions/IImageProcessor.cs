@@ -197,7 +197,28 @@ public sealed record ImageAdjustments(
     /// <summary>White-point percentage for levels (0–100; lower clips more highlights).</summary>
     double WhitePoint = 100,
     /// <summary>Gamma multiplier (typically 0.1–3.0; 1.0 = unchanged).</summary>
-    double Gamma = 1.0);
+    double Gamma = 1.0)
+{
+    private const double Epsilon = 0.0001;
+
+    /// <summary>
+    /// True when every slider/flag is at its no-op default (F33 reset / Apply skip).
+    /// </summary>
+    public bool IsIdentity =>
+        !AutoLevels
+        && !Sepia
+        && Math.Abs(Brightness) < Epsilon
+        && Math.Abs(Contrast) < Epsilon
+        && Math.Abs(Saturation) < Epsilon
+        && Math.Abs(Highlights) < Epsilon
+        && Math.Abs(Shadows) < Epsilon
+        && Math.Abs(BlackPoint) < Epsilon
+        && Math.Abs(WhitePoint - 100) < Epsilon
+        && Math.Abs(Gamma - 1.0) < Epsilon
+        && Math.Abs(Temperature) < Epsilon
+        && Math.Abs(Tint) < Epsilon
+        && Math.Abs(Sharpness) < Epsilon;
+}
 
 /// <summary>
 /// Editable descriptive metadata written primarily as IPTC (title/caption/keywords/copyright).
