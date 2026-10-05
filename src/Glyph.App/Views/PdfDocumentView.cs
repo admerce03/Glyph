@@ -10,7 +10,6 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Microsoft.UI.Xaml.Shapes;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.ApplicationModel.DataTransfer.DragDrop;
 using Windows.Storage;
@@ -614,8 +613,8 @@ public sealed class PdfDocumentView : UserControl
         var deferral = request.GetDeferral();
         try
         {
-            var tempPath = Path.Combine(
-                Path.GetTempPath(),
+            var tempPath = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
                 "Glyph-pages-" + Guid.NewGuid().ToString("N") + ".pdf");
             await using (var extracted = await _pageEditor.ExtractPagesAsync(_document, pageIndexes))
             {
@@ -1081,8 +1080,8 @@ public sealed class PdfDocumentView : UserControl
     {
         if (_cropMode)
         {
-            if (sender is Border { Tag: int pageIndex } cropBorder &&
-                pageIndex == _cropPageIndex &&
+            if (sender is Border { Tag: int cropPage } cropBorder &&
+                cropPage == _cropPageIndex &&
                 _cropDragHandle is not null)
             {
                 UpdateCropPointerDrag(cropBorder, e);
@@ -2255,7 +2254,7 @@ public sealed class PdfDocumentView : UserControl
                 return;
             }
 
-            var dim = new Rectangle
+            var dim = new Microsoft.UI.Xaml.Shapes.Rectangle
             {
                 Width = w,
                 Height = h,
@@ -2272,7 +2271,7 @@ public sealed class PdfDocumentView : UserControl
         AddDim(0, top, left, bottom - top);
         AddDim(right, top, width - right, bottom - top);
 
-        var frame = new Rectangle
+        var frame = new Microsoft.UI.Xaml.Shapes.Rectangle
         {
             Width = right - left,
             Height = bottom - top,
@@ -2287,7 +2286,7 @@ public sealed class PdfDocumentView : UserControl
 
         void AddHandle(double x, double y)
         {
-            var handle = new Ellipse
+            var handle = new Microsoft.UI.Xaml.Shapes.Ellipse
             {
                 Width = 10,
                 Height = 10,
