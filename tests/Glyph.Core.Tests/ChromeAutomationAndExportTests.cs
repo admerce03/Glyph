@@ -44,5 +44,8 @@ public class DocumentExportFormatsTests
         DocumentExportFormats.ExtensionForDisplayName("JPEG 2000").Should().Be(".jp2");
         DocumentExportFormats.ExtensionForDisplayName("PNG").Should().Be(".png");
         DocumentExportFormats.CancelledStatus.Should().Contain("cancelled");
+        DocumentExportFormats.SuggestedOcrSearchable.Should().Contain("OCR");
+        DocumentExportFormats.SuggestedExtractedPages.Should().Contain("Extracted");
+        DocumentExportFormats.SuggestedCroppedPages.Should().Contain("Cropped");
     }
 }

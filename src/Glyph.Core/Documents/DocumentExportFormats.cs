@@ -80,4 +80,8 @@ public static class DocumentExportFormats
 
     public static string FormatExportedBookmarks(int bookmarkCount) =>
         $"Exported {bookmarkCount} bookmark(s) into the PDF outline.";
+
+    public const string SuggestedOcrSearchable = "OCR searchable";
+    public const string SuggestedExtractedPages = "Extracted pages";
+    public const string SuggestedCroppedPages = "Cropped pages";
 }

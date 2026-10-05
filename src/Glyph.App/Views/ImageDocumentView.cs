@@ -3603,12 +3603,12 @@ public sealed class ImageDocumentView : UserControl
             return row;
         }
 
-        var brightness = MakeSlider("Brightness (−100…100)", -100, 100, 0);
-        var contrast = MakeSlider("Contrast (−100…100)", -100, 100, 0);
-        var saturation = MakeSlider("Saturation (−100…100)", -100, 100, 0);
-        var highlights = MakeSlider("Highlights (−100 recover…100)", -100, 100, 0);
-        var shadows = MakeSlider("Shadows (−100 crush…100 lift)", -100, 100, 0);
-        var blackPoint = MakeSlider("Black point (0…100)", 0, 100, 0);
+        var brightness = MakeSlider(ImageDialogHeaders.Brightness, -100, 100, 0);
+        var contrast = MakeSlider(ImageDialogHeaders.Contrast, -100, 100, 0);
+        var saturation = MakeSlider(ImageDialogHeaders.Saturation, -100, 100, 0);
+        var highlights = MakeSlider(ImageDialogHeaders.Highlights, -100, 100, 0);
+        var shadows = MakeSlider(ImageDialogHeaders.Shadows, -100, 100, 0);
+        var blackPoint = MakeSlider(ImageDialogHeaders.BlackPoint, 0, 100, 0);
         var whitePoint = MakeSlider("White point (0…100)", 0, 100, 100);
         var gamma = MakeSlider("Gamma (0.1…3.0)", 0.1, 3.0, 1.0, step: 0.05);
         var temperature = MakeSlider("Temperature (−100 cold…100 warm)", -100, 100, 0);
@@ -4950,7 +4950,7 @@ public sealed class ImageDocumentView : UserControl
             var isCallout = _markupShapeTool == ImageMarkupShapeKind.Callout;
             var textBox = new TextBox
             {
-                Header = isCallout ? "Callout text" : "Text",
+                Header = isCallout ? ImageDialogHeaders.CalloutText : ImageDialogHeaders.Text,
                 Text = isCallout ? "Note" : "Label",
                 Width = 280,
             };

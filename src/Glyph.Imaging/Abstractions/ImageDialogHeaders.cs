@@ -31,4 +31,12 @@ public static class ImageDialogHeaders
     public const string Tool = "Tool";
     public const string Units = "Units";
     public const string Width = "Width";
+    public const string Brightness = "Brightness (−100…100)";
+    public const string Contrast = "Contrast (−100…100)";
+    public const string Saturation = "Saturation (−100…100)";
+    public const string Highlights = "Highlights (−100 recover…100)";
+    public const string Shadows = "Shadows (−100 crush…100 lift)";
+    public const string BlackPoint = "Black point (0…100)";
+    public const string CalloutText = "Callout text";
+    public const string Text = "Text";
 }

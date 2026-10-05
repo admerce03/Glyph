@@ -3707,7 +3707,7 @@ public sealed class PdfDocumentView : UserControl
             var hwnd = WindowNative.GetWindowHandle(window);
             InitializeWithWindow.Initialize(picker, hwnd);
             picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
-            picker.SuggestedFileName = "OCR searchable";
+            picker.SuggestedFileName = DocumentExportFormats.SuggestedOcrSearchable;
             picker.FileTypeChoices.Add("PDF", [".pdf"]);
             var file = await picker.PickSaveFileAsync();
             if (file is null)
@@ -4076,7 +4076,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (_document.Path is null)
         {
-            ClearSearchResults("Document path is unavailable for search.");
+            ClearSearchResults(PdfTextInteractionUi.PathUnavailableForSearch);
             return;
         }
 
@@ -4144,7 +4144,7 @@ public sealed class PdfDocumentView : UserControl
                  && !string.IsNullOrWhiteSpace(query))
         {
             status = PdfSearchStatus.NoMatches;
-            message = "No matches in document text or OCR cache.";
+            message = PdfTextInteractionUi.NoMatchesInTextOrOcr;
         }
 
         _hits = merged;
@@ -11111,7 +11111,7 @@ public sealed class PdfDocumentView : UserControl
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
         WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
         picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
-        picker.SuggestedFileName = "Extracted pages";
+        picker.SuggestedFileName = DocumentExportFormats.SuggestedExtractedPages;
         picker.FileTypeChoices.Add("PDF", [".pdf"]);
 
         var file = await picker.PickSaveFileAsync();
@@ -11383,7 +11383,7 @@ public sealed class PdfDocumentView : UserControl
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
         WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
         picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
-        picker.SuggestedFileName = "Cropped pages";
+        picker.SuggestedFileName = DocumentExportFormats.SuggestedCroppedPages;
         picker.FileTypeChoices.Add("PDF", [".pdf"]);
 
         var file = await picker.PickSaveFileAsync();

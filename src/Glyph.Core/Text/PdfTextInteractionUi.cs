@@ -12,6 +12,8 @@ public static class PdfTextInteractionUi
     public const string SearchWeb = "Search web";
     public const string CopyRegionAsImage = "Copy region as image";
     public const string NoExtractableText = "No extractable text on this page.";
+    public const string PathUnavailableForSearch = "Document path is unavailable for search.";
+    public const string NoMatchesInTextOrOcr = "No matches in document text or OCR cache.";
 
     public static string CopiedCharacters(int count) => $"Copied {count} characters.";
 }

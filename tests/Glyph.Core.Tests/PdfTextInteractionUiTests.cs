@@ -13,4 +13,11 @@ public class PdfTextInteractionUiTests
         PdfTextInteractionUi.CopyRegionAsImage.Should().Contain("region");
         PdfTextInteractionUi.CopiedCharacters(12).Should().Be("Copied 12 characters.");
     }
+
+    [Fact]
+    public void Search_status_labels()
+    {
+        PdfTextInteractionUi.PathUnavailableForSearch.Should().Contain("unavailable");
+        PdfTextInteractionUi.NoMatchesInTextOrOcr.Should().Contain("OCR");
+    }
 }

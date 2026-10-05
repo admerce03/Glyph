@@ -12,5 +12,7 @@ public class ImageDialogHeadersTests
         ImageDialogHeaders.DpiPpi.Should().Contain("DPI");
         ImageDialogHeaders.Scale.Should().Be("Scale");
         ImageDialogHeaders.QualityJpegWebpAvif.Should().Contain("Quality");
+        ImageDialogHeaders.Brightness.Should().Contain("Brightness");
+        ImageDialogHeaders.CalloutText.Should().Be("Callout text");
     }
 }
