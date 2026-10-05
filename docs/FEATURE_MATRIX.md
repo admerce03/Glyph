@@ -19,7 +19,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-09 | Application and file handling | Drag files from the application into Explorer where meaningful. | M1/M9 | Implemented | Thumbnail drag exposes extracted PDF via deferred StorageItems |
 | F01-10 | Application and file handling | Open files from: | M1/M9 | Tested | Local/UNC/OneDrive/removable via `PathUtilities.NormalizeOpenPath` unit tests |
 | F01-11 | Application and file handling | Normal Windows long-path and Unicode filename support. | M1/M9 | Tested | Unicode + `\\?\` long-path prefix unit tests |
-| F01-12 | Application and file handling | Read-only file detection. | M1/M9 | Implemented | Sets session.IsReadOnly; tab header + status |
+| F01-12 | Application and file handling | Read-only file detection. | M1/M9 | Tested | Sets session.IsReadOnly; Execute blocked (DocumentSession unit test) |
 | F01-13 | Application and file handling | Warn when attempting to overwrite a read-only file. | M1/M9 | Implemented | Save prompts Save As when target is read-only |
 | F01-14 | Application and file handling | File → New from Clipboard. | M1/M9 | Implemented | Menu + Ctrl+Shift+N; clipboard → temp PNG image tab |
 | F01-15 | Application and file handling | File → Duplicate. | M1/M9 | Implemented | File → Duplicate / Ctrl+Shift+D copies on disk and opens |
@@ -30,7 +30,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-20 | Application and file handling | File → Move. | M1/M9 | Implemented | File → Move… FolderPicker + File.Move |
 | F01-21 | Application and file handling | File → Properties. | M1/M9 | Implemented | File → Properties / Ctrl+I → PDF Info or image Meta |
 | F01-22 | Application and file handling | Close: | M1/M9 | Implemented | Close Tab / Close All |
-| F01-23 | Application and file handling | Unsaved-change prompt where appropriate. | M1/M9 | Implemented | Close tab dirty prompt |
+| F01-23 | Application and file handling | Unsaved-change prompt where appropriate. | M1/M9 | Tested | Close tab dirty / HasUnsavedEdits; `MarkDirty`/`MarkClean` unit tests |
 | F01-24 | Application and file handling | Optional autosave. | M1/M9 | Tested | Preferences → Auto-save to original; `AutoSaveToOriginal` prefs round-trip |
 | F01-25 | Application and file handling | Crash-recovery copy. | M1/M9 | Tested | `FileCrashRecoveryStore` SaveSnapshot/List/Discard unit tests |
 | F01-26 | Application and file handling | Undo/redo history. | M1/M9 | Implemented | Per-doc: page edits, annot/form/meta/signature, image checkpoints; unified app-wide stack later |
@@ -325,7 +325,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F18-01 | Freehand drawing | Mouse drawing. | M4 | Tested | Ink draw mode |
 | F18-02 | Freehand drawing | Stroke color. | M4 | Tested | Stroke picker; `DefaultStrokeColor` prefs round-trip |
 | F18-03 | Freehand drawing | Stroke width. | M4 | Tested | Width picker (1–8 pt); `DefaultStrokeWidthPoints` clamp + prefs unit tests |
-| F18-04 | Freehand drawing | Stroke opacity. | M4 | Implemented | Sidebar Opacity → `SetOpacityAsync` on ink |
+| F18-04 | Freehand drawing | Stroke opacity. | M4 | Tested | Sidebar Opacity → `SetOpacityAsync`; opacity alpha unit test |
 | F18-05 | Freehand drawing | Eraser. | M4 | Implemented | Eraser toolbar mode: click annotation to remove (ink preferred, padded hit) |
 | F18-06 | Freehand drawing | Undo stroke. | M4 | Implemented | Ctrl+Z undoes last ink/freeform/polygon via `_strokeUndoStack` |
 | F18-07 | Freehand drawing | Select/move completed strokes. | M4 | Implemented | Ink annots use selection tool + `MoveAsync` |
