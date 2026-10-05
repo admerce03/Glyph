@@ -50,6 +50,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly ScrollViewer _thumbnailScroll;
     private readonly TreeView _outlineTree;
     private readonly ListView _searchResults;
+    private readonly ListView _annotationList;
     private readonly TextBox _searchBox;
     private readonly TextBox _gotoBox;
     private readonly CheckBox _caseSensitiveBox;
@@ -72,6 +73,8 @@ public sealed class PdfDocumentView : UserControl
     private bool _suppressThumbnailNav;
     private IReadOnlyList<PdfSearchHit> _hits = [];
     private int _activeHitIndex = -1;
+    private IReadOnlyList<PdfAnnotationInfo> _annotationItems = [];
+    private bool _suppressAnnotationNav;
     private bool _dragSelecting;
     private Windows.Foundation.Point _dragStart;
     private int _dragPageIndex = -1;
@@ -178,9 +181,15 @@ public sealed class PdfDocumentView : UserControl
         _searchResults = new ListView
         {
             SelectionMode = ListViewSelectionMode.Single,
-            Height = 160,
+            Height = 120,
         };
         _searchResults.SelectionChanged += SearchResults_SelectionChanged;
+        _annotationList = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            Height = 140,
+        };
+        _annotationList.SelectionChanged += AnnotationList_SelectionChanged;
 
         var sidePanel = new Grid
         {
@@ -190,7 +199,9 @@ public sealed class PdfDocumentView : UserControl
                 new RowDefinition { Height = GridLength.Auto },
                 new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
                 new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(120) },
+                new RowDefinition { Height = new GridLength(100) },
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(110) },
                 new RowDefinition { Height = GridLength.Auto },
                 new RowDefinition { Height = new GridLength(140) },
             },
@@ -208,6 +219,29 @@ public sealed class PdfDocumentView : UserControl
         sidePanel.Children.Add(searchHeader);
         Grid.SetRow(_searchResults, 5);
         sidePanel.Children.Add(_searchResults);
+        var annotHeaderRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            Margin = new Thickness(8, 8, 8, 4),
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = "Annotations",
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+            },
+        };
+        var removeAnnot = new Button { Content = "Delete", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(removeAnnot, "Delete selected annotation");
+        removeAnnot.Click += async (_, _) => await RemoveSelectedAnnotationAsync();
+        annotHeaderRow.Children.Add(removeAnnot);
+        Grid.SetRow(annotHeaderRow, 6);
+        sidePanel.Children.Add(annotHeaderRow);
+        Grid.SetRow(_annotationList, 7);
+        sidePanel.Children.Add(_annotationList);
 
         _status = new TextBlock { Opacity = 0.75, FontSize = 12, Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
         _gotoBox = new TextBox { PlaceholderText = "#", Width = 48 };
@@ -377,6 +411,7 @@ public sealed class PdfDocumentView : UserControl
         await RenderVisibleAsync();
         _ = RenderThumbnailsAsync();
         _ = LoadOutlineAsync();
+        _ = RefreshAnnotationSidebarAsync();
     }
 
     private void PdfDocumentView_Unloaded(object sender, RoutedEventArgs e)
@@ -1889,6 +1924,7 @@ public sealed class PdfDocumentView : UserControl
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
             _status.Text = kind switch
             {
                 PdfTextMarkupKind.Highlight => "Highlight added.",
@@ -1899,6 +1935,85 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Markup failed: " + ex.Message;
+        }
+    }
+
+    private async Task RefreshAnnotationSidebarAsync()
+    {
+        try
+        {
+            var all = await _annotations.ListAsync(_document);
+            _annotationItems = all
+                .Where(a => a.TextMarkupKind is not null)
+                .OrderBy(a => a.PageIndex)
+                .ThenBy(a => a.AnnotIndex)
+                .ToList();
+
+            _suppressAnnotationNav = true;
+            _annotationList.ItemsSource = _annotationItems
+                .Select(FormatAnnotationLabel)
+                .ToList();
+            _suppressAnnotationNav = false;
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Annotation list failed: " + ex.Message;
+        }
+    }
+
+    private static string FormatAnnotationLabel(PdfAnnotationInfo info)
+    {
+        var kind = info.TextMarkupKind switch
+        {
+            PdfTextMarkupKind.Highlight => "Highlight",
+            PdfTextMarkupKind.Underline => "Underline",
+            PdfTextMarkupKind.StrikeOut => "Strike",
+            _ => "Markup",
+        };
+        return $"{kind} · p.{info.PageIndex + 1}";
+    }
+
+    private async void AnnotationList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressAnnotationNav)
+        {
+            return;
+        }
+
+        var index = _annotationList.SelectedIndex;
+        if (index < 0 || index >= _annotationItems.Count)
+        {
+            return;
+        }
+
+        var item = _annotationItems[index];
+        await GoToPageAsync(item.PageIndex, recordHistory: true);
+        _status.Text = $"Jumped to {FormatAnnotationLabel(item)}.";
+    }
+
+    private async Task RemoveSelectedAnnotationAsync()
+    {
+        var index = _annotationList.SelectedIndex;
+        if (index < 0 || index >= _annotationItems.Count)
+        {
+            _status.Text = "Select an annotation to delete.";
+            return;
+        }
+
+        var item = _annotationItems[index];
+        try
+        {
+            await _annotations.RemoveAsync(_document, item.PageIndex, item.AnnotIndex);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = $"Deleted {FormatAnnotationLabel(item)}.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Delete annotation failed: " + ex.Message;
         }
     }
 
@@ -2659,6 +2774,7 @@ public sealed class PdfDocumentView : UserControl
         UpdateStatus();
         await RenderVisibleAsync();
         _ = RenderThumbnailsAsync();
+        _ = RefreshAnnotationSidebarAsync();
     }
 
     private async void ScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)

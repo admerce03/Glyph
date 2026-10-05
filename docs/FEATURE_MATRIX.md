@@ -268,9 +268,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F14-04 | Highlight workflow | Change existing highlight color. | M4 | Not Started |  |
 | F14-05 | Highlight workflow | Underline selection. | M4 | Implemented | Underline toolbar |
 | F14-06 | Highlight workflow | Strikethrough selection. | M4 | Implemented | Strike toolbar |
-| F14-07 | Highlight workflow | Remove markup. | M4 | Tested | API remove; UI delete later |
-| F14-08 | Highlight workflow | Annotation sidebar showing all: | M4 | Not Started |  |
-| F14-09 | Highlight workflow | Click annotation in sidebar to jump to it. | M4 | Not Started |  |
+| F14-07 | Highlight workflow | Remove markup. | M4 | Implemented | Sidebar Delete + `RemoveAsync` |
+| F14-08 | Highlight workflow | Annotation sidebar showing all: | M4 | Implemented | Sidebar lists highlight/underline/strike |
+| F14-09 | Highlight workflow | Click annotation in sidebar to jump to it. | M4 | Implemented | Selection jumps to annotation page |
 | F15-01 | Notes | Add sticky note. | M4 | Not Started |  |
 | F15-02 | Notes | Enter note text. | M4 | Not Started |  |
 | F15-03 | Notes | Collapse note. | M4 | Not Started |  |
