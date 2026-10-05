@@ -132,4 +132,52 @@ public class JsonSettingsStoreTests
             }
         }
     }
+
+    [Fact]
+    public async Task Save_and_load_round_trips_version_snapshot_prefs()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-snap-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings
+            {
+                VersionSnapshotsEnabled = true,
+                VersionSnapshotCapacity = 12,
+            });
+
+            var settings = await new JsonSettingsStore(path).LoadAsync();
+            settings.VersionSnapshotsEnabled.Should().BeTrue();
+            settings.VersionSnapshotCapacity.Should().Be(12);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Save_clamps_version_snapshot_capacity()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-snap-clamp-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings { VersionSnapshotCapacity = 0 });
+            (await new JsonSettingsStore(path).LoadAsync()).VersionSnapshotCapacity.Should().Be(1);
+
+            await store.SaveAsync(new AppSettings { VersionSnapshotCapacity = 999 });
+            (await new JsonSettingsStore(path).LoadAsync()).VersionSnapshotCapacity.Should().Be(50);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
 }

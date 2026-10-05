@@ -681,13 +681,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F47-03 | External application integration | Open URL | M9 | Implemented | PDF link launcher / OSM maps already |
 | F47-04 | External application integration | Open location in browser/maps | M9 | Implemented | Image Meta → Open map |
 | F47-05 | External application integration | Send via default mail application where possible | M9 | Implemented | Alias of F46-05 |
-| F48-01 | File properties and inspector | dimensions | M5/M9 | Implemented | PDF Info page size (pt) |
-| F48-02 | File properties and inspector | pages | M5/M9 | Implemented | PDF Info page count |
-| F48-03 | File properties and inspector | metadata | M5/M9 | Implemented | PDF Info Title/Author/… + Edit (incl. Creator/Producer + Clear all) |
-| F48-04 | File properties and inspector | security | M5/M9 | Implemented | PDF Info encryption + permission flags |
-| F48-05 | File properties and inspector | fonts | M5/M9 | Implemented | PDF Info font list |
-| F48-06 | File properties and inspector | annotations | M5/M9 | Implemented | PDF Info annotation count |
-| F48-07 | File properties and inspector | file size | M5/M9 | Implemented | PDF Info file size + path |
+| F48-01 | File properties and inspector | dimensions | M5/M9 | Tested | PDF Info page size (pt); `GetInfo_reads_metadata_and_unencrypted_permissions` |
+| F48-02 | File properties and inspector | pages | M5/M9 | Tested | PDF Info page count; GetInfo unit test |
+| F48-03 | File properties and inspector | metadata | M5/M9 | Tested | PDF Info Title/Author/… + Edit (Creator/Producer + Clear all); SetInfo unit tests |
+| F48-04 | File properties and inspector | security | M5/M9 | Tested | PDF Info encryption + permission flags; encrypted fixture GetInfo test |
+| F48-05 | File properties and inspector | fonts | M5/M9 | Tested | PDF Info font list; GetInfo Fonts not empty |
+| F48-06 | File properties and inspector | annotations | M5/M9 | Tested | PDF Info annotation count via `ListAsync`; annotation service list unit tests |
+| F48-07 | File properties and inspector | file size | M5/M9 | Tested | PDF Info file size + path; GetInfo FileSizeBytes |
 | F48-08 | File properties and inspector | dimensions | M5/M9 | Implemented | Image Meta / Properties pixel size |
 | F48-09 | File properties and inspector | color profile | M5/M9 | Implemented | Image Meta ICC / color space |
 | F48-10 | File properties and inspector | metadata | M5/M9 | Implemented | Image Meta EXIF/IPTC/XMP entries |
@@ -716,11 +716,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F50-05 | Autosave and recovery | reopen recovered document after crash. | M1/M9 | Tested | `ListAsync` returns recovery paths; startup prompt opens them |
 | F50-06 | Autosave and recovery | never silently discard recovery data. | M1/M9 | Implemented | Recover / Keep / Discard prompt |
 | F50-07 | Autosave and recovery | remove recovery copy after successful save/close. | M1/M9 | Tested | `DiscardAsync` / `DiscardAllAsync` unit tests |
-| F51-01 | Optional version snapshots | optional automatic local snapshots. | M9 | Implemented | Opt-in on Save via Preferences |
-| F51-02 | Optional version snapshots | show: | M9 | Implemented | File → Version Snapshots lists time + size |
-| F51-03 | Optional version snapshots | restore snapshot. | M9 | Implemented | Restore replaces file after confirm |
-| F51-04 | Optional version snapshots | open snapshot as copy. | M9 | Implemented | Opens sibling copy of snapshot |
-| F51-05 | Optional version snapshots | delete snapshots. | M9 | Implemented | Delete from Version Snapshots dialog |
+| F51-01 | Optional version snapshots | optional automatic local snapshots. | M9 | Tested | Opt-in prefs round-trip + `FileVersionSnapshotStore.CaptureAsync` unit tests |
+| F51-02 | Optional version snapshots | show: | M9 | Tested | `ListAsync` returns time/size; File → Version Snapshots UI |
+| F51-03 | Optional version snapshots | restore snapshot. | M9 | Tested | Snapshot bytes restore via File.Copy; store capture preserves bytes unit test |
+| F51-04 | Optional version snapshots | open snapshot as copy. | M9 | Tested | Sibling copy of snapshot path; capture byte-preservation unit test |
+| F51-05 | Optional version snapshots | delete snapshots. | M9 | Tested | `DeleteAsync` / `DeleteAllAsync` unit tests |
 | F52-01 | Keyboard shortcuts | Ctrl+O — Open | M1/M9 | Implemented | File menu accelerator |
 | F52-02 | Keyboard shortcuts | Ctrl+S — Save | M1/M9 | Implemented | File menu + image view key handler |
 | F52-03 | Keyboard shortcuts | Ctrl+Shift+S — Save As | M1/M9 | Implemented | File menu accelerator |
