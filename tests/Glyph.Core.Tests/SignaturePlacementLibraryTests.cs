@@ -23,5 +23,10 @@ public class SignatureLibraryUiTests
         SignatureLibraryUi.ImageMarkupUsesPasteFile.Should().BeTrue();
         SignatureLibraryUi.SupportsSaveDeleteReorderDescriptions.Should().BeTrue();
         SignatureLibraryUi.LibraryTitle.Should().Contain("Signature");
+        SignatureLibraryUi.DrawCancelled.Should().Contain("cancelled");
+        SignatureLibraryUi.Inserting.Should().Contain("Inserting");
+        SignatureLibraryUi.FormatDeleted("A").Should().Contain("A");
+        SignatureLibraryUi.FormatInserted("B").Should().Contain("B");
+        SignatureLibraryUi.SigningFormField.Should().Contain("Signing");
     }
 }

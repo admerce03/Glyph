@@ -6854,7 +6854,7 @@ public sealed class PdfDocumentView : UserControl
         {
             ClearSignatureMode();
             RefreshToolButtonChrome();
-            _status.Text = "Signature draw cancelled.";
+            _status.Text = SignatureLibraryUi.DrawCancelled;
             return;
         }
 
@@ -6918,7 +6918,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        _status.Text = "Signature cancelled.";
+        _status.Text = SignatureLibraryUi.Cancelled;
     }
 
     private async Task ShowSignatureLibraryDialogAsync(Window window, List<SignatureEntry> library)
@@ -6988,7 +6988,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 await _signatures.ReorderAsync(library.Select(e => e.Id).ToList());
                 RefreshList(i - 1);
-                _status.Text = "Signature order updated.";
+                _status.Text = SignatureLibraryUi.OrderUpdated;
             }
             catch (Exception ex)
             {
@@ -7008,7 +7008,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 await _signatures.ReorderAsync(library.Select(e => e.Id).ToList());
                 RefreshList(i + 1);
-                _status.Text = "Signature order updated.";
+                _status.Text = SignatureLibraryUi.OrderUpdated;
             }
             catch (Exception ex)
             {
@@ -7029,7 +7029,7 @@ public sealed class PdfDocumentView : UserControl
                 await _signatures.DeleteAsync(entry.Id);
                 library.RemoveAt(i);
                 RefreshList(i);
-                _status.Text = $"Deleted signature '{entry.Name}'.";
+                _status.Text = SignatureLibraryUi.FormatDeleted(entry.Name);
             }
             catch (Exception ex)
             {
@@ -7050,7 +7050,7 @@ public sealed class PdfDocumentView : UserControl
                 await _signatures.UpdateDescriptionAsync(library[i].Id, text);
                 library[i] = library[i] with { Description = text };
                 RefreshList(i);
-                _status.Text = "Signature description saved.";
+                _status.Text = SignatureLibraryUi.DescriptionSaved;
             }
             catch (Exception ex)
             {
@@ -7125,7 +7125,7 @@ public sealed class PdfDocumentView : UserControl
         {
             if (library.Count == 0 || list.SelectedIndex < 0 || list.SelectedIndex >= library.Count)
             {
-                _status.Text = "Select a signature to insert.";
+                _status.Text = SignatureLibraryUi.SelectToInsert;
                 return;
             }
 
@@ -7139,14 +7139,14 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        _status.Text = "Signature cancelled.";
+        _status.Text = SignatureLibraryUi.Cancelled;
     }
 
     private async Task InsertLibrarySignatureAsync(SignatureEntry entry)
     {
         try
         {
-            _status.Text = "Inserting signature…";
+            _status.Text = SignatureLibraryUi.Inserting;
             await using var stream = await _signatures.OpenImageAsync(entry.Id);
             using var mem = new MemoryStream();
             await stream.CopyToAsync(mem);
@@ -7164,7 +7164,7 @@ public sealed class PdfDocumentView : UserControl
             var height = (int)decoder.PixelHeight;
             if (width <= 0 || height <= 0)
             {
-                _status.Text = "Signature image is empty.";
+                _status.Text = SignatureLibraryUi.ImageEmpty;
                 return;
             }
 
@@ -7191,7 +7191,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = $"Inserted signature '{entry.Name}'.";
+            _status.Text = SignatureLibraryUi.FormatInserted(entry.Name);
         }
         catch (Exception ex)
         {
@@ -7242,7 +7242,7 @@ public sealed class PdfDocumentView : UserControl
 
         _signatureMode = true;
         RefreshToolButtonChrome();
-        _status.Text = "Signature draw — draw on the page, then release to save.";
+        _status.Text = SignatureLibraryUi.DrawPrompt;
     }
 
     private async Task EndSignatureStrokeAsync(Border border, PointerRoutedEventArgs e)
@@ -7258,7 +7258,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (points.Count < 2 || pageIndex < 0)
         {
-            _status.Text = "Signature stroke too short.";
+            _status.Text = SignatureLibraryUi.StrokeTooShort;
             return;
         }
 
@@ -7291,7 +7291,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (await nameDialog.ShowAsync() != ContentDialogResult.Primary)
         {
-            _status.Text = "Signature cancelled.";
+            _status.Text = SignatureLibraryUi.Cancelled;
             return;
         }
 
@@ -7300,7 +7300,7 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
-            _status.Text = "Saving signature…";
+            _status.Text = SignatureLibraryUi.Saving;
             var stroke = points.Select(p => (p.X, p.Y)).ToList();
             var raster = SignatureStrokeRasterizer.Rasterize(stroke);
             var png = SignaturePngEncoder.EncodeBgra(raster.BgraPixels, raster.PixelWidth, raster.PixelHeight);
@@ -7331,7 +7331,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = "Signature inserted.";
+            _status.Text = SignatureLibraryUi.Inserted;
         }
         catch (Exception ex)
         {
@@ -7352,13 +7352,13 @@ public sealed class PdfDocumentView : UserControl
         var file = await picker.PickSingleFileAsync();
         if (file is null)
         {
-            _status.Text = "Signature cancelled.";
+            _status.Text = SignatureLibraryUi.Cancelled;
             return;
         }
 
         try
         {
-            _status.Text = "Loading signature…";
+            _status.Text = SignatureLibraryUi.Loading;
             using var winStream = await file.OpenAsync(FileAccessMode.Read);
             var decoder = await BitmapDecoder.CreateAsync(winStream);
             var pixelData = await decoder.GetPixelDataAsync(
@@ -7372,7 +7372,7 @@ public sealed class PdfDocumentView : UserControl
             var height = (int)decoder.PixelHeight;
             if (width <= 0 || height <= 0)
             {
-                _status.Text = "Signature image is empty.";
+                _status.Text = SignatureLibraryUi.ImageEmpty;
                 return;
             }
 
@@ -7459,7 +7459,7 @@ public sealed class PdfDocumentView : UserControl
                 }
                 else
                 {
-                    _status.Text = "Webcam signature cancelled.";
+                    _status.Text = SignatureLibraryUi.WebcamCancelled;
                 }
 
                 return;
@@ -8169,7 +8169,7 @@ public sealed class PdfDocumentView : UserControl
         {
             // Fall back to normal signature draw; user can then re-open the field.
             StartSignatureDrawMode();
-            _status.Text = "Draw a signature, then choose the form field again to insert it.";
+            _status.Text = SignatureLibraryUi.DrawThenChooseFormField;
             return false;
         }
 
@@ -8192,7 +8192,7 @@ public sealed class PdfDocumentView : UserControl
 
     private async Task InsertSignatureIntoFieldAsync(SignatureEntry entry, PdfFormFieldInfo field)
     {
-        _status.Text = "Signing form field…";
+        _status.Text = SignatureLibraryUi.SigningFormField;
         await using var stream = await _signatures.OpenImageAsync(entry.Id);
         using var mem = new MemoryStream();
         await stream.CopyToAsync(mem);
