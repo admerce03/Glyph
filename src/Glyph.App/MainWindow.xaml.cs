@@ -1267,8 +1267,8 @@ public sealed partial class MainWindow : Window
             {
                 var prompt = new ContentDialog
                 {
-                    Title = "Unsaved changes",
-                    Content = "Duplicate copies the file on disk. Save first?",
+                    Title = DocumentClosePolicy.UnsavedTitle,
+                    Content = DocumentClosePolicy.DuplicateSaveFirstPrompt,
                     PrimaryButtonText = "Save & duplicate",
                     SecondaryButtonText = "Duplicate without saving",
                     CloseButtonText = "Cancel",
@@ -1989,7 +1989,7 @@ public sealed partial class MainWindow : Window
         {
             var dialog = new ContentDialog
             {
-                Title = "Unsaved changes",
+                Title = DocumentClosePolicy.UnsavedTitle,
                 Content = TabTearOffPolicy.UnsavedChangesPrompt(session.DisplayName),
                 PrimaryButtonText = "Save & move",
                 SecondaryButtonText = "Move recovery copy",
@@ -2862,7 +2862,7 @@ public sealed partial class MainWindow : Window
         list.SelectedIndex = 0;
 
         string? action = null;
-        var openCopy = new Button { Content = "Open as copy", Margin = new Thickness(0, 0, 8, 0) };
+        var openCopy = new Button { Content = AppShellStatus.OpenAsCopyButton, Margin = new Thickness(0, 0, 8, 0) };
         var restore = new Button { Content = "Restore", Margin = new Thickness(0, 0, 8, 0) };
         var delete = new Button { Content = "Delete" };
         var buttons = new StackPanel

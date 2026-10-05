@@ -54,6 +54,7 @@ public class DocumentClosePolicyTitleTests
     [Fact]
     public void Unsaved_dialog_labels()
     {
+        DocumentClosePolicy.DuplicateSaveFirstPrompt.Should().Contain("Duplicate");
         DocumentClosePolicy.UnsavedTitle.Should().Contain("Unsaved");
         DocumentClosePolicy.CloseButton.Should().Be("Close");
     }

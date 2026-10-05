@@ -8,6 +8,9 @@ public static class DocumentClosePolicy
     public const string UnsavedTitle = "Unsaved changes";
     public const string CloseButton = "Close";
     public const string CancelButton = "Cancel";
+    public const string DuplicateSaveFirstPrompt =
+        "Duplicate copies the file on disk. Save first?";
+    public const string SaveFirstButton = "Save";
 
     public static bool RequiresDirtyPrompt(bool sessionDirty, bool tabHasUnsavedEdits, bool skipDirtyPrompt) =>
         !skipDirtyPrompt && (sessionDirty || tabHasUnsavedEdits);

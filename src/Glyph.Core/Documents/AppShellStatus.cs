@@ -87,6 +87,7 @@ public static class AppShellStatus
     public const string RestoreSnapshotBody =
         "Replace the current file on disk with this snapshot? A new snapshot of the current file will be kept first when snapshots are enabled.";
     public const string ReplaceButton = "Replace";
+    public const string OpenAsCopyButton = "Open as copy";
     public const string RestoreButton = "Restore";
 
     public static string FormatReplaceExistingBody(string fileName) =>
