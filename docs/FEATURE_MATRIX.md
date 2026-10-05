@@ -508,11 +508,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F32-03 | Image orientation | Rotate 180°. | M5 | Tested | ImageDocumentView 180° + RotateAsync(180) |
 | F32-04 | Image orientation | Flip horizontal. | M5 | Tested | Flip H + FlipHorizontalAsync |
 | F32-05 | Image orientation | Flip vertical. | M5 | Tested | Flip V + FlipVerticalAsync |
-| F32-06 | Image orientation | Batch operations on selected images. | M5 | Implemented | Batch… toolbar → rotate/flip/orient all folder images |
+| F32-06 | Image orientation | Batch operations on selected images. | M5 | Tested | Batch… rotate/flip/orient folder; Magick rotate/flip unit tests |
 | F32-07 | Image orientation | Respect EXIF orientation. | M5 | Tested | MagickImageDecoder AutoOrient on open |
 | F32-08 | Image orientation | Option to normalize EXIF orientation into pixels. | M5 | Tested | Orient toolbar + NormalizeOrientationAsync |
 | F33-01 | Image color adjustments | Auto Levels | M5 | Tested | Adjust dialog → `AutoLevels` → Magick `AutoLevel` |
-| F33-02 | Image color adjustments | Exposure | M5 | Implemented | Adjust dialog Brightness (Magick BrightnessContrast) |
+| F33-02 | Image color adjustments | Exposure | M5 | Tested | Adjust Brightness; `Adjust_brightness_contrast_saturation` unit test |
 | F33-03 | Image color adjustments | Contrast | M5 | Tested | Adjust dialog → AdjustAsync Contrast |
 | F33-04 | Image color adjustments | Highlights | M5 | Tested | Adjust dialog Highlights → tone CLUT |
 | F33-05 | Image color adjustments | Shadows | M5 | Tested | Adjust dialog Shadows → tone CLUT |
@@ -555,12 +555,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F35-15 | Image format conversion | preserve/remove alpha | M5 | Tested | Convert dialog Preserve alpha → `ImageEncodeOptions.PreserveAlpha` |
 | F35-16 | Image format conversion | preserve/remove metadata | M5 | Tested | Convert dialog Preserve metadata → Strip when false |
 | F35-17 | Image format conversion | color profile handling | M5 | Implemented | Convert → Embed sRGB ICC (`EmbedSrgbProfile`) |
-| F36-01 | Batch image operations | resize | M8 | Implemented | Resize dialog → Also resize all N images in folder (scale %) |
-| F36-02 | Batch image operations | rotate | M8 | Implemented | Batch… → Orientation rotate L/R/180 |
-| F36-03 | Batch image operations | flip | M8 | Implemented | Batch… → Orientation flip H/V |
-| F36-04 | Batch image operations | convert format | M8 | Implemented | Batch… → Convert/export folder to PNG/JPEG/WebP/… |
-| F36-05 | Batch image operations | export | M8 | Implemented | Same Batch… Convert/export path |
-| F36-06 | Batch image operations | strip metadata | M8 | Implemented | Batch… → Strip metadata (re-save PreserveMetadata=false) |
+| F36-01 | Batch image operations | resize | M8 | Tested | Folder resize %; `Batch_resize_percent_round_trip_on_disk` |
+| F36-02 | Batch image operations | rotate | M8 | Tested | Batch Orientation rotate; `Rotate_right_180` / crop-rotate-flip tests |
+| F36-03 | Batch image operations | flip | M8 | Tested | Batch Orientation flip; `Crop_resize_rotate_and_flip` unit test |
+| F36-04 | Batch image operations | convert format | M8 | Tested | Batch Convert; `Batch_convert_and_strip_metadata_round_trip` |
+| F36-05 | Batch image operations | export | M8 | Tested | Same Convert/export path; batch convert unit test |
+| F36-06 | Batch image operations | strip metadata | M8 | Tested | Batch Strip; `Batch_convert_and_strip_metadata` + SaveAs strip test |
 | F36-07 | Batch image operations | change color profile | M8 | Implemented | Batch… → Color profile assign/convert sRGB/Adobe RGB |
 | F36-08 | Batch image operations | rename, optionally | M8 | Implemented | Batch… → Rename pattern `{name}-{n:000}` |
 | F36-09 | Batch image operations | Show batch progress. | M8 | Implemented | Progress dialog + Cancel for folder Batch ops |
@@ -688,12 +688,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F48-05 | File properties and inspector | fonts | M5/M9 | Tested | PDF Info font list; GetInfo Fonts not empty |
 | F48-06 | File properties and inspector | annotations | M5/M9 | Tested | PDF Info annotation count via `ListAsync`; annotation service list unit tests |
 | F48-07 | File properties and inspector | file size | M5/M9 | Tested | PDF Info file size + path; GetInfo FileSizeBytes |
-| F48-08 | File properties and inspector | dimensions | M5/M9 | Implemented | Image Meta / Properties pixel size |
-| F48-09 | File properties and inspector | color profile | M5/M9 | Implemented | Image Meta ICC / color space |
-| F48-10 | File properties and inspector | metadata | M5/M9 | Implemented | Image Meta EXIF/IPTC/XMP entries |
-| F48-11 | File properties and inspector | EXIF | M5/M9 | Implemented | Image Meta EXIF group |
-| F48-12 | File properties and inspector | GPS | M5/M9 | Implemented | Image Meta GPS + maps/remove |
-| F48-13 | File properties and inspector | file size | M5/M9 | Implemented | Image Properties file size + path |
+| F48-08 | File properties and inspector | dimensions | M5/M9 | Tested | Image Meta pixel size; `GetMetadata_reports_dimensions_dpi_and_exif` |
+| F48-09 | File properties and inspector | color profile | M5/M9 | Tested | Image Meta ICC; `MagickColorManagedDisplayTests` HasIccProfile |
+| F48-10 | File properties and inspector | metadata | M5/M9 | Tested | Image Meta entries; MagickImageMetadataTests EXIF/IPTC |
+| F48-11 | File properties and inspector | EXIF | M5/M9 | Tested | Image Meta EXIF group; GetMetadata EXIF Make/Model tests |
+| F48-12 | File properties and inspector | GPS | M5/M9 | Tested | Image Meta GPS; GetMetadata + RemoveGpsMetadata unit tests |
+| F48-13 | File properties and inspector | file size | M5/M9 | Tested | Image Properties FileSizeBytes; GetMetadata unit test |
 | F49-01 | Undo and redo | annotations | M1-M4 | Tested | Ctrl+Z undoes sticky/text/markup/ink/shape/stamp via `AnnotationUndoStack` |
 | F49-02 | Undo and redo | drawing | M1-M4 | Tested | PDF stroke undo via `AnnotationUndoStack`; image markup undo |
 | F49-03 | Undo and redo | page insertion | M1-M4 | Tested | `PdfPageEditHistory` snapshot undo/redo unit tests |
