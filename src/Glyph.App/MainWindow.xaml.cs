@@ -508,7 +508,7 @@ public sealed partial class MainWindow : Window
         if (DocumentTabs.SelectedItem is TabViewItem { Content: PdfDocumentView pdfView })
         {
             pdfView.ToggleToolbarVisibility();
-            ToggleToolbarMenuItem.Text = pdfView.IsToolbarVisible ? "Hide Toolbar" : "Show Toolbar";
+            ToggleToolbarMenuItem.Text = ToolbarVisibilityLabel.For(pdfView.IsToolbarVisible);
             return;
         }
 
@@ -1395,17 +1395,16 @@ public sealed partial class MainWindow : Window
             }
 
             var fileName = System.IO.Path.GetFileName(active.Path);
-            var dest = System.IO.Path.Combine(folder.Path, fileName);
-            if (string.Equals(
-                    System.IO.Path.GetFullPath(System.IO.Path.GetDirectoryName(active.Path!) ?? string.Empty),
-                    System.IO.Path.GetFullPath(folder.Path),
-                    StringComparison.OrdinalIgnoreCase))
+            var dest = DocumentMovePolicy.DestinationPath(active.Path!, folder.Path);
+            if (DocumentMovePolicy.IsSameFolder(active.Path!, folder.Path))
             {
                 StatusText.Text = "Already in that folder.";
                 return;
             }
 
-            if (File.Exists(dest))
+            var destExists = File.Exists(dest);
+            var userConfirmed = false;
+            if (destExists)
             {
                 var overwrite = new ContentDialog
                 {
@@ -1416,16 +1415,19 @@ public sealed partial class MainWindow : Window
                     DefaultButton = ContentDialogButton.Close,
                     XamlRoot = Content.XamlRoot,
                 };
-                if (await overwrite.ShowAsync() != ContentDialogResult.Primary)
-                {
-                    return;
-                }
+                userConfirmed = await overwrite.ShowAsync() == ContentDialogResult.Primary;
+            }
 
-                if (PathUtilities.IsPathReadOnly(dest))
-                {
+            switch (DocumentMovePolicy.EvaluateOverwrite(
+                        destExists,
+                        PathUtilities.IsPathReadOnly(dest),
+                        userConfirmed))
+            {
+                case MoveOverwriteDecision.Cancelled:
+                    return;
+                case MoveOverwriteDecision.BlockedReadOnly:
                     StatusText.Text = "Destination file is read-only.";
                     return;
-                }
             }
 
             if (active.IsDirty)

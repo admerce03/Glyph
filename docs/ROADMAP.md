@@ -314,6 +314,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - FileFormatDetector owns picker extensions + FilterSupportedPaths; F01-02 Tested
 - ExplorerFileDropPolicy + ReadOnlySavePolicy; F01-08 / F01-13 Tested
 - DocumentFileNamePolicy duplicate/rename; F01-15 / F01-19 Tested
+- DocumentMovePolicy same-folder/overwrite; F01-20 Tested
+- ToolbarVisibilityLabel; F02-05 Tested
 
 ---
 
