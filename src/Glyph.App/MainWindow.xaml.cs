@@ -24,6 +24,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Graphics;
 using Windows.Storage;
@@ -562,10 +563,74 @@ public sealed partial class MainWindow : Window
         {
             Title = "About Glyph",
             Content = $"Glyph {AppUpdateCheckPolicy.ShippedVersion}\n\nNative Windows document preview and light editing.",
+            PrimaryButtonText = ThirdPartyNoticesPolicy.AboutButton,
+            CloseButtonText = AppUpdateCheckPolicy.CloseButton,
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = RootGrid.XamlRoot,
+        };
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            await ShowThirdPartyNoticesAsync();
+        }
+    }
+
+    private async Task ShowThirdPartyNoticesAsync()
+    {
+        var path = ResolveThirdPartyNoticesPath();
+        string body;
+        if (path is null)
+        {
+            body = ThirdPartyNoticesPolicy.MissingFile;
+        }
+        else
+        {
+            try
+            {
+                body = await File.ReadAllTextAsync(path);
+            }
+            catch (Exception ex)
+            {
+                body = ThirdPartyNoticesPolicy.MissingFile + "\n\n" + ex.Message;
+            }
+        }
+
+        var box = new TextBox
+        {
+            Text = body,
+            IsReadOnly = true,
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            Width = 560,
+            Height = 420,
+            FontFamily = new FontFamily("Consolas"),
+            FontSize = 12,
+        };
+        var notices = new ContentDialog
+        {
+            Title = ThirdPartyNoticesPolicy.DialogTitle,
+            Content = box,
             CloseButtonText = AppUpdateCheckPolicy.CloseButton,
             XamlRoot = RootGrid.XamlRoot,
         };
-        await dialog.ShowAsync();
+        await notices.ShowAsync();
+    }
+
+    private static string? ResolveThirdPartyNoticesPath()
+    {
+        var candidates = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, ThirdPartyNoticesPolicy.RepoRelativePath),
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", ThirdPartyNoticesPolicy.RepoRelativePath)),
+        };
+        foreach (var candidate in candidates)
+        {
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
     }
 
     private async Task ShowUpdateCheckAsync()

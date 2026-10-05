@@ -67,7 +67,8 @@ Escalate before wiring production secrets or changing Publisher identity.
 | Path | Role |
 | --- | --- |
 | `src/Glyph.App/Package.appxmanifest` | Identity, capabilities, file types |
-| `scripts/publish-msix.ps1` | Layout + optional `-TestSign` |
+| `scripts/publish-msix.ps1` | Layout + optional `-TestSign`; copies `THIRD_PARTY_NOTICES.md` + vendor notices |
 | `scripts/install-msix-test.ps1` | Trust cert, sideload, association probe |
+| `THIRD_PARTY_NOTICES.md` | Redistributable attributions (PDFium, Magick.NET, …) |
 | `src/Glyph.Core/Documents/PackagingDeferredPolicy.cs` | Shipped / deferred flags |
 | Crash recovery | `%LocalAppData%\Glyph\recovery\` via `ICrashRecoveryStore` |

@@ -94,4 +94,4 @@ That imports the test cert into Trusted People, runs `Add-AppxPackage`, and prob
 
 ## Contributing / agents
 
-Read [`AGENTS.md`](AGENTS.md) before making changes. Track requirement progress in [`docs/FEATURE_MATRIX.md`](docs/FEATURE_MATRIX.md).
+Read [`AGENTS.md`](AGENTS.md) before making changes. Track requirement progress in [`docs/FEATURE_MATRIX.md`](docs/FEATURE_MATRIX.md). Redistributed native components: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
