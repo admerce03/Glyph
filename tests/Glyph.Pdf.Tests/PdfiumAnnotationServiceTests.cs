@@ -475,6 +475,16 @@ public class PdfiumAnnotationServiceTests
                 area.ShapeKind.Should().Be(PdfShapeKind.HighlightRectangle);
                 area.Contents.Should().Be("HighlightRect");
 
+                var star = await annots.AddShapeAsync(
+                    document,
+                    0,
+                    PdfShapeKind.Star,
+                    new PdfRect(240, 380, 340, 480),
+                    new PdfAnnotationColor(220, 60, 40));
+                star.ShapeKind.Should().Be(PdfShapeKind.Star);
+                star.IsInk.Should().BeTrue();
+                star.Contents.Should().Be("Star");
+
                 await editor.SaveAsync(document, outPath);
             }
 
@@ -487,6 +497,7 @@ public class PdfiumAnnotationServiceTests
                 listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Arrow && a.IsInk);
                 listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.RoundedRectangle);
                 listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.HighlightRectangle);
+                listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Star && a.IsInk && a.Contents == "Star");
             }
         }
         finally

@@ -407,7 +407,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             throw new ArgumentOutOfRangeException(nameof(borderWidthPoints));
         }
 
-        // PDFium exposes GetLine but not SetLine; straight lines/arrows are ink strokes.
+        // PDFium exposes GetLine but not SetLine; straight lines/arrows/stars are ink strokes.
         if (kind is PdfShapeKind.Line or PdfShapeKind.Arrow)
         {
             var dx = Math.Abs(bounds.Right - bounds.Left);
@@ -420,6 +420,16 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             return kind == PdfShapeKind.Arrow
                 ? AddArrowAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, cancellationToken)
                 : AddLineAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, cancellationToken);
+        }
+
+        if (kind == PdfShapeKind.Star)
+        {
+            if (bounds.Width < 1 || bounds.Height < 1)
+            {
+                throw new ArgumentException("Star bounds must have positive width and height.", nameof(bounds));
+            }
+
+            return AddStarAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, cancellationToken);
         }
 
         if (bounds.Width < 1 || bounds.Height < 1)
@@ -1721,6 +1731,26 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         return created with { ShapeKind = PdfShapeKind.Line, IsInk = true };
     }
 
+    private async Task<PdfAnnotationInfo> AddStarAsInkAsync(
+        IPdfDocument document,
+        int pageIndex,
+        PdfRect bounds,
+        PdfAnnotationColor borderColor,
+        float borderWidthPoints,
+        CancellationToken cancellationToken)
+    {
+        var points = PdfStarGeometry.BuildPoints(bounds);
+        var created = await AddLabeledInkAsync(
+            document,
+            pageIndex,
+            [points],
+            borderColor,
+            borderWidthPoints,
+            contents: "Star",
+            cancellationToken);
+        return created with { ShapeKind = PdfShapeKind.Star, IsInk = true };
+    }
+
     private async Task<PdfAnnotationInfo> AddArrowAsInkAsync(
         IPdfDocument document,
         int pageIndex,
@@ -1899,6 +1929,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             "Line" => PdfShapeKind.Line,
             "Arrow" => PdfShapeKind.Arrow,
             "Freeform" => PdfShapeKind.Freeform,
+            "Star" => PdfShapeKind.Star,
             _ => null,
         };
 

@@ -134,6 +134,7 @@ public sealed class PdfDocumentView : UserControl
     private Button? _ellipseButton;
     private Button? _lineButton;
     private Button? _arrowButton;
+    private Button? _starButton;
     private Button? _calloutButton;
     private Button? _redactButton;
     private bool _calloutMode;
@@ -447,6 +448,7 @@ public sealed class PdfDocumentView : UserControl
         var ellipse = new Button { Content = "Ellipse" };
         var line = new Button { Content = "Line" };
         var arrow = new Button { Content = "Arrow" };
+        var star = new Button { Content = "Star" };
         _signButton = sign;
         _inkButton = ink;
         _freeformButton = freeform;
@@ -459,6 +461,7 @@ public sealed class PdfDocumentView : UserControl
         _ellipseButton = ellipse;
         _lineButton = line;
         _arrowButton = arrow;
+        _starButton = star;
         _calloutButton = callout;
         _redactButton = redact;
         var undoEdit = new Button { Content = "Undo" };
@@ -560,6 +563,7 @@ public sealed class PdfDocumentView : UserControl
         ellipse.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Ellipse);
         line.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Line);
         arrow.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Arrow);
+        star.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Star);
         undoEdit.Click += async (_, _) => await UndoPageEditAsync();
         redoEdit.Click += async (_, _) => await RedoPageEditAsync();
 
@@ -574,7 +578,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, sign, formFill, ink, freeform, eraser, rect, roundRect, hiRect, ellipse, line, arrow,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, sign, formFill, ink, freeform, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star,
                 _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -3704,6 +3708,7 @@ public sealed class PdfDocumentView : UserControl
                 PdfShapeKind.Line => "Line",
                 PdfShapeKind.Arrow => "Arrow",
                 PdfShapeKind.Freeform => "Freeform",
+                PdfShapeKind.Star => "Star",
                 _ => "Shape",
             };
             return $"{shapeName} · p.{info.PageIndex + 1}";
@@ -4177,6 +4182,7 @@ public sealed class PdfDocumentView : UserControl
             PdfShapeKind.HighlightRectangle => "Area highlight mode — drag a translucent rectangle.",
             PdfShapeKind.Ellipse => "Ellipse mode — drag on the page.",
             PdfShapeKind.Arrow => "Arrow mode — drag from tail to tip.",
+            PdfShapeKind.Star => "Star mode — drag a bounding box for a 5-point star.",
             _ => "Line mode — drag on the page.",
         };
     }
@@ -4330,6 +4336,11 @@ public sealed class PdfDocumentView : UserControl
             _arrowButton.Background = _shapeMode == PdfShapeKind.Arrow ? active : null;
         }
 
+        if (_starButton is not null)
+        {
+            _starButton.Background = _shapeMode == PdfShapeKind.Star ? active : null;
+        }
+
         if (_calloutButton is not null)
         {
             _calloutButton.Background = _calloutMode ? active : null;
@@ -4411,6 +4422,13 @@ public sealed class PdfDocumentView : UserControl
                     current,
                     stroke,
                     strokeThickness),
+                PdfShapeKind.Star => CreateStarPreview(
+                    left,
+                    top,
+                    width,
+                    height,
+                    stroke,
+                    strokeThickness),
                 _ => new Microsoft.UI.Xaml.Shapes.Rectangle
                 {
                     Width = Math.Max(1, width),
@@ -4479,7 +4497,8 @@ public sealed class PdfDocumentView : UserControl
                 kind.Value,
                 bounds,
                 _drawStrokeColor,
-                fillColor: kind is PdfShapeKind.Line or PdfShapeKind.Arrow or PdfShapeKind.HighlightRectangle
+                fillColor: kind is PdfShapeKind.Line or PdfShapeKind.Arrow or PdfShapeKind.Star
+                    or PdfShapeKind.HighlightRectangle
                     ? null
                     : new PdfAnnotationColor(
                         _drawStrokeColor.R,
@@ -4499,6 +4518,7 @@ public sealed class PdfDocumentView : UserControl
                 PdfShapeKind.HighlightRectangle => "Area highlight added.",
                 PdfShapeKind.Ellipse => "Ellipse added.",
                 PdfShapeKind.Arrow => "Arrow added.",
+                PdfShapeKind.Star => "Star added.",
                 _ => "Line added.",
             };
         }
@@ -4506,6 +4526,40 @@ public sealed class PdfDocumentView : UserControl
         {
             _status.Text = "Shape failed: " + ex.Message;
         }
+    }
+
+    private static FrameworkElement CreateStarPreview(
+        double left,
+        double top,
+        double width,
+        double height,
+        SolidColorBrush stroke,
+        double strokeThickness)
+    {
+        var cx = left + (width / 2);
+        var cy = top + (height / 2);
+        var rx = Math.Max(width / 2, 0.5);
+        var ry = Math.Max(height / 2, 0.5);
+        const double innerScale = 0.38;
+        var points = new PointCollection();
+        for (var i = 0; i < 10; i++)
+        {
+            // UI Y grows downward; tip-up star uses −π/2 for the first outer vertex.
+            var angle = (-Math.PI / 2) + (i * Math.PI / 5);
+            var scale = (i % 2 == 0) ? 1.0 : innerScale;
+            points.Add(new Windows.Foundation.Point(
+                cx + (Math.Cos(angle) * rx * scale),
+                cy + (Math.Sin(angle) * ry * scale)));
+        }
+
+        points.Add(points[0]);
+        return new Microsoft.UI.Xaml.Shapes.Polyline
+        {
+            Points = points,
+            Stroke = stroke,
+            StrokeThickness = strokeThickness,
+            Fill = null,
+        };
     }
 
     private static FrameworkElement CreateLineOrArrowPreview(
