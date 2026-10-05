@@ -326,7 +326,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F18-02 | Freehand drawing | Stroke color. | M4 | Tested | Stroke picker; `DefaultStrokeColor` prefs round-trip |
 | F18-03 | Freehand drawing | Stroke width. | M4 | Tested | Width picker (1–8 pt); `DefaultStrokeWidthPoints` clamp + prefs unit tests |
 | F18-04 | Freehand drawing | Stroke opacity. | M4 | Tested | Sidebar Opacity → `SetOpacityAsync`; opacity alpha unit test |
-| F18-05 | Freehand drawing | Eraser. | M4 | Implemented | Eraser toolbar mode: click annotation to remove (ink preferred, padded hit) |
+| F18-05 | Freehand drawing | Eraser. | M4 | Tested | Eraser padded hit via `PdfAnnotationHitTest.HitTestWithPad` (ink preferred) |
 | F18-06 | Freehand drawing | Undo stroke. | M4 | Tested | Ctrl+Z undoes last ink/freeform/polygon via `AnnotationUndoStack` |
 | F18-07 | Freehand drawing | Select/move completed strokes. | M4 | Implemented | Ink annots use selection tool + `MoveAsync` |
 | F18-08 | Freehand drawing | Delete stroke. | M4 | Implemented | Sidebar Delete / `RemoveAsync` on ink annot |

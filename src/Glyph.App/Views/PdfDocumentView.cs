@@ -5645,8 +5645,8 @@ public sealed class PdfDocumentView : UserControl
 
         var onPage = _annotationItems.Where(a => a.PageIndex == pageIndex).ToList();
         // Prefer ink strokes (F18-05), then any annotation under/near the cursor.
-        var hit = HitWithPad(onPage.Where(a => a.IsInk), pdfX, pdfY, pad)
-            ?? HitWithPad(onPage, pdfX, pdfY, pad);
+        var hit = PdfAnnotationHitTest.HitTestWithPad(onPage.Where(a => a.IsInk), pdfX, pdfY, pad)
+            ?? PdfAnnotationHitTest.HitTestWithPad(onPage, pdfX, pdfY, pad);
 
         if (hit is null)
         {
@@ -5679,34 +5679,6 @@ public sealed class PdfDocumentView : UserControl
         {
             _status.Text = "Eraser failed: " + ex.Message;
         }
-    }
-
-    private static PdfAnnotationInfo? HitWithPad(
-        IEnumerable<PdfAnnotationInfo> annotations,
-        double xPoints,
-        double yPoints,
-        double pad)
-    {
-        PdfAnnotationInfo? hit = null;
-        foreach (var annot in annotations)
-        {
-            var b = annot.Bounds;
-            var left = Math.Min(b.Left, b.Right) - pad;
-            var right = Math.Max(b.Left, b.Right) + pad;
-            var bottom = Math.Min(b.Bottom, b.Top) - pad;
-            var top = Math.Max(b.Bottom, b.Top) + pad;
-            if (xPoints < left || xPoints > right || yPoints < bottom || yPoints > top)
-            {
-                continue;
-            }
-
-            if (hit is null || annot.AnnotIndex >= hit.AnnotIndex)
-            {
-                hit = annot;
-            }
-        }
-
-        return hit;
     }
 
     private async Task ToggleFreeformModeAsync()
