@@ -152,6 +152,33 @@ public class PdfPageEditHistoryTests
         }
     }
 
+    [Fact]
+    public async Task Undo_restores_page_count_after_blank_insert_and_duplicate()
+    {
+        var path = CreatePdf(pageCount: 2);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var editor = new PdfiumPageEditor();
+            var history = new PdfPageEditHistory();
+            await using var document = await factory.OpenAsync(path);
+
+            await history.ExecuteAsync(document, editor, () => editor.InsertBlankPageAsync(document, 1));
+            document.PageCount.Should().Be(3);
+            await history.UndoAsync(document, editor);
+            document.PageCount.Should().Be(2);
+
+            await history.ExecuteAsync(document, editor, () => editor.DuplicatePagesAsync(document, [0]));
+            document.PageCount.Should().Be(3);
+            await history.UndoAsync(document, editor);
+            document.PageCount.Should().Be(2);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static string CreatePdf(int pageCount)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-undo-" + Guid.NewGuid().ToString("N") + ".pdf");
