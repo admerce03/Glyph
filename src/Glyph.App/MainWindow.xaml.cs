@@ -1,6 +1,7 @@
 using Glyph.App.Views;
 using Glyph.Core.Documents;
 using Glyph.Core.IO;
+using Glyph.Core.Signatures;
 using Glyph.Core.Workspace;
 using Glyph.Infrastructure.Documents;
 using Glyph.Infrastructure.RecentFiles;
@@ -40,6 +41,7 @@ public sealed partial class MainWindow : Window
     private readonly IPdfLinkService _pdfLinks;
     private readonly IPdfPageEditor _pdfPageEditor;
     private readonly IPdfAnnotationService _pdfAnnotations;
+    private readonly ISignatureLibrary _signatures;
     private readonly PageRenderCache _pageCache;
     private readonly ILogger<MainWindow> _logger;
     private readonly Dictionary<DocumentId, IAsyncDisposable> _openEngines = new();
@@ -57,6 +59,7 @@ public sealed partial class MainWindow : Window
         IPdfLinkService pdfLinks,
         IPdfPageEditor pdfPageEditor,
         IPdfAnnotationService pdfAnnotations,
+        ISignatureLibrary signatures,
         PageRenderCache pageCache,
         ILogger<MainWindow> logger)
     {
@@ -72,6 +75,7 @@ public sealed partial class MainWindow : Window
         _pdfLinks = pdfLinks;
         _pdfPageEditor = pdfPageEditor;
         _pdfAnnotations = pdfAnnotations;
+        _signatures = signatures;
         _pageCache = pageCache;
         _logger = logger;
 
@@ -417,6 +421,7 @@ public sealed partial class MainWindow : Window
                 _pdfLinks,
                 _pdfPageEditor,
                 _pdfAnnotations,
+                _signatures,
                 _pdfFactory,
                 session.ViewState,
                 ownerWindow: this);

@@ -13,4 +13,5 @@ public sealed record PdfAnnotationInfo(
     bool IsStickyNote = false,
     bool IsInk = false,
     PdfShapeKind? ShapeKind = null,
-    bool IsTextBox = false);
+    bool IsTextBox = false,
+    bool IsStamp = false);

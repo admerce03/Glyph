@@ -238,8 +238,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-12 | PDF annotations | Text boxes | M4 | Tested | `AddTextBoxAsync` FreeText + TextBox toolbar |
 | F13-13 | PDF annotations | Sticky notes | M4 | Tested | Same as F15-01 `AddStickyNoteAsync` |
 | F13-14 | PDF annotations | Speech-bubble-like callouts | M4 | Not Started |  |
-| F13-15 | PDF annotations | Stamps, optionally | M4 | Not Started |  |
-| F13-16 | PDF annotations | Signatures | M4 | Not Started |  |
+| F13-15 | PDF annotations | Stamps, optionally | M4 | Tested | Same path as signatures (`AddStampAsync`) |
+| F13-16 | PDF annotations | Signatures | M4 | Tested | Stamp via `AddStampAsync` + Sign toolbar |
 | F13-17 | PDF annotations | Freeform shapes | M4 | Not Started |  |
 | F13-18 | PDF annotations | Annotation selection tool | M4 | Not Started |  |
 | F13-19 | PDF annotations | move | M4 | Tested | `MoveAsync` API |
@@ -332,22 +332,22 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F18-08 | Freehand drawing | Delete stroke. | M4 | Not Started |  |
 | F18-09 | Freehand drawing | recognize rough: | M4 | Not Started |  |
 | F18-10 | Freehand drawing | offer cleaned-up shape or original stroke. | M4 | Not Started |  |
-| F19-01 | PDF signatures | mouse | M4 | Not Started |  |
+| F19-01 | PDF signatures | mouse | M4 | Tested | Draw mode → BGRA raster → library + stamp |
 | F19-02 | PDF signatures | webcam photographing a signature on paper | M4 | Not Started |  |
-| F19-03 | PDF signatures | imported transparent signature image | M4 | Not Started |  |
-| F19-04 | PDF signatures | save signature | M4 | Not Started |  |
-| F19-05 | PDF signatures | name signature | M4 | Not Started |  |
-| F19-06 | PDF signatures | delete signature | M4 | Not Started |  |
+| F19-03 | PDF signatures | imported transparent signature image | M4 | Tested | Import PNG/JPEG → BGRA stamp |
+| F19-04 | PDF signatures | save signature | M4 | Tested | `FileSignatureLibrary.SaveAsync` |
+| F19-05 | PDF signatures | name signature | M4 | Tested | Named on save |
+| F19-06 | PDF signatures | delete signature | M4 | Tested | `DeleteAsync` |
 | F19-07 | PDF signatures | reorder signatures | M4 | Not Started |  |
-| F19-08 | PDF signatures | local storage | M4 | Not Started |  |
-| F19-09 | PDF signatures | optional application-specific cloud sync later | M4 | Not Started |  |
-| F19-10 | PDF signatures | insert | M4 | Not Started |  |
-| F19-11 | PDF signatures | resize | M4 | Not Started |  |
-| F19-12 | PDF signatures | move | M4 | Not Started |  |
+| F19-08 | PDF signatures | local storage | M4 | Tested | `%LocalAppData%\Glyph\signatures` |
+| F19-09 | PDF signatures | optional application-specific cloud sync later | M4 | Deferred | Explicitly later |
+| F19-10 | PDF signatures | insert | M4 | Implemented | Sign toolbar |
+| F19-11 | PDF signatures | resize | M4 | Tested | Bounds on insert / `MoveAsync` |
+| F19-12 | PDF signatures | move | M4 | Tested | `MoveAsync` |
 | F19-13 | PDF signatures | rotate where appropriate | M4 | Not Started |  |
 | F19-14 | PDF signatures | duplicate | M4 | Not Started |  |
-| F19-15 | PDF signatures | delete | M4 | Not Started |  |
-| F19-16 | PDF signatures | preserve transparency | M4 | Not Started |  |
+| F19-15 | PDF signatures | delete | M4 | Implemented | Sidebar Delete |
+| F19-16 | PDF signatures | preserve transparency | M4 | Tested | BGRA alpha channel |
 | F20-01 | PDF forms | text fields | M4 | Not Started |  |
 | F20-02 | PDF forms | multiline fields | M4 | Not Started |  |
 | F20-03 | PDF forms | checkboxes | M4 | Not Started |  |
@@ -376,7 +376,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F22-01 | PDF annotation flattening | highlights | M4 | Tested | `FlattenAsync` via `FPDFPage_Flatten` |
 | F22-02 | PDF annotation flattening | notes as configured | M4 | Tested | Same flatten path |
 | F22-03 | PDF annotation flattening | shapes | M4 | Tested | Same flatten path |
-| F22-04 | PDF annotation flattening | signatures | M4 | Not Started | Needs signature annots first |
+| F22-04 | PDF annotation flattening | signatures | M4 | Tested | Stamp annots included in `FlattenAsync` |
 | F22-05 | PDF annotation flattening | text boxes | M4 | Tested | Same flatten path |
 | F22-06 | PDF annotation flattening | drawings | M4 | Tested | Ink strokes included in flatten |
 | F23-01 | PDF security | Open encrypted PDFs. | M7 | Not Started |  |
