@@ -487,7 +487,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         {
             PdfShapeKind.Rectangle or PdfShapeKind.RoundedRectangle or PdfShapeKind.HighlightRectangle
                 => PdfiumAnnotSubtypes.Square,
-            PdfShapeKind.Ellipse => PdfiumAnnotSubtypes.Circle,
+            PdfShapeKind.Ellipse or PdfShapeKind.Loupe => PdfiumAnnotSubtypes.Circle,
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
 
@@ -499,6 +499,16 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                 borderColor.G,
                 borderColor.B,
                 A: 70);
+        }
+
+        // Loupe markers use a light lens-style fill so the page shows through.
+        if (kind == PdfShapeKind.Loupe && fillColor is null)
+        {
+            fillColor = new PdfAnnotationColor(
+                borderColor.R,
+                borderColor.G,
+                borderColor.B,
+                A: 28);
         }
 
         return Task.Run(
@@ -583,6 +593,10 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                             else if (kind == PdfShapeKind.HighlightRectangle)
                             {
                                 contentsLabel = "HighlightRect";
+                            }
+                            else if (kind == PdfShapeKind.Loupe)
+                            {
+                                contentsLabel = "Loupe";
                             }
 
                             if (contentsLabel is not null &&
@@ -1628,6 +1642,12 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                         }
                     }
 
+                    if (shapeKind == PdfShapeKind.Ellipse
+                        && string.Equals(contents, "Loupe", StringComparison.Ordinal))
+                    {
+                        shapeKind = PdfShapeKind.Loupe;
+                    }
+
                     if (shapeKind is null && subtype == PdfiumAnnotSubtypes.Ink)
                     {
                         shapeKind = FromInkShapeContents(contents);
@@ -2035,6 +2055,12 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                         {
                             shapeKind = PdfShapeKind.RoundedRectangle;
                         }
+                    }
+
+                    if (shapeKind == PdfShapeKind.Ellipse
+                        && string.Equals(contents, "Loupe", StringComparison.Ordinal))
+                    {
+                        shapeKind = PdfShapeKind.Loupe;
                     }
 
                     if (shapeKind is null && isInk)
@@ -2716,7 +2742,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
 
         if (existing.IsTextBox
             || existing.ShapeKind is PdfShapeKind.Rectangle or PdfShapeKind.Ellipse
-                or PdfShapeKind.RoundedRectangle or PdfShapeKind.HighlightRectangle)
+                or PdfShapeKind.RoundedRectangle or PdfShapeKind.HighlightRectangle
+                or PdfShapeKind.Loupe)
         {
             var rotatedBounds = PdfAnnotationRotate.RotateBounds(existing.Bounds, degreesClockwise);
             await MoveAsync(document, pageIndex, annotIndex, rotatedBounds, cancellationToken)

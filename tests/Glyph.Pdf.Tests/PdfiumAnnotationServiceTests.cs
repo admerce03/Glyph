@@ -663,6 +663,16 @@ public class PdfiumAnnotationServiceTests
                 bubble.IsInk.Should().BeTrue();
                 bubble.Contents.Should().Be("SpeechBubble");
 
+                var loupe = await annots.AddShapeAsync(
+                    document,
+                    0,
+                    PdfShapeKind.Loupe,
+                    new PdfRect(100, 200, 180, 280),
+                    new PdfAnnotationColor(30, 100, 180));
+                loupe.ShapeKind.Should().Be(PdfShapeKind.Loupe);
+                loupe.IsInk.Should().BeFalse();
+                loupe.Contents.Should().Be("Loupe");
+
                 await editor.SaveAsync(document, outPath);
             }
 
@@ -677,6 +687,7 @@ public class PdfiumAnnotationServiceTests
                 listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.HighlightRectangle);
                 listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Star && a.IsInk && a.Contents == "Star");
                 listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.SpeechBubble && a.IsInk && a.Contents == "SpeechBubble");
+                listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Loupe && a.Contents == "Loupe");
             }
         }
         finally

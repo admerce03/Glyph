@@ -310,7 +310,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F17-07 | Shapes | star | M4 | Tested | `AddShapeAsync(Star)` closed ink path + Star draw mode |
 | F17-08 | Shapes | speech bubble/callout | M4 | Tested | `AddShapeAsync(SpeechBubble)` closed ink path + Bubble toolbar |
 | F17-09 | Shapes | translucent highlight rectangle | M4 | Tested | `AddShapeAsync(HighlightRectangle)` + Area toolbar; translucent fill |
-| F17-10 | Shapes | magnification/loupe annotation, optionally | M4 | Not Started |  |
+| F17-10 | Shapes | magnification/loupe annotation, optionally | M4 | Tested | `AddShapeAsync(Loupe)` Circle + Contents=Loupe; Loupe toolbar; select shows 3× crop popup |
 | F17-11 | Shapes | resize | M4 | Tested | Same as F13-20 selection handles → `MoveAsync` |
 | F17-12 | Shapes | rotate | M4 | Tested | Ink shapes/lines/arrows via stroke point rotation; square/circle via bounds |
 | F17-13 | Shapes | move | M4 | Tested | Same as F13-19 drag / `MoveAsync` |

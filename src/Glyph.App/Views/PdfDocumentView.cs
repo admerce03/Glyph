@@ -148,7 +148,9 @@ public sealed class PdfDocumentView : UserControl
     private Button? _arrowButton;
     private Button? _starButton;
     private Button? _bubbleButton;
+    private Button? _loupeButton;
     private Button? _calloutButton;
+    private readonly List<FrameworkElement> _loupePopupVisuals = [];
     private Button? _redactButton;
     private bool _calloutMode;
     private bool _calloutTipEditMode;
@@ -517,6 +519,7 @@ public sealed class PdfDocumentView : UserControl
         var arrow = new Button { Content = "Arrow" };
         var star = new Button { Content = "Star" };
         var bubble = new Button { Content = "Bubble" };
+        var loupe = new Button { Content = "Loupe" };
         _signButton = sign;
         _inkButton = ink;
         _freeformButton = freeform;
@@ -532,6 +535,7 @@ public sealed class PdfDocumentView : UserControl
         _arrowButton = arrow;
         _starButton = star;
         _bubbleButton = bubble;
+        _loupeButton = loupe;
         _calloutButton = callout;
         _redactButton = redact;
         var undoEdit = new Button { Content = "Undo" };
@@ -569,6 +573,9 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(ellipse, "Draw an ellipse annotation");
         ToolTipService.SetToolTip(line, "Draw a line (stored as a 2-point ink stroke)");
         ToolTipService.SetToolTip(arrow, "Draw an arrow (ink shaft + arrowhead)");
+        ToolTipService.SetToolTip(star, "Draw a 5-point star outline");
+        ToolTipService.SetToolTip(bubble, "Draw a speech-bubble outline");
+        ToolTipService.SetToolTip(loupe, "Draw a loupe magnification marker (select to see zoomed crop)");
         ToolTipService.SetToolTip(undoEdit, "Undo last stroke (if any) or page edit (Ctrl+Z)");
         ToolTipService.SetToolTip(redoEdit, "Redo page edit (Ctrl+Y)");
 
@@ -636,6 +643,7 @@ public sealed class PdfDocumentView : UserControl
         arrow.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Arrow);
         star.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Star);
         bubble.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.SpeechBubble);
+        loupe.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Loupe);
         undoEdit.Click += async (_, _) =>
         {
             if (_strokeUndoStack.Count > 0)
@@ -660,7 +668,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star, bubble,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe,
                 _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -3751,9 +3759,10 @@ public sealed class PdfDocumentView : UserControl
         if (!(item.IsTextBox || item.ShapeKind is PdfShapeKind.Rectangle
                 or PdfShapeKind.RoundedRectangle
                 or PdfShapeKind.HighlightRectangle
-                or PdfShapeKind.Ellipse))
+                or PdfShapeKind.Ellipse
+                or PdfShapeKind.Loupe))
         {
-            _status.Text = "Fill applies to rectangles, ellipses, and text boxes.";
+            _status.Text = "Fill applies to rectangles, ellipses, loupes, and text boxes.";
             return;
         }
 
@@ -3986,6 +3995,7 @@ public sealed class PdfDocumentView : UserControl
                 PdfShapeKind.Star => "Star",
                 PdfShapeKind.Polygon => "Polygon",
                 PdfShapeKind.SpeechBubble => "Bubble",
+                PdfShapeKind.Loupe => "Loupe",
                 _ => "Shape",
             };
             return $"{group}{shapeName} · p.{info.PageIndex + 1}";
@@ -4632,6 +4642,12 @@ public sealed class PdfDocumentView : UserControl
             _drawStrokeColor = hiColor.Value;
             _drawStrokeWidth = 0.5f;
         }
+        else if (kind == PdfShapeKind.Loupe)
+        {
+            // Fixed lens styling — skip stroke dialog for a one-click loupe tool.
+            _drawStrokeColor = new PdfAnnotationColor(30, 100, 180);
+            _drawStrokeWidth = 2f;
+        }
         else
         {
             var picked = await PickStrokeStyleAsync(
@@ -4667,6 +4683,7 @@ public sealed class PdfDocumentView : UserControl
             PdfShapeKind.Arrow => "Arrow mode — drag from tail to tip.",
             PdfShapeKind.Star => "Star mode — drag a bounding box for a 5-point star.",
             PdfShapeKind.SpeechBubble => "Bubble mode — drag a speech-bubble outline.",
+            PdfShapeKind.Loupe => "Loupe mode — drag a circle; select it to see a magnified crop.",
             _ => "Line mode — drag on the page.",
         };
     }
@@ -4877,6 +4894,11 @@ public sealed class PdfDocumentView : UserControl
             _bubbleButton.Background = _shapeMode == PdfShapeKind.SpeechBubble ? active : null;
         }
 
+        if (_loupeButton is not null)
+        {
+            _loupeButton.Background = _shapeMode == PdfShapeKind.Loupe ? active : null;
+        }
+
         if (_calloutButton is not null)
         {
             _calloutButton.Background = _calloutMode ? active : null;
@@ -4916,12 +4938,24 @@ public sealed class PdfDocumentView : UserControl
         var top = Math.Min(_shapeStart.Y, current.Y);
         var width = Math.Abs(current.X - _shapeStart.X);
         var height = Math.Abs(current.Y - _shapeStart.Y);
+        if (_shapeMode == PdfShapeKind.Loupe)
+        {
+            // Force a circle: diameter from the larger axis, anchored at drag start.
+            var diameter = Math.Max(width, height);
+            width = diameter;
+            height = diameter;
+            left = current.X >= _shapeStart.X ? _shapeStart.X : _shapeStart.X - diameter;
+            top = current.Y >= _shapeStart.Y ? _shapeStart.Y : _shapeStart.Y - diameter;
+        }
+
         var stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(
             _drawStrokeColor.A,
             _drawStrokeColor.R,
             _drawStrokeColor.G,
             _drawStrokeColor.B));
-        var fillAlpha = (byte)(_shapeMode == PdfShapeKind.HighlightRectangle ? 70 : 40);
+        var fillAlpha = (byte)(_shapeMode == PdfShapeKind.HighlightRectangle
+            ? 70
+            : _shapeMode == PdfShapeKind.Loupe ? 28 : 40);
         var fill = new SolidColorBrush(Windows.UI.Color.FromArgb(
             fillAlpha,
             _drawStrokeColor.R,
@@ -4946,7 +4980,7 @@ public sealed class PdfDocumentView : UserControl
         {
             preview = _shapeMode switch
             {
-                PdfShapeKind.Ellipse => new Microsoft.UI.Xaml.Shapes.Ellipse
+                PdfShapeKind.Ellipse or PdfShapeKind.Loupe => new Microsoft.UI.Xaml.Shapes.Ellipse
                 {
                     Width = Math.Max(1, width),
                     Height = Math.Max(1, height),
@@ -5028,11 +5062,28 @@ public sealed class PdfDocumentView : UserControl
         }
         else
         {
-            var left = Math.Min(ToPdfX(start.X), ToPdfX(end.X));
-            var right = Math.Max(ToPdfX(start.X), ToPdfX(end.X));
-            var bottom = Math.Min(ToPdfY(start.Y), ToPdfY(end.Y));
-            var top = Math.Max(ToPdfY(start.Y), ToPdfY(end.Y));
-            bounds = new PdfRect(left, bottom, right, top);
+            var uiLeft = Math.Min(start.X, end.X);
+            var uiTop = Math.Min(start.Y, end.Y);
+            var uiWidth = Math.Abs(end.X - start.X);
+            var uiHeight = Math.Abs(end.Y - start.Y);
+            if (kind == PdfShapeKind.Loupe)
+            {
+                var diameter = Math.Max(uiWidth, uiHeight);
+                uiWidth = diameter;
+                uiHeight = diameter;
+                uiLeft = end.X >= start.X ? start.X : start.X - diameter;
+                uiTop = end.Y >= start.Y ? start.Y : start.Y - diameter;
+            }
+
+            var left = ToPdfX(uiLeft);
+            var right = ToPdfX(uiLeft + uiWidth);
+            var top = ToPdfY(uiTop);
+            var bottom = ToPdfY(uiTop + uiHeight);
+            bounds = new PdfRect(
+                Math.Min(left, right),
+                Math.Min(bottom, top),
+                Math.Max(left, right),
+                Math.Max(bottom, top));
         }
 
         try
@@ -5047,6 +5098,7 @@ public sealed class PdfDocumentView : UserControl
                 fillColor: kind is PdfShapeKind.Line or PdfShapeKind.Arrow or PdfShapeKind.Star
                     or PdfShapeKind.SpeechBubble
                     or PdfShapeKind.HighlightRectangle
+                    or PdfShapeKind.Loupe
                     ? null
                     : new PdfAnnotationColor(
                         _drawStrokeColor.R,
@@ -5074,6 +5126,7 @@ public sealed class PdfDocumentView : UserControl
                 PdfShapeKind.Arrow => "Arrow added.",
                 PdfShapeKind.Star => "Star added.",
                 PdfShapeKind.SpeechBubble => "Speech bubble added.",
+                PdfShapeKind.Loupe => "Loupe added — select it to see magnification.",
                 _ => "Line added.",
             };
         }
@@ -8320,6 +8373,11 @@ public sealed class PdfDocumentView : UserControl
         {
             AddAnnotSelectionChrome(info, primary: true);
         }
+
+        if (info.ShapeKind == PdfShapeKind.Loupe)
+        {
+            ShowLoupeMagnifier(info);
+        }
     }
 
     private void AddAnnotSelectionChrome(PdfAnnotationInfo info, bool primary)
@@ -8372,6 +8430,7 @@ public sealed class PdfDocumentView : UserControl
 
     private void ClearAnnotSelectionVisual()
     {
+        ClearLoupeMagnifier();
         foreach (var visual in _annotSelectionVisuals)
         {
             foreach (var overlay in _pageOverlays.Values)
@@ -8391,6 +8450,87 @@ public sealed class PdfDocumentView : UserControl
         _annotSelectionVisuals.Clear();
         _annotSelectionRect = null;
         _annotResizeHandleVisuals.Clear();
+    }
+
+    private void ClearLoupeMagnifier()
+    {
+        foreach (var visual in _loupePopupVisuals)
+        {
+            foreach (var overlay in _pageOverlays.Values)
+            {
+                overlay.Children.Remove(visual);
+            }
+        }
+
+        _loupePopupVisuals.Clear();
+    }
+
+    private void ShowLoupeMagnifier(PdfAnnotationInfo loupe)
+    {
+        ClearLoupeMagnifier();
+        if (loupe.ShapeKind != PdfShapeKind.Loupe)
+        {
+            return;
+        }
+
+        if (!_pageOverlays.TryGetValue(loupe.PageIndex, out var overlay)
+            || !_pageImages.TryGetValue(loupe.PageIndex, out var pageImage)
+            || pageImage.Source is not WriteableBitmap bitmap)
+        {
+            return;
+        }
+
+        var page = _document.GetPage(loupe.PageIndex);
+        var outSize = (int)PdfLoupeMagnifier.PopupSizeDip;
+        var magnified = PdfLoupeMagnifier.CropAndScale(
+            bitmap,
+            page.WidthPoints,
+            page.HeightPoints,
+            loupe.Bounds.Left,
+            loupe.Bounds.Bottom,
+            loupe.Bounds.Right,
+            loupe.Bounds.Top,
+            PdfLoupeMagnifier.DefaultZoom,
+            outSize);
+        if (magnified is null)
+        {
+            return;
+        }
+
+        var ring = new Border
+        {
+            Width = outSize + 4,
+            Height = outSize + 4,
+            CornerRadius = new CornerRadius((outSize + 4) / 2.0),
+            BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 30, 100, 180)),
+            BorderThickness = new Thickness(2),
+            Background = new SolidColorBrush(Colors.White),
+            IsHitTestVisible = false,
+            Child = new Image
+            {
+                Source = magnified,
+                Width = outSize,
+                Height = outSize,
+                Stretch = Stretch.UniformToFill,
+            },
+        };
+
+        // Place popup to the right of the loupe circle (or left if near page edge).
+        var loupeRight = loupe.Bounds.Right * _scale;
+        var loupeTop = (page.HeightPoints - loupe.Bounds.Top) * _scale;
+        var pageDisplayWidth = page.WidthPoints * _scale;
+        var popupLeft = loupeRight + 12;
+        if (popupLeft + outSize + 4 > pageDisplayWidth)
+        {
+            popupLeft = loupe.Bounds.Left * _scale - outSize - 16;
+        }
+
+        popupLeft = Math.Max(0, popupLeft);
+        var popupTop = Math.Max(0, loupeTop - 8);
+        Canvas.SetLeft(ring, popupLeft);
+        Canvas.SetTop(ring, popupTop);
+        overlay.Children.Add(ring);
+        _loupePopupVisuals.Add(ring);
     }
 
     private void ExpandSelectedStickyNote()

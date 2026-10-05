@@ -15,4 +15,6 @@ public enum PdfShapeKind
     Star = 7,
     Polygon = 8,
     SpeechBubble = 9,
+    /// <summary>Circular magnification marker (Circle subtype, Contents=Loupe).</summary>
+    Loupe = 10,
 }
