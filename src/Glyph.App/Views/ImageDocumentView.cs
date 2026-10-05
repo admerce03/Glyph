@@ -438,7 +438,7 @@ public sealed class ImageDocumentView : UserControl
             return;
         }
 
-        var (format, extension) = formatBox.SelectedItem as string switch
+        var (format, extension) = (formatBox.SelectedItem as string) switch
         {
             "WebP" => (ImageEncodeFormat.Webp, ".webp"),
             "TIFF" => (ImageEncodeFormat.Tiff, ".tif"),
