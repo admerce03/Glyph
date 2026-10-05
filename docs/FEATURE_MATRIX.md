@@ -138,7 +138,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F06-17 | PDF search | Search OCR text where OCR has been generated. | M2/M6 | Tested | `PdfPageTextSearch.Find` + `Merge` unit tests; session OCR cache |
 | F07-01 | PDF text interaction | Text selection. | M2/M6 | Tested | Click word-ish via `PdfTextSelection.TryExpandWordAt` + unit tests |
 | F07-02 | PDF text interaction | Copy text. | M2/M6 | Implemented | Copy button / Ctrl+C |
-| F07-03 | PDF text interaction | Select across lines. | M2/M6 | Implemented | Drag stream selection across lines; Alt/wide drag = column rect |
+| F07-03 | PDF text interaction | Select across lines. | M2/M6 | Tested | Stream selection + `PdfTextReadingOrder` line/word gap unit tests |
 | F07-04 | PDF text interaction | Select columns where practical. | M2/M6 | Tested | Alt-drag / wide region; `PreferColumnMode` + `PdfPageCoordinates` Y-flip fix |
 | F07-05 | PDF text interaction | Select all text on page/document. | M2/M6 | Implemented | Ctrl+A page text (2nd expands to document); Ctrl+Shift+A pages; context menu |
 | F07-06 | PDF text interaction | Right-click selected text. | M2/M6 | Implemented | Context menu: Copy / Find selection / Search web / Copy region as image |
@@ -189,10 +189,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F10-06 | PDF page manipulation | Delete pages. | M3 | Tested | `IPdfPageEditor.DeletePagesAsync` + toolbar |
 | F10-07 | PDF page manipulation | Duplicate pages. | M3 | Tested | `DuplicatePagesAsync` + Dup toolbar |
 | F10-08 | PDF page manipulation | Insert blank page. | M3 | Tested | `InsertBlankPageAsync` + Blank toolbar |
-| F10-09 | PDF page manipulation | Insert PDF file. | M3 | Implemented | Explorer PDF → thumbnail sidebar calls `InsertPagesAsync` |
+| F10-09 | PDF page manipulation | Insert PDF file. | M3 | Tested | Explorer PDF → sidebar `InsertPagesAsync`; editor insert unit tests |
 | F10-10 | PDF page manipulation | Insert pages from another PDF. | M3 | Tested | `InsertPagesAsync` covered by Pdf.Tests |
-| F10-11 | PDF page manipulation | Append PDF. | M3 | Implemented | Insert at `PageCount` |
-| F10-12 | PDF page manipulation | Prepend PDF. | M3 | Implemented | Insert at index 0 |
+| F10-11 | PDF page manipulation | Append PDF. | M3 | Tested | `PageInsertIndex.Append` + insert at `PageCount` unit test |
+| F10-12 | PDF page manipulation | Prepend PDF. | M3 | Tested | `PageInsertIndex.Prepend` + insert at `0` unit test |
 | F10-13 | PDF page manipulation | Insert at arbitrary position. | M3 | Tested | Insert index parameter |
 | F10-14 | PDF page manipulation | Extract selected pages. | M3 | Tested | `ExtractPagesAsync` returns new `IPdfDocument` |
 | F10-15 | PDF page manipulation | Save extracted pages as new PDF. | M3 | Tested | `SaveAsync` + Extract save picker |

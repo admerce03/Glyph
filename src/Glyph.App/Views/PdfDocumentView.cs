@@ -2576,7 +2576,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var insertAt = SelectedOrCurrentPages().DefaultIfEmpty(CurrentPageIndex).Max() + 1;
-        insertAt = Math.Clamp(insertAt, 0, _document.PageCount);
+        insertAt = PageInsertIndex.Clamp(insertAt, _document.PageCount);
         string? tempPath = null;
         try
         {
@@ -11316,7 +11316,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var insertAt = _document.PageCount;
+        var insertAt = PageInsertIndex.Append(_document.PageCount);
         var opened = new List<IPdfDocument>();
         try
         {

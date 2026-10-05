@@ -301,6 +301,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Print N-up/scale/rotate/center extracted to `PrintSheetLayout`; scroll throttle + presentation defaults unit-tested
 - Search result snippets unified via `PdfSearchSnippet` (F06-10)
 - Page drop accept/copy helpers + ink dash preview pattern extracted
+- M3 insert prepend/append + text reading-order helpers unit-tested (F10-09/11/12, F07-03)
 
 ---
 

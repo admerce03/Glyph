@@ -186,6 +186,50 @@ public class PdfiumPageEditorTests
     }
 
     [Fact]
+    public async Task Insert_pages_at_zero_prepends()
+    {
+        var destPath = CreateMultiPagePdf(pageCount: 2);
+        var srcPath = CreateMultiPagePdf(pageCount: 1);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var editor = new PdfiumPageEditor();
+            await using var dest = await factory.OpenAsync(destPath);
+            await using var src = await factory.OpenAsync(srcPath);
+
+            await editor.InsertPagesAsync(dest, src, [0], insertIndex: 0);
+            dest.PageCount.Should().Be(3);
+        }
+        finally
+        {
+            File.Delete(destPath);
+            File.Delete(srcPath);
+        }
+    }
+
+    [Fact]
+    public async Task Insert_pages_at_page_count_appends()
+    {
+        var destPath = CreateMultiPagePdf(pageCount: 2);
+        var srcPath = CreateMultiPagePdf(pageCount: 1);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var editor = new PdfiumPageEditor();
+            await using var dest = await factory.OpenAsync(destPath);
+            await using var src = await factory.OpenAsync(srcPath);
+
+            await editor.InsertPagesAsync(dest, src, [0], insertIndex: dest.PageCount);
+            dest.PageCount.Should().Be(3);
+        }
+        finally
+        {
+            File.Delete(destPath);
+            File.Delete(srcPath);
+        }
+    }
+
+    [Fact]
     public async Task Extract_and_save_round_trips_to_disk()
     {
         var path = CreateMultiPagePdf(pageCount: 3);

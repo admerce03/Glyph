@@ -59,7 +59,7 @@ public static class PdfTextSelection
 
     public static IEnumerable<PdfTextChar> OrderForReading(IEnumerable<PdfTextChar> chars)
         => chars
-            .OrderByDescending(c => MidY(c.Bounds))
+            .OrderByDescending(c => PdfTextReadingOrder.MidY(c.Bounds))
             .ThenBy(c => c.Bounds.Left)
             .ThenBy(c => c.Index);
 
@@ -77,11 +77,11 @@ public static class PdfTextSelection
         {
             if (prev is not null)
             {
-                if (IsNewLine(prev.Bounds, current.Bounds))
+                if (PdfTextReadingOrder.IsNewLine(prev.Bounds, current.Bounds))
                 {
                     sb.Append('\n');
                 }
-                else if (NeedsSpace(prev, current))
+                else if (PdfTextReadingOrder.NeedsSpaceBetween(prev, current))
                 {
                     sb.Append(' ');
                 }
@@ -175,32 +175,4 @@ public static class PdfTextSelection
         return true;
     }
 
-    private static double MidY(PdfRect bounds) => (bounds.Top + bounds.Bottom) / 2;
-
-    private static bool IsNewLine(PdfRect previous, PdfRect current)
-    {
-        var prevMid = MidY(previous);
-        var currMid = MidY(current);
-        var lineHeight = Math.Max(previous.Height, current.Height);
-        var threshold = Math.Max(2.0, lineHeight * 0.45);
-        return Math.Abs(prevMid - currMid) > threshold;
-    }
-
-    private static bool NeedsSpace(PdfTextChar previous, PdfTextChar current)
-    {
-        if (string.IsNullOrWhiteSpace(previous.Value) || string.IsNullOrWhiteSpace(current.Value))
-        {
-            return false;
-        }
-
-        if (char.IsWhiteSpace(previous.Value[^1]) || char.IsWhiteSpace(current.Value[0]))
-        {
-            return false;
-        }
-
-        // Large horizontal gap on the same line usually means a word break.
-        var gap = current.Bounds.Left - previous.Bounds.Right;
-        var typical = Math.Max(previous.Bounds.Width, current.Bounds.Width);
-        return gap > Math.Max(2.0, typical * 0.2);
-    }
 }
