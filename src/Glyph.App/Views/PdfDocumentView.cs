@@ -8,7 +8,6 @@ using Glyph.Core.Pdf;
 using Glyph.Core.Printing;
 using Glyph.Core.Signatures;
 using Glyph.Core.Text;
-using Glyph.Imaging.Abstractions;
 using Glyph.Infrastructure.Forms;
 using Glyph.Infrastructure.Settings;
 using Glyph.Ocr.Abstractions;
