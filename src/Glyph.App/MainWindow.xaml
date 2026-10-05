@@ -127,6 +127,8 @@
                         <KeyboardAccelerator Key="Tab" Modifiers="Control,Shift" />
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem x:Name="MoveTabToNewWindowMenuItem" Text="Move Tab to New Window" Click="MoveTabToNewWindowMenuItem_Click" />
             </MenuBarItem>
         </MenuBar>
 

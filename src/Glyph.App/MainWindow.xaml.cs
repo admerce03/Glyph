@@ -384,6 +384,14 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private async void MoveTabToNewWindowMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_workspace.ActiveDocument is { } active)
+        {
+            await TearTabToNewWindowAsync(active.Id);
+        }
+    }
+
     private async void DocumentTabs_AddTabButtonClick(TabView sender, object args) => await OpenWithPickerAsync(allowMultiple: false);
 
     private async void DocumentTabs_TabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
@@ -509,18 +517,28 @@ public sealed partial class MainWindow : Window
 
             if (existing is null)
             {
+                var content = await CreateDocumentContentAsync(session);
+                if (content is null)
+                {
+                    _workspace.Close(session.Id);
+                    StatusText.Text = "Could not open clipboard image.";
+                    return;
+                }
+
                 var tab = new TabViewItem
                 {
                     Header = file.Name + "*",
                     Tag = session.Id,
                     IsClosable = true,
-                    Content = CreatePlaceholderContent(session),
+                    Content = content,
                 };
+                AttachTabContextFlyout(tab);
                 DocumentTabs.TabItems.Add(tab);
             }
 
             SelectTabForActiveDocument();
             UpdateEmptyState();
+            await PersistSessionAsync();
             StatusText.Text = $"Created image from clipboard: {file.Name}";
         }
         catch (Exception ex)
@@ -1414,6 +1432,7 @@ public sealed partial class MainWindow : Window
                     IsClosable = true,
                     Content = content,
                 };
+                AttachTabContextFlyout(tab);
                 DocumentTabs.TabItems.Add(tab);
             }
 
@@ -1719,7 +1738,109 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async Task<bool> CloseDocumentAsync(DocumentId id)
+    /// <summary>Open a path from another window (e.g. tear-off tab).</summary>
+    public Task OpenDocumentPathAsync(string path) => OpenPathAsync(path);
+
+    private void AttachTabContextFlyout(TabViewItem tab)
+    {
+        var flyout = new MenuFlyout();
+        var closeItem = new MenuFlyoutItem { Text = "Close Tab" };
+        closeItem.Click += async (_, _) =>
+        {
+            if (tab.Tag is DocumentId id)
+            {
+                await CloseDocumentAsync(id);
+            }
+        };
+        var tearItem = new MenuFlyoutItem { Text = "Move to New Window" };
+        tearItem.Click += async (_, _) =>
+        {
+            if (tab.Tag is DocumentId id)
+            {
+                await TearTabToNewWindowAsync(id);
+            }
+        };
+        flyout.Items.Add(closeItem);
+        flyout.Items.Add(tearItem);
+        tab.ContextFlyout = flyout;
+    }
+
+    private async Task TearTabToNewWindowAsync(DocumentId id)
+    {
+        var session = _workspace.Documents.FirstOrDefault(d => d.Id.Equals(id));
+        if (session is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(session.Path) || !File.Exists(session.Path))
+        {
+            StatusText.Text = "Save the document before moving it to a new window.";
+            return;
+        }
+
+        var tab = DocumentTabs.TabItems.OfType<TabViewItem>()
+            .FirstOrDefault(t => t.Tag is DocumentId d && d.Equals(id));
+        var pathToOpen = session.Path!;
+        var dirty = session.IsDirty || TabHasUnsavedEdits(id);
+        if (dirty)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "Unsaved changes",
+                Content = $"“{session.DisplayName}” has unsaved changes. Save before moving to a new window?",
+                PrimaryButtonText = "Save & move",
+                SecondaryButtonText = "Move recovery copy",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = RootGrid.XamlRoot,
+            };
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.None)
+            {
+                return;
+            }
+
+            if (result == ContentDialogResult.Primary)
+            {
+                _workspace.Activate(id);
+                SelectTabForActiveDocument();
+                await SaveActiveDocumentAsync(saveAs: false);
+                if (session.IsDirty || TabHasUnsavedEdits(id))
+                {
+                    StatusText.Text = "Save cancelled — tab not moved.";
+                    return;
+                }
+
+                pathToOpen = session.Path!;
+            }
+            else if (tab is not null)
+            {
+                await WriteTabRecoveryAsync(tab, session.Path!);
+                var entries = await _recoveryStore.ListAsync();
+                var match = entries.FirstOrDefault(e =>
+                    string.Equals(e.OriginalPath, Path.GetFullPath(session.Path!), StringComparison.OrdinalIgnoreCase));
+                if (match is null || !File.Exists(match.RecoveryPath))
+                {
+                    StatusText.Text = "Could not create recovery copy for move.";
+                    return;
+                }
+
+                pathToOpen = match.RecoveryPath;
+            }
+        }
+
+        if (!await CloseDocumentAsync(id, skipDirtyPrompt: true))
+        {
+            return;
+        }
+
+        var window = App.CurrentApp.OpenNewWindow();
+        await window.OpenDocumentPathAsync(pathToOpen);
+        StatusText.Text = "Moved tab to a new window.";
+    }
+
+    private async Task<bool> CloseDocumentAsync(DocumentId id, bool skipDirtyPrompt = false)
     {
         var session = _workspace.Documents.FirstOrDefault(d => d.Id.Equals(id));
         if (session is null)
@@ -1727,7 +1848,7 @@ public sealed partial class MainWindow : Window
             return true;
         }
 
-        if (session.IsDirty || TabHasUnsavedEdits(id))
+        if (!skipDirtyPrompt && (session.IsDirty || TabHasUnsavedEdits(id)))
         {
             var dialog = new ContentDialog
             {
