@@ -109,6 +109,9 @@ public class JsonSettingsStoreTests
         var settings = await store.LoadAsync();
         settings.Theme.Should().Be(ThemePreference.System);
         settings.SidebarVisible.Should().BeTrue();
+        settings.AutoSaveToOriginal.Should().BeFalse();
+        settings.VersionSnapshotsEnabled.Should().BeFalse();
+        settings.ToolbarHiddenCommands.Should().BeEmpty();
     }
 
     [Fact]
@@ -231,6 +234,60 @@ public class JsonSettingsStoreTests
             // Reset toolbar to default = clear hidden list (F54-19).
             await store.SaveAsync(new AppSettings { ToolbarHiddenCommands = [] });
             (await new JsonSettingsStore(path).LoadAsync()).ToolbarHiddenCommands.Should().BeEmpty();
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Save_and_load_round_trips_sidebar_and_thumbnail_widths()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-widths-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings
+            {
+                SidebarVisible = false,
+                SidebarWidth = 240,
+                ThumbnailWidth = 120,
+            });
+
+            var settings = await new JsonSettingsStore(path).LoadAsync();
+            settings.SidebarVisible.Should().BeFalse();
+            settings.SidebarWidth.Should().Be(240);
+            settings.ThumbnailWidth.Should().Be(120);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Save_clamps_sidebar_and_thumbnail_widths()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-widths-clamp-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings { SidebarWidth = 10, ThumbnailWidth = 10 });
+            var low = await new JsonSettingsStore(path).LoadAsync();
+            low.SidebarWidth.Should().Be(140);
+            low.ThumbnailWidth.Should().Be(72);
+
+            await store.SaveAsync(new AppSettings { SidebarWidth = 999, ThumbnailWidth = 999 });
+            var high = await new JsonSettingsStore(path).LoadAsync();
+            high.SidebarWidth.Should().Be(480);
+            high.ThumbnailWidth.Should().Be(180);
         }
         finally
         {

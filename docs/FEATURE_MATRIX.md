@@ -31,27 +31,27 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-21 | Application and file handling | File → Properties. | M1/M9 | Implemented | File → Properties / Ctrl+I → PDF Info or image Meta |
 | F01-22 | Application and file handling | Close: | M1/M9 | Implemented | Close Tab / Close All |
 | F01-23 | Application and file handling | Unsaved-change prompt where appropriate. | M1/M9 | Implemented | Close tab dirty prompt |
-| F01-24 | Application and file handling | Optional autosave. | M1/M9 | Implemented | Preferences → Auto-save to original (F50-04 timer) |
-| F01-25 | Application and file handling | Crash-recovery copy. | M1/M9 | Implemented | `FileCrashRecoveryStore` + periodic snapshots |
+| F01-24 | Application and file handling | Optional autosave. | M1/M9 | Tested | Preferences → Auto-save to original; `AutoSaveToOriginal` prefs round-trip |
+| F01-25 | Application and file handling | Crash-recovery copy. | M1/M9 | Tested | `FileCrashRecoveryStore` SaveSnapshot/List/Discard unit tests |
 | F01-26 | Application and file handling | Undo/redo history. | M1/M9 | Implemented | Per-doc: page edits, annot/form/meta/signature, image checkpoints; unified app-wide stack later |
-| F01-27 | Application and file handling | Do not silently overwrite originals by default. | M1/M9 | Implemented | Autosave-to-original is opt-in (off by default) |
+| F01-27 | Application and file handling | Do not silently overwrite originals by default. | M1/M9 | Tested | Autosave-to-original opt-in off by default (prefs default unit test) |
 | F02-01 | Main window and interface | Standard Windows title bar. | M1/M9 | Implemented | WinUI AppWindow system title bar |
 | F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | Implemented | MenuBar File/View/Window |
-| F02-03 | Main window and interface | Customizable toolbar. | M1/M9 | Implemented | Preferences → Toolbar commands show/hide + Reset (F54) |
-| F02-04 | Main window and interface | Optional compact toolbar. | M1/M9 | Implemented | Preferences → Compact document toolbars |
+| F02-03 | Main window and interface | Customizable toolbar. | M1/M9 | Tested | ToolbarCommands catalog + `ToolbarHiddenCommands` prefs unit tests (F54) |
+| F02-04 | Main window and interface | Optional compact toolbar. | M1/M9 | Tested | `CompactToolbar` prefs round-trip unit test |
 | F02-05 | Main window and interface | Hide/show toolbar. | M1/M9 | Implemented | View → Hide/Show Toolbar |
-| F02-06 | Main window and interface | Hide/show sidebar. | M1/M9 | Implemented | View → Hide/Show Sidebar; persisted |
-| F02-07 | Main window and interface | Resizable sidebar. | M1/M9 | Implemented | Drag splitter; width persisted in settings |
+| F02-06 | Main window and interface | Hide/show sidebar. | M1/M9 | Tested | View → Hide/Show Sidebar; `SidebarVisible` prefs round-trip |
+| F02-07 | Main window and interface | Resizable sidebar. | M1/M9 | Tested | Drag splitter; `SidebarWidth` clamp + prefs unit tests |
 | F02-08 | Main window and interface | Resizable document area. | M1/M9 | Implemented | Content pane fills remaining space; window resize |
 | F02-09 | Main window and interface | Full-screen mode. | M1/M9 | Implemented | View → Full Screen / F11 / toolbar |
 | F02-10 | Main window and interface | Tabbed documents. | M1/M9 | Implemented | TabView + Ctrl+Tab navigation |
 | F02-11 | Main window and interface | Tear tab into separate window. | M1/M9 | Implemented | Window → Move Tab to New Window + tab context menu |
 | F02-12 | Main window and interface | Move tabs between windows. | M1/M9 | Implemented | Tear-off + `CanDragTabs`/`AllowDropTabs` cross-window (see F59-03) |
-| F02-13 | Main window and interface | Reorder tabs. | M1/M9 | Implemented | TabView CanReorderTabs + WorkspaceState.Reorder |
+| F02-13 | Main window and interface | Reorder tabs. | M1/M9 | Tested | TabView CanReorderTabs + `WorkspaceState.Reorder` unit test |
 | F02-14 | Main window and interface | Context menus throughout. | M1/M9 | Implemented | Tab, PDF page/text/annot/sidebar, image surface context menus |
-| F02-15 | Main window and interface | Dark mode. | M1/M9 | Implemented | Theme preference Dark |
-| F02-16 | Main window and interface | Light mode. | M1/M9 | Implemented | Theme preference Light |
-| F02-17 | Main window and interface | Follow Windows system theme. | M1/M9 | Implemented | Theme preference System → ElementTheme.Default |
+| F02-15 | Main window and interface | Dark mode. | M1/M9 | Tested | Theme preference Dark prefs round-trip |
+| F02-16 | Main window and interface | Light mode. | M1/M9 | Tested | Theme preference Light (default System + Dark round-trip) |
+| F02-17 | Main window and interface | Follow Windows system theme. | M1/M9 | Tested | Theme preference System default on missing prefs file |
 | F02-18 | Main window and interface | High-DPI scaling. | M1/M9 | Implemented | PerMonitorV2 declared in app.manifest |
 | F02-19 | Main window and interface | Multi-monitor support. | M1/M9 | Implemented | OS multi-monitor windows + Window → Move to Next Monitor |
 | F02-20 | Main window and interface | Per-monitor DPI awareness. | M1/M9 | Implemented | PerMonitorV2 declared in app.manifest |
@@ -62,19 +62,19 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-01 | Sidebar modes | Page thumbnails | M2-M5 | Implemented | Thumbnail strip in PDF viewer sidebar |
 | F03-02 | Sidebar modes | Table of contents | M2-M5 | Implemented | Outline TreeView when bookmarks present |
 | F03-03 | Sidebar modes | Search results | M2-M5 | Implemented | Find hits list under Search header |
-| F03-04 | Sidebar modes | Bookmarks | M2-M5 | Implemented | PDF sidebar Bookmarks list (user bookmarks) |
+| F03-04 | Sidebar modes | Bookmarks | M2-M5 | Tested | PDF sidebar Bookmarks list; view-state bookmark round-trip |
 | F03-05 | Sidebar modes | Highlights and annotations | M2-M5 | Implemented | PDF sidebar Annotations list (markup, notes, ink, shapes, signatures) |
 | F03-06 | Sidebar modes | Image list | M2-M5 | Implemented | Image viewer folder sibling ListView (`ImageFolderNavigator`) |
 | F03-07 | Sidebar modes | Contact sheet | M2-M5 | Implemented | Layout → Contact sheet grid; click page returns to continuous |
-| F03-08 | Sidebar modes | Document attachments, if supported | M2-M5 | Implemented | PDF sidebar Attachments list + Save… via `ListAttachments` |
-| F03-09 | Sidebar modes | Metadata/properties where useful | M2-M5 | Implemented | PDF sidebar Properties summary (incl. Creator/Producer) + More/Edit (F48) |
+| F03-08 | Sidebar modes | Document attachments, if supported | M2-M5 | Tested | PDF sidebar Attachments list + Save…; `ListAttachments` unit test |
+| F03-09 | Sidebar modes | Metadata/properties where useful | M2-M5 | Tested | PDF sidebar Properties summary; GetInfo Creator/Producer unit tests (F48) |
 | F03-10 | Sidebar modes | Switch sidebar mode without opening another window. | M2-M5 | Implemented | Sidebar mode ComboBox: Pages/Contents/Bookmarks/Search/Annotations/Properties/Attachments |
-| F03-11 | Sidebar modes | Resize thumbnail size. | M2-M5 | Implemented | Pages S/M/L buttons; `ThumbnailWidth` persisted |
-| F03-12 | Sidebar modes | Multi-select sidebar items. | M2-M5 | Implemented | Page thumbnails via `PageSelection`; annotations Extended ListView |
-| F03-13 | Sidebar modes | Shift-click range selection. | M2-M5 | Implemented | Thumbnail Shift+click / Shift+↑↓ via `PageSelection` |
-| F03-14 | Sidebar modes | Ctrl-click noncontiguous selection. | M2-M5 | Implemented | Thumbnail Ctrl+click; annotation Ctrl+click toggle |
-| F03-15 | Sidebar modes | Keyboard navigation. | M2-M5 | Implemented | ↑/↓ page selection; ListView keyboard for bookmarks/search/annots |
-| F03-16 | Sidebar modes | Drag selected items. | M2-M5 | Implemented | Thumbnail multi-select drag reorder / extract |
+| F03-11 | Sidebar modes | Resize thumbnail size. | M2-M5 | Tested | Pages S/M/L; `ThumbnailWidth` clamp + prefs unit tests |
+| F03-12 | Sidebar modes | Multi-select sidebar items. | M2-M5 | Tested | `PageSelection` Toggle/SelectAll unit tests |
+| F03-13 | Sidebar modes | Shift-click range selection. | M2-M5 | Tested | `PageSelection.SelectRange` / ApplyClick shift unit tests |
+| F03-14 | Sidebar modes | Ctrl-click noncontiguous selection. | M2-M5 | Tested | `PageSelection.Toggle` / ApplyClick ctrl unit tests |
+| F03-15 | Sidebar modes | Keyboard navigation. | M2-M5 | Tested | `PageSelection.ApplyKeyboardMove` unit tests |
+| F03-16 | Sidebar modes | Drag selected items. | M2-M5 | Tested | `PageDragPayload` format/parse unit tests; thumbnail multi-select drag |
 | F03-17 | Sidebar modes | Context menus. | M2-M5 | Implemented | Thumbnail / annotations / bookmarks / search right-click menus |
 | F03-18 | Sidebar modes | Sidebar selection controls the scope of many editing commands. | M2-M5 | Implemented | Rotate/delete/dup/extract/crop/move use `_pageSelection` |
 | F04-01 | PDF viewing | Open standard PDF files quickly. | M2 | Tested | PDFium open+render wired in shell |
@@ -709,10 +709,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F49-13 | Undo and redo | redaction before permanent application | M1-M4 | Tested | `UndoLastPending` unit tests; Ctrl+Z prefers pending marks |
 | F49-14 | Undo and redo | Ctrl+Z | M1-M4 | Tested | `UndoStackTests` + PDF redaction→annot→form→page edit order |
 | F49-15 | Undo and redo | Ctrl+Y / Ctrl+Shift+Z | M1-M4 | Tested | `PdfPageEditHistory` redo + `UndoStackTests` Redo |
-| F50-01 | Autosave and recovery | edits remain in memory until Save. | M1/M9 | Implemented | Default; AutoSaveToOriginal opt-in |
+| F50-01 | Autosave and recovery | edits remain in memory until Save. | M1/M9 | Tested | Default; AutoSaveToOriginal opt-in off by default (prefs) |
 | F50-02 | Autosave and recovery | periodic crash-recovery snapshot. | M1/M9 | Tested | `FileCrashRecoveryStore.SaveSnapshotAsync` round-trip unit test |
 | F50-03 | Autosave and recovery | closing unsaved file prompts user. | M1/M9 | Implemented | Close tab dirty / HasUnsavedEdits prompt |
-| F50-04 | Autosave and recovery | automatically save changes to original document. | M1/M9 | Implemented | Preferences AutoSaveToOriginal |
+| F50-04 | Autosave and recovery | automatically save changes to original document. | M1/M9 | Tested | Preferences AutoSaveToOriginal prefs round-trip |
 | F50-05 | Autosave and recovery | reopen recovered document after crash. | M1/M9 | Tested | `ListAsync` returns recovery paths; startup prompt opens them |
 | F50-06 | Autosave and recovery | never silently discard recovery data. | M1/M9 | Implemented | Recover / Keep / Discard prompt |
 | F50-07 | Autosave and recovery | remove recovery copy after successful save/close. | M1/M9 | Tested | `DiscardAsync` / `DiscardAllAsync` unit tests |
