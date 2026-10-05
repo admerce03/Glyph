@@ -16,7 +16,7 @@ public class PackagingDeferredPolicyTests
         PackagingDeferredPolicy.MsixSideloadHelperShipped.Should().BeTrue();
         PackagingDeferredPolicy.MsixSideloadAssociationProbeShipped.Should().BeTrue();
         PackagingDeferredPolicy.NativeFileAssociationsShipped.Should().BeFalse();
-        PackagingDeferredPolicy.InAppUpdateCheckShipped.Should().BeFalse();
+        PackagingDeferredPolicy.InAppUpdateCheckShipped.Should().BeTrue();
         PackagingDeferredPolicy.Adr.Should().Be("ADR-012");
         PackagingDeferredPolicy.PublishScript.Should().Contain("publish-msix");
         PackagingDeferredPolicy.InstallScript.Should().Contain("install-msix-test");

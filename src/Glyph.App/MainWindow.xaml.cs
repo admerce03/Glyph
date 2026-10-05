@@ -29,6 +29,7 @@ using Windows.Graphics;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
+using Windows.System;
 using WinRT.Interop;
 
 namespace Glyph.App;
@@ -551,6 +552,84 @@ public sealed partial class MainWindow : Window
     private async void ThemeDarkItem_Click(object sender, RoutedEventArgs e) => await SetThemeAsync(ThemePreference.Dark);
 
     private async void PreferencesMenuItem_Click(object sender, RoutedEventArgs e) => await ShowPreferencesAsync();
+
+    private async void CheckForUpdatesMenuItem_Click(object sender, RoutedEventArgs e) =>
+        await ShowUpdateCheckAsync();
+
+    private async void AboutMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = "About Glyph",
+            Content = $"Glyph {AppUpdateCheckPolicy.ShippedVersion}\n\nNative Windows document preview and light editing.",
+            CloseButtonText = AppUpdateCheckPolicy.CloseButton,
+            XamlRoot = RootGrid.XamlRoot,
+        };
+        await dialog.ShowAsync();
+    }
+
+    private async Task ShowUpdateCheckAsync()
+    {
+        string? latestTag = null;
+        try
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("Glyph-UpdateCheck/0.1");
+            var json = await http.GetStringAsync(AppUpdateCheckPolicy.LatestReleaseApiUrl);
+            latestTag = TryReadGitHubReleaseTag(json);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Update check could not reach GitHub Releases API");
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = AppUpdateCheckPolicy.DialogTitle,
+            Content = AppUpdateCheckPolicy.FormatWithLatest(latestTag),
+            PrimaryButtonText = AppUpdateCheckPolicy.OpenReleasesButton,
+            CloseButtonText = AppUpdateCheckPolicy.CloseButton,
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = RootGrid.XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        await Launcher.LaunchUriAsync(new Uri(AppUpdateCheckPolicy.ReleasesUrl));
+    }
+
+    private static string? TryReadGitHubReleaseTag(string json)
+    {
+        // Avoid a JSON dependency in the shell: pick "tag_name":"…"
+        const string key = "\"tag_name\"";
+        var idx = json.IndexOf(key, StringComparison.Ordinal);
+        if (idx < 0)
+        {
+            return null;
+        }
+
+        var colon = json.IndexOf(':', idx + key.Length);
+        if (colon < 0)
+        {
+            return null;
+        }
+
+        var firstQuote = json.IndexOf('"', colon + 1);
+        if (firstQuote < 0)
+        {
+            return null;
+        }
+
+        var secondQuote = json.IndexOf('"', firstQuote + 1);
+        if (secondQuote < 0)
+        {
+            return null;
+        }
+
+        return json[(firstQuote + 1)..secondQuote];
+    }
 
     private void NextTabMenuItem_Click(object sender, RoutedEventArgs e)
     {
@@ -2810,6 +2889,14 @@ public sealed partial class MainWindow : Window
             StatusText.Text = AppShellStatus.SavedSignaturesCleared;
         };
 
+        var checkUpdatesButton = new Button
+        {
+            Content = PreferencesDialogUi.CheckForUpdates,
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        AutomationProperties.SetName(checkUpdatesButton, PreferencesDialogUi.CheckForUpdates);
+        checkUpdatesButton.Click += async (_, _) => await ShowUpdateCheckAsync();
+
         var privacyHeader = new TextBlock
         {
             Text = PreferencesDialogUi.PrivacyHeader,
@@ -2827,7 +2914,7 @@ public sealed partial class MainWindow : Window
                 highlightColorBox, strokeColorBox, stickyColorBox, strokeWidthBox,
                 animationAutoplayBox, stripMetadataBox, layoutBox, defaultZoomBox,
                 zoom100Box, interpolationBox, colorManagedBox, localOcrNote, ocrLanguageBox,
-                privacyHeader, clearRecentButton, clearSignaturesButton,
+                privacyHeader, clearRecentButton, clearSignaturesButton, checkUpdatesButton,
             },
         };
         var dialog = new ContentDialog

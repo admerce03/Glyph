@@ -770,7 +770,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-01 | Preferences | theme | M1/M9 | Tested | Theme setting persisted; `JsonSettingsStoreTests` round-trip |
 | F55-02 | Preferences | restore previous session | M1/M9 | Tested | Preferences toggle; `JsonSettingsStore` + `JsonSessionStore` unit tests |
 | F55-03 | Preferences | recent file count | M1/M9 | Tested | Preferences NumberBox; settings round-trip unit test |
-| F55-04 | Preferences | check for updates | M1/M9 | Deferred | ADR-012; `PackagingDeferredPolicy` (update channel after verified MSIX) |
+| F55-04 | Preferences | check for updates | M1/M9 | Tested | Help → Check for updates; `AppUpdateCheckPolicy` + GitHub Releases |
 | F55-05 | Preferences | default page layout | M1/M9 | Tested | Preferences combo; `Save_and_load_round_trips_pdf_open_defaults` |
 | F55-06 | Preferences | default zoom | M1/M9 | Tested | Preferences NumberBox; `Save_and_load_round_trips_pdf_open_defaults` |
 | F55-07 | Preferences | remember last page | M1/M9 | Tested | `JsonDocumentViewStateStore` page index round-trip |
