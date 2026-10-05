@@ -730,7 +730,7 @@ public sealed class PdfDocumentView : UserControl
         _layoutBox = new ComboBox
         {
             Width = 150,
-            ItemsSource = new[] { "Continuous", "Single", "Two-page", "Two-page + cover", "Contact sheet" },
+            ItemsSource = PdfDialogOptions.LayoutModes.ToList(),
             SelectedIndex = PageLayoutCombo.ToComboIndex(_layoutMode),
         };
         _layoutBox.SelectionChanged += async (_, _) =>
@@ -5354,7 +5354,7 @@ public sealed class PdfDocumentView : UserControl
         var fontFamilyBox = new ComboBox
         {
             Header = PdfDialogHeaders.Font,
-            ItemsSource = new[] { "Helvetica", "Times", "Courier" },
+            ItemsSource = PdfDialogOptions.StandardFonts.ToList(),
             SelectedIndex = 0,
             Width = 220,
         };
@@ -5364,7 +5364,7 @@ public sealed class PdfDocumentView : UserControl
         var alignBox = new ComboBox
         {
             Header = PdfDialogHeaders.Align,
-            ItemsSource = new[] { "Left", "Center", "Right" },
+            ItemsSource = PdfDialogOptions.HorizontalAlignments.ToList(),
             SelectedIndex = 0,
             Width = 220,
         };
@@ -5953,7 +5953,7 @@ public sealed class PdfDocumentView : UserControl
             lineStyleBox = new ComboBox
             {
                 Header = PdfDialogHeaders.LineStyle,
-                ItemsSource = new[] { "Solid", "Dashed", "Dotted" },
+                ItemsSource = PdfDialogOptions.LineStyles.ToList(),
                 SelectedIndex = (int)_drawInkLineStyle,
                 Width = 220,
             };
@@ -5965,7 +5965,7 @@ public sealed class PdfDocumentView : UserControl
             arrowheadBox = new ComboBox
             {
                 Header = PdfDialogHeaders.Arrowhead,
-                ItemsSource = new[] { "Open", "Filled", "Diamond" },
+                ItemsSource = PdfDialogOptions.Arrowheads.ToList(),
                 SelectedIndex = (int)_drawArrowheadStyle,
                 Width = 220,
             };
@@ -7552,13 +7552,7 @@ public sealed class PdfDocumentView : UserControl
         {
             Height = 180,
             SelectionMode = ListViewSelectionMode.Single,
-            ItemsSource = new[]
-            {
-                "Overlay — click fields on the page",
-                "List fields — classic picker",
-                "AutoFill from profile",
-                "Edit AutoFill profile",
-            },
+            ItemsSource = PdfDialogOptions.FormOverlayModes.ToList(),
             SelectedIndex = 0,
         };
         var chooser = new ContentDialog
@@ -9161,7 +9155,7 @@ public sealed class PdfDocumentView : UserControl
         var fontFamilyBox = new ComboBox
         {
             Header = PdfDialogHeaders.Font,
-            ItemsSource = new[] { "Helvetica", "Times", "Courier" },
+            ItemsSource = PdfDialogOptions.StandardFonts.ToList(),
             SelectedIndex = 0,
             Width = 220,
         };
@@ -9171,7 +9165,7 @@ public sealed class PdfDocumentView : UserControl
         var alignBox = new ComboBox
         {
             Header = PdfDialogHeaders.Align,
-            ItemsSource = new[] { "Left", "Center", "Right" },
+            ItemsSource = PdfDialogOptions.HorizontalAlignments.ToList(),
             SelectedIndex = 0,
             Width = 220,
         };
@@ -9186,7 +9180,7 @@ public sealed class PdfDocumentView : UserControl
         {
             Height = 120,
             SelectionMode = ListViewSelectionMode.Single,
-            ItemsSource = new[] { "None", "White", "Yellow", "Light blue", "Light green" }.ToList(),
+            ItemsSource = PdfDialogOptions.NoteColors.ToList(),
             SelectedIndex = 1,
         };
         var borderList = new ListView
@@ -10251,7 +10245,7 @@ public sealed class PdfDocumentView : UserControl
         var alignBox = new ComboBox
         {
             Header = PdfDialogHeaders.Align,
-            ItemsSource = new[] { "Left", "Center", "Right" },
+            ItemsSource = PdfDialogOptions.HorizontalAlignments.ToList(),
             SelectedIndex = Math.Clamp((int)(item.TextQuadding ?? PdfTextQuadding.Left), 0, 2),
             Width = 220,
         };
@@ -11447,7 +11441,7 @@ public sealed class PdfDocumentView : UserControl
         var unitBox = new ComboBox
         {
             Header = PdfDialogHeaders.Units,
-            ItemsSource = new[] { "Points (pt)", "Inches (in)", "Centimeters (cm)", "Millimeters (mm)" },
+            ItemsSource = PdfDialogOptions.CropUnits.ToList(),
             SelectedIndex = (int)_cropUnit,
             Width = 220,
         };
@@ -12263,14 +12257,14 @@ public sealed class PdfDocumentView : UserControl
             {
                 Header = PdfDialogHeaders.Scale,
                 Width = 220,
-                ItemsSource = new[] { "Fit to printable area", "Fill page", "Actual size" },
+                ItemsSource = PdfDialogOptions.PrintScales.ToList(),
                 SelectedIndex = 0,
             };
             var nUpBox = new ComboBox
             {
                 Header = PdfDialogHeaders.PagesPerSheet,
                 Width = 220,
-                ItemsSource = new[] { "1", "2", "4" },
+                ItemsSource = PdfDialogOptions.PagesPerSheet.ToList(),
                 SelectedIndex = 0,
             };
             var grayscale = new CheckBox { Content = PdfViewerChromeLabels.Grayscale };
@@ -13114,7 +13108,7 @@ public sealed class PdfDocumentView : UserControl
             static string Bytes(long? size) => ByteSizeFormat.FormatOptional(size, "?");
 
             _attachmentList.ItemsSource = _attachmentItems.Count == 0
-                ? new[] { "(none)" }
+                ? new[] { PdfDialogOptions.NoneChoice }
                 : _attachmentItems
                     .Select(a => $"{a.Name} · {Bytes(a.SizeBytes)}")
                     .ToList();

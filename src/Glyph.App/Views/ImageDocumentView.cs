@@ -227,7 +227,7 @@ public sealed class ImageDocumentView : UserControl
         {
             Width = 110,
             Visibility = Visibility.Collapsed,
-            ItemsSource = new[] { "Free", "Original", "1:1", "4:3", "3:2", "16:9" },
+            ItemsSource = ImageDialogOptions.CropAspectRatios.ToList(),
             SelectedIndex = 0,
         };
         ToolTipService.SetToolTip(_cropAspectBox, ImageViewerTooltips.CropAspectFreeOriginalImageRatio);
@@ -236,7 +236,7 @@ public sealed class ImageDocumentView : UserControl
         {
             Width = 88,
             Visibility = Visibility.Collapsed,
-            ItemsSource = new[] { "Rect", "Ellipse", "Lasso", "Smart" },
+            ItemsSource = ImageDialogOptions.SelectionTools.ToList(),
             SelectedIndex = 0,
         };
         _selectAllButton = new Button { Content = ImageViewerChromeLabels.All, Visibility = Visibility.Collapsed };
@@ -2577,7 +2577,7 @@ public sealed class ImageDocumentView : UserControl
         {
             Header = ImageDialogHeaders.Units,
             Width = 140,
-            ItemsSource = new[] { "Pixels", "Inches", "Centimeters" },
+            ItemsSource = ImageDialogOptions.SizeUnits.ToList(),
             SelectedIndex = 0,
         };
         var dpiBox = new NumberBox
@@ -2599,7 +2599,7 @@ public sealed class ImageDocumentView : UserControl
         {
             Header = ImageDialogHeaders.Resampling,
             Width = 180,
-            ItemsSource = new[] { "Auto", "Nearest-neighbor", "Bilinear", "Bicubic" },
+            ItemsSource = ImageDialogOptions.ResamplingModes.ToList(),
             SelectedIndex = ResolveDefaultInterpolationIndex(),
         };
         var preview = new TextBlock
@@ -2874,22 +2874,14 @@ public sealed class ImageDocumentView : UserControl
         {
             Header = ImageDialogHeaders.Category,
             Width = 260,
-            ItemsSource = new[] { "Orientation", "Convert / export", "Strip metadata", "Rename", "Color profile" },
+            ItemsSource = ImageDialogOptions.BatchCategories.ToList(),
             SelectedIndex = 0,
         };
         var opBox = new ComboBox
         {
             Header = ImageDialogHeaders.Operation,
             Width = 260,
-            ItemsSource = new[]
-            {
-                "Rotate left 90°",
-                "Rotate right 90°",
-                "Rotate 180°",
-                "Flip horizontal",
-                "Flip vertical",
-                "Normalize EXIF orientation",
-            },
+            ItemsSource = ImageDialogOptions.BatchOrientations.ToList(),
             SelectedIndex = 1,
         };
         var formatBox = new ComboBox
@@ -2897,7 +2889,7 @@ public sealed class ImageDocumentView : UserControl
             Header = ImageDialogHeaders.ExportFormat,
             Width = 260,
             Visibility = Visibility.Collapsed,
-            ItemsSource = new[] { "PNG", "JPEG", "WebP", "TIFF", "BMP", "GIF", "AVIF", "JPEG 2000" },
+            ItemsSource = ImageDialogOptions.ExportFormats.ToList(),
             SelectedIndex = 0,
         };
         var quality = new Slider
@@ -2922,7 +2914,7 @@ public sealed class ImageDocumentView : UserControl
             Header = ImageDialogHeaders.ColorProfile,
             Width = 260,
             Visibility = Visibility.Collapsed,
-            ItemsSource = new[] { "Assign sRGB", "Convert → sRGB", "Assign Adobe RGB", "Convert → Adobe RGB" },
+            ItemsSource = ImageDialogOptions.ColorProfileOps.ToList(),
             SelectedIndex = 1,
         };
         var includeCurrent = new CheckBox
@@ -3965,14 +3957,14 @@ public sealed class ImageDocumentView : UserControl
             {
                 Header = ImageDialogHeaders.Scale,
                 Width = 240,
-                ItemsSource = new[] { "Fit to printable area", "Fill page", "Actual size" },
+                ItemsSource = ImageDialogOptions.PrintScales.ToList(),
                 SelectedIndex = 0,
             };
             var nUpBox = new ComboBox
             {
                 Header = ImageDialogHeaders.PagesPerSheet,
                 Width = 240,
-                ItemsSource = new[] { "1", "2", "4" },
+                ItemsSource = ImageDialogOptions.PagesPerSheet.ToList(),
                 SelectedIndex = 0,
             };
             var grayscale = new CheckBox { Content = ImageViewerChromeLabels.Grayscale };
@@ -4101,7 +4093,7 @@ public sealed class ImageDocumentView : UserControl
         {
             Header = ImageDialogHeaders.Format,
             Width = 200,
-            ItemsSource = new[] { "WebP", "TIFF", "BMP", "GIF", "AVIF", "JPEG 2000", "HEIC", "PDF" },
+            ItemsSource = ImageDialogOptions.ConvertFormatsExtra.ToList(),
             SelectedIndex = 0,
         };
         var quality = new Slider
@@ -4136,7 +4128,7 @@ public sealed class ImageDocumentView : UserControl
             Header = ImageDialogHeaders.TiffCompression,
             Width = 200,
             Visibility = Visibility.Collapsed,
-            ItemsSource = new[] { "Default", "None", "LZW", "ZIP", "JPEG" },
+            ItemsSource = ImageDialogOptions.TiffCompressions.ToList(),
             SelectedIndex = 0,
         };
         void SyncWebpOptions()
@@ -4900,7 +4892,7 @@ public sealed class ImageDocumentView : UserControl
         {
             Header = ImageDialogHeaders.Tool,
             Width = 200,
-            ItemsSource = new[] { "Freehand", "Rectangle", "Ellipse", "Line", "Arrow", "Text", "Callout" },
+            ItemsSource = ImageDialogOptions.MarkupTools.ToList(),
             SelectedIndex = 0,
         };
         var widthSlider = new Slider
@@ -4916,7 +4908,7 @@ public sealed class ImageDocumentView : UserControl
         {
             Header = ImageDialogHeaders.Color,
             Width = 200,
-            ItemsSource = new[] { "Red", "Black", "White", "Yellow", "Blue", "Green" },
+            ItemsSource = ImageDialogOptions.MarkupColors.ToList(),
             SelectedIndex = 0,
         };
         var panel = new StackPanel { Spacing = 8, Children = { toolBox, colorBox, widthSlider } };
