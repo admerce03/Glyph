@@ -3898,7 +3898,9 @@ public sealed class ImageDocumentView : UserControl
                     {
                         new TextBlock
                         {
-                            Text = "Places at selection top-left (or 0,0). Undo with Ctrl+Z.",
+                            Text = SignatureLibraryUi.ImageMarkupUsesPasteFile
+                                ? "Places at selection top-left (or 0,0). Undo with Ctrl+Z."
+                                : "Places at selection top-left (or 0,0).",
                             Opacity = 0.75,
                             TextWrapping = TextWrapping.Wrap,
                         },
@@ -4845,6 +4847,13 @@ public sealed class ImageDocumentView : UserControl
     private async Task<bool> EnsureMarkupFlattenedAsync()
     {
         if (!ImageMarkupFlattenPolicy.HasPendingMarkup(_markupStrokes.Count, _markupShapes.Count))
+        {
+            return true;
+        }
+
+        if (!NonDestructiveEditPolicy.ShouldPromptFlatten(
+                hasPendingMarkup: true,
+                targetIsRaster: true))
         {
             return true;
         }

@@ -25,7 +25,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M5 | Image viewer/editor | **Tested** (matrix-complete; HDR/HEIF deferred) | M1 (shares shell/DnD with M3) |
 | M6 | OCR and scanned-document capabilities | **In Progress** (PRs #62–#66 stacked; Actions billing blocks CI/merge) | M2, M5 |
 | M7 | Redaction, PDF security, optimization, metadata | **In Progress** (redact/optimize/metadata Tested; password-write → ADR-015) | M2–M4 |
-| M8 | Batch ops, scanner, color management, advanced | **Implemented** (hardware validation TBD; ML subject deferred) | M5–M7 |
+| M8 | Batch ops, scanner, color management, advanced | **Tested** (hardware validation TBD; ML subject deferred) | M5–M7 |
 | M9 | Performance, polish, a11y, installer, audit | **In Progress** (matrix a11y/perf/share Tested; MSIX → ADR-012) | M1–M8 core paths |
 
 M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behind separate interfaces. M3 remains the highest-priority Preview-differentiator after viewing works.
@@ -297,7 +297,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - FreeText Align / `/Q` quadding via post-save dict patch (F13-38 / F16-15)
 - Bookmarks → PDF `/Outlines` export (F09-08)
 - Password-protect write blocked on ADR-015 (Needs approval)
-- Local polish (+172 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
+- Local polish (+173 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
 - FEATURE_MATRIX: no Implemented rows remain (F64-00 Tested); password-write / MSIX / HDR / ML still Blocked or Deferred
 - Print N-up/scale/rotate/center extracted to `PrintSheetLayout`; scroll throttle + presentation defaults unit-tested
 - Search result snippets unified via `PdfSearchSnippet` (F06-10)
@@ -334,9 +334,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 8 — Batch operations, scanner, color management, advanced
 
-**Status:** In Progress · Depends on M5–M7
-
-### Scope (`FEATURES.md` §27, §29, §36, §39, §42–48 advanced)
+**Status:** Tested · Depends on M5–M7 (hardware scanner validation TBD; ML subject deferred)
 
 - Batch image ops
 - Scanner support (Windows APIs)
