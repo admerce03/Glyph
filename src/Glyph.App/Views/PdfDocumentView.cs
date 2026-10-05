@@ -1852,15 +1852,18 @@ public sealed class PdfDocumentView : UserControl
     }
 
     private static bool CanAcceptPageDrop(DataPackageView data) =>
-        data.Contains(StandardDataFormats.Text) || data.Contains(StandardDataFormats.StorageItems);
+        PageDropPlacement.AcceptsDrop(
+            data.Contains(StandardDataFormats.Text),
+            data.Contains(StandardDataFormats.StorageItems));
 
     private static DataPackageOperation PreferredDropOperation(DragEventArgs e)
     {
-        var storageOnly = e.DataView.Contains(StandardDataFormats.StorageItems)
-            && !e.DataView.Contains(StandardDataFormats.Text);
-        if (PageDropPlacement.PreferCopyOnly(
+        var hasText = e.DataView.Contains(StandardDataFormats.Text);
+        var hasStorage = e.DataView.Contains(StandardDataFormats.StorageItems);
+        if (PageDropPlacement.PreferCopyOperation(
                 e.Modifiers.HasFlag(DragDropModifiers.Control),
-                storageOnly))
+                hasStorage,
+                hasText))
         {
             return DataPackageOperation.Copy;
         }
@@ -6441,13 +6444,11 @@ public sealed class PdfDocumentView : UserControl
         };
     }
 
-    private static DoubleCollection? InkLineDashArray(PdfInkLineStyle style) =>
-        style switch
-        {
-            PdfInkLineStyle.Dashed => new DoubleCollection { 6, 4 },
-            PdfInkLineStyle.Dotted => new DoubleCollection { 1.5, 4 },
-            _ => null,
-        };
+    private static DoubleCollection? InkLineDashArray(PdfInkLineStyle style)
+    {
+        var pattern = PdfInkLineStyleDashPattern.ForPreview(style);
+        return pattern is null ? null : new DoubleCollection(pattern);
+    }
 
     private static FrameworkElement CreateLineOrArrowPreview(
         PdfShapeKind kind,

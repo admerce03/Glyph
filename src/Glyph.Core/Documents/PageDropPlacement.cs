@@ -29,6 +29,18 @@ public static class PageDropPlacement
     public static bool PreferCopyOnly(bool controlHeld, bool storageItemsWithoutText) =>
         controlHeld || storageItemsWithoutText;
 
+    /// <summary>True when a drop package can insert/reorder pages (F11-04).</summary>
+    public static bool AcceptsDrop(bool hasTextPayload, bool hasStorageItems) =>
+        hasTextPayload || hasStorageItems;
+
+    /// <summary>Explorer PDF file drop without in-app page text payload (insert-only).</summary>
+    public static bool IsStorageInsertOnly(bool hasStorageItems, bool hasTextPayload) =>
+        hasStorageItems && !hasTextPayload;
+
+    /// <summary>Ctrl or storage insert forces copy-only drop semantics.</summary>
+    public static bool PreferCopyOperation(bool controlHeld, bool hasStorageItems, bool hasTextPayload) =>
+        PreferCopyOnly(controlHeld, IsStorageInsertOnly(hasStorageItems, hasTextPayload));
+
     /// <summary>
     /// Border thickness for the orange insert indicator (left, top, right, bottom).
     /// Emphasizes the edge where pages will land.
