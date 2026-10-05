@@ -60,7 +60,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfDocumentInfoService _documentInfo;
     private readonly IPdfOptimizeService _optimize;
     private readonly IPdfSecurityService _security;
-    private readonly IImageEncoder _imageEncoder;
+    private readonly IPdfExportService _export;
     private readonly ISignatureLibrary _signatures;
     private readonly IPdfFormStore _forms;
     private readonly IFormValueHistory _formValueHistory;
@@ -262,7 +262,7 @@ public sealed class PdfDocumentView : UserControl
         IPdfDocumentInfoService documentInfo,
         IPdfOptimizeService optimize,
         IPdfSecurityService security,
-        IImageEncoder imageEncoder,
+        IPdfExportService export,
         ISignatureLibrary signatures,
         IPdfFormStore forms,
         IFormValueHistory formValueHistory,
@@ -287,7 +287,7 @@ public sealed class PdfDocumentView : UserControl
         _documentInfo = documentInfo;
         _optimize = optimize;
         _security = security;
-        _imageEncoder = imageEncoder;
+        _export = export;
         _signatures = signatures;
         _forms = forms;
         _formValueHistory = formValueHistory;
@@ -12588,14 +12588,14 @@ public sealed class PdfDocumentView : UserControl
 
         var formatName = formatBox.SelectedItem as string ?? "PNG";
         var extension = DocumentExportFormats.ExtensionForDisplayName(formatName);
-        var format = ImageEncodeFormatResolver.FromExtension(extension);
 
         var dpi = DocumentExportFormats.ParseDpi(dpiBox.Text);
 
-        var scale = dpi / 72.0;
-        ImageEncodeOptions? options = format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Webp or ImageEncodeFormat.Avif
-            ? new ImageEncodeOptions(Quality: DocumentExportFormats.ClampQuality(qualityBox.Value), EmbedSrgbProfile: true)
-            : new ImageEncodeOptions(EmbedSrgbProfile: true);
+        var options = new PdfPageImageExportOptions(
+            Extension: extension,
+            Dpi: dpi,
+            Quality: DocumentExportFormats.ClampQuality(qualityBox.Value),
+            EmbedSrgbProfile: true);
 
         try
         {
@@ -12638,7 +12638,7 @@ public sealed class PdfDocumentView : UserControl
                 ShowJobProgress(0, determinate: false);
                 try
                 {
-                    await ExportPageImageAsync(indexes[0], scale, file.Path, format, options);
+                    await _export.ExportPageAsImageAsync(_document, indexes[0], file.Path, options);
                     _status.Text = DocumentExportFormats.FormatExportedPage(indexes[0] + 1, file.Name);
                 }
                 finally
@@ -12665,17 +12665,14 @@ public sealed class PdfDocumentView : UserControl
             ShowJobProgress(0, determinate: true);
             try
             {
-                var written = 0;
-                foreach (var pageIndex in indexes)
-                {
-                    var name = $"{baseName}-p{pageIndex + 1}{extension}";
-                    var path = System.IO.Path.Combine(folder.Path, name);
-                    await ExportPageImageAsync(pageIndex, scale, path, format, options);
-                    written++;
-                    ShowJobProgress(100.0 * written / indexes.Count);
-                    _status.Text = DocumentExportFormats.FormatExportProgress(written, indexes.Count);
-                }
-
+                var progress = new Progress<double>(p => ShowJobProgress(p));
+                var written = await _export.ExportPagesAsImagesAsync(
+                    _document,
+                    indexes,
+                    folder.Path,
+                    baseName,
+                    options,
+                    progress);
                 _status.Text = DocumentExportFormats.FormatExportedPages(written, folder.Name);
             }
             finally
@@ -12688,26 +12685,6 @@ public sealed class PdfDocumentView : UserControl
             HideJobProgress();
             _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Export, ex.Message);
         }
-    }
-
-    private async Task ExportPageImageAsync(
-        int pageIndex,
-        double scale,
-        string path,
-        ImageEncodeFormat format,
-        ImageEncodeOptions? options)
-    {
-        using var rendered = await _renderer.RenderPageAsync(
-            _document,
-            pageIndex,
-            new PdfRenderRequest(scale));
-        await _imageEncoder.WriteBgraAsync(
-            rendered.Pixels.ToArray(),
-            rendered.Width,
-            rendered.Height,
-            path,
-            format,
-            options);
     }
 
     private async Task ShowProtectDialogAsync()

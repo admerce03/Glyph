@@ -70,6 +70,7 @@ internal static class AppServices
         services.AddSingleton<IPdfDocumentInfoService, PdfiumDocumentInfoService>();
         services.AddSingleton<IPdfSecurityService, BlockedPdfSecurityService>();
         services.AddSingleton<IPdfImageJpegEncoder, MagickPdfImageJpegEncoder>();
+        services.AddSingleton<IPdfExportService, PdfPageImageExportService>();
         services.AddSingleton<IPdfOptimizeService>(sp =>
             new PdfiumOptimizeService(sp.GetRequiredService<IPdfImageJpegEncoder>()));
         services.AddSingleton<IPdfFormStore, PdfiumFormStore>();
