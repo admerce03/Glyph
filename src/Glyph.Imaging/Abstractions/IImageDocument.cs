@@ -20,6 +20,22 @@ public interface IImageDocument : IAsyncDisposable, IDisposable
     /// Reads dimensions, density, color info, and common EXIF/GPS fields.
     /// </summary>
     Task<ImageMetadataInfo> GetMetadataAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Snapshot current pixels/metadata for undo (F30-07). Caller must dispose
+    /// unused checkpoints.
+    /// </summary>
+    IImageEditCheckpoint CaptureCheckpoint();
+
+    /// <summary>
+    /// Restore a checkpoint captured from this document. Disposes the checkpoint.
+    /// </summary>
+    void RestoreCheckpoint(IImageEditCheckpoint checkpoint);
 }
+
+/// <summary>
+/// Opaque undo snapshot for <see cref="IImageDocument"/>.
+/// </summary>
+public interface IImageEditCheckpoint : IDisposable;
 
 public sealed record ImagePixelBuffer(int Width, int Height, byte[] BgraPixels);

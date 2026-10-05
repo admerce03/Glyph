@@ -85,6 +85,25 @@ public sealed class MagickImageDocument : IImageDocument
             cancellationToken);
     }
 
+    public IImageEditCheckpoint CaptureCheckpoint()
+    {
+        ThrowIfDisposed();
+        return new MagickImageEditCheckpoint((MagickImage)_image.Clone());
+    }
+
+    public void RestoreCheckpoint(IImageEditCheckpoint checkpoint)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        if (checkpoint is not MagickImageEditCheckpoint magickCheckpoint)
+        {
+            throw new ArgumentException("Checkpoint was not created by this document type.", nameof(checkpoint));
+        }
+
+        Replace(magickCheckpoint.TakeOwnership());
+        checkpoint.Dispose();
+    }
+
     internal static ImageMetadataInfo ReadMetadata(MagickImage image, string? path)
     {
         long? fileSize = null;

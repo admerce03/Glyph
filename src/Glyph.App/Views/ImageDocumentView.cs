@@ -33,12 +33,15 @@ public sealed class ImageDocumentView : UserControl
     private readonly Button _prevButton;
     private readonly Button _nextButton;
     private readonly Button _slideshowButton;
+    private readonly Button _undoButton;
     private readonly Button _interactiveCropButton;
     private readonly Button _applyCropButton;
     private readonly Button _cancelCropButton;
     private readonly ComboBox _cropAspectBox;
     private IReadOnlyList<string> _siblings = Array.Empty<string>();
     private DispatcherTimer? _slideshowTimer;
+    private readonly List<IImageEditCheckpoint> _editUndoStack = [];
+    private const int MaxEditUndo = 12;
     private double _zoom = 1.0;
     private bool _loaded;
     private bool _syncingList;
@@ -147,6 +150,7 @@ public sealed class ImageDocumentView : UserControl
         _prevButton = new Button { Content = "◀", Width = 36 };
         _nextButton = new Button { Content = "▶", Width = 36 };
         _slideshowButton = new Button { Content = "Slideshow" };
+        _undoButton = new Button { Content = "Undo", IsEnabled = false };
 
         ToolTipService.SetToolTip(crop, "Crop using x,y,w,h pixels (origin top-left)");
         ToolTipService.SetToolTip(_interactiveCropButton, "Drag a rectangle on the image to crop");
@@ -165,6 +169,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(_prevButton, "Previous image in folder");
         ToolTipService.SetToolTip(_nextButton, "Next image in folder");
         ToolTipService.SetToolTip(_slideshowButton, "Play/stop folder slideshow (3s, loops; Esc stops)");
+        ToolTipService.SetToolTip(_undoButton, "Undo last crop/resize/rotate/adjust (Ctrl+Z)");
 
         zoomOut.Click += async (_, _) => await SetZoomAsync(_zoom / 1.25);
         zoomIn.Click += async (_, _) => await SetZoomAsync(_zoom * 1.25);
@@ -192,8 +197,13 @@ public sealed class ImageDocumentView : UserControl
         _prevButton.Click += async (_, _) => await NavigateSiblingAsync(-1);
         _nextButton.Click += async (_, _) => await NavigateSiblingAsync(1);
         _slideshowButton.Click += (_, _) => ToggleSlideshow();
+        _undoButton.Click += async (_, _) => await UndoEditAsync();
         KeyDown += ImageDocumentView_KeyDown;
-        Unloaded += (_, _) => StopSlideshowTimerOnly();
+        Unloaded += (_, _) =>
+        {
+            StopSlideshowTimerOnly();
+            ClearEditUndoStack();
+        };
 
         _cropOverlay.PointerPressed += CropOverlay_PointerPressed;
         _cropOverlay.PointerMoved += CropOverlay_PointerMoved;
@@ -207,7 +217,7 @@ public sealed class ImageDocumentView : UserControl
             Padding = new Thickness(8),
             Children =
             {
-                _prevButton, _nextButton, _slideshowButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
+                _prevButton, _nextButton, _slideshowButton, _undoButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
                 _cropBox, crop, _interactiveCropButton, _cropAspectBox, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, save, exportPng, exportJpeg, convert, _status,
             },
         };
@@ -505,6 +515,71 @@ public sealed class ImageDocumentView : UserControl
             StopSlideshow();
             _status.Text = "Slideshow stopped.";
             e.Handled = true;
+            return;
+        }
+
+        var ctrl = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        if (ctrl && e.Key == Windows.System.VirtualKey.Z)
+        {
+            _ = UndoEditAsync();
+            e.Handled = true;
+        }
+    }
+
+    private async Task MutateAsync(Func<Task> mutation, string okStatus)
+    {
+        IImageEditCheckpoint? checkpoint = null;
+        try
+        {
+            checkpoint = _document.CaptureCheckpoint();
+            await mutation();
+            PushUndo(checkpoint);
+            checkpoint = null;
+            await RefreshAsync();
+            UpdateStatus();
+            _status.Text = okStatus;
+        }
+        catch (Exception ex)
+        {
+            checkpoint?.Dispose();
+            _status.Text = "Edit failed: " + ex.Message;
+        }
+    }
+
+    private void PushUndo(IImageEditCheckpoint checkpoint)
+    {
+        _editUndoStack.Add(checkpoint);
+        while (_editUndoStack.Count > MaxEditUndo)
+        {
+            _editUndoStack[0].Dispose();
+            _editUndoStack.RemoveAt(0);
+        }
+
+        _undoButton.IsEnabled = _editUndoStack.Count > 0;
+    }
+
+    private async Task UndoEditAsync()
+    {
+        if (_editUndoStack.Count == 0)
+        {
+            _status.Text = "Nothing to undo.";
+            return;
+        }
+
+        try
+        {
+            var checkpoint = _editUndoStack[^1];
+            _editUndoStack.RemoveAt(_editUndoStack.Count - 1);
+            _document.RestoreCheckpoint(checkpoint);
+            _undoButton.IsEnabled = _editUndoStack.Count > 0;
+            await RefreshAsync();
+            UpdateStatus();
+            _status.Text = "Edit undone.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Undo failed: " + ex.Message;
         }
     }
 
@@ -1237,21 +1312,6 @@ public sealed class ImageDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Export failed: " + ex.Message;
-        }
-    }
-
-    private async Task MutateAsync(Func<Task> mutation, string okStatus)
-    {
-        try
-        {
-            await mutation();
-            await RefreshAsync();
-            UpdateStatus();
-            _status.Text = okStatus;
-        }
-        catch (Exception ex)
-        {
-            _status.Text = "Edit failed: " + ex.Message;
         }
     }
 

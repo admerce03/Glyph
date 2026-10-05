@@ -488,8 +488,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F30-04 | Image crop | Common presets: | M5 | Tested | Crop… aspect: 1:1, 4:3, 3:2, 16:9 (+ Free/Original) |
 | F30-05 | Image crop | Numeric width/height. | M5 | Implemented | Crop x,y,w,h text box |
 | F30-06 | Image crop | Apply crop. | M5 | Implemented | Crop / Apply crop → MagickImageProcessor.CropAsync |
-| F30-07 | Image crop | Undo. | M5 | Not Started |  |
-| F30-08 | Image crop | Non-destructive editing internally until save where practical. | M5 | Not Started |  |
+| F30-07 | Image crop | Undo. | M5 | Tested | Undo / Ctrl+Z via `CaptureCheckpoint`/`RestoreCheckpoint` (crop and other edits) |
+| F30-08 | Image crop | Non-destructive editing internally until save where practical. | M5 | Implemented | Edits mutate in-memory Magick image; disk unchanged until Save |
 | F31-01 | Image resizing | Adjust width. | M5 | Implemented | Resize dialog width (px) |
 | F31-02 | Image resizing | Adjust height. | M5 | Implemented | Resize dialog height (px) |
 | F31-03 | Image resizing | Lock aspect ratio. | M5 | Implemented | Resize dialog lock checkbox |
