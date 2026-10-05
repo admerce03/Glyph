@@ -528,6 +528,17 @@ public sealed class MagickImageProcessor : IImageProcessor
                     .Line(x2, y2, x2 + (head * Math.Cos(a2)), y2 + (head * Math.Sin(a2)));
                 break;
             }
+            case ImageMarkupShapeKind.Text:
+            {
+                var text = string.IsNullOrWhiteSpace(shape.Text) ? "Text" : shape.Text;
+                new Drawables()
+                    .FillColor(color)
+                    .StrokeColor(MagickColors.Transparent)
+                    .FontPointSize(shape.FontSizePixels)
+                    .Text(x1, y1 + shape.FontSizePixels, text)
+                    .Draw(image);
+                return;
+            }
         }
 
         drawables.Draw(image);

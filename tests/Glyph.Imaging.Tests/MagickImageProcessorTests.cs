@@ -174,9 +174,22 @@ public class MagickImageProcessorTests
                 200,
                 0,
                 2);
+            var text = new ImageMarkupShape(
+                ImageMarkupShapeKind.Text,
+                8,
+                22,
+                8,
+                22,
+                255,
+                0,
+                0,
+                0,
+                1,
+                "Hi",
+                14);
             await processor.FlattenMarkupAsync(
                 document,
-                new ImageMarkupLayer([stroke], [rect, arrow]));
+                new ImageMarkupLayer([stroke], [rect, arrow, text]));
             document.PixelWidth.Should().Be(40);
             document.PixelHeight.Should().Be(30);
         }

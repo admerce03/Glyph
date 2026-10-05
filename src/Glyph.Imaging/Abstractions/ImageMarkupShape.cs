@@ -16,7 +16,9 @@ public sealed class ImageMarkupShape
         byte r,
         byte g,
         byte b,
-        double widthPixels)
+        double widthPixels,
+        string? text = null,
+        double fontSizePixels = 16)
     {
         Kind = kind;
         X1 = x1;
@@ -28,6 +30,8 @@ public sealed class ImageMarkupShape
         G = g;
         B = b;
         WidthPixels = Math.Max(1, widthPixels);
+        Text = text;
+        FontSizePixels = Math.Max(6, fontSizePixels);
     }
 
     public ImageMarkupShapeKind Kind { get; }
@@ -40,6 +44,8 @@ public sealed class ImageMarkupShape
     public byte G { get; }
     public byte B { get; }
     public double WidthPixels { get; }
+    public string? Text { get; }
+    public double FontSizePixels { get; }
 }
 
 public enum ImageMarkupShapeKind
@@ -48,6 +54,7 @@ public enum ImageMarkupShapeKind
     Ellipse = 1,
     Line = 2,
     Arrow = 3,
+    Text = 4,
 }
 
 /// <summary>

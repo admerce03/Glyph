@@ -59,6 +59,8 @@ public sealed class ImageDocumentView : UserControl
     private readonly List<ImageMarkupShape> _markupShapes = [];
     private readonly List<bool> _markupUndoWasShape = [];
     private ImageMarkupShapeKind? _markupShapeTool;
+    private string? _pendingText;
+    private double _pendingFontSize = 24;
     private const int MaxEditUndo = 12;
     private double _zoom = 1.0;
     private bool _loaded;
@@ -2188,7 +2190,7 @@ public sealed class ImageDocumentView : UserControl
         {
             Header = "Tool",
             Width = 200,
-            ItemsSource = new[] { "Freehand", "Rectangle", "Ellipse", "Line", "Arrow" },
+            ItemsSource = new[] { "Freehand", "Rectangle", "Ellipse", "Line", "Arrow", "Text" },
             SelectedIndex = 0,
         };
         var widthSlider = new Slider
@@ -2238,14 +2240,55 @@ public sealed class ImageDocumentView : UserControl
             2 => ImageMarkupShapeKind.Ellipse,
             3 => ImageMarkupShapeKind.Line,
             4 => ImageMarkupShapeKind.Arrow,
+            5 => ImageMarkupShapeKind.Text,
             _ => null,
         };
+        if (_markupShapeTool == ImageMarkupShapeKind.Text)
+        {
+            var textBox = new TextBox
+            {
+                Header = "Text",
+                Text = "Label",
+                Width = 280,
+            };
+            var fontSlider = new Slider
+            {
+                Header = "Font size (px)",
+                Minimum = 8,
+                Maximum = 96,
+                Value = 24,
+                StepFrequency = 1,
+                Width = 240,
+            };
+            var textDialog = new ContentDialog
+            {
+                Title = "Text markup",
+                Content = new StackPanel { Spacing = 8, Children = { textBox, fontSlider } },
+                PrimaryButtonText = "Place text",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = XamlRoot,
+            };
+            if (await textDialog.ShowAsync() != ContentDialogResult.Primary)
+            {
+                return;
+            }
+
+            _pendingText = string.IsNullOrWhiteSpace(textBox.Text) ? "Label" : textBox.Text.Trim();
+            _pendingFontSize = fontSlider.Value;
+            _status.Text = "Text markup — click on image to place (Esc exits).";
+        }
+        else
+        {
+            _pendingText = null;
+            var toolName = toolBox.SelectedItem as string ?? "Freehand";
+            _status.Text = $"{toolName} markup — drag on image (Esc exits; Ctrl+Z undoes).";
+        }
+
         _drawMode = true;
         _markupOverlay.IsHitTestVisible = true;
         _drawButton.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(60, 220, 20, 60));
         UpdateFlattenButtonVisibility();
-        var toolName = toolBox.SelectedItem as string ?? "Freehand";
-        _status.Text = $"{toolName} markup — drag on image (Esc exits; Ctrl+Z undoes).";
     }
 
     private void ExitDrawMode()
@@ -2253,6 +2296,7 @@ public sealed class ImageDocumentView : UserControl
         _drawMode = false;
         _drawDragging = false;
         _markupShapeTool = null;
+        _pendingText = null;
         _drawPoints.Clear();
         if (_activeDrawPolyline is not null)
         {
@@ -2425,6 +2469,20 @@ public sealed class ImageDocumentView : UserControl
 
                 break;
             }
+            case ImageMarkupShapeKind.Text:
+            {
+                var label = new TextBlock
+                {
+                    Text = string.IsNullOrWhiteSpace(shape.Text) ? "Text" : shape.Text,
+                    Foreground = brush,
+                    FontSize = Math.Max(8, shape.FontSizePixels * ((scaleX + scaleY) / 2.0)),
+                    IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(label, x1);
+                Canvas.SetTop(label, y1);
+                _markupOverlay.Children.Add(label);
+                break;
+            }
         }
     }
 
@@ -2474,6 +2532,14 @@ public sealed class ImageDocumentView : UserControl
         ClearActiveShapePreview();
         var point = e.GetCurrentPoint(_markupOverlay).Position;
         _drawPoints.Add(point);
+        if (_markupShapeTool == ImageMarkupShapeKind.Text)
+        {
+            // Click-to-place; commit immediately on release (or here if single click).
+            _markupOverlay.CapturePointer(e.Pointer);
+            e.Handled = true;
+            return;
+        }
+
         if (_markupShapeTool is null)
         {
             var scale = _displayWidth > 0 && _document.PixelWidth > 0
@@ -2603,6 +2669,32 @@ public sealed class ImageDocumentView : UserControl
 
         var scaleX = _document.PixelWidth / (double)_displayWidth;
         var scaleY = _document.PixelHeight / (double)_displayHeight;
+        if (_markupShapeTool == ImageMarkupShapeKind.Text && _drawPoints.Count >= 1)
+        {
+            var start = _drawPoints[0];
+            var shape = new ImageMarkupShape(
+                ImageMarkupShapeKind.Text,
+                start.X * scaleX,
+                start.Y * scaleY,
+                start.X * scaleX,
+                start.Y * scaleY,
+                _drawColor.A,
+                _drawColor.R,
+                _drawColor.G,
+                _drawColor.B,
+                _drawWidthPixels,
+                _pendingText ?? "Label",
+                _pendingFontSize);
+            _markupShapes.Add(shape);
+            _markupUndoWasShape.Add(true);
+            RebuildMarkupOverlay();
+            UpdateFlattenButtonVisibility();
+            _status.Text = $"Text placed ({_markupStrokes.Count + _markupShapes.Count} total).";
+            _drawPoints.Clear();
+            e.Handled = true;
+            return;
+        }
+
         if (_markupShapeTool is { } kind && _drawPoints.Count >= 1)
         {
             ClearActiveShapePreview();
