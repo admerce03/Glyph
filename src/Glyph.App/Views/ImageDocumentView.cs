@@ -2724,15 +2724,81 @@ public sealed class ImageDocumentView : UserControl
             {
                 Title = "Image metadata",
                 Content = panel,
+                PrimaryButtonText = "Edit…",
                 CloseButtonText = "Close",
+                DefaultButton = ContentDialogButton.Close,
                 XamlRoot = XamlRoot,
             };
-            await dialog.ShowAsync();
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+            {
+                await EditDescriptiveMetadataAsync(info);
+            }
         }
         catch (Exception ex)
         {
             _status.Text = "Metadata failed: " + ex.Message;
         }
+    }
+
+    private async Task EditDescriptiveMetadataAsync(ImageMetadataInfo current)
+    {
+        var title = new TextBox { Header = "Title", Text = current.Title ?? string.Empty, Width = 360 };
+        var description = new TextBox
+        {
+            Header = "Description / caption",
+            Text = current.Description ?? string.Empty,
+            Width = 360,
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            Height = 80,
+        };
+        var keywords = new TextBox
+        {
+            Header = "Keywords (comma-separated)",
+            Text = current.Keywords ?? string.Empty,
+            Width = 360,
+        };
+        var copyright = new TextBox { Header = "Copyright", Text = current.Copyright ?? string.Empty, Width = 360 };
+        var editDialog = new ContentDialog
+        {
+            Title = "Edit descriptive metadata",
+            Content = new StackPanel
+            {
+                Spacing = 10,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = "Writes IPTC title, caption, keywords, and copyright. Save the image to persist on disk.",
+                        Opacity = 0.75,
+                        TextWrapping = TextWrapping.Wrap,
+                        MaxWidth = 360,
+                    },
+                    title,
+                    description,
+                    keywords,
+                    copyright,
+                },
+            },
+            PrimaryButtonText = "Apply",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+
+        if (await editDialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var metadata = new ImageDescriptiveMetadata(
+            Title: title.Text,
+            Description: description.Text,
+            Keywords: keywords.Text,
+            Copyright: copyright.Text);
+        await MutateAsync(
+            () => _processor.SetDescriptiveMetadataAsync(_document, metadata),
+            "Descriptive metadata updated (IPTC).");
     }
 
     private static bool HasDescriptiveMetadata(ImageMetadataInfo info) =>

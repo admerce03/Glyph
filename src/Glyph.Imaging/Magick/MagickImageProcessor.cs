@@ -224,6 +224,52 @@ public sealed class MagickImageProcessor : IImageProcessor
             cancellationToken);
     }
 
+    public Task SetDescriptiveMetadataAsync(
+        IImageDocument document,
+        ImageDescriptiveMetadata metadata,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(metadata);
+        var magick = RequireMagick(document);
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var iptc = magick.Native.GetIptcProfile() ?? new IptcProfile();
+                SetOrClearIptc(iptc, IptcTag.Title, metadata.Title);
+                SetOrClearIptc(iptc, IptcTag.Caption, metadata.Description);
+                SetOrClearIptc(iptc, IptcTag.CopyrightNotice, metadata.Copyright);
+
+                iptc.RemoveValue(IptcTag.Keyword);
+                if (!string.IsNullOrWhiteSpace(metadata.Keywords))
+                {
+                    foreach (var keyword in metadata.Keywords.Split(
+                                 [',', ';'],
+                                 StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                    {
+                        if (keyword.Length > 0)
+                        {
+                            iptc.SetValue(IptcTag.Keyword, keyword);
+                        }
+                    }
+                }
+
+                magick.Native.SetProfile(iptc);
+            },
+            cancellationToken);
+    }
+
+    private static void SetOrClearIptc(IIptcProfile iptc, IptcTag tag, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            iptc.RemoveValue(tag);
+            return;
+        }
+
+        iptc.SetValue(tag, value.Trim());
+    }
+
     public Task NormalizeOrientationAsync(IImageDocument document, CancellationToken cancellationToken = default)
     {
         var magick = RequireMagick(document);

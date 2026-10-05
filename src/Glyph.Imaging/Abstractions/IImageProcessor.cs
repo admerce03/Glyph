@@ -25,6 +25,14 @@ public interface IImageProcessor
     Task RemoveGpsMetadataAsync(IImageDocument document, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Writes descriptive IPTC fields (title, caption, keywords, copyright). Empty/null clears the tag.
+    /// </summary>
+    Task SetDescriptiveMetadataAsync(
+        IImageDocument document,
+        ImageDescriptiveMetadata metadata,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Applies EXIF orientation into pixel data and resets the orientation tag.
     /// </summary>
     Task NormalizeOrientationAsync(IImageDocument document, CancellationToken cancellationToken = default);
@@ -147,3 +155,12 @@ public sealed record ImageAdjustments(
     double WhitePoint = 100,
     /// <summary>Gamma multiplier (typically 0.1–3.0; 1.0 = unchanged).</summary>
     double Gamma = 1.0);
+
+/// <summary>
+/// Editable descriptive metadata written primarily as IPTC (title/caption/keywords/copyright).
+/// </summary>
+public sealed record ImageDescriptiveMetadata(
+    string? Title = null,
+    string? Description = null,
+    string? Keywords = null,
+    string? Copyright = null);

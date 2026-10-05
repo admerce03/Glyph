@@ -87,6 +87,53 @@ public class MagickImageMetadataTests
     }
 
     [Fact]
+    public async Task Set_descriptive_metadata_writes_iptc_fields()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-iptc-write-" + Guid.NewGuid().ToString("N") + ".png");
+        try
+        {
+            using (var image = new MagickImage(MagickColors.CadetBlue, 24, 18))
+            {
+                image.Format = MagickFormat.Png;
+                await image.WriteAsync(path);
+            }
+
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            await using var document = await decoder.OpenAsync(path);
+            await processor.SetDescriptiveMetadataAsync(
+                document,
+                new ImageDescriptiveMetadata(
+                    Title: "Edited Title",
+                    Description: "Edited caption",
+                    Keywords: "one, two; three",
+                    Copyright: "© Test"));
+
+            var meta = await document.GetMetadataAsync();
+            meta.HasIptc.Should().BeTrue();
+            meta.Title.Should().Be("Edited Title");
+            meta.Description.Should().Be("Edited caption");
+            meta.Copyright.Should().Be("© Test");
+            meta.Keywords.Should().Contain("one");
+            meta.Keywords.Should().Contain("two");
+            meta.Keywords.Should().Contain("three");
+
+            await processor.SetDescriptiveMetadataAsync(
+                document,
+                new ImageDescriptiveMetadata(Title: string.Empty, Description: null, Keywords: "", Copyright: " "));
+            var cleared = await document.GetMetadataAsync();
+            cleared.Title.Should().BeNullOrEmpty();
+            cleared.Description.Should().BeNullOrEmpty();
+            cleared.Keywords.Should().BeNullOrEmpty();
+            cleared.Copyright.Should().BeNullOrEmpty();
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task SaveAs_can_strip_metadata_while_keeping_pixels()
     {
         var path = CreateExifJpeg();

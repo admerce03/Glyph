@@ -584,10 +584,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F37-19 | Image metadata | EXIF | M5 | Tested | Magick ExifProfile |
 | F37-20 | Image metadata | IPTC | M5 | Tested | Magick IptcProfile → Title/Caption/Keywords/Copyright |
 | F37-21 | Image metadata | XMP where available | M5 | Implemented | Magick XmpProfile presence + dc:title/description/subject/rights/Rating |
-| F37-22 | Image metadata | title | M5 | Tested | IPTC Title/Headline, else XMP/EXIF |
-| F37-23 | Image metadata | description | M5 | Tested | IPTC Caption, else XMP/EXIF ImageDescription |
-| F37-24 | Image metadata | keywords | M5 | Tested | IPTC Keyword list / XMP subject |
-| F37-25 | Image metadata | copyright | M5 | Tested | IPTC CopyrightNotice / XMP rights / EXIF Copyright |
+| F37-22 | Image metadata | title | M5 | Tested | IPTC Title/Headline, else XMP/EXIF; Meta → Edit… writes IPTC |
+| F37-23 | Image metadata | description | M5 | Tested | IPTC Caption, else XMP/EXIF ImageDescription; Meta → Edit… |
+| F37-24 | Image metadata | keywords | M5 | Tested | IPTC Keyword list / XMP subject; Meta → Edit… |
+| F37-25 | Image metadata | copyright | M5 | Tested | IPTC CopyrightNotice / XMP rights / EXIF Copyright; Meta → Edit… |
 | F37-26 | Image metadata | rating, optionally | M5 | Implemented | XMP Rating when present |
 | F38-01 | GPS metadata | display latitude/longitude. | M5/M8 | Tested | Meta dialog GPS rows |
 | F38-02 | GPS metadata | Copy coordinates. | M5/M8 | Implemented | Copy GPS button |
