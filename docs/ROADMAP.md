@@ -23,8 +23,8 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M3 | Core PDF page manipulation | **Tested** (matrix F10–F12; §11 DnD screen recording + CI merge pending) | M2 |
 | M4 | PDF markup and editing | **Tested** (matrix-complete; Quadding `/Q` via dict patch) | M2 (forms/security touch M7) |
 | M5 | Image viewer/editor | **Tested** (matrix-complete; HDR/HEIF deferred) | M1 (shares shell/DnD with M3) |
-| M6 | OCR and scanned-document capabilities | **In Progress** (PRs #62–#66 stacked; Actions billing blocks CI/merge) | M2, M5 |
-| M7 | Redaction, PDF security, optimization, metadata | **In Progress** (redact/optimize/metadata Tested; password-write → ADR-015) | M2–M4 |
+| M6 | OCR and scanned-document capabilities | **Tested** (PRs #62–#66 merged; offline OCR/Live Text/entities) | M2, M5 |
+| M7 | Redaction, PDF security, optimization, metadata | **Tested** (#67; password-write → ADR-015) | M2–M4 |
 | M8 | Batch ops, scanner, color management, advanced | **Tested** (hardware validation TBD; ML subject deferred) | M5–M7 |
 | M9 | Performance, polish, a11y, installer, audit | **In Progress** (matrix a11y/perf/share Tested; MSIX → ADR-012) | M1–M8 core paths |
 
@@ -161,7 +161,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Explorer PDF → thumbnail insert, cross-tab/window page DnD (`PageDragPayload` / `PdfPageDragRegistry`), drag-out extract via deferred StorageItems, Ctrl+C/V via `PdfPageClipboard`.
 - Non-destructive CropBox crop (`CropPagesAsync` / `SetCropBoxAsync` + numeric dialog / visual handles + optional permanent export).
 - Multi-window shell (`File → New Window`) with per-window `WorkspaceState`.
-- Remaining M3 polish: §11 cross-document DnD screen recording (same class of proof debt as M1 interactive screenshot). Matrix F10–F12 / F11 DnD rows are unit-Tested; Windows CI merge of local +N stack still blocked on Actions billing.
+- Remaining M3 polish: §11 cross-document DnD screen recording (same class of proof debt as M1 interactive screenshot). Matrix F10–F12 / F11 DnD rows are unit-Tested; local polish stack landed via #67.
 
 ---
 
@@ -234,7 +234,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 6 — OCR and scanned-document capabilities
 
-**Status:** In Progress · Depends on M2, M5
+**Status:** Tested · Depends on M2, M5 (landed via PRs #62–#66)
 
 ### Scope (`FEATURES.md` §8, search OCR hooks in §6)
 
@@ -274,7 +274,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 7 — Redaction, PDF security, optimization, metadata
 
-**Status:** In Progress (write-protect → ADR-015) · Depends on M2–M4
+**Status:** Tested (write-protect → ADR-015) · Depends on M2–M4 (landed via #67)
 
 ### Scope (`FEATURES.md` §21, §23–25)
 
@@ -299,7 +299,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - FreeText Align / `/Q` quadding via post-save dict patch (F13-38 / F16-15)
 - Bookmarks → PDF `/Outlines` export (F09-08)
 - Password-protect write blocked on ADR-015 (Needs approval)
-- Local polish (+238 on `cursor/m7-redaction-50da`); fix ImageDocumentView resize checkbox syntax and Magick text draw font fallback for Linux CI.
+- Landed on main via squash-merge #67 (`364011d`); Magick text/callout font fallback + WebcamCapture preview + OemComma accelerator fixes included
+- Local polish (+238 extracts) + Format verify / IDE0005 CI hardening shipped with #67
 - FEATURE_MATRIX: no Implemented/In Progress rows; Blocked = ADR-015 password-write; Deferred catalogs unit-tested (`PackagingDeferredPolicy`, `PdfOptimizeDeferredPolicy`, `ImageAdvancedDeferredPolicy`, …)
 - Print N-up/scale/rotate/center extracted to `PrintSheetLayout`; scroll throttle + presentation defaults unit-tested
 - Search result snippets unified via `PdfSearchSnippet` (F06-10)
@@ -404,14 +405,14 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | PDF TOC/links | §5 | M2 | Tested |
 | PDF search | §6 | M2, M6 | Tested |
 | PDF text interaction | §7 | M2, M6 | Tested |
-| OCR / Live Text | §8 | M6 | In Progress (PR stack #62–#66; billing blocks merge) |
+| OCR / Live Text | §8 | M6 | Tested (PRs #62–#66; offline OCR/Live Text/entities/OCR→PDF) |
 | User bookmarks | §9 | M2/M4 | Tested (app-local + export to PDF `/Outlines`) |
 | PDF page manipulation | §10–12 | M3 | Tested (selection/reorder/insert/merge/split/crop/DnD/clipboard unit-covered; §11 screen recording pending) |
 | PDF annotations/markup | §13–19 | M4 | Tested |
 | PDF forms | §20 | M4 | Tested (visual sig stamps; PKCS#7 → ADR-015) |
 | Redaction | §21 | M7 | Tested (mark/preview/apply + sanitize + confirm copy; password-write separate) |
 | Flattening | §22 | M4 | Tested (`FlattenAsync` / FPDFPage_Flatten) |
-| PDF security | §23 | M7 | In Progress (open + info/permissions/advisory Tested; write-protect blocked on ADR-015) |
+| PDF security | §23 | M7 | Tested (open + info/permissions/advisory; write-protect → ADR-015) |
 | Optimization | §24 | M7 | Tested (presets + downsample + JPEG quality + estimate + page export/ICC; font subset/linearize → ADR-016) |
 | PDF metadata | §25 | M7 | Tested (read + edit title/author/subject/keywords/creator/producer + ModDate) |
 | Image viewing/editing | §26–35 | M5 | Tested (HDR/HEIF deferred) |
