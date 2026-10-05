@@ -300,7 +300,7 @@ Use `Directory.Packages.props` + `Directory.Build.props` for shared TFM/nullable
 
 ## ADR-014 — Defer loupe, rectangular zoom, and presentation mode
 
-**Status:** Accepted (Milestone 2)  
+**Status:** Accepted (Milestone 2); **superseded for shipping** — F04-29/30/31 Implemented post-core (M7 polish, 2026-10-05)  
 **Date:** 2026-10-04
 
 ### Context
@@ -315,6 +315,7 @@ Defer F04-29/F04-30/F04-31 until post-core polish (likely M9 or a focused M2.1 s
 
 - Core viewer can be marked complete without loupe/rect/slideshow
 - Matrix rows stay Deferred with this ADR as the reason rather than silent Not Started
+- **Follow-up:** Zoom ▭ / Glass / Present shipped on `cursor/m7-redaction-50da`; matrix rows now Implemented
 
 ---
 
