@@ -2604,7 +2604,7 @@ public sealed class ImageDocumentView : UserControl
         };
         var preview = new TextBlock
         {
-            Text = $"Result: {srcW}×{srcH} px · ~{ImageResizeDialogMath.EstimateRawBgraMegabytes(srcW, srcH):0.##} MB raw",
+            Text = ImageResizeDialogMath.FormatResultEstimate(srcW, srcH),
             Opacity = 0.8,
             Margin = new Thickness(0, 8, 0, 0),
             TextWrapping = TextWrapping.Wrap,
@@ -2641,7 +2641,7 @@ public sealed class ImageDocumentView : UserControl
                 return;
             }
 
-            preview.Text = $"Result: {w}×{h} px @ {ActiveDpi():0.#} DPI · ~{ImageResizeDialogMath.EstimateRawBgraMegabytes(w, h):0.##} MB raw BGRA";
+            preview.Text = ImageResizeDialogMath.FormatResultWithDpi(w, h, ActiveDpi());
         }
 
         void WritePhysicalFromPixels(int pxW, int pxH)
@@ -2754,8 +2754,7 @@ public sealed class ImageDocumentView : UserControl
         var batchFolder = new CheckBox
         {
             Content = _siblings.Count > 1
-                ? $"Also resize all {_siblings.Count} images in folder (scale %)"
-                : "Also resize folder images",
+ImageResizeDialogMath.FormatAlsoResizeFolder(_siblings.Count),
             IsChecked = false,
             IsEnabled = _siblings.Count > 1 && _decoder is not null,
         };
@@ -2767,7 +2766,7 @@ public sealed class ImageDocumentView : UserControl
             Spacing = 8,
             Children =
             {
-                new TextBlock { Text = $"Current: {srcW}×{srcH} px · {currentDpi:0.#} DPI" },
+                new TextBlock { Text = ImageResizeDialogMath.FormatCurrent(srcW, srcH, currentDpi) },
                 unitBox,
                 dpiBox,
                 widthBox,
@@ -3390,7 +3389,7 @@ public sealed class ImageDocumentView : UserControl
         var fuzzLabel = new TextBlock { Text = ImageViewerTextLabels.Fuzz12Percent };
         fuzzSlider.ValueChanged += (_, args) =>
         {
-            fuzzLabel.Text = $"Fuzz {args.NewValue:0}%";
+            fuzzLabel.Text = ImageResizeDialogMath.FormatFuzzPercent(args.NewValue);
         };
         var trimBox = new CheckBox
         {

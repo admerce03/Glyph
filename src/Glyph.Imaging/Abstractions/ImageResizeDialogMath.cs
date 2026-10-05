@@ -43,4 +43,21 @@ public static class ImageResizeDialogMath
             Math.Max(1, (int)Math.Round(sourceWidth * factor)),
             Math.Max(1, (int)Math.Round(sourceHeight * factor)));
     }
+
+    public static string FormatResultEstimate(int width, int height) =>
+        $"Result: {width}×{height} px · ~{EstimateRawBgraMegabytes(width, height):0.##} MB raw";
+
+    public static string FormatResultWithDpi(int width, int height, double dpi) =>
+        $"Result: {width}×{height} px @ {dpi:0.#} DPI · ~{EstimateRawBgraMegabytes(width, height):0.##} MB raw BGRA";
+
+    public static string FormatCurrent(int width, int height, double dpi) =>
+        $"Current: {width}×{height} px · {dpi:0.#} DPI";
+
+    public static string FormatAlsoResizeFolder(int siblingCount) =>
+        siblingCount > 0
+            ? $"Also resize all {siblingCount} images in folder (scale %)"
+            : "Also resize folder images";
+
+    public static string FormatFuzzPercent(double value) =>
+        $"Fuzz {value:0}%";
 }

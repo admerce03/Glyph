@@ -44,5 +44,9 @@ public class ImageResizeDialogMathTests
         ImageResizeDialogMath.WidthForHeight(100, 2.0).Should().Be(200);
         ImageResizeDialogMath.ScaleByPercent(100, 50, 50).Should().Be((50, 25));
         ImageResizeDialogMath.ScaleByPercent(100, 50, 200).Should().Be((200, 100));
+        ImageResizeDialogMath.FormatResultEstimate(10, 20).Should().Contain("10×20");
+        ImageResizeDialogMath.FormatCurrent(10, 20, 72).Should().Contain("72");
+        ImageResizeDialogMath.FormatAlsoResizeFolder(3).Should().Contain("3 images");
+        ImageResizeDialogMath.FormatFuzzPercent(12).Should().Be("Fuzz 12%");
     }
 }
