@@ -115,7 +115,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F05-03 | PDF table of contents and navigation | Expand/collapse outline nodes. | M2 | Implemented | TreeView expand/collapse |
 | F05-04 | PDF table of contents and navigation | Click outline entry to navigate. | M2 | Implemented | Outline invoke → GoToPage |
 | F05-05 | PDF table of contents and navigation | Keyboard navigation. | M2 | In Progress | Page Up/Down/Home/End in viewer |
-| F05-06 | PDF table of contents and navigation | Preserve embedded outline while editing when possible. | M2 | Not Started | Editing arrives in later milestones |
+| F05-06 | PDF table of contents and navigation | Preserve embedded outline while editing when possible. | M2 | Tested | Rotate/page edits keep PDFium bookmarks (`Outline_survives_page_rotate_edit`) |
 | F05-07 | PDF table of contents and navigation | Show internal PDF links. | M2 | Tested | `IPdfLinkService` enumerates page links |
 | F05-08 | PDF table of contents and navigation | Support clickable: | M2 | Implemented | Click link rect → internal page jump |
 | F05-09 | PDF table of contents and navigation | Back/forward navigation history within the document. | M2 | Tested | `DocumentNavigationHistory` + Back/Fwd buttons |
