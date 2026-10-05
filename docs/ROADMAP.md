@@ -23,7 +23,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M3 | Core PDF page manipulation | **Implemented** (CI green; §11 cross-doc DnD screen recording pending) | M2 |
 | M4 | PDF markup and editing | **In Progress** | M2 (forms/security touch M7) |
 | M5 | Image viewer/editor | **In Progress** | M1 (shares shell/DnD with M3) |
-| M6 | OCR and scanned-document capabilities | Not Started | M2, M5 |
+| M6 | OCR and scanned-document capabilities | **In Progress** | M2, M5 |
 | M7 | Redaction, PDF security, optimization, metadata | Not Started | M2–M4 |
 | M8 | Batch ops, scanner, color management, advanced | Not Started | M5–M7 |
 | M9 | Performance, polish, a11y, installer, audit | Not Started | M1–M8 core paths |
@@ -231,7 +231,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 6 — OCR and scanned-document capabilities
 
-**Status:** Not Started · Depends on M2, M5
+**Status:** In Progress · Depends on M2, M5
 
 ### Scope (`FEATURES.md` §8, search OCR hooks in §6)
 
@@ -247,6 +247,12 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Search includes OCR text when present
 - Cancelable OCR jobs with progress
 
+### Progress notes
+
+- `IOcrEngine` / `OcrRequest` / `OcrResult` abstractions in `Glyph.Ocr`
+- `WindowsOcrEngine` (Windows.Media.Ocr) registered in App DI; **OCR** toolbar on `ImageDocumentView` with result dialog + copy
+- `UnsupportedOcrEngine` + Fake engine coverage in `Glyph.Ocr.Tests` (Linux)
+- PDF-page OCR / text-layer embed / entity actions still outstanding
 ---
 
 ## Milestone 7 — Redaction, PDF security, optimization, metadata
@@ -324,7 +330,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | PDF TOC/links | §5 | M2 | Implemented |
 | PDF search | §6 | M2, M6 | Implemented |
 | PDF text interaction | §7 | M2, M6 | Implemented |
-| OCR / Live Text | §8 | M6 | Not Started |
+| OCR / Live Text | §8 | M6 | In Progress |
 | User bookmarks | §9 | M2/M4 | Not Started |
 | PDF page manipulation | §10–12 | M3 | Implemented |
 | PDF annotations/markup | §13–19 | M4 | In Progress |

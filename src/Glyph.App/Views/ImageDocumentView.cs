@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.Core.Documents;
 using Glyph.Imaging.Abstractions;
+using Glyph.Ocr.Abstractions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -18,6 +19,7 @@ public sealed class ImageDocumentView : UserControl
     private readonly IImageDocument _document;
     private readonly IImageProcessor _processor;
     private readonly IImageEncoder _encoder;
+    private readonly IOcrEngine? _ocr;
     private readonly DocumentViewState _viewState;
     private readonly Func<string, Task>? _openSibling;
     private readonly ScrollViewer _scrollViewer;
@@ -48,13 +50,15 @@ public sealed class ImageDocumentView : UserControl
         IImageProcessor processor,
         IImageEncoder encoder,
         DocumentViewState? viewState = null,
-        Func<string, Task>? openSibling = null)
+        Func<string, Task>? openSibling = null,
+        IOcrEngine? ocr = null)
     {
         _document = document;
         _processor = processor;
         _encoder = encoder;
         _viewState = viewState ?? new DocumentViewState();
         _openSibling = openSibling;
+        _ocr = ocr;
         _zoom = _viewState.Zoom <= 0 ? 1.0 : _viewState.Zoom;
 
         _image = new Image
@@ -114,6 +118,7 @@ public sealed class ImageDocumentView : UserControl
         var resize = new Button { Content = "Resize" };
         var adjust = new Button { Content = "Adjust" };
         var meta = new Button { Content = "Meta" };
+        var ocr = new Button { Content = "OCR" };
         var rotate180 = new Button { Content = "180°" };
         var orient = new Button { Content = "Orient" };
         var fullscreen = new Button { Content = "Fullscreen" };
@@ -129,6 +134,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(resize, "Resize width/height with optional aspect lock");
         ToolTipService.SetToolTip(adjust, "Brightness / contrast / saturation");
         ToolTipService.SetToolTip(meta, "Image metadata, EXIF, and GPS");
+        ToolTipService.SetToolTip(ocr, "Run offline OCR on this image");
         ToolTipService.SetToolTip(rotate180, "Rotate 180°");
         ToolTipService.SetToolTip(orient, "Apply EXIF orientation into pixels");
         ToolTipService.SetToolTip(fullscreen, "Toggle window fullscreen");
@@ -156,6 +162,7 @@ public sealed class ImageDocumentView : UserControl
         resize.Click += async (_, _) => await ResizeAsync();
         adjust.Click += async (_, _) => await AdjustAsync();
         meta.Click += async (_, _) => await ShowMetadataAsync();
+        ocr.Click += async (_, _) => await RunOcrAsync();
         save.Click += async (_, _) => await SaveAsync();
         exportPng.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Png, ".png");
         exportJpeg.Click += async (_, _) => await ExportJpegAsync();
@@ -176,7 +183,7 @@ public sealed class ImageDocumentView : UserControl
             Children =
             {
                 _prevButton, _nextButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
-                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, save, exportPng, exportJpeg, convert, _status,
+                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocr, save, exportPng, exportJpeg, convert, _status,
             },
         };
 
@@ -910,6 +917,73 @@ public sealed class ImageDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Metadata failed: " + ex.Message;
+        }
+    }
+
+    private async Task RunOcrAsync()
+    {
+        if (_ocr is null)
+        {
+            _status.Text = "OCR engine unavailable.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Running OCR…";
+            var buffer = await _document.GetPixelsAsync(maxEdge: 4096);
+            var result = await _ocr.RecognizeAsync(
+                new OcrRequest(buffer.Width, buffer.Height, buffer.BgraPixels));
+
+            var text = string.IsNullOrWhiteSpace(result.Text) ? "(no text recognized)" : result.Text;
+            var box = new TextBox
+            {
+                Text = text,
+                IsReadOnly = true,
+                AcceptsReturn = true,
+                TextWrapping = TextWrapping.Wrap,
+                Width = 480,
+                Height = 320,
+            };
+            var copy = new Button { Content = "Copy text", Margin = new Thickness(0, 8, 0, 0) };
+            copy.Click += (_, _) =>
+            {
+                var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                package.SetText(result.Text ?? string.Empty);
+                Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+                _status.Text = "OCR text copied.";
+            };
+
+            var panel = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = $"{result.Lines.Count} line(s) · {result.Lines.Sum(l => l.Words.Count)} word(s)",
+                        Opacity = 0.75,
+                    },
+                    box,
+                    copy,
+                },
+            };
+
+            var dialog = new ContentDialog
+            {
+                Title = "OCR result",
+                Content = panel,
+                CloseButtonText = "Close",
+                XamlRoot = XamlRoot,
+            };
+            await dialog.ShowAsync();
+            _status.Text = string.IsNullOrWhiteSpace(result.Text)
+                ? "OCR finished — no text."
+                : $"OCR finished — {result.Lines.Count} line(s).";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "OCR failed: " + ex.Message;
         }
     }
 
