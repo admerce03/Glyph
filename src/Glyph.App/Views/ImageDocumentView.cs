@@ -664,13 +664,13 @@ public sealed class ImageDocumentView : UserControl
         if (_viewState.IsSlideshowActive)
         {
             StopSlideshow();
-            _status.Text = "Slideshow stopped.";
+            _status.Text = SlideshowPolicy.Stopped;
             return;
         }
 
-        if (_siblings.Count < 2 || _openSibling is null)
+        if (!SlideshowPolicy.CanStart(_siblings.Count) || _openSibling is null)
         {
-            _status.Text = "Slideshow needs at least two images in the folder.";
+            _status.Text = SlideshowPolicy.NeedsMoreImages;
             return;
         }
 
@@ -679,7 +679,7 @@ public sealed class ImageDocumentView : UserControl
 
     private void StartSlideshow(bool resume)
     {
-        if (_siblings.Count < 2 || _openSibling is null)
+        if (!SlideshowPolicy.CanStart(_siblings.Count) || _openSibling is null)
         {
             _viewState.IsSlideshowActive = false;
             RefreshSlideshowChrome();
@@ -689,13 +689,13 @@ public sealed class ImageDocumentView : UserControl
         _viewState.IsSlideshowActive = true;
         StopAnimationPlayback();
         StopSlideshowTimerOnly();
-        _slideshowTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        _slideshowTimer = new DispatcherTimer { Interval = SlideshowPolicy.Interval };
         _slideshowTimer.Tick += async (_, _) => await AdvanceSlideshowAsync();
         _slideshowTimer.Start();
         RefreshSlideshowChrome();
         if (!resume)
         {
-            _status.Text = "Slideshow on — advances every 3s (Esc to stop).";
+            _status.Text = SlideshowPolicy.Started;
         }
     }
 
@@ -929,7 +929,7 @@ public sealed class ImageDocumentView : UserControl
     private void RefreshSlideshowChrome()
     {
         var active = _viewState.IsSlideshowActive;
-        _slideshowButton.Content = active ? "Stop show" : "Slideshow";
+        _slideshowButton.Content = SlideshowPolicy.ButtonLabel(active);
         _slideshowButton.Background = active
             ? new SolidColorBrush(Windows.UI.Color.FromArgb(60, 255, 140, 0))
             : null;
@@ -947,10 +947,10 @@ public sealed class ImageDocumentView : UserControl
             RefreshSiblingList();
         }
 
-        if (_siblings.Count < 2)
+        if (!SlideshowPolicy.CanStart(_siblings.Count))
         {
             StopSlideshow();
-            _status.Text = "Slideshow stopped — not enough images.";
+            _status.Text = SlideshowPolicy.StoppedNotEnough;
             return;
         }
 
@@ -991,7 +991,7 @@ public sealed class ImageDocumentView : UserControl
             if (_viewState.IsSlideshowActive)
             {
                 StopSlideshow();
-                _status.Text = "Slideshow stopped.";
+                _status.Text = SlideshowPolicy.Stopped;
                 e.Handled = true;
                 return;
             }

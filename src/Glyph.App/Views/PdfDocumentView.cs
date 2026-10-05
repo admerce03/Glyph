@@ -3614,7 +3614,7 @@ public sealed class PdfDocumentView : UserControl
         var key = (pageIndex, wordIndex);
         var ctrl = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
             .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-        if (!ctrl)
+        if (OcrWordSelectionPolicy.ShouldClearBeforeToggle(ctrl))
         {
             _selectedOcrIndices.Clear();
             foreach (var page in _ocrVisualsByPage.Keys.ToList())
@@ -3635,8 +3635,8 @@ public sealed class PdfDocumentView : UserControl
             && wordIndex < visuals.Count)
         {
             _status.Text = _selectedOcrIndices.Count == 0
-                ? "OCR selection cleared."
-                : $"Selected OCR: {visuals[wordIndex].Word.Text}";
+                ? OcrWordSelectionPolicy.Cleared
+                : OcrWordSelectionPolicy.SelectedWord(visuals[wordIndex].Word.Text);
         }
     }
 
@@ -3780,16 +3780,14 @@ public sealed class PdfDocumentView : UserControl
 
         if (string.IsNullOrWhiteSpace(text))
         {
-            _status.Text = "No OCR text to copy.";
+            _status.Text = OcrWordSelectionPolicy.NothingToCopy;
             return;
         }
 
         var package = new DataPackage();
         package.SetText(text);
         Clipboard.SetContent(package);
-        _status.Text = _selectedOcrIndices.Count == 0
-            ? "All OCR text copied."
-            : $"Copied {_selectedOcrIndices.Count} OCR word(s).";
+        _status.Text = OcrWordSelectionPolicy.CopiedWords(_selectedOcrIndices.Count);
     }
 
     private void ClearOcrOverlays()
@@ -6324,16 +6322,7 @@ public sealed class PdfDocumentView : UserControl
                 kind.Value,
                 bounds,
                 _drawStrokeColor,
-                fillColor: kind is PdfShapeKind.Line or PdfShapeKind.Arrow or PdfShapeKind.Star
-                    or PdfShapeKind.SpeechBubble
-                    or PdfShapeKind.HighlightRectangle
-                    or PdfShapeKind.Loupe
-                    ? null
-                    : new PdfAnnotationColor(
-                        _drawStrokeColor.R,
-                        _drawStrokeColor.G,
-                        _drawStrokeColor.B,
-                        40),
+                fillColor: PdfShapeFillPolicy.FromStroke(kind.Value, _drawStrokeColor),
                 borderWidthPoints: _drawStrokeWidth,
                 inkLineStyle: kind is PdfShapeKind.Line or PdfShapeKind.Arrow
                     ? _drawInkLineStyle
@@ -6684,11 +6673,7 @@ public sealed class PdfDocumentView : UserControl
                         PdfShapeKind.Rectangle,
                         recognized.Bounds,
                         _drawStrokeColor,
-                        fillColor: new PdfAnnotationColor(
-                            _drawStrokeColor.R,
-                            _drawStrokeColor.G,
-                            _drawStrokeColor.B,
-                            40),
+                        fillColor: PdfShapeFillPolicy.FromStroke(PdfShapeKind.Rectangle, _drawStrokeColor),
                         borderWidthPoints: _drawStrokeWidth);
                     break;
                 case PdfRecognizedStrokeShape.Ellipse:
@@ -6698,11 +6683,7 @@ public sealed class PdfDocumentView : UserControl
                         PdfShapeKind.Ellipse,
                         recognized.Bounds,
                         _drawStrokeColor,
-                        fillColor: new PdfAnnotationColor(
-                            _drawStrokeColor.R,
-                            _drawStrokeColor.G,
-                            _drawStrokeColor.B,
-                            40),
+                        fillColor: PdfShapeFillPolicy.FromStroke(PdfShapeKind.Ellipse, _drawStrokeColor),
                         borderWidthPoints: _drawStrokeWidth);
                     break;
                 case PdfRecognizedStrokeShape.Triangle:

@@ -150,7 +150,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F07-12 | PDF text interaction | Copy selected PDF region to clipboard as bitmap. | M2/M6 | Tested | Region crop → PNG clipboard; `PdfRegionCopyPolicy` unit tests |
 | F07-13 | PDF text interaction | Drag selected text where supported. | M2/M6 | Tested | Page CanDrag; `PdfTextDragPolicy` unit tests |
 | F08-01 | OCR / Live Text equivalent | Detect text automatically or on demand. | M6 | Implemented | Image + PDF page OCR toolbar → Windows.Media.Ocr |
-| F08-02 | OCR / Live Text equivalent | Select detected text directly over the image. | M6 | Implemented | PDF OCR word-box overlay (click/Ctrl+click) + Copy OCR; image overlay on Live Text PR |
+| F08-02 | OCR / Live Text equivalent | Select detected text directly over the image. | M6 | Tested | PDF OCR word-box overlay + Copy OCR; `OcrWordSelectionPolicy` unit tests |
 | F08-03 | OCR / Live Text equivalent | Copy text. | M6 | Tested | OCR result dialog Copy text; `OcrResultDialog` unit tests |
 | F08-04 | OCR / Live Text equivalent | Copy all recognized text. | M6 | Tested | Same copy path; `OcrResultDialog.TextCopied` |
 | F08-05 | OCR / Live Text equivalent | Search recognized text. | M6 | Tested | Find merges session OCR via `PdfPageTextSearch.Merge`; word overlays after page OCR |
@@ -315,11 +315,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F17-12 | Shapes | rotate | M4 | Tested | Ink shapes/lines/arrows via stroke point rotation; square/circle via bounds |
 | F17-13 | Shapes | move | M4 | Tested | Same as F13-19 drag / `MoveAsync` |
 | F17-14 | Shapes | duplicate | M4 | Tested | Same as F13-22 `DuplicateAsync` |
-| F17-15 | Shapes | multi-select | M4 | Implemented | Same as F13-27 Ctrl+click / Extended list |
+| F17-15 | Shapes | multi-select | M4 | Tested | Same Ctrl+click path as F13-27; `AnnotationMultiSelectPolicy` |
 | F17-16 | Shapes | border color | M4 | Implemented | Stroke picker when entering Rect/Ellipse/Line/Arrow |
 | F17-17 | Shapes | border width | M4 | Implemented | Width picker with stroke color dialog |
 | F17-18 | Shapes | line style | M4 | Tested | Shape stroke dialog: Solid/Dashed/Dotted for Line/Arrow |
-| F17-19 | Shapes | fill color | M4 | Implemented | Semi-transparent fill from stroke hue |
+| F17-19 | Shapes | fill color | M4 | Tested | Semi-transparent fill from stroke; `PdfShapeFillPolicy` unit tests |
 | F17-20 | Shapes | opacity | M4 | Tested | Sidebar Opacity → `SetOpacityAsync` (same path as F18-04) |
 | F17-21 | Shapes | shape-specific adjustment handles | M4 | Tested | Line/Arrow show endpoint handles (`p0`/`p1`); `SetLineEndpointsAsync` + `GlyphLineEnds` |
 | F18-01 | Freehand drawing | Mouse drawing. | M4 | Tested | Ink draw mode |
@@ -442,7 +442,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-17 | Image viewing | next/previous image | M5 | Tested | ◀/▶ + `ImageFolderNavigator` Previous/Next unit tests |
 | F26-18 | Image viewing | image list sidebar | M5 | Tested | Folder ListView; `ImageFolderNavigator.ListSiblings` unit tests |
 | F26-19 | Image viewing | open group of images together | M5 | Implemented | Open With picker PickMultipleFilesAsync |
-| F26-20 | Image viewing | slideshow | M5 | Implemented | Slideshow toolbar: 3s loop through folder; Esc / Stop show; resumes across sibling opens via `ViewState.IsSlideshowActive` |
+| F26-20 | Image viewing | slideshow | M5 | Tested | 3s folder loop; Esc stops; `SlideshowPolicy` unit tests |
 | F26-21 | Image viewing | drag-and-drop navigation | M5 | Implemented | Shell drop opens images (`DropHost`); horizontal swipe on image → prev/next in folder |
 | F26-22 | Image viewing | high-resolution image support | M5 | Tested | Progressive maxEdge decode up to 8192; `DecodeTargetEdge` unit tests |
 | F26-23 | Image viewing | alpha transparency | M5 | Implemented | BGRA32 decode via Magick → WriteableBitmap |
