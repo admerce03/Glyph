@@ -119,6 +119,182 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             cancellationToken);
     }
 
+    public Task<PdfAnnotationInfo> AddStickyNoteAsync(
+        IPdfDocument document,
+        int pageIndex,
+        double xPoints,
+        double yPoints,
+        string contents,
+        PdfAnnotationColor color,
+        CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        ArgumentOutOfRangeException.ThrowIfNegative(pageIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(pageIndex, pdfium.PageCount);
+        contents ??= string.Empty;
+
+        const double iconSize = 20;
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
+                    if (page is null)
+                    {
+                        throw new InvalidOperationException($"Failed to load page {pageIndex} for sticky note.");
+                    }
+
+                    try
+                    {
+                        if (fpdf_annot.FPDFAnnotIsSupportedSubtype(PdfiumAnnotSubtypes.Text) == 0)
+                        {
+                            throw new NotSupportedException("PDFium does not support sticky-note (Text) annotations.");
+                        }
+
+                        var annot = fpdf_annot.FPDFPageCreateAnnot(page, PdfiumAnnotSubtypes.Text);
+                        if (annot is null)
+                        {
+                            throw new InvalidOperationException("FPDFPage_CreateAnnot failed for sticky note.");
+                        }
+
+                        try
+                        {
+                            var bounds = new PdfRect(xPoints, yPoints, xPoints + iconSize, yPoints + iconSize);
+                            using var rect = new FS_RECTF_();
+                            rect.Left = (float)bounds.Left;
+                            rect.Bottom = (float)bounds.Bottom;
+                            rect.Right = (float)bounds.Right;
+                            rect.Top = (float)bounds.Top;
+                            if (fpdf_annot.FPDFAnnotSetRect(annot, rect) == 0)
+                            {
+                                throw new InvalidOperationException("FPDFAnnot_SetRect failed for sticky note.");
+                            }
+
+                            if (fpdf_annot.FPDFAnnotSetColor(
+                                    annot,
+                                    FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_Color,
+                                    color.R,
+                                    color.G,
+                                    color.B,
+                                    color.A) == 0)
+                            {
+                                throw new InvalidOperationException("FPDFAnnot_SetColor failed for sticky note.");
+                            }
+
+                            if (!PdfiumAnnotStrings.SetString(annot, "Contents", contents))
+                            {
+                                throw new InvalidOperationException("Failed to set sticky note Contents.");
+                            }
+
+                            var index = fpdf_annot.FPDFPageGetAnnotIndex(page, annot);
+                            if (index < 0)
+                            {
+                                throw new InvalidOperationException("Created sticky note has no page index.");
+                            }
+
+                            pdfium.NotifyAnnotationsChanged();
+                            return new PdfAnnotationInfo(
+                                pageIndex,
+                                index,
+                                TextMarkupKind: null,
+                                bounds,
+                                color,
+                                contents,
+                                IsStickyNote: true);
+                        }
+                        finally
+                        {
+                            fpdf_annot.FPDFPageCloseAnnot(annot);
+                        }
+                    }
+                    finally
+                    {
+                        fpdfview.FPDF_ClosePage(page);
+                    }
+                }
+            },
+            cancellationToken);
+    }
+
+    public Task SetContentsAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        string contents,
+        CancellationToken cancellationToken = default)
+    {
+        return MutateAnnotAsync(
+            document,
+            pageIndex,
+            annotIndex,
+            cancellationToken,
+            annot =>
+            {
+                if (!PdfiumAnnotStrings.SetString(annot, "Contents", contents ?? string.Empty))
+                {
+                    throw new InvalidOperationException("Failed to set annotation Contents.");
+                }
+            });
+    }
+
+    public Task SetColorAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        PdfAnnotationColor color,
+        CancellationToken cancellationToken = default)
+    {
+        return MutateAnnotAsync(
+            document,
+            pageIndex,
+            annotIndex,
+            cancellationToken,
+            annot =>
+            {
+                if (fpdf_annot.FPDFAnnotSetColor(
+                        annot,
+                        FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_Color,
+                        color.R,
+                        color.G,
+                        color.B,
+                        color.A) == 0)
+                {
+                    throw new InvalidOperationException("Failed to set annotation color.");
+                }
+            });
+    }
+
+    public Task MoveAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        PdfRect bounds,
+        CancellationToken cancellationToken = default)
+    {
+        return MutateAnnotAsync(
+            document,
+            pageIndex,
+            annotIndex,
+            cancellationToken,
+            annot =>
+            {
+                using var rect = new FS_RECTF_();
+                rect.Left = (float)bounds.Left;
+                rect.Bottom = (float)bounds.Bottom;
+                rect.Right = (float)bounds.Right;
+                rect.Top = (float)bounds.Top;
+                if (fpdf_annot.FPDFAnnotSetRect(annot, rect) == 0)
+                {
+                    throw new InvalidOperationException("Failed to move annotation.");
+                }
+            });
+    }
+
     public Task<IReadOnlyList<PdfAnnotationInfo>> ListAsync(
         IPdfDocument document,
         int? pageIndex = null,
@@ -246,7 +422,9 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                         color = new PdfAnnotationColor((byte)r, (byte)g, (byte)b, (byte)a);
                     }
 
-                    results.Add(new PdfAnnotationInfo(pageIndex, i, kind, bounds, color));
+                    var contents = PdfiumAnnotStrings.GetString(annot, "Contents");
+                    var isSticky = subtype == PdfiumAnnotSubtypes.Text;
+                    results.Add(new PdfAnnotationInfo(pageIndex, i, kind, bounds, color, contents, isSticky));
                 }
                 finally
                 {
@@ -258,6 +436,59 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         {
             fpdfview.FPDF_ClosePage(page);
         }
+    }
+
+    private Task MutateAnnotAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        CancellationToken cancellationToken,
+        Action<FpdfAnnotationT> mutate)
+    {
+        var pdfium = RequirePdfium(document);
+        ArgumentOutOfRangeException.ThrowIfNegative(pageIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(pageIndex, pdfium.PageCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(annotIndex);
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
+                    if (page is null)
+                    {
+                        throw new InvalidOperationException($"Failed to load page {pageIndex}.");
+                    }
+
+                    try
+                    {
+                        var annot = fpdf_annot.FPDFPageGetAnnot(page, annotIndex);
+                        if (annot is null)
+                        {
+                            throw new ArgumentOutOfRangeException(nameof(annotIndex));
+                        }
+
+                        try
+                        {
+                            mutate(annot);
+                            pdfium.NotifyAnnotationsChanged();
+                        }
+                        finally
+                        {
+                            fpdf_annot.FPDFPageCloseAnnot(annot);
+                        }
+                    }
+                    finally
+                    {
+                        fpdfview.FPDF_ClosePage(page);
+                    }
+                }
+            },
+            cancellationToken);
     }
 
     private static PdfRect UnionBounds(IReadOnlyList<PdfQuad> quads)

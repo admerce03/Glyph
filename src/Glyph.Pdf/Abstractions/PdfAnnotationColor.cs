@@ -10,4 +10,6 @@ public readonly record struct PdfAnnotationColor(byte R, byte G, byte B, byte A 
     public static PdfAnnotationColor UnderlineBlue { get; } = new(30, 144, 255, 255);
 
     public static PdfAnnotationColor StrikeOutRed { get; } = new(220, 50, 50, 255);
+
+    public static PdfAnnotationColor StickyNoteYellow { get; } = new(255, 220, 80, 255);
 }

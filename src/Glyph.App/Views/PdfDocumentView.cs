@@ -281,6 +281,7 @@ public sealed class PdfDocumentView : UserControl
         var highlight = new Button { Content = "Highlight" };
         var underline = new Button { Content = "Underline" };
         var strikeout = new Button { Content = "Strike" };
+        var stickyNote = new Button { Content = "Note" };
         var undoEdit = new Button { Content = "Undo" };
         var redoEdit = new Button { Content = "Redo" };
         ToolTipService.SetToolTip(rotateLeft, "Rotate selected pages left");
@@ -297,6 +298,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(highlight, "Highlight selected text");
         ToolTipService.SetToolTip(underline, "Underline selected text");
         ToolTipService.SetToolTip(strikeout, "Strike through selected text");
+        ToolTipService.SetToolTip(stickyNote, "Add a sticky note on the current page");
         ToolTipService.SetToolTip(undoEdit, "Undo last page edit (Ctrl+Z)");
         ToolTipService.SetToolTip(redoEdit, "Redo page edit (Ctrl+Y)");
 
@@ -342,6 +344,7 @@ public sealed class PdfDocumentView : UserControl
         highlight.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.Highlight);
         underline.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.Underline);
         strikeout.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.StrikeOut);
+        stickyNote.Click += async (_, _) => await AddStickyNoteAsync();
         undoEdit.Click += async (_, _) => await UndoPageEditAsync();
         redoEdit.Click += async (_, _) => await RedoPageEditAsync();
 
@@ -356,7 +359,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout,
+                highlight, underline, strikeout, stickyNote,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -1944,7 +1947,7 @@ public sealed class PdfDocumentView : UserControl
         {
             var all = await _annotations.ListAsync(_document);
             _annotationItems = all
-                .Where(a => a.TextMarkupKind is not null)
+                .Where(a => a.TextMarkupKind is not null || a.IsStickyNote)
                 .OrderBy(a => a.PageIndex)
                 .ThenBy(a => a.AnnotIndex)
                 .ToList();
@@ -1963,6 +1966,14 @@ public sealed class PdfDocumentView : UserControl
 
     private static string FormatAnnotationLabel(PdfAnnotationInfo info)
     {
+        if (info.IsStickyNote)
+        {
+            var preview = string.IsNullOrWhiteSpace(info.Contents)
+                ? "(empty)"
+                : TrimForStatus(info.Contents);
+            return $"Note · p.{info.PageIndex + 1}: {preview}";
+        }
+
         var kind = info.TextMarkupKind switch
         {
             PdfTextMarkupKind.Highlight => "Highlight",
@@ -1971,6 +1982,63 @@ public sealed class PdfDocumentView : UserControl
             _ => "Markup",
         };
         return $"{kind} · p.{info.PageIndex + 1}";
+    }
+
+    private async Task AddStickyNoteAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for note dialog.");
+
+        var box = new TextBox
+        {
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            Height = 120,
+            PlaceholderText = "Note text",
+        };
+        var dialog = new ContentDialog
+        {
+            Title = "Sticky note",
+            Content = box,
+            PrimaryButtonText = "Add",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result != ContentDialogResult.Primary)
+        {
+            _status.Text = "Note cancelled.";
+            return;
+        }
+
+        var page = _document.GetPage(CurrentPageIndex);
+        var x = Math.Max(24, page.WidthPoints * 0.5 - 10);
+        var y = Math.Max(24, page.HeightPoints * 0.5 - 10);
+
+        try
+        {
+            _status.Text = "Adding note…";
+            await _annotations.AddStickyNoteAsync(
+                _document,
+                CurrentPageIndex,
+                x,
+                y,
+                box.Text ?? string.Empty,
+                PdfAnnotationColor.StickyNoteYellow);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = "Sticky note added.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Note failed: " + ex.Message;
+        }
     }
 
     private async void AnnotationList_SelectionChanged(object sender, SelectionChangedEventArgs e)

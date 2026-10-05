@@ -8,4 +8,6 @@ public sealed record PdfAnnotationInfo(
     int AnnotIndex,
     PdfTextMarkupKind? TextMarkupKind,
     PdfRect Bounds,
-    PdfAnnotationColor? Color);
+    PdfAnnotationColor? Color,
+    string? Contents = null,
+    bool IsStickyNote = false);
