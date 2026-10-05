@@ -20,6 +20,7 @@ public class PreferencesDialogUiTests
         PreferencesDialogUi.PrivacyHeader.Should().Be("Privacy");
         PreferencesDialogUi.CheckForUpdates.Should().Contain("updates");
         PreferencesDialogUi.ToolbarCommandsHeader.Should().Contain("reorder");
+        PreferencesDialogUi.ToolbarCommandsHeader.Should().Contain("open documents");
         PreferencesDialogUi.MoveToolbarCommandUp.Should().Be("↑");
         PreferencesDialogUi.MoveToolbarCommandDown.Should().Be("↓");
         PreferencesDialogUi.ShortcutsHeader.Should().Contain("shortcuts");

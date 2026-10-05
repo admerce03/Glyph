@@ -23,7 +23,7 @@ public static class PreferencesDialogUi
     public const string CompactToolbar =
         "Compact document toolbars (tighter padding)";
     public const string ToolbarCommandsHeader =
-        "Toolbar commands (unchecked = hidden; ↑↓ reorder; reopen documents to apply)";
+        "Toolbar commands (unchecked = hidden; ↑↓ reorder; applies to open documents)";
     public const string ResetToolbar = "Reset toolbar to default";
     public const string MoveToolbarCommandUp = "↑";
     public const string MoveToolbarCommandDown = "↓";
