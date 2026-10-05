@@ -275,6 +275,10 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(duplicateAnnot, "Duplicate selected annotation (offset copy)");
         duplicateAnnot.Click += async (_, _) => await DuplicateSelectedAnnotationAsync();
         annotHeaderRow.Children.Add(duplicateAnnot);
+        var opacityAnnot = new Button { Content = "Opacity", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(opacityAnnot, "Change selected annotation opacity");
+        opacityAnnot.Click += async (_, _) => await SetSelectedAnnotationOpacityAsync();
+        annotHeaderRow.Children.Add(opacityAnnot);
         annotHeaderRow.Children.Add(removeAnnot);
         Grid.SetRow(annotHeaderRow, 6);
         sidePanel.Children.Add(annotHeaderRow);
@@ -3642,6 +3646,73 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Duplicate annotation failed: " + ex.Message;
+        }
+    }
+
+    private async Task SetSelectedAnnotationOpacityAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for opacity dialog.");
+
+        var index = _annotationList.SelectedIndex;
+        PdfAnnotationInfo? item = index >= 0 && index < _annotationItems.Count
+            ? _annotationItems[index]
+            : _selectedAnnot;
+        if (item is null)
+        {
+            _status.Text = "Select an annotation to change opacity.";
+            return;
+        }
+
+        var current = item.Color?.A / 255.0 ?? 1.0;
+        var slider = new Slider
+        {
+            Minimum = 0,
+            Maximum = 100,
+            Value = Math.Clamp(current * 100, 0, 100),
+            Width = 280,
+            TickFrequency = 5,
+            IsThumbToolTipEnabled = true,
+        };
+        var label = new TextBlock { Text = $"Opacity: {(int)slider.Value}%", Margin = new Thickness(0, 0, 0, 8) };
+        slider.ValueChanged += (_, args) =>
+        {
+            label.Text = $"Opacity: {(int)args.NewValue}%";
+        };
+        var panel = new StackPanel { Spacing = 4, Children = { label, slider } };
+        var dialog = new ContentDialog
+        {
+            Title = $"Opacity — {FormatAnnotationLabel(item)}",
+            Content = panel,
+            PrimaryButtonText = "Apply",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        try
+        {
+            await _annotations.SetOpacityAsync(
+                _document,
+                item.PageIndex,
+                item.AnnotIndex,
+                (float)(slider.Value / 100.0));
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = $"Opacity set to {(int)slider.Value}%.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Opacity failed: " + ex.Message;
         }
     }
 

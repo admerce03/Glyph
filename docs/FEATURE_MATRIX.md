@@ -254,7 +254,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-28 | PDF annotations | group where useful | M4 | Not Started |  |
 | F13-29 | PDF annotations | change border color | M4 | Tested | Set on create + `SetColorAsync` |
 | F13-30 | PDF annotations | change fill color | M4 | Tested | InteriorColor on shape create |
-| F13-31 | PDF annotations | change opacity | M4 | Not Started |  |
+| F13-31 | PDF annotations | change opacity | M4 | Tested | `SetOpacityAsync` + sidebar Opacity slider |
 | F13-32 | PDF annotations | change line thickness | M4 | Tested | `borderWidthPoints` on ink/shape create |
 | F13-33 | PDF annotations | change line style | M4 | Not Started |  |
 | F13-34 | PDF annotations | change arrowheads | M4 | Not Started |  |

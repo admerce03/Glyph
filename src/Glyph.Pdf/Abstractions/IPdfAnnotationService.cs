@@ -76,6 +76,16 @@ public interface IPdfAnnotationService
         PdfAnnotationColor color,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Set annotation opacity (0–1), preserving RGB from the current stroke color when available.
+    /// </summary>
+    Task SetOpacityAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        float opacity,
+        CancellationToken cancellationToken = default);
+
     Task MoveAsync(
         IPdfDocument document,
         int pageIndex,

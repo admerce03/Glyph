@@ -427,6 +427,12 @@ public class PdfiumAnnotationServiceTests
                 note.Bounds.Width.Should().BeApproximately(60, 0.5);
                 note.Bounds.Height.Should().BeApproximately(60, 0.5);
 
+                await annots.SetOpacityAsync(document, 0, note.AnnotIndex, opacity: 0.4f);
+                listed = await annots.ListAsync(document, 0);
+                note = listed.Should().ContainSingle(a => a.IsStickyNote).Subject;
+                note.Color.Should().NotBeNull();
+                note.Color!.Value.A.Should().Be((byte)Math.Round(0.4f * 255f));
+
                 var copy = await annots.DuplicateAsync(document, 0, note.AnnotIndex);
                 copy.IsStickyNote.Should().BeTrue();
                 copy.Contents.Should().Be("Edited note");
