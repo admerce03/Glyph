@@ -8,8 +8,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 
 | ID | Area | Requirement | Milestone | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
-| F01-01 | Application and file handling | Open files through: | M1/M9 | Implemented | Open / Open Multiple / drag-drop in shell |
-| F01-02 | Application and file handling | Open multiple files simultaneously. | M1/M9 | Implemented | Multi-tab + multi-select open |
+| F01-01 | Application and file handling | Open files through: | M1/M9 | Implemented | Open / Open Multiple / drag-drop; picker filter via `FileFormatDetector.SupportedExtensions` |
+| F01-02 | Application and file handling | Open multiple files simultaneously. | M1/M9 | Tested | Multi-tab open + `FilterSupportedPaths` / WorkspaceState multi-open unit tests |
 | F01-03 | Application and file handling | Open multiple files: | M1/M9 | Tested | Tabs by default; `OpenFilesInSeparateWindows` prefs round-trip |
 | F01-04 | Application and file handling | Reopen recently used files. | M1/M9 | Tested | JsonRecentFilesStore covered by unit tests |
 | F01-05 | Application and file handling | Restore previously open tabs/windows after restart, optionally. | M1/M9 | Tested | `JsonSessionStore` save/load/clear unit tests + Preferences toggle |

@@ -34,12 +34,6 @@ namespace Glyph.App;
 
 public sealed partial class MainWindow : Window
 {
-    private static readonly string[] SupportedExtensions =
-    [
-        ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tif", ".tiff", ".webp", ".ico",
-        ".heic", ".heif", ".avif", ".jp2", ".j2k",
-    ];
-
     private static bool _startupSessionHandled;
 
     private DocumentShareHelper? _shareHelper;
@@ -1600,7 +1594,7 @@ public sealed partial class MainWindow : Window
     private void InitializePicker(FileOpenPicker picker)
     {
         InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
-        foreach (var extension in SupportedExtensions)
+        foreach (var extension in FileFormatDetector.SupportedExtensions)
         {
             picker.FileTypeFilter.Add(extension);
         }

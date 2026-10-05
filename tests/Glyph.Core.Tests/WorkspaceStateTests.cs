@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Glyph.Core.Documents;
+using Glyph.Core.IO;
 using Glyph.Core.Workspace;
 
 namespace Glyph.Core.Tests;
@@ -19,6 +20,31 @@ public class WorkspaceStateTests
 
         workspace.Activate(first.Id).Should().BeTrue();
         workspace.ActiveDocument.Should().BeSameAs(first);
+    }
+
+    [Fact]
+    public void Open_multiple_paths_creates_simultaneous_tabs()
+    {
+        // F01-02: multi-select / drop opens several documents as tabs in one workspace.
+        var workspace = new WorkspaceState();
+        var paths = FileFormatDetector.FilterSupportedPaths(
+        [
+            "/tmp/batch/report.pdf",
+            "/tmp/batch/skip.txt",
+            "/tmp/batch/photo.jpeg",
+            "/tmp/batch/diagram.png",
+        ]);
+
+        foreach (var path in paths)
+        {
+            var kind = FileFormatDetector.DetectKind(path);
+            workspace.Open(kind, Path.GetFileName(path), path);
+        }
+
+        workspace.Documents.Should().HaveCount(3);
+        workspace.Documents.Select(d => d.DisplayName)
+            .Should().Equal("report.pdf", "photo.jpeg", "diagram.png");
+        workspace.ActiveDocument!.DisplayName.Should().Be("diagram.png");
     }
 
     [Fact]

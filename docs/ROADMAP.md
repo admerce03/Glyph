@@ -311,6 +311,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Tab tear-off policy extract; F02-11/12 + F59-03/07 Tested
 - SidebarModeCombo extract; F03-10 / F01-26 / F02-10 Tested
 - ThumbnailWidthConstraints + DocumentClosePolicy; F03-01 / F04-13 / F01-22 Tested
+- FileFormatDetector owns picker extensions + FilterSupportedPaths; F01-02 Tested
 
 ---
 
