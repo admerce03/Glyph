@@ -22,6 +22,35 @@ public class PackagingDeferredPolicyTests
         PackagingDeferredPolicy.ManifestPath.Should().Contain("Package.appxmanifest");
         PackagingDeferredPolicy.Reason.Should().Contain("sideload helper");
     }
+
+    [Fact]
+    public void Package_manifest_declares_pdf_and_image_associations()
+    {
+        var root = FindRepoRoot();
+        var manifestPath = Path.Combine(root, PackageFileAssociationDeclaration.ManifestRelativePath);
+        File.Exists(manifestPath).Should().BeTrue(manifestPath);
+        var xml = File.ReadAllText(manifestPath);
+        PackageFileAssociationDeclaration.ManifestDeclaresExpectedAssociations(xml).Should().BeTrue();
+        PackageFileAssociationDeclaration.ParseDeclaredExtensions(xml)
+            .Should().Contain(PackageFileAssociationDeclaration.ExpectedExtensions);
+    }
+
+    private static string FindRepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "Glyph.sln"))
+                || File.Exists(Path.Combine(dir.FullName, PackagingDeferredPolicy.ManifestPath)))
+            {
+                return dir.FullName;
+            }
+
+            dir = dir.Parent;
+        }
+
+        throw new InvalidOperationException("Repo root not found from " + AppContext.BaseDirectory);
+    }
 }
 
 public class PdfOptimizeDeferredPolicyTests
