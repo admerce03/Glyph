@@ -782,7 +782,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-14 | Preferences | 100% zoom meaning | M1/M9 | Not Started |  |
 | F55-15 | Preferences | default interpolation | M1/M9 | Not Started |  |
 | F55-16 | Preferences | color management | M1/M9 | Not Started |  |
-| F55-17 | Preferences | animation autoplay | M1/M9 | Not Started |  |
+| F55-17 | Preferences | animation autoplay | M1/M9 | Implemented | Preferences → Autoplay animated images on open |
 | F55-18 | Preferences | default annotation colors | M1/M9 | Implemented | Highlight / stroke / sticky-note color combos |
 | F55-19 | Preferences | default line width | M1/M9 | Implemented | Default stroke width (pt) NumberBox |
 | F55-20 | Preferences | signature handling | M1/M9 | Implemented | Signature library save/delete/reorder/descriptions + prefs clear |
@@ -790,7 +790,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-22 | Preferences | local-only OCR preference | M1/M9 | Not Started |  |
 | F55-23 | Preferences | clear recent files | M1/M9 | Implemented | File → Clear Recent + Preferences Privacy button |
 | F55-24 | Preferences | clear saved signatures | M1/M9 | Implemented | Preferences → Clear saved signatures (`ClearAllAsync`) |
-| F55-25 | Preferences | strip metadata defaults | M1/M9 | Not Started |  |
+| F55-25 | Preferences | strip metadata defaults | M1/M9 | Implemented | Preferences → Strip metadata by default when converting |
 | F56-01 | Accessibility | Windows UI Automation. | M9 | Implemented | WinUI Automation tree; toolbar `AutomationProperties.Name` |
 | F56-02 | Accessibility | Keyboard-accessible controls. | M9 | In Progress | Menus/accelerators; document tools keyboard paths |
 | F56-03 | Accessibility | Visible focus indicators. | M9 | In Progress | WinUI default focus visuals |

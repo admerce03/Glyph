@@ -518,6 +518,12 @@ public sealed class ImageDocumentView : UserControl
         {
             StartSlideshow(resume: true);
         }
+        else if (_document.FrameCount > 1
+            && App.Services.GetService<ISettingsStore>()?.Current.AnimationAutoplay == true)
+        {
+            StartAnimationPlayback();
+            _status.Text = "Animation playing (autoplay).";
+        }
     }
 
     private void RefreshSiblingList()
@@ -4011,7 +4017,21 @@ public sealed class ImageDocumentView : UserControl
         };
         var lossless = new CheckBox { Content = "Lossless WebP", IsChecked = false };
         var preserveAlpha = new CheckBox { Content = "Preserve alpha", IsChecked = true };
-        var preserveMeta = new CheckBox { Content = "Preserve metadata (EXIF/IPTC/XMP)", IsChecked = true };
+        var stripByDefault = false;
+        try
+        {
+            stripByDefault = App.Services.GetService<ISettingsStore>()?.Current.StripMetadataByDefault == true;
+        }
+        catch
+        {
+            // DI may be unavailable in tests.
+        }
+
+        var preserveMeta = new CheckBox
+        {
+            Content = "Preserve metadata (EXIF/IPTC/XMP)",
+            IsChecked = !stripByDefault,
+        };
         var embedSrgb = new CheckBox { Content = "Embed sRGB ICC profile", IsChecked = false };
         var tiffCompression = new ComboBox
         {

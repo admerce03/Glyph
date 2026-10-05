@@ -46,5 +46,13 @@ public sealed class AppSettings
     /// <summary>Default stroke width in PDF points (F55-19).</summary>
     public double DefaultStrokeWidthPoints { get; set; } = 2;
 
+    /// <summary>When true, multi-frame images start playing on open (F55-17).</summary>
+    public bool AnimationAutoplay { get; set; }
+
+    /// <summary>
+    /// When true, Convert/export defaults to stripping EXIF/IPTC/XMP (F55-25).
+    /// </summary>
+    public bool StripMetadataByDefault { get; set; }
+
     public bool SidebarVisible { get; set; } = true;
 }

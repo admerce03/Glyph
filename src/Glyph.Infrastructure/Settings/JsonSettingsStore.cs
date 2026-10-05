@@ -148,6 +148,8 @@ public sealed class JsonSettingsStore : ISettingsStore
         DefaultStrokeColor = settings.DefaultStrokeColor ?? "Red",
         DefaultStickyNoteColor = settings.DefaultStickyNoteColor ?? "Yellow",
         DefaultStrokeWidthPoints = settings.DefaultStrokeWidthPoints,
+        AnimationAutoplay = settings.AnimationAutoplay,
+        StripMetadataByDefault = settings.StripMetadataByDefault,
         SidebarVisible = settings.SidebarVisible,
     };
 }

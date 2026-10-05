@@ -24,6 +24,8 @@ public class JsonSettingsStoreTests
                 DefaultStrokeColor = "Black",
                 DefaultStickyNoteColor = "Blue",
                 DefaultStrokeWidthPoints = 3.5,
+                AnimationAutoplay = true,
+                StripMetadataByDefault = true,
             });
 
             var reloaded = new JsonSettingsStore(path);
@@ -39,6 +41,8 @@ public class JsonSettingsStoreTests
             settings.DefaultStrokeColor.Should().Be("Black");
             settings.DefaultStickyNoteColor.Should().Be("Blue");
             settings.DefaultStrokeWidthPoints.Should().Be(3.5);
+            settings.AnimationAutoplay.Should().BeTrue();
+            settings.StripMetadataByDefault.Should().BeTrue();
             reloaded.Current.Theme.Should().Be(ThemePreference.Dark);
         }
         finally

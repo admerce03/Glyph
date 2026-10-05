@@ -2521,6 +2521,16 @@ public sealed partial class MainWindow : Window
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
             Width = 280,
         };
+        var animationAutoplayBox = new CheckBox
+        {
+            Content = "Autoplay animated images on open",
+            IsChecked = settings.AnimationAutoplay,
+        };
+        var stripMetadataBox = new CheckBox
+        {
+            Content = "Strip metadata by default when converting images",
+            IsChecked = settings.StripMetadataByDefault,
+        };
 
         var clearRecentButton = new Button
         {
@@ -2576,6 +2586,7 @@ public sealed partial class MainWindow : Window
                 restoreBox, autoSaveBox, intervalBox, recentBox, snapshotsBox, snapshotCapBox,
                 separateWindowsBox, authorBox, compactToolbarBox,
                 highlightColorBox, strokeColorBox, stickyColorBox, strokeWidthBox,
+                animationAutoplayBox, stripMetadataBox,
                 privacyHeader, clearRecentButton, clearSignaturesButton,
             },
         };
@@ -2606,6 +2617,8 @@ public sealed partial class MainWindow : Window
         settings.DefaultStrokeColor = strokeColorBox.SelectedItem as string ?? "Red";
         settings.DefaultStickyNoteColor = stickyColorBox.SelectedItem as string ?? "Yellow";
         settings.DefaultStrokeWidthPoints = Math.Clamp(strokeWidthBox.Value, 0.5, 12);
+        settings.AnimationAutoplay = animationAutoplayBox.IsChecked == true;
+        settings.StripMetadataByDefault = stripMetadataBox.IsChecked == true;
         await _settingsStore.SaveAsync(settings);
         ConfigureRecoveryTimer();
         await PersistSessionAsync();
