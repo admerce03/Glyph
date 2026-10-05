@@ -3246,9 +3246,9 @@ public sealed class PdfDocumentView : UserControl
         }
         else
         {
-            foreach (var overlay in _pageOverlays.Values)
+            foreach (var pageOverlay in _pageOverlays.Values)
             {
-                overlay.Children.Remove(_annotSelectionRect);
+                pageOverlay.Children.Remove(_annotSelectionRect);
             }
         }
 
