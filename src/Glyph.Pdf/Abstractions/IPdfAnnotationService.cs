@@ -61,6 +61,7 @@ public interface IPdfAnnotationService
         PdfAnnotationColor borderColor,
         PdfAnnotationColor? fillColor = null,
         float borderWidthPoints = 1.5f,
+        PdfInkLineStyle inkLineStyle = PdfInkLineStyle.Solid,
         CancellationToken cancellationToken = default);
 
     Task<PdfAnnotationInfo> AddTextBoxAsync(

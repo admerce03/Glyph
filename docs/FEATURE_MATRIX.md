@@ -256,12 +256,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-30 | PDF annotations | change fill color | M4 | Tested | InteriorColor on shape create |
 | F13-31 | PDF annotations | change opacity | M4 | Tested | `SetOpacityAsync` + sidebar Opacity slider |
 | F13-32 | PDF annotations | change line thickness | M4 | Tested | `borderWidthPoints` on ink/shape create |
-| F13-33 | PDF annotations | change line style | M4 | Not Started |  |
+| F13-33 | PDF annotations | change line style | M4 | Tested | Line/Arrow ink: Solid/Dashed/Dotted via segmented strokes |
 | F13-34 | PDF annotations | change arrowheads | M4 | Not Started |  |
 | F13-35 | PDF annotations | change font | M4 | Implemented | TextBox/Callout Font combo → DA resource (Helv/TiRo/Cour + bold/italic) |
 | F13-36 | PDF annotations | change font size | M4 | Implemented | TextBox/Callout dialog NumberBox → `fontSizePoints` |
 | F13-37 | PDF annotations | change text color | M4 | Implemented | TextBox/Callout dialog StrokePresets → `textColor` / DA |
-| F13-38 | PDF annotations | change text alignment | M4 | Not Started |  |
+| F13-38 | PDF annotations | change text alignment | M4 | Blocked | PDFium has no `FPDFAnnot_SetNumberValue` for FreeText `/Q` (Quadding) |
 | F14-01 | Highlight workflow | Select text and apply highlight. | M4 | Implemented | Selection quads → Highlight toolbar |
 | F14-02 | Highlight workflow | Persistent highlight mode: | M4 | Implemented | Highlight toggles mode; Esc exits; color remembered |
 | F14-03 | Highlight workflow | Multiple highlight colors. | M4 | Tested | Yellow/Green/Pink/Blue/Orange picker |
@@ -298,7 +298,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F16-12 | Text boxes and callouts | Background/fill color. | M4 | Implemented | `fillColor` → InteriorColor; TextBox dialog picker |
 | F16-13 | Text boxes and callouts | Border. | M4 | Tested | Border color + width on create |
 | F16-14 | Text boxes and callouts | Opacity. | M4 | Implemented | Sidebar Opacity → `SetOpacityAsync` |
-| F16-15 | Text boxes and callouts | Alignment. | M4 | Not Started |  |
+| F16-15 | Text boxes and callouts | Alignment. | M4 | Blocked | Same Quadding limitation as F13-38 |
 | F16-16 | Text boxes and callouts | Callout pointer. | M4 | Tested | Ink pointer from tip to nearest box edge |
 | F16-17 | Text boxes and callouts | Move pointer separately from text box. | M4 | Not Started |  |
 | F17-01 | Shapes | line | M4 | Tested | Same as F13-05 Line draw mode |
@@ -318,7 +318,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F17-15 | Shapes | multi-select | M4 | Not Started |  |
 | F17-16 | Shapes | border color | M4 | Implemented | Stroke picker when entering Rect/Ellipse/Line/Arrow |
 | F17-17 | Shapes | border width | M4 | Implemented | Width picker with stroke color dialog |
-| F17-18 | Shapes | line style | M4 | Not Started |  |
+| F17-18 | Shapes | line style | M4 | Tested | Shape stroke dialog: Solid/Dashed/Dotted for Line/Arrow |
 | F17-19 | Shapes | fill color | M4 | Implemented | Semi-transparent fill from stroke hue |
 | F17-20 | Shapes | opacity | M4 | Implemented | Sidebar Opacity → `SetOpacityAsync` |
 | F17-21 | Shapes | shape-specific adjustment handles | M4 | Not Started |  |

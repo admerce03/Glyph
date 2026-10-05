@@ -498,6 +498,15 @@ public class PdfiumAnnotationServiceTests
                 line.ShapeKind.Should().Be(PdfShapeKind.Line);
                 line.IsInk.Should().BeTrue();
 
+                var dashed = await annots.AddShapeAsync(
+                    document,
+                    0,
+                    PdfShapeKind.Line,
+                    new PdfRect(80, 420, 280, 420),
+                    new PdfAnnotationColor(0, 0, 200),
+                    inkLineStyle: PdfInkLineStyle.Dashed);
+                dashed.Contents.Should().Be("Line|Dashed");
+
                 var arrow = await annots.AddShapeAsync(
                     document,
                     0,

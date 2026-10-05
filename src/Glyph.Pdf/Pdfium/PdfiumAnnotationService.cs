@@ -431,6 +431,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         PdfAnnotationColor borderColor,
         PdfAnnotationColor? fillColor = null,
         float borderWidthPoints = 1.5f,
+        PdfInkLineStyle inkLineStyle = PdfInkLineStyle.Solid,
         CancellationToken cancellationToken = default)
     {
         var pdfium = RequirePdfium(document);
@@ -452,8 +453,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             }
 
             return kind == PdfShapeKind.Arrow
-                ? AddArrowAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, cancellationToken)
-                : AddLineAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, cancellationToken);
+                ? AddArrowAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, inkLineStyle, cancellationToken)
+                : AddLineAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, inkLineStyle, cancellationToken);
         }
 
         if (kind == PdfShapeKind.Star)
@@ -1782,17 +1783,21 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         PdfRect bounds,
         PdfAnnotationColor borderColor,
         float borderWidthPoints,
+        PdfInkLineStyle inkLineStyle,
         CancellationToken cancellationToken)
     {
+        var start = new PdfPagePoint(bounds.Left, bounds.Bottom);
+        var end = new PdfPagePoint(bounds.Right, bounds.Top);
+        var segments = PdfInkLineStyleGeometry.Segment(start, end, inkLineStyle, borderWidthPoints);
+        var strokes = PdfInkLineStyleGeometry.ToInkStrokes(segments);
+        var contents = inkLineStyle == PdfInkLineStyle.Solid ? "Line" : $"Line|{inkLineStyle}";
         var created = await AddLabeledInkAsync(
             document,
             pageIndex,
-            [
-                [new PdfPagePoint(bounds.Left, bounds.Bottom), new PdfPagePoint(bounds.Right, bounds.Top)],
-            ],
+            strokes,
             borderColor,
             borderWidthPoints,
-            contents: "Line",
+            contents,
             cancellationToken);
         return created with { ShapeKind = PdfShapeKind.Line, IsInk = true };
     }
@@ -1843,6 +1848,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         PdfRect bounds,
         PdfAnnotationColor borderColor,
         float borderWidthPoints,
+        PdfInkLineStyle inkLineStyle,
         CancellationToken cancellationToken)
     {
         var start = new PdfPagePoint(bounds.Left, bounds.Bottom);
@@ -1866,17 +1872,26 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             end.X + (backX * cos) + (backY * sin),
             end.Y + (-backX * sin) + (backY * cos));
 
+        var shaftEnd = length > head + 1
+            ? new PdfPagePoint(end.X - (ux * head), end.Y - (uy * head))
+            : start;
+        var shaftSegments = PdfInkLineStyleGeometry.Segment(start, shaftEnd, inkLineStyle, borderWidthPoints);
+        var strokes = PdfInkLineStyleGeometry.ToInkStrokes(shaftSegments);
+        var allStrokes = new List<IReadOnlyList<PdfPagePoint>>(strokes);
+        if (length > head + 1)
+        {
+            allStrokes.Add([end, wing1]);
+            allStrokes.Add([end, wing2]);
+        }
+
+        var contents = inkLineStyle == PdfInkLineStyle.Solid ? "Arrow" : $"Arrow|{inkLineStyle}";
         var created = await AddLabeledInkAsync(
             document,
             pageIndex,
-            [
-                [start, end],
-                [end, wing1],
-                [end, wing2],
-            ],
+            allStrokes,
             borderColor,
             borderWidthPoints,
-            contents: "Arrow",
+            contents,
             cancellationToken);
         return created with { ShapeKind = PdfShapeKind.Arrow, IsInk = true };
     }

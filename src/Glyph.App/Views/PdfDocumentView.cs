@@ -112,6 +112,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly Stack<PdfAnnotationInfo> _strokeUndoStack = new();
     private PdfAnnotationColor _drawStrokeColor = PdfAnnotationColor.InkRed;
     private float _drawStrokeWidth = 2f;
+    private PdfInkLineStyle _drawInkLineStyle = PdfInkLineStyle.Solid;
     private bool _highlightMode;
     private PdfAnnotationColor _highlightModeColor = PdfAnnotationColor.YellowHighlight;
     private bool _formOverlayMode;
@@ -4410,7 +4411,9 @@ public sealed class PdfDocumentView : UserControl
         }
         else
         {
-            var picked = await PickStrokeStyleAsync("Shape stroke");
+            var picked = await PickStrokeStyleAsync(
+                "Shape stroke",
+                includeInkLineStyle: kind is PdfShapeKind.Line or PdfShapeKind.Arrow);
             if (picked is null)
             {
                 _status.Text = "Shape mode cancelled.";
@@ -4419,6 +4422,7 @@ public sealed class PdfDocumentView : UserControl
 
             _drawStrokeColor = picked.Value.Color;
             _drawStrokeWidth = picked.Value.WidthPoints;
+            _drawInkLineStyle = picked.Value.InkLineStyle;
         }
 
         if (_cropMode)
@@ -4442,7 +4446,9 @@ public sealed class PdfDocumentView : UserControl
         };
     }
 
-    private async Task<(PdfAnnotationColor Color, float WidthPoints)?> PickStrokeStyleAsync(string title)
+    private async Task<(PdfAnnotationColor Color, float WidthPoints, PdfInkLineStyle InkLineStyle)?> PickStrokeStyleAsync(
+        string title,
+        bool includeInkLineStyle = false)
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
@@ -4468,17 +4474,27 @@ public sealed class PdfDocumentView : UserControl
         var currentWidth = Array.FindIndex(widths, w => Math.Abs(w - _drawStrokeWidth) < 0.01f);
         widthList.SelectedIndex = currentWidth >= 0 ? currentWidth : 1;
 
-        var panel = new StackPanel
+        ComboBox? lineStyleBox = null;
+        if (includeInkLineStyle)
         {
-            Spacing = 8,
-            Children =
+            lineStyleBox = new ComboBox
             {
-                new TextBlock { Text = "Color", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
-                colorList,
-                new TextBlock { Text = "Width", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
-                widthList,
-            },
-        };
+                Header = "Line style",
+                ItemsSource = new[] { "Solid", "Dashed", "Dotted" },
+                SelectedIndex = (int)_drawInkLineStyle,
+                Width = 220,
+            };
+        }
+
+        var panel = new StackPanel { Spacing = 8, Children = { } };
+        panel.Children.Add(new TextBlock { Text = "Color", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        panel.Children.Add(colorList);
+        panel.Children.Add(new TextBlock { Text = "Width", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        panel.Children.Add(widthList);
+        if (lineStyleBox is not null)
+        {
+            panel.Children.Add(lineStyleBox);
+        }
 
         var dialog = new ContentDialog
         {
@@ -4497,7 +4513,10 @@ public sealed class PdfDocumentView : UserControl
 
         var colorIndex = Math.Clamp(colorList.SelectedIndex, 0, PdfAnnotationColor.StrokePresets.Count - 1);
         var widthIndex = Math.Clamp(widthList.SelectedIndex, 0, widths.Length - 1);
-        return (PdfAnnotationColor.StrokePresets[colorIndex].Color, widths[widthIndex]);
+        var lineStyle = lineStyleBox is null
+            ? _drawInkLineStyle
+            : (PdfInkLineStyle)Math.Clamp(lineStyleBox.SelectedIndex, 0, 2);
+        return (PdfAnnotationColor.StrokePresets[colorIndex].Color, widths[widthIndex], lineStyle);
     }
 
     private void ClearShapeMode()
@@ -4667,7 +4686,8 @@ public sealed class PdfDocumentView : UserControl
                 _shapeStart,
                 current,
                 stroke,
-                strokeThickness);
+                strokeThickness,
+                _drawInkLineStyle);
         }
         else
         {
@@ -4686,7 +4706,8 @@ public sealed class PdfDocumentView : UserControl
                     _shapeStart,
                     current,
                     stroke,
-                    strokeThickness),
+                    strokeThickness,
+                    _drawInkLineStyle),
                 PdfShapeKind.Star => CreateStarPreview(
                     left,
                     top,
@@ -4778,7 +4799,10 @@ public sealed class PdfDocumentView : UserControl
                         _drawStrokeColor.G,
                         _drawStrokeColor.B,
                         40),
-                borderWidthPoints: _drawStrokeWidth);
+                borderWidthPoints: _drawStrokeWidth,
+                inkLineStyle: kind is PdfShapeKind.Line or PdfShapeKind.Arrow
+                    ? _drawInkLineStyle
+                    : PdfInkLineStyle.Solid);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
@@ -4862,13 +4886,23 @@ public sealed class PdfDocumentView : UserControl
         };
     }
 
+    private static DoubleCollection? InkLineDashArray(PdfInkLineStyle style) =>
+        style switch
+        {
+            PdfInkLineStyle.Dashed => new DoubleCollection { 6, 4 },
+            PdfInkLineStyle.Dotted => new DoubleCollection { 1.5, 4 },
+            _ => null,
+        };
+
     private static FrameworkElement CreateLineOrArrowPreview(
         PdfShapeKind kind,
         Windows.Foundation.Point start,
         Windows.Foundation.Point end,
         SolidColorBrush stroke,
-        double strokeThickness = 2)
+        double strokeThickness = 2,
+        PdfInkLineStyle inkLineStyle = PdfInkLineStyle.Solid)
     {
+        var dash = InkLineDashArray(inkLineStyle);
         if (kind == PdfShapeKind.Line)
         {
             return new Microsoft.UI.Xaml.Shapes.Line
@@ -4879,6 +4913,7 @@ public sealed class PdfDocumentView : UserControl
                 Y2 = end.Y,
                 Stroke = stroke,
                 StrokeThickness = strokeThickness,
+                StrokeDashArray = dash,
             };
         }
 
@@ -4925,6 +4960,7 @@ public sealed class PdfDocumentView : UserControl
             ],
             Stroke = stroke,
             StrokeThickness = strokeThickness,
+            StrokeDashArray = dash,
             Fill = null,
         };
     }
