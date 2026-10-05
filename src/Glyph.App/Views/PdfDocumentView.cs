@@ -3175,25 +3175,9 @@ public sealed class PdfDocumentView : UserControl
         }
 
         // Click selects nearest character word-ish: expand to nearby chars on the same line.
-        var hit = chars
-            .Select((c, idx) => (c, idx, dist: Math.Abs(c.Bounds.Left - pdfX) + Math.Abs(c.Bounds.Bottom - pdfY)))
-            .OrderBy(x => x.dist)
-            .FirstOrDefault();
-        if (hit.c is null)
+        if (!PdfTextSelection.TryExpandWordAt(chars, pdfX, pdfY, out var start, out var end))
         {
             return;
-        }
-
-        var start = hit.idx;
-        var end = hit.idx;
-        while (start > 0 && !char.IsWhiteSpace(chars[start - 1].Value.FirstOrDefault()))
-        {
-            start--;
-        }
-
-        while (end + 1 < chars.Count && !char.IsWhiteSpace(chars[end + 1].Value.FirstOrDefault()))
-        {
-            end++;
         }
 
         _selectedText = PdfTextSelection.CopyText(chars, start, end);

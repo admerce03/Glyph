@@ -136,7 +136,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F06-15 | PDF search | Clear search. | M2/M6 | Implemented | Clear button + Escape; cancels in-flight search and overlays |
 | F06-16 | PDF search | Click result to jump to it. | M2/M6 | Tested | Selection jumps to hit page index |
 | F06-17 | PDF search | Search OCR text where OCR has been generated. | M2/M6 | Tested | `PdfPageTextSearch.Find` + `Merge` unit tests; session OCR cache |
-| F07-01 | PDF text interaction | Text selection. | M2/M6 | Implemented | Click near glyphs selects word-ish run via PDFium text |
+| F07-01 | PDF text interaction | Text selection. | M2/M6 | Tested | Click word-ish via `PdfTextSelection.TryExpandWordAt` + unit tests |
 | F07-02 | PDF text interaction | Copy text. | M2/M6 | Implemented | Copy button / Ctrl+C |
 | F07-03 | PDF text interaction | Select across lines. | M2/M6 | Implemented | Drag stream selection across lines; Alt/wide drag = column rect |
 | F07-04 | PDF text interaction | Select columns where practical. | M2/M6 | Implemented | Alt-drag or wide region uses rectangular column selection |

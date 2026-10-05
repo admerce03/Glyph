@@ -114,6 +114,61 @@ public static class PdfTextSelection
         return best;
     }
 
+    /// <summary>
+    /// Click word-ish selection: pick the glyph nearest <paramref name="x"/>/<paramref name="y"/>
+    /// using Left/Bottom Manhattan distance, then expand over contiguous non-whitespace runs.
+    /// </summary>
+    public static bool TryExpandWordAt(
+        IReadOnlyList<PdfTextChar> chars,
+        double x,
+        double y,
+        out int startIndex,
+        out int endIndexInclusive)
+    {
+        startIndex = 0;
+        endIndexInclusive = -1;
+        if (chars.Count == 0)
+        {
+            return false;
+        }
+
+        var best = 0;
+        var bestDist = double.MaxValue;
+        for (var i = 0; i < chars.Count; i++)
+        {
+            var b = chars[i].Bounds;
+            var dist = Math.Abs(b.Left - x) + Math.Abs(b.Bottom - y);
+            if (dist < bestDist)
+            {
+                bestDist = dist;
+                best = i;
+            }
+        }
+
+        var start = best;
+        var end = best;
+        if (char.IsWhiteSpace(chars[best].Value.FirstOrDefault()))
+        {
+            startIndex = start;
+            endIndexInclusive = end;
+            return true;
+        }
+
+        while (start > 0 && !char.IsWhiteSpace(chars[start - 1].Value.FirstOrDefault()))
+        {
+            start--;
+        }
+
+        while (end + 1 < chars.Count && !char.IsWhiteSpace(chars[end + 1].Value.FirstOrDefault()))
+        {
+            end++;
+        }
+
+        startIndex = start;
+        endIndexInclusive = end;
+        return true;
+    }
+
     private static double MidY(PdfRect bounds) => (bounds.Top + bounds.Bottom) / 2;
 
     private static bool IsNewLine(PdfRect previous, PdfRect current)
