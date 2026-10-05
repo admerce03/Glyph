@@ -438,7 +438,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-13 | Image viewing | pan | M5 | Implemented | ScrollViewer pan |
 | F26-14 | Image viewing | fit image | M5 | Tested | Fit toolbar; `ImageZoomCalculator.Fit` unit tests |
 | F26-15 | Image viewing | actual size | M5 | Tested | 100% toolbar; `ActualSizePixels`/`ActualSizePrint` unit tests |
-| F26-16 | Image viewing | fullscreen | M5 | Implemented | Fullscreen toolbar → MainWindow.ToggleFullscreen |
+| F26-16 | Image viewing | fullscreen | M5 | Tested | Fullscreen toolbar → `FullscreenTogglePolicy` / MainWindow.ToggleFullscreen |
 | F26-17 | Image viewing | next/previous image | M5 | Tested | ◀/▶ + `ImageFolderNavigator` Previous/Next unit tests |
 | F26-18 | Image viewing | image list sidebar | M5 | Tested | Folder ListView; `ImageFolderNavigator.ListSiblings` unit tests |
 | F26-19 | Image viewing | open group of images together | M5 | Implemented | Open With picker PickMultipleFilesAsync |
@@ -466,8 +466,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F28-06 | Image selection tools | Invert selection. | M5 | Tested | Select → Invert; extract/clear apply outside mask |
 | F28-07 | Image selection tools | Deselect. | M5 | Tested | Deselect / Esc; `ImagePixelSelectionPolicy` unit tests |
 | F28-08 | Image selection tools | Move selected pixels. | M5 | Tested | Drag inside selection / arrow keys → `MoveRectAsync` |
-| F28-09 | Image selection tools | Copy. | M5 | Implemented | Copy sel / Ctrl+C → clipboard PNG via `ExtractRectAsync` |
-| F28-10 | Image selection tools | Cut. | M5 | Implemented | Cut sel / Ctrl+X → copy + `ClearRectAsync` |
+| F28-09 | Image selection tools | Copy. | M5 | Tested | Copy sel / Ctrl+C → PNG; `ImageSelectionClipboardPolicy` unit tests |
+| F28-10 | Image selection tools | Cut. | M5 | Tested | Cut sel / Ctrl+X; `ImageSelectionClipboardPolicy` unit tests |
 | F28-11 | Image selection tools | Paste. | M5 | Tested | Paste / Ctrl+V → `PasteRectAsync` at selection origin |
 | F28-12 | Image selection tools | Delete selection. | M5 | Tested | Del sel → `ClearRectAsync` transparent |
 | F28-13 | Image selection tools | Crop to selection. | M5 | Implemented | Crop sel → `CropAsync` |

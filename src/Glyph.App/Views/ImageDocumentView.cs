@@ -1256,7 +1256,7 @@ public sealed class ImageDocumentView : UserControl
     {
         if (_pixelSelection is not { } sel || sel.Width < 1 || sel.Height < 1)
         {
-            _status.Text = "Make a selection first.";
+            _status.Text = ImageSelectionClipboardPolicy.NeedSelection;
             return;
         }
 
@@ -1284,8 +1284,10 @@ public sealed class ImageDocumentView : UserControl
                 var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
                 package.SetBitmap(Windows.Storage.Streams.RandomAccessStreamReference.CreateFromFile(file));
                 Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
-                var label = _selectionInverted ? "inverted selection" : "selection";
-                _status.Text = $"Copied {label} {buffer.Width}×{buffer.Height}.";
+                _status.Text = ImageSelectionClipboardPolicy.Copied(
+                    _selectionInverted,
+                    buffer.Width,
+                    buffer.Height);
             }
             finally
             {
@@ -1294,7 +1296,7 @@ public sealed class ImageDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Copy selection failed: " + ex.Message;
+            _status.Text = ImageSelectionClipboardPolicy.CopyFailed(ex.Message);
         }
     }
 
@@ -1302,7 +1304,7 @@ public sealed class ImageDocumentView : UserControl
     {
         if (_pixelSelection is not { } sel || sel.Width < 1 || sel.Height < 1)
         {
-            _status.Text = "Make a selection first.";
+            _status.Text = ImageSelectionClipboardPolicy.NeedSelection;
             return;
         }
 
@@ -1320,16 +1322,14 @@ public sealed class ImageDocumentView : UserControl
                 _selectionKind,
                 CurrentLassoOrNull(),
                 _selectionInverted),
-            _selectionInverted
-                ? $"Cut inverted selection (kept {sel.Width}×{sel.Height} hole)."
-                : $"Cut selection {sel.Width}×{sel.Height}.");
+            ImageSelectionClipboardPolicy.Cut(_selectionInverted, sel.Width, sel.Height));
     }
 
     private async Task PasteSelectionAsync()
     {
         if (_selectionClipboard is null)
         {
-            _status.Text = "Clipboard is empty — copy or cut a selection first.";
+            _status.Text = ImageSelectionClipboardPolicy.EmptyClipboard;
             return;
         }
 
@@ -1906,13 +1906,18 @@ public sealed class ImageDocumentView : UserControl
         }
 
         var flyout = new MenuFlyout();
-        var copyItem = new MenuFlyoutItem { Text = _pixelSelection is not null ? "Copy selection" : "Copy image" };
+        var copyItem = new MenuFlyoutItem
+        {
+            Text = _pixelSelection is not null
+                ? ImageSelectionClipboardPolicy.MenuCopySelection
+                : ImageSelectionClipboardPolicy.MenuCopyImage,
+        };
         copyItem.Click += async (_, _) => await CopyImageAsync();
         flyout.Items.Add(copyItem);
 
         if (_pixelSelection is not null)
         {
-            var cutItem = new MenuFlyoutItem { Text = "Cut selection" };
+            var cutItem = new MenuFlyoutItem { Text = ImageSelectionClipboardPolicy.MenuCutSelection };
             cutItem.Click += async (_, _) => await CutSelectionAsync();
             flyout.Items.Add(cutItem);
             var deselectItem = new MenuFlyoutItem { Text = ImagePixelSelectionPolicy.MenuDeselect };
