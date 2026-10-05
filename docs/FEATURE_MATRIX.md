@@ -48,7 +48,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-11 | Main window and interface | Tear tab into separate window. | M1/M9 | Tested | Window → Move Tab to New Window; `TabTearOffPolicy` unit tests |
 | F02-12 | Main window and interface | Move tabs between windows. | M1/M9 | Tested | Tear-off + `CanDragTabs`/`AllowDropTabs`; `TabTearOffPolicy` (see F59-03) |
 | F02-13 | Main window and interface | Reorder tabs. | M1/M9 | Tested | TabView CanReorderTabs + `WorkspaceState.Reorder` unit test |
-| F02-14 | Main window and interface | Context menus throughout. | M1/M9 | Implemented | Tab, PDF page/text/annot/sidebar, image surface context menus |
+| F02-14 | Main window and interface | Context menus throughout. | M1/M9 | Tested | Tab/PDF/image context menus; `ThumbnailContextMenu` unit tests |
 | F02-15 | Main window and interface | Dark mode. | M1/M9 | Tested | Theme preference Dark prefs round-trip |
 | F02-16 | Main window and interface | Light mode. | M1/M9 | Tested | Theme preference Light (default System + Dark round-trip) |
 | F02-17 | Main window and interface | Follow Windows system theme. | M1/M9 | Tested | Theme preference System default on missing prefs file |
@@ -75,7 +75,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-14 | Sidebar modes | Ctrl-click noncontiguous selection. | M2-M5 | Tested | `PageSelection.Toggle` / ApplyClick ctrl unit tests |
 | F03-15 | Sidebar modes | Keyboard navigation. | M2-M5 | Tested | `PageSelection.ApplyKeyboardMove` unit tests |
 | F03-16 | Sidebar modes | Drag selected items. | M2-M5 | Tested | `PageDragPayload` format/parse unit tests; thumbnail multi-select drag |
-| F03-17 | Sidebar modes | Context menus. | M2-M5 | Implemented | Thumbnail / annotations / bookmarks / search right-click menus |
+| F03-17 | Sidebar modes | Context menus. | M2-M5 | Tested | Thumbnail / annotations / bookmarks / search menus; `ThumbnailContextMenu` unit tests |
 | F03-18 | Sidebar modes | Sidebar selection controls the scope of many editing commands. | M2-M5 | Tested | Rotate/delete/dup/extract/crop/move use `_pageSelection`; `SelectedOrFallback`/`ResolveTargets` unit-tested |
 | F04-01 | PDF viewing | Open standard PDF files quickly. | M2 | Tested | PDFium open+render wired in shell |
 | F04-02 | PDF viewing | Render vector content accurately. | M2 | Implemented | PDFium vector render path |
@@ -113,11 +113,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F05-01 | PDF table of contents and navigation | Read embedded PDF outlines/bookmarks. | M2 | Tested | `IPdfOutlineService` / PDFium bookmarks |
 | F05-02 | PDF table of contents and navigation | Hierarchical table of contents. | M2 | Tested | Nested `PdfOutlineNode`; `PdfOutlineTree` flatten/count unit tests |
 | F05-03 | PDF table of contents and navigation | Expand/collapse outline nodes. | M2 | Implemented | TreeView expand/collapse |
-| F05-04 | PDF table of contents and navigation | Click outline entry to navigate. | M2 | Implemented | Outline invoke → GoToPage |
+| F05-04 | PDF table of contents and navigation | Click outline entry to navigate. | M2 | Tested | Outline invoke → GoToPage; `OutlineNavigation` unit tests |
 | F05-05 | PDF table of contents and navigation | Keyboard navigation. | M2 | Tested | Page Up/Down/Home/End via `PageLayoutCalculator`; outline Enter/Space |
 | F05-06 | PDF table of contents and navigation | Preserve embedded outline while editing when possible. | M2 | Tested | Rotate/page edits keep PDFium bookmarks (`Outline_survives_page_rotate_edit`) |
 | F05-07 | PDF table of contents and navigation | Show internal PDF links. | M2 | Tested | `IPdfLinkService` enumerates page links |
-| F05-08 | PDF table of contents and navigation | Support clickable: | M2 | Implemented | Click link rect → internal page jump |
+| F05-08 | PDF table of contents and navigation | Support clickable: | M2 | Tested | Click link rect → internal page; `PdfLinkAction` unit tests |
 | F05-09 | PDF table of contents and navigation | Back/forward navigation history within the document. | M2 | Tested | `DocumentNavigationHistory` + Back/Fwd buttons |
 | F06-01 | PDF search | Full-text search. | M2/M6 | Tested | `IPdfTextSearchService` + PdfPig adapter; covered by Pdf.Tests |
 | F06-02 | PDF search | Case-insensitive search. | M2/M6 | Tested | Default `OrdinalIgnoreCase` |

@@ -3,6 +3,7 @@ using Glyph.App.Capture;
 using Glyph.App.Printing;
 using Glyph.Core.Documents;
 using Glyph.Core.IO;
+using Glyph.Core.Pdf;
 using Glyph.Core.Signatures;
 using Glyph.Core.Text;
 using Glyph.Imaging.Abstractions;
@@ -1536,19 +1537,19 @@ public sealed class PdfDocumentView : UserControl
         var count = Math.Max(1, _pageSelection.Count);
         var flyout = new MenuFlyout();
 
-        var rotateLeft = new MenuFlyoutItem { Text = count == 1 ? "Rotate left" : $"Rotate left ({count})" };
+        var rotateLeft = new MenuFlyoutItem { Text = ThumbnailContextMenu.RotateLeft(count) };
         rotateLeft.Click += async (_, _) => await RotateSelectedAsync(-90);
-        var rotateRight = new MenuFlyoutItem { Text = count == 1 ? "Rotate right" : $"Rotate right ({count})" };
+        var rotateRight = new MenuFlyoutItem { Text = ThumbnailContextMenu.RotateRight(count) };
         rotateRight.Click += async (_, _) => await RotateSelectedAsync(90);
-        var duplicate = new MenuFlyoutItem { Text = count == 1 ? "Duplicate" : $"Duplicate ({count})" };
+        var duplicate = new MenuFlyoutItem { Text = ThumbnailContextMenu.Duplicate(count) };
         duplicate.Click += async (_, _) => await DuplicateSelectedAsync();
-        var extract = new MenuFlyoutItem { Text = count == 1 ? "Extract…" : $"Extract ({count})…" };
+        var extract = new MenuFlyoutItem { Text = ThumbnailContextMenu.Extract(count) };
         extract.Click += async (_, _) => await ExtractSelectedAsync();
-        var copyPages = new MenuFlyoutItem { Text = count == 1 ? "Copy page" : $"Copy pages ({count})" };
+        var copyPages = new MenuFlyoutItem { Text = ThumbnailContextMenu.CopyPages(count) };
         copyPages.Click += async (_, _) => await CopySelectedPagesAsync();
-        var insertBlank = new MenuFlyoutItem { Text = "Insert blank after" };
+        var insertBlank = new MenuFlyoutItem { Text = ThumbnailContextMenu.InsertBlankAfter };
         insertBlank.Click += async (_, _) => await InsertBlankAfterSelectionAsync();
-        var delete = new MenuFlyoutItem { Text = count == 1 ? "Delete" : $"Delete ({count})" };
+        var delete = new MenuFlyoutItem { Text = ThumbnailContextMenu.Delete(count) };
         delete.Click += async (_, _) => await DeleteSelectedAsync();
 
         flyout.Items.Add(rotateLeft);
@@ -2373,7 +2374,7 @@ public sealed class PdfDocumentView : UserControl
             _ => null,
         };
 
-        if (item?.PageIndex is int page)
+        if (OutlineNavigation.TryGetPageIndex(item?.PageIndex, out var page))
         {
             await GoToPageAsync(page, recordHistory: true);
         }
@@ -2389,7 +2390,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var selected = _outlineTree.SelectedNodes.FirstOrDefault()?.Content as OutlineItem;
-        if (selected?.PageIndex is int page)
+        if (OutlineNavigation.TryGetPageIndex(selected?.PageIndex, out var page))
         {
             await GoToPageAsync(page, recordHistory: true);
             e.Handled = true;
@@ -3081,7 +3082,9 @@ public sealed class PdfDocumentView : UserControl
         if (!wasDragging || dragDistance < 4)
         {
             var link = _pageLinks[pageIndex].FirstOrDefault(l => l.Bounds.ContainsPoint(pdfX, pdfY));
-            if (link?.DestinationPageIndex is int dest)
+            if (link is not null
+                && PdfLinkAction.Resolve(link.DestinationPageIndex, link.Uri) == PdfLinkAction.Kind.GoToPage
+                && link.DestinationPageIndex is int dest)
             {
                 await GoToPageAsync(dest, recordHistory: true);
                 _status.Text = $"Followed link to page {dest + 1}.";
