@@ -16,5 +16,8 @@ public sealed class AppSettings
     /// </summary>
     public int CrashRecoveryIntervalSeconds { get; set; } = 120;
 
+    /// <summary>Sidebar width in DIPs when visible (F02-07).</summary>
+    public double SidebarWidth { get; set; } = 220;
+
     public bool SidebarVisible { get; set; } = true;
 }

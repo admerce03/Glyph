@@ -20,6 +20,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Graphics;
 using Windows.Storage;
@@ -42,6 +43,9 @@ public sealed partial class MainWindow : Window
     private DocumentShareHelper? _shareHelper;
     private DispatcherTimer? _recoveryTimer;
     private bool _recoveryTickRunning;
+    private bool _sidebarResizing;
+    private double _sidebarResizeStartX;
+    private double _sidebarResizeStartWidth;
 
     private readonly WorkspaceState _workspace;
     private readonly IRecentFilesStore _recentFiles;
@@ -1930,9 +1934,52 @@ public sealed partial class MainWindow : Window
 
     private void ApplySidebarVisibility(bool visible)
     {
+        var width = Math.Clamp(_settingsStore.Current.SidebarWidth, 140, 480);
         SidebarBorder.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-        ContentGrid.ColumnDefinitions[0].Width = visible ? new GridLength(220) : new GridLength(0);
+        SidebarSplitter.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        SidebarBorder.Width = width;
         ToggleSidebarMenuItem.Text = visible ? "Hide Sidebar" : "Show Sidebar";
+    }
+
+    private void SidebarSplitter_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        _sidebarResizing = true;
+        _sidebarResizeStartX = e.GetCurrentPoint(ContentGrid).Position.X;
+        _sidebarResizeStartWidth = SidebarBorder.Width;
+        SidebarSplitter.CapturePointer(e.Pointer);
+        e.Handled = true;
+    }
+
+    private void SidebarSplitter_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_sidebarResizing)
+        {
+            return;
+        }
+
+        var delta = e.GetCurrentPoint(ContentGrid).Position.X - _sidebarResizeStartX;
+        SidebarBorder.Width = Math.Clamp(_sidebarResizeStartWidth + delta, 140, 480);
+        e.Handled = true;
+    }
+
+    private async void SidebarSplitter_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_sidebarResizing)
+        {
+            return;
+        }
+
+        _sidebarResizing = false;
+        SidebarSplitter.ReleasePointerCapture(e.Pointer);
+        var settings = _settingsStore.Current;
+        settings.SidebarWidth = SidebarBorder.Width;
+        await _settingsStore.SaveAsync(settings);
+        e.Handled = true;
+    }
+
+    private void SidebarSplitter_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
+    {
+        _sidebarResizing = false;
     }
 
     private void RefreshRecentList() => RecentList.ItemsSource = _recentFiles.GetRecent();

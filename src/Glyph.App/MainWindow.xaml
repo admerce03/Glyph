@@ -132,11 +132,13 @@
             </MenuBarItem>
         </MenuBar>
 
-        <Grid x:Name="ContentGrid" Grid.Row="2" ColumnDefinitions="220,*" Margin="12,0,12,12" ColumnSpacing="12">
+        <Grid x:Name="ContentGrid" Grid.Row="2" ColumnDefinitions="Auto,6,*" Margin="12,0,12,12" ColumnSpacing="0">
             <Border x:Name="SidebarBorder"
+                    Width="220"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     CornerRadius="8"
-                    Padding="12">
+                    Padding="12"
+                    Margin="0,0,6,0">
                 <Grid RowDefinitions="Auto,Auto,*,Auto">
                     <TextBlock Text="Sidebar" FontWeight="SemiBold" />
                     <TextBlock Grid.Row="1"
@@ -164,14 +166,31 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Column="1"
+            <Border x:Name="SidebarSplitter"
+                    Grid.Column="1"
+                    Width="6"
+                    Background="Transparent"
+                    PointerPressed="SidebarSplitter_PointerPressed"
+                    PointerMoved="SidebarSplitter_PointerMoved"
+                    PointerReleased="SidebarSplitter_PointerReleased"
+                    PointerCaptureLost="SidebarSplitter_PointerCaptureLost"
+                    ToolTipService.ToolTip="Drag to resize sidebar">
+                <Rectangle HorizontalAlignment="Center"
+                           Width="2"
+                           Margin="0,16"
+                           Opacity="0.35"
+                           Fill="{ThemeResource SystemControlForegroundBaseMediumBrush}" />
+            </Border>
+
+            <Border Grid.Column="2"
                     x:Name="DropHost"
                     AllowDrop="True"
                     DragOver="DropHost_DragOver"
                     Drop="DropHost_Drop"
                     Background="{ThemeResource LayerFillColorDefaultBrush}"
                     CornerRadius="8"
-                    Padding="16">
+                    Padding="16"
+                    Margin="6,0,0,0">
                 <Grid RowDefinitions="Auto,*">
                     <TabView x:Name="DocumentTabs"
                              CanReorderTabs="True"

@@ -41,7 +41,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-04 | Main window and interface | Optional compact toolbar. | M1/M9 | Not Started |  |
 | F02-05 | Main window and interface | Hide/show toolbar. | M1/M9 | Implemented | View → Hide/Show Toolbar |
 | F02-06 | Main window and interface | Hide/show sidebar. | M1/M9 | In Progress | Sidebar hide/show persisted |
-| F02-07 | Main window and interface | Resizable sidebar. | M1/M9 | Not Started |  |
+| F02-07 | Main window and interface | Resizable sidebar. | M1/M9 | Implemented | Drag splitter; width persisted in settings |
 | F02-08 | Main window and interface | Resizable document area. | M1/M9 | Not Started |  |
 | F02-09 | Main window and interface | Full-screen mode. | M1/M9 | Implemented | View → Full Screen / F11 / toolbar |
 | F02-10 | Main window and interface | Tabbed documents. | M1/M9 | In Progress | TabView + Ctrl+Tab navigation |

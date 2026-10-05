@@ -92,6 +92,15 @@ public sealed class JsonSettingsStore : ISettingsStore
         {
             settings.CrashRecoveryIntervalSeconds = 3600;
         }
+
+        if (double.IsNaN(settings.SidebarWidth) || settings.SidebarWidth < 140)
+        {
+            settings.SidebarWidth = 140;
+        }
+        else if (settings.SidebarWidth > 480)
+        {
+            settings.SidebarWidth = 480;
+        }
     }
 
     private static AppSettings Clone(AppSettings settings) => new()
@@ -101,6 +110,7 @@ public sealed class JsonSettingsStore : ISettingsStore
         RestorePreviousSession = settings.RestorePreviousSession,
         AutoSaveToOriginal = settings.AutoSaveToOriginal,
         CrashRecoveryIntervalSeconds = settings.CrashRecoveryIntervalSeconds,
+        SidebarWidth = settings.SidebarWidth,
         SidebarVisible = settings.SidebarVisible,
     };
 }
