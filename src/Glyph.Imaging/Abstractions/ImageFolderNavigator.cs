@@ -17,6 +17,7 @@ public static class ImageFolderNavigator
         ".webp",
         ".heic",
         ".heif",
+        ".avif",
         ".ico",
         ".jp2",
         ".j2k",

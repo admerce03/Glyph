@@ -429,10 +429,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-04 | Image viewing | BMP | M5 | Implemented | Magick.NET decoder |
 | F26-05 | Image viewing | TIFF | M5 | Implemented | Magick.NET decoder |
 | F26-06 | Image viewing | WebP | M5 | Implemented | Magick.NET decoder |
-| F26-07 | Image viewing | HEIF/HEIC where codecs are available | M5 | Not Started |  |
-| F26-08 | Image viewing | AVIF where practical | M5 | Not Started |  |
+| F26-07 | Image viewing | HEIF/HEIC where codecs are available | M5 | Tested | Magick.NET opens `.heic`/`.heif` when delegates present; Open picker + folder nav |
+| F26-08 | Image viewing | AVIF where practical | M5 | Tested | Magick.NET decode; Open picker + `MagickImageDecoderFormatTests` |
 | F26-09 | Image viewing | ICO | M5 | Tested | Magick.NET decoder + open picker |
-| F26-10 | Image viewing | JPEG 2000 where practical | M5 | Not Started |  |
+| F26-10 | Image viewing | JPEG 2000 where practical | M5 | Tested | Magick.NET decode `.jp2`/`.j2k`; Open picker + decoder tests |
 | F26-11 | Image viewing | fast opening | M5 | Not Started |  |
 | F26-12 | Image viewing | zoom | M5 | Implemented | ImageDocumentView ± zoom |
 | F26-13 | Image viewing | pan | M5 | Implemented | ScrollViewer pan |

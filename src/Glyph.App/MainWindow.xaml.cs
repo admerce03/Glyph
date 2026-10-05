@@ -30,6 +30,7 @@ public sealed partial class MainWindow : Window
     private static readonly string[] SupportedExtensions =
     [
         ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tif", ".tiff", ".webp", ".ico",
+        ".heic", ".heif", ".avif", ".jp2", ".j2k",
     ];
 
     private readonly WorkspaceState _workspace;

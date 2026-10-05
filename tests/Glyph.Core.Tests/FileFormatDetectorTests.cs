@@ -9,9 +9,12 @@ public class FileFormatDetectorTests
     [Theory]
     [InlineData("report.PDF", DocumentKind.Pdf)]
     [InlineData(@"C:\temp\scan.pdf", DocumentKind.Pdf)]
-    [InlineData("photo.jpeg", DocumentKind.Image)]
-    [InlineData("diagram.PNG", DocumentKind.Image)]
-    [InlineData("archive.zip", DocumentKind.Unknown)]
+        [InlineData("photo.jpeg", DocumentKind.Image)]
+        [InlineData("diagram.PNG", DocumentKind.Image)]
+        [InlineData("shot.avif", DocumentKind.Image)]
+        [InlineData("phone.HEIC", DocumentKind.Image)]
+        [InlineData("scan.jp2", DocumentKind.Image)]
+        [InlineData("archive.zip", DocumentKind.Unknown)]
     public void DetectKind_uses_extension(string path, DocumentKind expected)
     {
         FileFormatDetector.DetectKind(path).Should().Be(expected);

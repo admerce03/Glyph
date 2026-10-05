@@ -565,7 +565,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(info, "Document metadata, encryption, and permissions");
         ToolTipService.SetToolTip(optimize, "Downsample images / shrink PDF (presets)");
         ToolTipService.SetToolTip(export, "Export selected/current page(s) as PNG, JPEG, WebP, TIFF, BMP, GIF, AVIF, or JPEG 2000");
-        ToolTipService.SetToolTip(sign, "Signature: draw with mouse or import PNG/JPEG (saved to library)");
+        ToolTipService.SetToolTip(sign, "Signature: draw, import PNG/JPEG, or webcam photo of paper signature");
         ToolTipService.SetToolTip(formFill, "Form fill: overlay mode or field list (Tab order)");
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
         ToolTipService.SetToolTip(freeform, "Draw a closed freeform shape (auto-closes path)");
@@ -5601,9 +5601,10 @@ public sealed class PdfDocumentView : UserControl
         var importBtn = new Button { Content = "Import image…", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 4, 0, 0) };
         var webcamBtn = new Button { Content = "Webcam…", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 4, 0, 0) };
         ToolTipService.SetToolTip(webcamBtn, "Photograph a signature on paper with the webcam");
-        drawBtn.Click += (_, _) => { choice = ContentDialogResult.Primary; dialog.Hide(); };
-        importBtn.Click += (_, _) => { choice = ContentDialogResult.Secondary; dialog.Hide(); };
-        webcamBtn.Click += (_, _) => { choice = (ContentDialogResult)2; dialog.Hide(); };
+        var picked = 0; // 1=draw, 2=import, 3=webcam
+        drawBtn.Click += (_, _) => { picked = 1; dialog.Hide(); };
+        importBtn.Click += (_, _) => { picked = 2; dialog.Hide(); };
+        webcamBtn.Click += (_, _) => { picked = 3; dialog.Hide(); };
         dialog.Content = new StackPanel
         {
             Spacing = 4,
@@ -5622,19 +5623,19 @@ public sealed class PdfDocumentView : UserControl
         };
 
         await dialog.ShowAsync();
-        if (choice == ContentDialogResult.Primary)
+        if (picked == 1)
         {
             StartSignatureDrawMode();
             return;
         }
 
-        if (choice == ContentDialogResult.Secondary)
+        if (picked == 2)
         {
             await ImportSignatureImageAsync(window);
             return;
         }
 
-        if (choice == (ContentDialogResult)2)
+        if (picked == 3)
         {
             await CaptureWebcamSignatureAsync(window);
             return;

@@ -37,6 +37,9 @@ public class ImageFolderNavigatorTests
     public void IsImagePath_recognizes_common_extensions()
     {
         ImageFolderNavigator.IsImagePath(@"C:\pics\photo.JPEG").Should().BeTrue();
+        ImageFolderNavigator.IsImagePath(@"C:\pics\shot.avif").Should().BeTrue();
+        ImageFolderNavigator.IsImagePath(@"C:\pics\phone.heic").Should().BeTrue();
+        ImageFolderNavigator.IsImagePath(@"C:\pics\scan.jp2").Should().BeTrue();
         ImageFolderNavigator.IsImagePath(@"C:\pics\doc.pdf").Should().BeFalse();
         ImageFolderNavigator.IsImagePath("").Should().BeFalse();
     }
