@@ -66,6 +66,7 @@ public sealed class ImageDocumentView : UserControl
         var crop = new Button { Content = "Crop" };
         var resize = new Button { Content = "Resize" };
         var adjust = new Button { Content = "Adjust" };
+        var meta = new Button { Content = "Meta" };
         var rotate180 = new Button { Content = "180°" };
         var save = new Button { Content = "Save" };
         var exportPng = new Button { Content = "→PNG" };
@@ -75,6 +76,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(crop, "Crop using x,y,w,h pixels (origin top-left)");
         ToolTipService.SetToolTip(resize, "Resize width/height with optional aspect lock");
         ToolTipService.SetToolTip(adjust, "Brightness / contrast / saturation");
+        ToolTipService.SetToolTip(meta, "Image metadata, EXIF, and GPS");
         ToolTipService.SetToolTip(rotate180, "Rotate 180°");
         ToolTipService.SetToolTip(exportPng, "Export as PNG");
         ToolTipService.SetToolTip(exportJpeg, "Export as JPEG");
@@ -92,6 +94,7 @@ public sealed class ImageDocumentView : UserControl
         crop.Click += async (_, _) => await CropAsync();
         resize.Click += async (_, _) => await ResizeAsync();
         adjust.Click += async (_, _) => await AdjustAsync();
+        meta.Click += async (_, _) => await ShowMetadataAsync();
         save.Click += async (_, _) => await SaveAsync();
         exportPng.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Png, ".png");
         exportJpeg.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Jpeg, ".jpg");
@@ -105,7 +108,7 @@ public sealed class ImageDocumentView : UserControl
             Children =
             {
                 zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, flipH, flipV,
-                _cropBox, crop, resize, adjust, save, exportPng, exportJpeg, convert, _status,
+                _cropBox, crop, resize, adjust, meta, save, exportPng, exportJpeg, convert, _status,
             },
         };
 
@@ -447,6 +450,88 @@ public sealed class ImageDocumentView : UserControl
             _ => (ImageEncodeFormat.Webp, ".webp"),
         };
         await ExportAsync(format, extension);
+    }
+
+    private async Task ShowMetadataAsync()
+    {
+        try
+        {
+            var info = await _document.GetMetadataAsync();
+            var list = new ListView
+            {
+                ItemsSource = info.Entries
+                    .Select(e => $"{e.Group} · {e.Name}: {e.Value}")
+                    .ToList(),
+                SelectionMode = ListViewSelectionMode.None,
+                MaxHeight = 360,
+                Width = 420,
+            };
+
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            if (info.GpsLatitude is double lat && info.GpsLongitude is double lon)
+            {
+                var coords = $"{lat:0.######}, {lon:0.######}";
+                var copy = new Button { Content = "Copy GPS" };
+                copy.Click += async (_, _) =>
+                {
+                    var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                    package.SetText(coords);
+                    Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+                    _status.Text = "Copied GPS " + coords;
+                };
+                var maps = new Button { Content = "Open map" };
+                maps.Click += async (_, _) =>
+                {
+                    var uri = new Uri(
+                        "https://www.openstreetmap.org/?mlat="
+                        + Uri.EscapeDataString(lat.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                        + "&mlon="
+                        + Uri.EscapeDataString(lon.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                        + "#map=15/"
+                        + Uri.EscapeDataString(lat.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                        + "/"
+                        + Uri.EscapeDataString(lon.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+                    await Windows.System.Launcher.LaunchUriAsync(uri);
+                };
+                var strip = new Button { Content = "Remove GPS" };
+                strip.Click += async (_, _) =>
+                {
+                    await MutateAsync(() => _processor.RemoveGpsMetadataAsync(_document), "GPS metadata removed.");
+                };
+                actions.Children.Add(copy);
+                actions.Children.Add(maps);
+                actions.Children.Add(strip);
+            }
+
+            var panel = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = $"{info.FormatName} · {info.PixelWidth}×{info.PixelHeight}"
+                            + (info.Make is null ? string.Empty : $" · {info.Make} {info.Model}".TrimEnd()),
+                        TextWrapping = TextWrapping.Wrap,
+                    },
+                    list,
+                    actions,
+                },
+            };
+
+            var dialog = new ContentDialog
+            {
+                Title = "Image metadata",
+                Content = panel,
+                CloseButtonText = "Close",
+                XamlRoot = XamlRoot,
+            };
+            await dialog.ShowAsync();
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Metadata failed: " + ex.Message;
+        }
     }
 
     private async Task SaveAsync()

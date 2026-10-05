@@ -15,6 +15,11 @@ public interface IImageDocument : IAsyncDisposable, IDisposable
     /// <paramref name="maxEdge"/> is set). May decode lazily on first call.
     /// </summary>
     Task<ImagePixelBuffer> GetPixelsAsync(int? maxEdge = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reads dimensions, density, color info, and common EXIF/GPS fields.
+    /// </summary>
+    Task<ImageMetadataInfo> GetMetadataAsync(CancellationToken cancellationToken = default);
 }
 
 public sealed record ImagePixelBuffer(int Width, int Height, byte[] BgraPixels);

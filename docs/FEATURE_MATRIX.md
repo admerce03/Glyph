@@ -563,25 +563,25 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F36-06 | Batch image operations | strip metadata | M8 | Not Started |  |
 | F36-07 | Batch image operations | change color profile | M8 | Not Started |  |
 | F36-08 | Batch image operations | rename, optionally | M8 | Not Started |  |
-| F37-01 | Image metadata | dimensions | M5 | Not Started |  |
-| F37-02 | Image metadata | pixel count | M5 | Not Started |  |
-| F37-03 | Image metadata | DPI | M5 | Not Started |  |
-| F37-04 | Image metadata | bit depth | M5 | Not Started |  |
-| F37-05 | Image metadata | color space | M5 | Not Started |  |
-| F37-06 | Image metadata | ICC profile | M5 | Not Started |  |
-| F37-07 | Image metadata | file format | M5 | Not Started |  |
-| F37-08 | Image metadata | compression | M5 | Not Started |  |
-| F37-09 | Image metadata | file size | M5 | Not Started |  |
-| F37-10 | Image metadata | camera make/model | M5 | Not Started |  |
-| F37-11 | Image metadata | lens information | M5 | Not Started |  |
-| F37-12 | Image metadata | exposure | M5 | Not Started |  |
-| F37-13 | Image metadata | aperture | M5 | Not Started |  |
-| F37-14 | Image metadata | ISO | M5 | Not Started |  |
-| F37-15 | Image metadata | focal length | M5 | Not Started |  |
-| F37-16 | Image metadata | capture date | M5 | Not Started |  |
-| F37-17 | Image metadata | orientation | M5 | Not Started |  |
-| F37-18 | Image metadata | GPS coordinates | M5 | Not Started |  |
-| F37-19 | Image metadata | EXIF | M5 | Not Started |  |
+| F37-01 | Image metadata | dimensions | M5 | Tested | GetMetadataAsync PixelWidth/Height |
+| F37-02 | Image metadata | pixel count | M5 | Implemented | Derived from dimensions |
+| F37-03 | Image metadata | DPI | M5 | Tested | Density → DpiX/DpiY |
+| F37-04 | Image metadata | bit depth | M5 | Implemented | Magick Depth |
+| F37-05 | Image metadata | color space | M5 | Implemented | Magick ColorSpace |
+| F37-06 | Image metadata | ICC profile | M5 | Implemented | HasIccProfile flag |
+| F37-07 | Image metadata | file format | M5 | Implemented | FormatName |
+| F37-08 | Image metadata | compression | M5 | Implemented | Magick Compression |
+| F37-09 | Image metadata | file size | M5 | Tested | FileSizeBytes from path |
+| F37-10 | Image metadata | camera make/model | M5 | Tested | EXIF Make/Model |
+| F37-11 | Image metadata | lens information | M5 | Implemented | EXIF LensModel when present |
+| F37-12 | Image metadata | exposure | M5 | Tested | EXIF ExposureTime |
+| F37-13 | Image metadata | aperture | M5 | Tested | EXIF FNumber |
+| F37-14 | Image metadata | ISO | M5 | Tested | EXIF ISOSpeedRatings |
+| F37-15 | Image metadata | focal length | M5 | Tested | EXIF FocalLength |
+| F37-16 | Image metadata | capture date | M5 | Tested | EXIF DateTimeOriginal |
+| F37-17 | Image metadata | orientation | M5 | Implemented | EXIF Orientation |
+| F37-18 | Image metadata | GPS coordinates | M5 | Tested | GPSLatitude/Longitude |
+| F37-19 | Image metadata | EXIF | M5 | Tested | Magick ExifProfile |
 | F37-20 | Image metadata | IPTC | M5 | Not Started |  |
 | F37-21 | Image metadata | XMP where available | M5 | Not Started |  |
 | F37-22 | Image metadata | title | M5 | Not Started |  |
@@ -589,10 +589,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F37-24 | Image metadata | keywords | M5 | Not Started |  |
 | F37-25 | Image metadata | copyright | M5 | Not Started |  |
 | F37-26 | Image metadata | rating, optionally | M5 | Not Started |  |
-| F38-01 | GPS metadata | display latitude/longitude. | M5/M8 | Not Started |  |
-| F38-02 | GPS metadata | Copy coordinates. | M5/M8 | Not Started |  |
-| F38-03 | GPS metadata | Open in default/browser mapping service. | M5/M8 | Not Started |  |
-| F38-04 | GPS metadata | Remove GPS metadata. | M5/M8 | Not Started |  |
+| F38-01 | GPS metadata | display latitude/longitude. | M5/M8 | Tested | Meta dialog GPS rows |
+| F38-02 | GPS metadata | Copy coordinates. | M5/M8 | Implemented | Copy GPS button |
+| F38-03 | GPS metadata | Open in default/browser mapping service. | M5/M8 | Implemented | Open map → OpenStreetMap |
+| F38-04 | GPS metadata | Remove GPS metadata. | M5/M8 | Tested | RemoveGpsMetadataAsync |
 | F38-05 | GPS metadata | Optional embedded map later. | M5/M8 | Not Started |  |
 | F39-01 | Color management | Detect embedded ICC profile. | M8 | Not Started |  |
 | F39-02 | Color management | Honor embedded profile while displaying. | M8 | Not Started |  |

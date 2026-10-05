@@ -13,6 +13,11 @@ public interface IImageProcessor
     Task FlipVerticalAsync(IImageDocument document, CancellationToken cancellationToken = default);
 
     Task AdjustAsync(IImageDocument document, ImageAdjustments adjustments, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Removes GPS EXIF tags when present. Other metadata is left intact.
+    /// </summary>
+    Task RemoveGpsMetadataAsync(IImageDocument document, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

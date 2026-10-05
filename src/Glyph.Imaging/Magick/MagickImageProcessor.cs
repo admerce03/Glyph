@@ -114,6 +114,40 @@ public sealed class MagickImageProcessor : IImageProcessor
             cancellationToken);
     }
 
+    public Task RemoveGpsMetadataAsync(IImageDocument document, CancellationToken cancellationToken = default)
+    {
+        var magick = RequireMagick(document);
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var exif = magick.Native.GetExifProfile();
+                if (exif is null)
+                {
+                    return;
+                }
+
+                var gpsTags = exif.Values
+                    .Where(v => v.Tag.ToString().StartsWith("GPS", StringComparison.Ordinal))
+                    .Select(v => v.Tag)
+                    .Distinct()
+                    .ToList();
+
+                if (gpsTags.Count == 0)
+                {
+                    return;
+                }
+
+                foreach (var tag in gpsTags)
+                {
+                    exif.RemoveValue(tag);
+                }
+
+                magick.Native.SetProfile(exif);
+            },
+            cancellationToken);
+    }
+
     private static MagickImageDocument RequireMagick(IImageDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
