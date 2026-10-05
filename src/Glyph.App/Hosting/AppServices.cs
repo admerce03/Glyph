@@ -48,6 +48,7 @@ internal static class AppServices
         services.AddSingleton<IPdfLinkService, PdfiumLinkService>();
         services.AddSingleton<IPdfPageEditor, PdfiumPageEditor>();
         services.AddSingleton<IPdfAnnotationService, PdfiumAnnotationService>();
+        services.AddSingleton<IPdfRedactionService, PdfiumRedactionService>();
         services.AddSingleton<IPdfFormStore, PdfiumFormStore>();
         services.AddSingleton<IPdfTextSearchService, PdfPigTextSearchService>();
         services.AddSingleton<IImageDecoder, MagickImageDecoder>();

@@ -363,15 +363,15 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F20-13 | PDF forms | remember recently entered values, optionally | M4 | Not Started |  |
 | F20-14 | PDF forms | user-defined profile for: | M4 | Not Started |  |
 | F20-15 | PDF forms | optional AutoFill from that application profile | M4 | Not Started |  |
-| F21-01 | Redaction | Mark text for redaction. | M7 | Not Started |  |
-| F21-02 | Redaction | Mark rectangular areas for redaction. | M7 | Not Started |  |
-| F21-03 | Redaction | Preview pending redactions. | M7 | Not Started |  |
-| F21-04 | Redaction | Remove pending redaction. | M7 | Not Started |  |
-| F21-05 | Redaction | Apply redactions permanently. | M7 | Not Started |  |
-| F21-06 | Redaction | Remove underlying text/image data, not merely cover it visually. | M7 | Not Started |  |
-| F21-07 | Redaction | Warn before permanent application. | M7 | Not Started |  |
+| F21-01 | Redaction | Mark text for redaction. | M7 | Implemented | Context menu / Redact → Mark selection → `MarkTextRegion` |
+| F21-02 | Redaction | Mark rectangular areas for redaction. | M7 | Implemented | Redact draw mode + region mark → `MarkRectangle` |
+| F21-03 | Redaction | Preview pending redactions. | M7 | Implemented | Pending marks drawn on dedicated overlay canvas |
+| F21-04 | Redaction | Remove pending redaction. | M7 | Implemented | Redact dialog Clear pending + `RemovePending` API |
+| F21-05 | Redaction | Apply redactions permanently. | M7 | Implemented | `ApplyAsync` with confirm dialog |
+| F21-06 | Redaction | Remove underlying text/image data, not merely cover it visually. | M7 | Tested | Black page object + remove intersecting text/images; search empty after apply |
+| F21-07 | Redaction | Warn before permanent application. | M7 | Implemented | ContentDialog confirm before `ApplyAsync` |
 | F21-08 | Redaction | Sanitize associated hidden content where practical. | M7 | Not Started |  |
-| F21-09 | Redaction | Option to remove: | M7 | Not Started |  |
+| F21-09 | Redaction | Option to remove: | M7 | Not Started | metadata / annotations / embedded files / layers |
 | F21-10 | Redaction | Search and redact matching text, later/advanced. | M7 | Not Started |  |
 | F22-01 | PDF annotation flattening | highlights | M4 | Tested | `FlattenAsync` via `FPDFPage_Flatten` |
 | F22-02 | PDF annotation flattening | notes as configured | M4 | Tested | Same flatten path |

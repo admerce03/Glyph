@@ -40,6 +40,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfLinkService _linkService;
     private readonly IPdfPageEditor _pageEditor;
     private readonly IPdfAnnotationService _annotations;
+    private readonly IPdfRedactionService _redaction;
     private readonly ISignatureLibrary _signatures;
     private readonly IPdfFormStore _forms;
     private readonly IPdfDocumentFactory _documentFactory;
@@ -49,6 +50,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly Dictionary<int, string> _ocrPageTexts = new();
     private readonly Dictionary<int, (OcrResult Result, int SourceWidth, int SourceHeight)> _ocrPageData = new();
     private readonly Dictionary<int, Canvas> _ocrOverlays = new();
+    private readonly Dictionary<int, Canvas> _redactionOverlays = new();
     private readonly Dictionary<int, List<(OcrWord Word, Microsoft.UI.Xaml.Shapes.Rectangle Visual)>> _ocrVisualsByPage = new();
     private readonly HashSet<(int PageIndex, int WordIndex)> _selectedOcrIndices = [];
     private readonly Button _copyOcrButton;
@@ -125,7 +127,13 @@ public sealed class PdfDocumentView : UserControl
     private Button? _lineButton;
     private Button? _arrowButton;
     private Button? _calloutButton;
+    private Button? _redactButton;
     private bool _calloutMode;
+    private bool _redactionMode;
+    private bool _redactionDrawing;
+    private int _redactionPageIndex = -1;
+    private Windows.Foundation.Point _redactionStart;
+    private FrameworkElement? _redactionPreview;
     private bool _dragSelecting;
     private Windows.Foundation.Point _dragStart;
     private int _dragPageIndex = -1;
@@ -165,6 +173,7 @@ public sealed class PdfDocumentView : UserControl
         IPdfLinkService linkService,
         IPdfPageEditor pageEditor,
         IPdfAnnotationService annotations,
+        IPdfRedactionService redaction,
         ISignatureLibrary signatures,
         IPdfFormStore forms,
         IPdfDocumentFactory documentFactory,
@@ -181,6 +190,7 @@ public sealed class PdfDocumentView : UserControl
         _linkService = linkService;
         _pageEditor = pageEditor;
         _annotations = annotations;
+        _redaction = redaction;
         _signatures = signatures;
         _forms = forms;
         _documentFactory = documentFactory;
@@ -384,6 +394,7 @@ public sealed class PdfDocumentView : UserControl
         var textBox = new Button { Content = "TextBox" };
         var callout = new Button { Content = "Callout" };
         var flatten = new Button { Content = "Flatten" };
+        var redact = new Button { Content = "Redact" };
         var sign = new Button { Content = "Sign" };
         var formFill = new Button { Content = "Form" };
         var ink = new Button { Content = "Ink" };
@@ -402,6 +413,7 @@ public sealed class PdfDocumentView : UserControl
         _lineButton = line;
         _arrowButton = arrow;
         _calloutButton = callout;
+        _redactButton = redact;
         var undoEdit = new Button { Content = "Undo" };
         var redoEdit = new Button { Content = "Redo" };
         ToolTipService.SetToolTip(rotateLeft, "Rotate selected pages left");
@@ -422,6 +434,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(textBox, "Add a FreeText text box on the current page");
         ToolTipService.SetToolTip(callout, "Draw a callout: drag from tip to text box");
         ToolTipService.SetToolTip(flatten, "Flatten annotations into page content (permanent)");
+        ToolTipService.SetToolTip(redact, "Mark areas/text for redaction; apply permanently removes content");
         ToolTipService.SetToolTip(sign, "Signature: draw with mouse or import PNG/JPEG (saved to library)");
         ToolTipService.SetToolTip(formFill, "Form fill: overlay mode or field list (Tab order)");
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
@@ -479,6 +492,7 @@ public sealed class PdfDocumentView : UserControl
         textBox.Click += async (_, _) => await AddTextBoxAsync();
         callout.Click += (_, _) => ToggleCalloutMode();
         flatten.Click += async (_, _) => await FlattenAnnotationsAsync();
+        redact.Click += async (_, _) => await OnRedactButtonClickAsync();
         sign.Click += async (_, _) => await BeginSignatureAsync();
         formFill.Click += async (_, _) => await OnFormButtonClickAsync();
         ink.Click += async (_, _) => await ToggleInkModeAsync();
@@ -501,7 +515,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, sign, formFill, ink, freeform, rect, ellipse, line, arrow,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, sign, formFill, ink, freeform, rect, ellipse, line, arrow,
                 _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -613,6 +627,7 @@ public sealed class PdfDocumentView : UserControl
         _pageImages.Clear();
         _pageOverlays.Clear();
         _ocrOverlays.Clear();
+        _redactionOverlays.Clear();
         _ocrVisualsByPage.Clear();
         _selectedOcrIndices.Clear();
         UpdateOcrOverlayChrome();
@@ -709,9 +724,18 @@ public sealed class PdfDocumentView : UserControl
         };
         _ocrOverlays[pageIndex] = ocrOverlay;
 
+        var redactionOverlay = new Canvas
+        {
+            Width = width,
+            Height = height,
+            IsHitTestVisible = false,
+        };
+        _redactionOverlays[pageIndex] = redactionOverlay;
+
         var layer = new Grid { Width = width, Height = height };
         layer.Children.Add(image);
         layer.Children.Add(overlay);
+        layer.Children.Add(redactionOverlay);
         layer.Children.Add(ocrOverlay);
 
         var border = new Border
@@ -730,6 +754,7 @@ public sealed class PdfDocumentView : UserControl
         border.CanDrag = true;
         border.DragStarting += PageBorder_DragStarting;
         RebuildOcrOverlayForPage(pageIndex);
+        RefreshPendingRedactionOverlay(pageIndex);
         return border;
     }
 
@@ -1155,6 +1180,15 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (_redactionMode && e.Key == VirtualKey.Escape)
+        {
+            ClearRedactionMode();
+            RefreshToolButtonChrome();
+            _status.Text = "Redact mode off.";
+            e.Handled = true;
+            return;
+        }
+
         if (_formOverlayMode && e.Key == VirtualKey.Escape)
         {
             ClearFormOverlayMode();
@@ -1462,6 +1496,13 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (_redactionMode)
+        {
+            BeginRedactionDrag(border, pageIndex, e);
+            e.Handled = true;
+            return;
+        }
+
         if (_formOverlayMode)
         {
             var formPage = _document.GetPage(pageIndex);
@@ -1550,9 +1591,12 @@ public sealed class PdfDocumentView : UserControl
             findItem.Click += async (_, _) => await SearchSelectedTextAsync();
             var webItem = new MenuFlyoutItem { Text = "Search web" };
             webItem.Click += async (_, _) => await SearchWebAsync(_selectedText);
+            var redactTextItem = new MenuFlyoutItem { Text = "Mark for redaction" };
+            redactTextItem.Click += (_, _) => MarkSelectionForRedaction();
             flyout.Items.Add(copyItem);
             flyout.Items.Add(findItem);
             flyout.Items.Add(webItem);
+            flyout.Items.Add(redactTextItem);
         }
 
         if (hasRegion)
@@ -1564,7 +1608,10 @@ public sealed class PdfDocumentView : UserControl
 
             var imageItem = new MenuFlyoutItem { Text = "Copy region as image" };
             imageItem.Click += async (_, _) => await CopyRegionAsBitmapAsync();
+            var redactRegionItem = new MenuFlyoutItem { Text = "Mark region for redaction" };
+            redactRegionItem.Click += (_, _) => MarkRegionForRedaction();
             flyout.Items.Add(imageItem);
+            flyout.Items.Add(redactRegionItem);
         }
 
         flyout.ShowAt(target, e.GetPosition(target));
@@ -1593,6 +1640,17 @@ public sealed class PdfDocumentView : UserControl
                 _cropDragHandle is not null)
             {
                 UpdateCropPointerDrag(cropBorder, e);
+                e.Handled = true;
+            }
+
+            return;
+        }
+
+        if (_redactionMode && _redactionDrawing)
+        {
+            if (sender is Border { Tag: int redactPage } redactBorder && redactPage == _redactionPageIndex)
+            {
+                ContinueRedactionDrag(redactBorder, e);
                 e.Handled = true;
             }
 
@@ -1692,6 +1750,13 @@ public sealed class PdfDocumentView : UserControl
                 RedrawCropOverlay();
             }
 
+            e.Handled = true;
+            return;
+        }
+
+        if (_redactionMode && _redactionDrawing && pageIndex == _redactionPageIndex)
+        {
+            EndRedactionDrag(border, e);
             e.Handled = true;
             return;
         }
@@ -3194,6 +3259,7 @@ public sealed class PdfDocumentView : UserControl
 
     private async Task ToggleHighlightModeAsync()
     {
+        ClearRedactionMode();
         if (_highlightMode)
         {
             ClearHighlightMode();
@@ -3552,6 +3618,7 @@ public sealed class PdfDocumentView : UserControl
 
     private void ToggleCalloutMode()
     {
+        ClearRedactionMode();
         if (_inkMode)
         {
             _inkMode = false;
@@ -3667,6 +3734,7 @@ public sealed class PdfDocumentView : UserControl
 
     private async Task ToggleInkModeAsync()
     {
+        ClearRedactionMode();
         ClearShapeMode();
         ClearSignatureMode();
         ClearHighlightMode();
@@ -3707,6 +3775,7 @@ public sealed class PdfDocumentView : UserControl
 
     private async Task ToggleFreeformModeAsync()
     {
+        ClearRedactionMode();
         ClearShapeMode();
         ClearSignatureMode();
         ClearHighlightMode();
@@ -3762,6 +3831,7 @@ public sealed class PdfDocumentView : UserControl
 
     private async Task ToggleShapeModeAsync(PdfShapeKind kind)
     {
+        ClearRedactionMode();
         if (_inkMode)
         {
             _inkMode = false;
@@ -3949,6 +4019,11 @@ public sealed class PdfDocumentView : UserControl
         if (_calloutButton is not null)
         {
             _calloutButton.Background = _calloutMode ? active : null;
+        }
+
+        if (_redactButton is not null)
+        {
+            _redactButton.Background = _redactionMode ? active : null;
         }
     }
 
@@ -4359,6 +4434,7 @@ public sealed class PdfDocumentView : UserControl
 
     private void StartSignatureDrawMode()
     {
+        ClearRedactionMode();
         ClearShapeMode();
         ClearHighlightMode();
         ClearCalloutMode();
@@ -4591,6 +4667,7 @@ public sealed class PdfDocumentView : UserControl
 
     private async Task BeginFormOverlayModeAsync()
     {
+        ClearRedactionMode();
         ClearShapeMode();
         ClearSignatureMode();
         ClearHighlightMode();
@@ -5111,6 +5188,433 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Flatten failed: " + ex.Message;
+        }
+    }
+
+    private async Task OnRedactButtonClickAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for redaction dialog.");
+
+        var pending = _redaction.GetPending(_document);
+        var hasSelection = !string.IsNullOrWhiteSpace(_selectedText)
+            && _selectionPageIndex >= 0
+            && _selectionQuads.Count > 0;
+        var hasRegion = _regionCopyPageIndex >= 0
+            && _regionCopyDisplayRect.Width >= 4
+            && _regionCopyDisplayRect.Height >= 4;
+
+        if (_redactionMode)
+        {
+            ClearRedactionMode();
+            RefreshToolButtonChrome();
+            _status.Text = pending.Count == 0
+                ? "Redact mode off."
+                : $"Redact mode off — {pending.Count} pending mark(s). Use Redact → Apply when ready.";
+            return;
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = "Redaction",
+            Content = pending.Count == 0
+                ? "Mark areas to remove permanently. Drag rectangles in draw mode, or mark the current selection/region."
+                : $"{pending.Count} pending mark(s). Apply permanently removes underlying text/images — this cannot be undone.",
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (pending.Count > 0)
+        {
+            dialog.PrimaryButtonText = "Apply…";
+            dialog.SecondaryButtonText = "Draw marks";
+            dialog.CloseButtonText = "Clear pending";
+            dialog.DefaultButton = ContentDialogButton.Close;
+        }
+        else
+        {
+            dialog.PrimaryButtonText = "Draw marks";
+            dialog.CloseButtonText = "Cancel";
+            dialog.DefaultButton = ContentDialogButton.Primary;
+            if (hasSelection)
+            {
+                dialog.SecondaryButtonText = "Mark selection";
+            }
+            else if (hasRegion)
+            {
+                dialog.SecondaryButtonText = "Mark region";
+            }
+        }
+
+        var result = await dialog.ShowAsync();
+        if (pending.Count > 0)
+        {
+            if (result == ContentDialogResult.Primary)
+            {
+                await ApplyPendingRedactionsAsync();
+                return;
+            }
+
+            if (result == ContentDialogResult.Secondary)
+            {
+                EnterRedactionMode();
+                return;
+            }
+
+            _redaction.ClearPending(_document);
+            RefreshAllPendingRedactionOverlays();
+            _status.Text = "Cleared pending redactions.";
+            return;
+        }
+
+        if (result == ContentDialogResult.Primary)
+        {
+            EnterRedactionMode();
+            return;
+        }
+
+        if (result == ContentDialogResult.Secondary)
+        {
+            if (hasSelection)
+            {
+                MarkSelectionForRedaction();
+            }
+            else if (hasRegion)
+            {
+                MarkRegionForRedaction();
+            }
+        }
+    }
+
+    private void EnterRedactionMode()
+    {
+        ClearShapeMode();
+        ClearSignatureMode();
+        ClearHighlightMode();
+        ClearCalloutMode();
+        ClearFreeformMode();
+        if (_formOverlayMode)
+        {
+            ClearFormOverlayMode();
+        }
+
+        if (_inkMode)
+        {
+            _inkMode = false;
+            CancelInkStroke();
+        }
+
+        if (_cropMode)
+        {
+            CancelCropMode();
+        }
+
+        _redactionMode = true;
+        RefreshToolButtonChrome();
+        _status.Text = "Redact mode — drag a rectangle to mark. Esc to exit.";
+    }
+
+    private void ClearRedactionMode()
+    {
+        if (!_redactionMode && !_redactionDrawing)
+        {
+            return;
+        }
+
+        CancelRedactionDrag();
+        _redactionMode = false;
+    }
+
+    private void BeginRedactionDrag(Border border, int pageIndex, PointerRoutedEventArgs e)
+    {
+        CancelRedactionDrag();
+        _redactionDrawing = true;
+        _redactionPageIndex = pageIndex;
+        _redactionStart = e.GetCurrentPoint(border).Position;
+        border.CapturePointer(e.Pointer);
+        ContinueRedactionDrag(border, e);
+    }
+
+    private void ContinueRedactionDrag(Border border, PointerRoutedEventArgs e)
+    {
+        if (_redactionPageIndex < 0 || !_pageOverlays.TryGetValue(_redactionPageIndex, out var overlay))
+        {
+            return;
+        }
+
+        var current = e.GetCurrentPoint(border).Position;
+        if (_redactionPreview is not null)
+        {
+            overlay.Children.Remove(_redactionPreview);
+            _redactionPreview = null;
+        }
+
+        var left = Math.Min(_redactionStart.X, current.X);
+        var top = Math.Min(_redactionStart.Y, current.Y);
+        var width = Math.Abs(current.X - _redactionStart.X);
+        var height = Math.Abs(current.Y - _redactionStart.Y);
+        if (width < 2 || height < 2)
+        {
+            return;
+        }
+
+        var preview = new Microsoft.UI.Xaml.Shapes.Rectangle
+        {
+            Width = width,
+            Height = height,
+            Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(140, 0, 0, 0)),
+            Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(220, 180, 0, 0)),
+            StrokeThickness = 1.5,
+            StrokeDashArray = [4, 2],
+        };
+        Canvas.SetLeft(preview, left);
+        Canvas.SetTop(preview, top);
+        overlay.Children.Add(preview);
+        _redactionPreview = preview;
+    }
+
+    private void EndRedactionDrag(Border border, PointerRoutedEventArgs e)
+    {
+        try { border.ReleasePointerCapture(e.Pointer); } catch { /* ignore */ }
+        ContinueRedactionDrag(border, e);
+
+        var pageIndex = _redactionPageIndex;
+        var start = _redactionStart;
+        var end = e.GetCurrentPoint(border).Position;
+        CancelRedactionDrag();
+
+        if (pageIndex < 0)
+        {
+            return;
+        }
+
+        var width = Math.Abs(end.X - start.X);
+        var height = Math.Abs(end.Y - start.Y);
+        if (width < 4 || height < 4)
+        {
+            _status.Text = "Redaction mark too small.";
+            return;
+        }
+
+        var page = _document.GetPage(pageIndex);
+        double ToPdfX(double x) => x / _scale;
+        double ToPdfY(double y) => page.HeightPoints - (y / _scale);
+        var left = Math.Min(ToPdfX(start.X), ToPdfX(end.X));
+        var right = Math.Max(ToPdfX(start.X), ToPdfX(end.X));
+        var bottom = Math.Min(ToPdfY(start.Y), ToPdfY(end.Y));
+        var top = Math.Max(ToPdfY(start.Y), ToPdfY(end.Y));
+        var bounds = new PdfRect(left, bottom, right, top);
+
+        try
+        {
+            _redaction.MarkRectangle(_document, pageIndex, bounds);
+            RefreshPendingRedactionOverlay(pageIndex);
+            var count = _redaction.GetPending(_document).Count;
+            _status.Text = $"Marked redaction ({count} pending). Redact → Apply when ready.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Mark failed: " + ex.Message;
+        }
+    }
+
+    private void CancelRedactionDrag()
+    {
+        if (_redactionPreview is not null &&
+            _redactionPageIndex >= 0 &&
+            _pageOverlays.TryGetValue(_redactionPageIndex, out var overlay))
+        {
+            overlay.Children.Remove(_redactionPreview);
+        }
+
+        _redactionPreview = null;
+        _redactionDrawing = false;
+        _redactionPageIndex = -1;
+    }
+
+    private void MarkSelectionForRedaction()
+    {
+        if (_selectionPageIndex < 0 || _selectionQuads.Count == 0 || string.IsNullOrWhiteSpace(_selectedText))
+        {
+            _status.Text = "Select text to mark for redaction.";
+            return;
+        }
+
+        try
+        {
+            var union = _selectionQuads[0].Bounds;
+            foreach (var quad in _selectionQuads.Skip(1))
+            {
+                var b = quad.Bounds;
+                union = new PdfRect(
+                    Math.Min(union.Left, b.Left),
+                    Math.Min(union.Bottom, b.Bottom),
+                    Math.Max(union.Right, b.Right),
+                    Math.Max(union.Top, b.Top));
+            }
+
+            // Pad slightly so glyph objects fully intersect.
+            union = new PdfRect(union.Left - 1, union.Bottom - 1, union.Right + 1, union.Top + 1);
+            _redaction.MarkTextRegion(_document, _selectionPageIndex, union, TrimForStatus(_selectedText));
+            RefreshPendingRedactionOverlay(_selectionPageIndex);
+            var count = _redaction.GetPending(_document).Count;
+            _status.Text = $"Marked text for redaction ({count} pending).";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Mark failed: " + ex.Message;
+        }
+    }
+
+    private void MarkRegionForRedaction()
+    {
+        if (_regionCopyPageIndex < 0
+            || _regionCopyDisplayRect.Width < 4
+            || _regionCopyDisplayRect.Height < 4)
+        {
+            _status.Text = "Drag a region first.";
+            return;
+        }
+
+        try
+        {
+            var page = _document.GetPage(_regionCopyPageIndex);
+            var left = _regionCopyDisplayRect.X / _scale;
+            var right = (_regionCopyDisplayRect.X + _regionCopyDisplayRect.Width) / _scale;
+            var top = page.HeightPoints - (_regionCopyDisplayRect.Y / _scale);
+            var bottom = page.HeightPoints - ((_regionCopyDisplayRect.Y + _regionCopyDisplayRect.Height) / _scale);
+            var bounds = new PdfRect(
+                Math.Min(left, right),
+                Math.Min(bottom, top),
+                Math.Max(left, right),
+                Math.Max(bottom, top));
+            _redaction.MarkRectangle(_document, _regionCopyPageIndex, bounds);
+            RefreshPendingRedactionOverlay(_regionCopyPageIndex);
+            var count = _redaction.GetPending(_document).Count;
+            _status.Text = $"Marked region for redaction ({count} pending).";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Mark failed: " + ex.Message;
+        }
+    }
+
+    private void RefreshAllPendingRedactionOverlays()
+    {
+        foreach (var pageIndex in _redactionOverlays.Keys.ToList())
+        {
+            RefreshPendingRedactionOverlay(pageIndex);
+        }
+    }
+
+    private void RefreshPendingRedactionOverlay(int pageIndex)
+    {
+        if (!_redactionOverlays.TryGetValue(pageIndex, out var overlay))
+        {
+            return;
+        }
+
+        overlay.Children.Clear();
+        var page = _document.GetPage(pageIndex);
+        foreach (var mark in _redaction.GetPending(_document).Where(m => m.PageIndex == pageIndex))
+        {
+            var left = mark.Bounds.Left * _scale;
+            var top = (page.HeightPoints - mark.Bounds.Top) * _scale;
+            var width = mark.Bounds.Width * _scale;
+            var height = mark.Bounds.Height * _scale;
+            if (width < 1 || height < 1)
+            {
+                continue;
+            }
+
+            var rect = new Microsoft.UI.Xaml.Shapes.Rectangle
+            {
+                Width = width,
+                Height = height,
+                Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(160, 0, 0, 0)),
+                Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(230, 200, 40, 40)),
+                StrokeThickness = 1.5,
+            };
+            Canvas.SetLeft(rect, left);
+            Canvas.SetTop(rect, top);
+            overlay.Children.Add(rect);
+
+            if (!string.IsNullOrWhiteSpace(mark.Label))
+            {
+                var label = new TextBlock
+                {
+                    Text = TrimForStatus(mark.Label!),
+                    FontSize = 11,
+                    Foreground = new SolidColorBrush(Colors.White),
+                    IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(label, left + 4);
+                Canvas.SetTop(label, top + 2);
+                overlay.Children.Add(label);
+            }
+        }
+    }
+
+    private async Task ApplyPendingRedactionsAsync()
+    {
+        var pending = _redaction.GetPending(_document);
+        if (pending.Count == 0)
+        {
+            _status.Text = "No pending redactions.";
+            return;
+        }
+
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for redaction apply.");
+
+        var dialog = new ContentDialog
+        {
+            Title = "Apply redactions permanently?",
+            Content =
+                $"Apply {pending.Count} redaction mark(s)? Underlying text and covered content will be removed from the PDF. This cannot be undone.",
+            PrimaryButtonText = "Apply",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            _status.Text = "Apply cancelled.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Applying redactions…";
+            var result = await _redaction.ApplyAsync(
+                _document,
+                new PdfRedactionApplyOptions(
+                    RemoveIntersectingTextObjects: true,
+                    RemoveIntersectingImageObjects: true));
+            ClearRedactionMode();
+            RefreshToolButtonChrome();
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            _pageChars.Clear();
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            RefreshAllPendingRedactionOverlays();
+            if (result.MarksApplied == 0)
+            {
+                _status.Text = "Nothing to apply.";
+            }
+            else
+            {
+                _status.Text =
+                    $"Applied {result.MarksApplied} redaction(s) on {result.PagesChanged} page(s); "
+                    + $"removed {result.TextObjectsRemoved} text / {result.ImageObjectsRemoved} image object(s).";
+            }
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Apply failed: " + ex.Message;
         }
     }
 
@@ -5800,6 +6304,7 @@ public sealed class PdfDocumentView : UserControl
 
     private async Task BeginCropModeAsync()
     {
+        ClearRedactionMode();
         if (_document.PageCount == 0)
         {
             return;
@@ -6469,6 +6974,7 @@ public sealed class PdfDocumentView : UserControl
         _pageImages.Clear();
         _pageOverlays.Clear();
         _ocrOverlays.Clear();
+        _redactionOverlays.Clear();
         _ocrVisualsByPage.Clear();
         _selectedOcrIndices.Clear();
         UpdateOcrOverlayChrome();

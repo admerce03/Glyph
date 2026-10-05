@@ -24,7 +24,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M4 | PDF markup and editing | **In Progress** | M2 (forms/security touch M7) |
 | M5 | Image viewer/editor | **In Progress** | M1 (shares shell/DnD with M3) |
 | M6 | OCR and scanned-document capabilities | **In Progress** | M2, M5 |
-| M7 | Redaction, PDF security, optimization, metadata | Not Started | M2–M4 |
+| M7 | Redaction, PDF security, optimization, metadata | In Progress | M2–M4 |
 | M8 | Batch ops, scanner, color management, advanced | Not Started | M5–M7 |
 | M9 | Performance, polish, a11y, installer, audit | Not Started | M1–M8 core paths |
 
@@ -268,7 +268,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 7 — Redaction, PDF security, optimization, metadata
 
-**Status:** Not Started · Depends on M2–M4
+**Status:** In Progress · Depends on M2–M4
 
 ### Scope (`FEATURES.md` §21, §23–25)
 
@@ -346,7 +346,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | PDF page manipulation | §10–12 | M3 | Implemented |
 | PDF annotations/markup | §13–19 | M4 | In Progress |
 | PDF forms | §20 | M4 | In Progress |
-| Redaction | §21 | M7 | Not Started |
+| Redaction | §21 | M7 | In Progress (mark/preview/apply content removal) |
 | Flattening | §22 | M4 | Not Started |
 | PDF security | §23 | M7 | Not Started |
 | Optimization | §24 | M7 | Not Started |
