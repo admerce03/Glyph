@@ -61,6 +61,7 @@ internal static class AppServices
         services.AddSingleton<IPdfRenderer, PdfiumRenderer>();
         services.AddSingleton<IPdfTextExtractor, PdfiumTextExtractor>();
         services.AddSingleton<IPdfOutlineService, PdfiumOutlineService>();
+        services.AddSingleton<IPdfOutlineExportService, PdfiumOutlineExportService>();
         services.AddSingleton<IPdfLinkService, PdfiumLinkService>();
         services.AddSingleton<IPdfPageEditor, PdfiumPageEditor>();
         services.AddSingleton<IPdfAnnotationService, PdfiumAnnotationService>();

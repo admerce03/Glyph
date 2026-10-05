@@ -61,6 +61,7 @@ public sealed partial class MainWindow : Window
     private readonly IPdfTextSearchService _pdfSearch;
     private readonly IPdfTextExtractor _pdfText;
     private readonly IPdfOutlineService _pdfOutlines;
+    private readonly IPdfOutlineExportService _pdfOutlineExport;
     private readonly IPdfLinkService _pdfLinks;
     private readonly IPdfPageEditor _pdfPageEditor;
     private readonly IPdfAnnotationService _pdfAnnotations;
@@ -92,6 +93,7 @@ public sealed partial class MainWindow : Window
         IPdfTextSearchService pdfSearch,
         IPdfTextExtractor pdfText,
         IPdfOutlineService pdfOutlines,
+        IPdfOutlineExportService pdfOutlineExport,
         IPdfLinkService pdfLinks,
         IPdfPageEditor pdfPageEditor,
         IPdfAnnotationService pdfAnnotations,
@@ -121,6 +123,7 @@ public sealed partial class MainWindow : Window
         _pdfSearch = pdfSearch;
         _pdfText = pdfText;
         _pdfOutlines = pdfOutlines;
+        _pdfOutlineExport = pdfOutlineExport;
         _pdfLinks = pdfLinks;
         _pdfPageEditor = pdfPageEditor;
         _pdfAnnotations = pdfAnnotations;
@@ -1795,6 +1798,7 @@ public sealed partial class MainWindow : Window
                 _pdfSearch,
                 _pdfText,
                 _pdfOutlines,
+                _pdfOutlineExport,
                 _pdfLinks,
                 _pdfPageEditor,
                 _pdfAnnotations,

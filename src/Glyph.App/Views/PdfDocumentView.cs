@@ -50,6 +50,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly PdfSearchCoordinator _searchCoordinator;
     private readonly IPdfTextExtractor _textExtractor;
     private readonly IPdfOutlineService _outlineService;
+    private readonly IPdfOutlineExportService _outlineExport;
     private readonly IPdfLinkService _linkService;
     private readonly IPdfPageEditor _pageEditor;
     private readonly IPdfAnnotationService _annotations;
@@ -249,6 +250,7 @@ public sealed class PdfDocumentView : UserControl
         IPdfTextSearchService searchService,
         IPdfTextExtractor textExtractor,
         IPdfOutlineService outlineService,
+        IPdfOutlineExportService outlineExport,
         IPdfLinkService linkService,
         IPdfPageEditor pageEditor,
         IPdfAnnotationService annotations,
@@ -272,6 +274,7 @@ public sealed class PdfDocumentView : UserControl
         _searchCoordinator = new PdfSearchCoordinator(searchService);
         _textExtractor = textExtractor;
         _outlineService = outlineService;
+        _outlineExport = outlineExport;
         _linkService = linkService;
         _pageEditor = pageEditor;
         _annotations = annotations;
@@ -459,11 +462,16 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(downBookmark, "Move bookmark down");
         AutomationProperties.SetName(downBookmark, "Move bookmark down");
         downBookmark.Click += (_, _) => MoveSelectedBookmark(1);
+        var exportBookmarks = new Button { Content = "PDF", Padding = new Thickness(4, 2, 4, 2) };
+        ToolTipService.SetToolTip(exportBookmarks, "Write bookmarks into this PDF as a standard outline");
+        AutomationProperties.SetName(exportBookmarks, "Export bookmarks to PDF outline");
+        exportBookmarks.Click += async (_, _) => await ExportBookmarksToPdfOutlineAsync();
         bookmarkHeader.Children.Add(addBookmark);
         bookmarkHeader.Children.Add(renameBookmark);
         bookmarkHeader.Children.Add(deleteBookmark);
         bookmarkHeader.Children.Add(upBookmark);
         bookmarkHeader.Children.Add(downBookmark);
+        bookmarkHeader.Children.Add(exportBookmarks);
 
         var tocHeader = new TextBlock
         {
@@ -12244,6 +12252,31 @@ public sealed class PdfDocumentView : UserControl
         _viewState.CurrentPageIndex = CurrentPageIndex;
         _viewState.PageLayout = _layoutMode;
         // Bookmarks list is mutated in place on _viewState.Bookmarks.
+    }
+
+    private async Task ExportBookmarksToPdfOutlineAsync()
+    {
+        if (_viewState.Bookmarks.Count == 0)
+        {
+            _status.Text = "Add bookmarks before exporting to the PDF outline.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Writing PDF outline…";
+            var entries = _viewState.Bookmarks
+                .Select(b => new PdfOutlineExportEntry(b.Title, b.PageIndex))
+                .ToList();
+            await _outlineExport.ExportAsync(_document, entries);
+            NotifyEdited();
+            await LoadOutlineAsync();
+            _status.Text = $"Exported {_viewState.Bookmarks.Count} bookmark(s) into the PDF outline.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Outline export failed: " + ex.Message;
+        }
     }
 
     private void RefreshBookmarkList()

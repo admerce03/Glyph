@@ -180,7 +180,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F09-05 | PDF bookmarks | Reorder bookmarks where feasible. | M2/M4 | Implemented | ↑/↓ buttons |
 | F09-06 | PDF bookmarks | Click to navigate. | M2/M4 | Implemented | ItemClick → GoToPage |
 | F09-07 | PDF bookmarks | Preserve bookmarks when saving. | M2/M4 | Implemented | Persisted in view-state.json per path |
-| F09-08 | PDF bookmarks | Export them as standard PDF bookmarks where compatible. | M2/M4 | Deferred | No PDFium outline-write API yet; app-local store only |
+| F09-08 | PDF bookmarks | Export them as standard PDF bookmarks where compatible. | M2/M4 | Tested | Bookmarks → PDF writes flat `/Outlines` via incremental patch (`PdfOutlinePatcher`) |
 | F10-01 | PDF page manipulation | Select page thumbnails. | M3 | Implemented | Click thumbnails; chrome shows selection |
 | F10-02 | PDF page manipulation | Multi-select pages. | M3 | Tested | Ctrl+click / Ctrl+A via `PageSelection` |
 | F10-03 | PDF page manipulation | Select ranges. | M3 | Tested | Shift+click / Shift+↑↓ via `PageSelection` |
