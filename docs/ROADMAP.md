@@ -26,7 +26,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M6 | OCR and scanned-document capabilities | **Tested** (PRs #62–#66 merged; offline OCR/Live Text/entities) | M2, M5 |
 | M7 | Redaction, PDF security, optimization, metadata | **Tested** (#67; password-write → ADR-015) | M2–M4 |
 | M8 | Batch ops, scanner, color management, advanced | **Tested** (hardware validation TBD; ML subject deferred) | M5–M7 |
-| M9 | Performance, polish, a11y, installer, audit | **In Progress** (packaging+shortcuts+updates+bg Find+toolbar reorder+notices; Explorer verify + ADR-015 TBD) | M1–M8 core paths |
+| M9 | Performance, polish, a11y, installer, audit | **In Progress** (packaging+shortcuts+updates+bg Find+PDF/image toolbar F54+notices; Explorer verify + ADR-015 TBD) | M1–M8 core paths |
 
 M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behind separate interfaces. M3 remains the highest-priority Preview-differentiator after viewing works.
 
@@ -419,7 +419,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | User bookmarks | §9 | M2/M4 | Tested (app-local + export to PDF `/Outlines`) |
 | PDF page manipulation | §10–12 | M3 | Tested (selection/reorder/insert/merge/split/crop/DnD/clipboard unit-covered; §11 screen recording pending) |
 | PDF annotations/markup | §13–19 | M4 | Tested |
-| PDF forms | §20 | M4 | Tested (visual sig stamps; PKCS#7 → ADR-015) |
+| PDF forms | §20 | M4 | Tested (visual sig stamps; PKCS#7 crypto signing out of scope) |
 | Redaction | §21 | M7 | Tested (mark/preview/apply + sanitize + confirm copy; password-write separate) |
 | Flattening | §22 | M4 | Tested (`FlattenAsync` / FPDFPage_Flatten) |
 | PDF security | §23 | M7 | Tested (open + info/permissions/advisory; write-protect → ADR-015) |
@@ -436,9 +436,9 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Printing | §44 | M8 | Tested (system Print UI + `PrintPageScopeChooser` / `PrintSheetLayout` / `PrintSystemCapabilities`) |
 | Export/share/integration | §45–48 | M5–M9 | Tested (matrix F45–F47; PDF security export → ADR-015) |
 | Undo/autosave/snapshots | §49–51 | M1–M4, M9 | Tested (per-doc stacks + F50 crash-recovery UI; unified app-wide later) |
-| Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Tested (F52–F53 catalogs; update check → ADR-012) |
+| Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Tested (F52–F55 catalogs incl. update check; associations → ADR-012) |
 | Accessibility | §56 | M9 | Tested (`AccessibilityPolicy` + chrome automation names) |
-| Performance/large docs | §57–58 | M2+, M9 | Tested (`PerformanceBehaviorPolicy` / `ContinuousPageWindow`; bg index / GPU deferred) |
+| Performance/large docs | §57–58 | M2+, M9 | Tested (`PerformanceBehaviorPolicy` / `ContinuousPageWindow` / bg Find index; GPU deferred) |
 | Multi-doc workflows | §59–60 | M1, M3 | Tested (tabs/windows/page+image DnD/clipboard/registry; interactive DnD demo pending) |
 | Non-destructive editing | §61 | M3–M5 | Tested (CropBox + in-memory image edits until Save) |
 | Output formats | §62 | M5, M7 | Tested (HEIF deferred; `OutputFormatSupport`) |

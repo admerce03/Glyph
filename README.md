@@ -6,7 +6,7 @@ Authoritative product scope: [`docs/FEATURES.md`](docs/FEATURES.md).
 
 ## Current status
 
-Milestones **M0–M8** are matrix-**Tested** on `main` (password-write Blocked on ADR-015; HDR/HEIF/ML and packaging associations Deferred). **M9** is In Progress (test-signed MSIX + sideload/PACKAGING guide + shortcuts/updates/bg Find index + toolbar reorder + third-party notices; Explorer verify + ADR-015 + interactive demos + Store signing still open).
+Milestones **M0–M8** are matrix-**Tested** on `main` (password-write Blocked on ADR-015; HDR/HEIF/ML and packaging associations Deferred). **M9** is In Progress (test-signed MSIX + sideload/PACKAGING guide + shortcuts/updates/bg Find index + PDF/image toolbar hide+reorder + third-party notices; Explorer verify + ADR-015 + interactive demos + Store signing still open).
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) and [`docs/FEATURE_MATRIX.md`](docs/FEATURE_MATRIX.md).
 
@@ -28,7 +28,7 @@ src/Glyph.Core           Document sessions, commands, undo
 src/Glyph.Infrastructure Settings/recent files/paths
 src/Glyph.Pdf            PDF abstractions + PDFium/PdfPig adapters
 src/Glyph.Imaging        Image abstractions + Magick.NET adapter
-src/Glyph.Ocr            OCR abstractions + Windows OCR / Tesseract engines
+src/Glyph.Ocr            OCR abstractions (`IOcrEngine`; Windows.Media.Ocr in App; Tesseract not shipped)
 tests/                   xUnit behavior tests
 docs/                    Product + engineering docs
 scripts/                 Build/test/format helpers
