@@ -2013,9 +2013,9 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (int.TryParse(_gotoBox.Text, out var pageNumber))
+        if (PageGotoParser.TryParseZeroBased(_gotoBox.Text, _document.PageCount) is { } pageIndex)
         {
-            await GoToPageAsync(pageNumber - 1, recordHistory: true);
+            await GoToPageAsync(pageIndex, recordHistory: true);
         }
     }
 

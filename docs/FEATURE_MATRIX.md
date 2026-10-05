@@ -90,8 +90,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-11 | PDF viewing | Two-page/facing-page mode. | M2 | Tested | Even/odd spreads; `PageLayoutCombo` + calculator |
 | F04-12 | PDF viewing | Optional cover-page behavior for facing pages. | M2 | Tested | `TwoPageWithCover` layout + calculator tests |
 | F04-13 | PDF viewing | Page thumbnails. | M2 | Implemented | Bitmap thumbnails at low scale |
-| F04-14 | PDF viewing | Page number navigation. | M2 | Implemented | Status + goto box + thumbs |
-| F04-15 | PDF viewing | Go to page. | M2 | Implemented | Goto box (# + Enter) |
+| F04-14 | PDF viewing | Page number navigation. | M2 | Tested | Status + goto box + thumbs; `PageGotoParser` unit tests |
+| F04-15 | PDF viewing | Go to page. | M2 | Tested | Goto box (# + Enter); `PageGotoParser.TryParseZeroBased` |
 | F04-16 | PDF viewing | Previous page. | M2 | Tested | Prev / Page Up; `PageLayoutCalculator.PreviousPageIndex` unit tests |
 | F04-17 | PDF viewing | Next page. | M2 | Tested | Next / Page Down; `PageLayoutCalculator.NextPageIndex` unit tests |
 | F04-18 | PDF viewing | First page. | M2 | Implemented | First button / Home |
@@ -423,12 +423,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F25-17 | PDF metadata | author | M7 | Tested | Info → Edit… `/Author` |
 | F25-18 | PDF metadata | subject | M7 | Tested | Info → Edit… `/Subject` |
 | F25-19 | PDF metadata | keywords | M7 | Tested | Info → Edit… `/Keywords` |
-| F26-01 | Image viewing | JPEG/JPG | M5 | Implemented | Magick.NET decoder |
-| F26-02 | Image viewing | PNG | M5 | Implemented | Magick.NET decoder |
-| F26-03 | Image viewing | GIF | M5 | Implemented | Magick.NET multi-frame decode (coalesce); still opens first frame |
-| F26-04 | Image viewing | BMP | M5 | Implemented | Magick.NET decoder |
-| F26-05 | Image viewing | TIFF | M5 | Implemented | Magick.NET decoder |
-| F26-06 | Image viewing | WebP | M5 | Implemented | Magick.NET decoder |
+| F26-01 | Image viewing | JPEG/JPG | M5 | Tested | Magick.NET decoder; `WriteBgra_round_trips` / SaveAs JPEG tests |
+| F26-02 | Image viewing | PNG | M5 | Tested | Magick.NET decoder; `WriteBgra_round_trips` PNG tests |
+| F26-03 | Image viewing | GIF | M5 | Tested | Magick multi-frame decode; `MagickAnimatedImageTests` + write round-trip |
+| F26-04 | Image viewing | BMP | M5 | Tested | Magick.NET decoder; BMP write/SaveAs round-trip tests |
+| F26-05 | Image viewing | TIFF | M5 | Tested | Magick.NET decoder; TIFF write/LZW SaveAs tests |
+| F26-06 | Image viewing | WebP | M5 | Tested | Magick.NET decoder; `MagickImageDecoderFormatTests` + lossless SaveAs |
 | F26-07 | Image viewing | HEIF/HEIC where codecs are available | M5 | Tested | Magick.NET opens `.heic`/`.heif` when delegates present; Open picker + folder nav |
 | F26-08 | Image viewing | AVIF where practical | M5 | Tested | Magick.NET decode; Open picker + `MagickImageDecoderFormatTests` |
 | F26-09 | Image viewing | ICO | M5 | Tested | Magick.NET decoder + open picker |
@@ -487,7 +487,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F30-03 | Image crop | Original aspect ratio. | M5 | Tested | Crop… aspect dropdown → Original (`ImageCropAspect`) |
 | F30-04 | Image crop | Common presets: | M5 | Tested | Crop… aspect: 1:1, 4:3, 3:2, 16:9 (+ Free/Original) |
 | F30-05 | Image crop | Numeric width/height. | M5 | Implemented | Crop x,y,w,h text box |
-| F30-06 | Image crop | Apply crop. | M5 | Implemented | Crop / Apply crop → MagickImageProcessor.CropAsync |
+| F30-06 | Image crop | Apply crop. | M5 | Tested | Crop → `MagickImageProcessor.CropAsync`; crop round-trip unit tests |
 | F30-07 | Image crop | Undo. | M5 | Tested | Undo / Ctrl+Z via `CaptureCheckpoint`/`RestoreCheckpoint` (crop and other edits) |
 | F30-08 | Image crop | Non-destructive editing internally until save where practical. | M5 | Implemented | Edits mutate in-memory Magick image; disk unchanged until Save |
 | F31-01 | Image resizing | Adjust width. | M5 | Implemented | Resize dialog width (px) |
