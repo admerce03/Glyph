@@ -517,6 +517,15 @@ public class PdfiumAnnotationServiceTests
                 arrow.IsInk.Should().BeTrue();
                 arrow.Contents.Should().Be("Arrow");
 
+                var filledHead = await annots.AddShapeAsync(
+                    document,
+                    0,
+                    PdfShapeKind.Arrow,
+                    new PdfRect(40, 360, 200, 400),
+                    new PdfAnnotationColor(200, 0, 0),
+                    arrowheadStyle: PdfArrowheadStyle.Filled);
+                filledHead.Contents.Should().Be("Arrow|Filled");
+
                 var rounded = await annots.AddShapeAsync(
                     document,
                     0,

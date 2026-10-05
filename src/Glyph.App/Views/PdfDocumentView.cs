@@ -113,6 +113,7 @@ public sealed class PdfDocumentView : UserControl
     private PdfAnnotationColor _drawStrokeColor = PdfAnnotationColor.InkRed;
     private float _drawStrokeWidth = 2f;
     private PdfInkLineStyle _drawInkLineStyle = PdfInkLineStyle.Solid;
+    private PdfArrowheadStyle _drawArrowheadStyle = PdfArrowheadStyle.Open;
     private bool _highlightMode;
     private PdfAnnotationColor _highlightModeColor = PdfAnnotationColor.YellowHighlight;
     private bool _formOverlayMode;
@@ -4413,7 +4414,8 @@ public sealed class PdfDocumentView : UserControl
         {
             var picked = await PickStrokeStyleAsync(
                 "Shape stroke",
-                includeInkLineStyle: kind is PdfShapeKind.Line or PdfShapeKind.Arrow);
+                includeInkLineStyle: kind is PdfShapeKind.Line or PdfShapeKind.Arrow,
+                includeArrowheadStyle: kind == PdfShapeKind.Arrow);
             if (picked is null)
             {
                 _status.Text = "Shape mode cancelled.";
@@ -4423,6 +4425,7 @@ public sealed class PdfDocumentView : UserControl
             _drawStrokeColor = picked.Value.Color;
             _drawStrokeWidth = picked.Value.WidthPoints;
             _drawInkLineStyle = picked.Value.InkLineStyle;
+            _drawArrowheadStyle = picked.Value.ArrowheadStyle;
         }
 
         if (_cropMode)
@@ -4446,9 +4449,10 @@ public sealed class PdfDocumentView : UserControl
         };
     }
 
-    private async Task<(PdfAnnotationColor Color, float WidthPoints, PdfInkLineStyle InkLineStyle)?> PickStrokeStyleAsync(
+    private async Task<(PdfAnnotationColor Color, float WidthPoints, PdfInkLineStyle InkLineStyle, PdfArrowheadStyle ArrowheadStyle)?> PickStrokeStyleAsync(
         string title,
-        bool includeInkLineStyle = false)
+        bool includeInkLineStyle = false,
+        bool includeArrowheadStyle = false)
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
@@ -4486,6 +4490,18 @@ public sealed class PdfDocumentView : UserControl
             };
         }
 
+        ComboBox? arrowheadBox = null;
+        if (includeArrowheadStyle)
+        {
+            arrowheadBox = new ComboBox
+            {
+                Header = "Arrowhead",
+                ItemsSource = new[] { "Open", "Filled", "Diamond" },
+                SelectedIndex = (int)_drawArrowheadStyle,
+                Width = 220,
+            };
+        }
+
         var panel = new StackPanel { Spacing = 8, Children = { } };
         panel.Children.Add(new TextBlock { Text = "Color", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
         panel.Children.Add(colorList);
@@ -4494,6 +4510,11 @@ public sealed class PdfDocumentView : UserControl
         if (lineStyleBox is not null)
         {
             panel.Children.Add(lineStyleBox);
+        }
+
+        if (arrowheadBox is not null)
+        {
+            panel.Children.Add(arrowheadBox);
         }
 
         var dialog = new ContentDialog
@@ -4516,7 +4537,10 @@ public sealed class PdfDocumentView : UserControl
         var lineStyle = lineStyleBox is null
             ? _drawInkLineStyle
             : (PdfInkLineStyle)Math.Clamp(lineStyleBox.SelectedIndex, 0, 2);
-        return (PdfAnnotationColor.StrokePresets[colorIndex].Color, widths[widthIndex], lineStyle);
+        var arrowhead = arrowheadBox is null
+            ? _drawArrowheadStyle
+            : (PdfArrowheadStyle)Math.Clamp(arrowheadBox.SelectedIndex, 0, 2);
+        return (PdfAnnotationColor.StrokePresets[colorIndex].Color, widths[widthIndex], lineStyle, arrowhead);
     }
 
     private void ClearShapeMode()
@@ -4687,7 +4711,8 @@ public sealed class PdfDocumentView : UserControl
                 current,
                 stroke,
                 strokeThickness,
-                _drawInkLineStyle);
+                _drawInkLineStyle,
+                PdfArrowheadStyle.Open);
         }
         else
         {
@@ -4707,7 +4732,8 @@ public sealed class PdfDocumentView : UserControl
                     current,
                     stroke,
                     strokeThickness,
-                    _drawInkLineStyle),
+                    _drawInkLineStyle,
+                    _drawArrowheadStyle),
                 PdfShapeKind.Star => CreateStarPreview(
                     left,
                     top,
@@ -4802,7 +4828,10 @@ public sealed class PdfDocumentView : UserControl
                 borderWidthPoints: _drawStrokeWidth,
                 inkLineStyle: kind is PdfShapeKind.Line or PdfShapeKind.Arrow
                     ? _drawInkLineStyle
-                    : PdfInkLineStyle.Solid);
+                    : PdfInkLineStyle.Solid,
+                arrowheadStyle: kind == PdfShapeKind.Arrow
+                    ? _drawArrowheadStyle
+                    : PdfArrowheadStyle.Open);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
@@ -4900,7 +4929,8 @@ public sealed class PdfDocumentView : UserControl
         Windows.Foundation.Point end,
         SolidColorBrush stroke,
         double strokeThickness = 2,
-        PdfInkLineStyle inkLineStyle = PdfInkLineStyle.Solid)
+        PdfInkLineStyle inkLineStyle = PdfInkLineStyle.Solid,
+        PdfArrowheadStyle arrowheadStyle = PdfArrowheadStyle.Open)
     {
         var dash = InkLineDashArray(inkLineStyle);
         if (kind == PdfShapeKind.Line)
@@ -4933,31 +4963,24 @@ public sealed class PdfDocumentView : UserControl
             };
         }
 
-        var ux = dx / length;
-        var uy = dy / length;
-        var head = Math.Clamp(length * 0.22, 10.0, 28.0);
-        const double wingRadians = Math.PI / 7;
-        var cos = Math.Cos(wingRadians);
-        var sin = Math.Sin(wingRadians);
-        var backX = -ux * head;
-        var backY = -uy * head;
-        var wing1 = new Windows.Foundation.Point(
-            end.X + (backX * cos) - (backY * sin),
-            end.Y + (backX * sin) + (backY * cos));
-        var wing2 = new Windows.Foundation.Point(
-            end.X + (backX * cos) + (backY * sin),
-            end.Y + (-backX * sin) + (backY * cos));
+        var pdfStart = new PdfPagePoint(start.X, start.Y);
+        var pdfEnd = new PdfPagePoint(end.X, end.Y);
+        var headLen = PdfArrowGeometry.ComputeHeadLength(length);
+        var (shaftEndPdf, headStrokes) = PdfArrowGeometry.Build(pdfStart, pdfEnd, arrowheadStyle, headLen);
+        var shaftEnd = new Windows.Foundation.Point(shaftEndPdf.X, shaftEndPdf.Y);
+
+        var points = new PointCollection { start, shaftEnd };
+        foreach (var stroke in headStrokes)
+        {
+            foreach (var p in stroke)
+            {
+                points.Add(new Windows.Foundation.Point(p.X, p.Y));
+            }
+        }
 
         return new Microsoft.UI.Xaml.Shapes.Polyline
         {
-            Points =
-            [
-                start,
-                end,
-                wing1,
-                end,
-                wing2,
-            ],
+            Points = points,
             Stroke = stroke,
             StrokeThickness = strokeThickness,
             StrokeDashArray = dash,

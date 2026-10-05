@@ -432,6 +432,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         PdfAnnotationColor? fillColor = null,
         float borderWidthPoints = 1.5f,
         PdfInkLineStyle inkLineStyle = PdfInkLineStyle.Solid,
+        PdfArrowheadStyle arrowheadStyle = PdfArrowheadStyle.Open,
         CancellationToken cancellationToken = default)
     {
         var pdfium = RequirePdfium(document);
@@ -453,7 +454,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             }
 
             return kind == PdfShapeKind.Arrow
-                ? AddArrowAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, inkLineStyle, cancellationToken)
+                ? AddArrowAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, inkLineStyle, arrowheadStyle, cancellationToken)
                 : AddLineAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, inkLineStyle, cancellationToken);
         }
 
@@ -1849,6 +1850,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         PdfAnnotationColor borderColor,
         float borderWidthPoints,
         PdfInkLineStyle inkLineStyle,
+        PdfArrowheadStyle arrowheadStyle,
         CancellationToken cancellationToken)
     {
         var start = new PdfPagePoint(bounds.Left, bounds.Bottom);
@@ -1856,35 +1858,13 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         var dx = end.X - start.X;
         var dy = end.Y - start.Y;
         var length = Math.Sqrt((dx * dx) + (dy * dy));
-        var ux = dx / length;
-        var uy = dy / length;
-        var head = Math.Clamp(length * 0.22, 8.0, 28.0);
-        const double wingRadians = Math.PI / 7; // ~25.7°
-        var cos = Math.Cos(wingRadians);
-        var sin = Math.Sin(wingRadians);
-        // Wing tips: from tip back along shaft, rotated ±wing.
-        var backX = -ux * head;
-        var backY = -uy * head;
-        var wing1 = new PdfPagePoint(
-            end.X + (backX * cos) - (backY * sin),
-            end.Y + (backX * sin) + (backY * cos));
-        var wing2 = new PdfPagePoint(
-            end.X + (backX * cos) + (backY * sin),
-            end.Y + (-backX * sin) + (backY * cos));
-
-        var shaftEnd = length > head + 1
-            ? new PdfPagePoint(end.X - (ux * head), end.Y - (uy * head))
-            : start;
+        var headLen = PdfArrowGeometry.ComputeHeadLength(length);
+        var (shaftEnd, headStrokes) = PdfArrowGeometry.Build(start, end, arrowheadStyle, headLen);
         var shaftSegments = PdfInkLineStyleGeometry.Segment(start, shaftEnd, inkLineStyle, borderWidthPoints);
-        var strokes = PdfInkLineStyleGeometry.ToInkStrokes(shaftSegments);
-        var allStrokes = new List<IReadOnlyList<PdfPagePoint>>(strokes);
-        if (length > head + 1)
-        {
-            allStrokes.Add([end, wing1]);
-            allStrokes.Add([end, wing2]);
-        }
+        var allStrokes = new List<IReadOnlyList<PdfPagePoint>>(PdfInkLineStyleGeometry.ToInkStrokes(shaftSegments));
+        allStrokes.AddRange(headStrokes);
 
-        var contents = inkLineStyle == PdfInkLineStyle.Solid ? "Arrow" : $"Arrow|{inkLineStyle}";
+        var contents = FormatArrowContents(arrowheadStyle, inkLineStyle);
         var created = await AddLabeledInkAsync(
             document,
             pageIndex,
@@ -1894,6 +1874,26 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             contents,
             cancellationToken);
         return created with { ShapeKind = PdfShapeKind.Arrow, IsInk = true };
+    }
+
+    private static string FormatArrowContents(PdfArrowheadStyle head, PdfInkLineStyle line)
+    {
+        if (head == PdfArrowheadStyle.Open && line == PdfInkLineStyle.Solid)
+        {
+            return "Arrow";
+        }
+
+        if (line == PdfInkLineStyle.Solid)
+        {
+            return $"Arrow|{head}";
+        }
+
+        if (head == PdfArrowheadStyle.Open)
+        {
+            return $"Arrow|{line}";
+        }
+
+        return $"Arrow|{head}|{line}";
     }
 
     private Task<PdfAnnotationInfo> AddLabeledInkAsync(
