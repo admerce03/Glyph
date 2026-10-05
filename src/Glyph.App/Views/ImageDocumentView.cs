@@ -2992,7 +2992,7 @@ public sealed class ImageDocumentView : UserControl
                 ? new ImageEncodeOptions(Quality: (int)quality.Value, PreserveMetadata: true)
                 : new ImageEncodeOptions(PreserveMetadata: true);
             var converted = await BatchConvertFolderAsync(format, extension, options);
-            _status.Text = BatchProgressUi.FormatConvertWrote(format, converted);
+            _status.Text = BatchProgressUi.FormatConvertWrote(format.ToString(), converted);
             return;
         }
 
@@ -3456,8 +3456,8 @@ public sealed class ImageDocumentView : UserControl
                         }
                     },
                     trim
-                        ? ImageViewerStatus.FormatBackgroundRemoved(fuzz, trimmed: true)
-                        : ImageViewerStatus.FormatBackgroundRemoved(fuzz, trimmed: false));
+                        ? ImageViewerStatus.FormatBackgroundRemoved((int)Math.Round(fuzz), trimmed: true)
+                        : ImageViewerStatus.FormatBackgroundRemoved((int)Math.Round(fuzz), trimmed: false));
                 var format = _document.FormatName;
                 var ext = string.IsNullOrWhiteSpace(_document.Path)
                     ? format
@@ -5482,7 +5482,7 @@ public sealed class ImageDocumentView : UserControl
                 _markupUndoWasShape.Add(true);
                 RebuildMarkupOverlay();
                 UpdateFlattenButtonVisibility();
-                _status.Text = ImageViewerStatus.FormatMarkupAdded(kind, _markupStrokes.Count + _markupShapes.Count);
+                _status.Text = ImageViewerStatus.FormatMarkupAdded(kind.ToString(), _markupStrokes.Count + _markupShapes.Count);
             }
         }
         else if (_drawPoints.Count >= 2)

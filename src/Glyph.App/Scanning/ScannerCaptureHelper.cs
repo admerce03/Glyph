@@ -90,10 +90,6 @@ public static class ScannerCaptureHelper
                 widthInches = 5.83;
                 heightInches = 8.27;
                 return true;
-            case PrintMediaSize.IsoB5:
-                widthInches = 6.93;
-                heightInches = 9.84;
-                return true;
             default:
                 widthInches = 0;
                 heightInches = 0;

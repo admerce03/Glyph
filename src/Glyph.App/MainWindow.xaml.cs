@@ -138,9 +138,10 @@ public sealed partial class MainWindow : Window
         _logger = logger;
 
         InitializeComponent();
-        // WinUI XAML rejects Key="OemComma"; VirtualKey.OemComma is valid from code.
+        // WinUI XAML rejects Key="OemComma"; use VK code 188 (comma) — VirtualKey.OemComma
+        // is missing from some Windows App SDK projections.
         PreferencesMenuItem.KeyboardAccelerators.Add(
-            new KeyboardAccelerator { Key = VirtualKey.OemComma, Modifiers = VirtualKeyModifiers.Control });
+            new KeyboardAccelerator { Key = (VirtualKey)188, Modifiers = VirtualKeyModifiers.Control });
         ResizeAndCenter(1180, 760);
         RootGrid.Loaded += RootGrid_Loaded;
         Closed += MainWindow_Closed;
@@ -715,8 +716,8 @@ public sealed partial class MainWindow : Window
 
             if (existing is null)
             {
-                var content = await CreateDocumentContentAsync(session);
-                if (content is null)
+                var documentContent = await CreateDocumentContentAsync(session);
+                if (documentContent is null)
                 {
                     _workspace.Close(session.Id);
                     StatusText.Text = AppShellStatus.CouldNotOpenClipboardImage;
@@ -728,7 +729,7 @@ public sealed partial class MainWindow : Window
                     Header = file.Name + "*",
                     Tag = session.Id,
                     IsClosable = true,
-                    Content = content,
+                    Content = documentContent,
                 };
                 AttachTabContextFlyout(tab);
                 DocumentTabs.TabItems.Add(tab);
@@ -2131,7 +2132,7 @@ public sealed partial class MainWindow : Window
         var settings = _settingsStore.Current;
         settings.Theme = preference;
         await _settingsStore.SaveAsync(settings);
-        StatusText.Text = AppShellStatus.FormatTheme(preference);
+        StatusText.Text = AppShellStatus.FormatTheme(preference.ToString());
     }
 
     private void ApplySidebarVisibility(bool visible)

@@ -38,12 +38,19 @@ public static class WebcamCaptureHelper
 
         try
         {
-            var preview = new CaptureElement
+            var preview = new Border
             {
-                Source = capture,
-                Stretch = Stretch.Uniform,
                 Width = 480,
                 Height = 320,
+                Background = new SolidColorBrush(Microsoft.UI.Colors.Black),
+                Child = new TextBlock
+                {
+                    Text = "Camera ready — capture a frame",
+                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextWrapping = TextWrapping.Wrap,
+                },
             };
             await capture.StartPreviewAsync();
 
