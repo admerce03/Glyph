@@ -18,7 +18,7 @@ Related: [`PACKAGING.md`](PACKAGING.md) (MSIX sideload), [`ROADMAP.md`](ROADMAP.
 
 ```powershell
 ./scripts/install-msix-test.ps1 -PackageDir artifacts/msix -Force
-./scripts/install-msix-test.ps1 -VerifyOnly
+./scripts/install-msix-test.ps1 -VerifyOnly -ProbeUserDefaults -OpenDefaultApps
 ```
 
 Then manually confirm:
@@ -31,7 +31,9 @@ Then manually confirm:
 | Reboot + `-VerifyOnly` (optional) | Associations still present | Log snippet |
 
 When all pass, update FEATURE_MATRIX F01-06/07 from Deferred → Tested with this
-checklist date and attach paths under `docs/proof/` (or PR description links).
+checklist date and attach paths under [`docs/proof/`](proof/README.md) (or PR description links).
+`-ProbeUserDefaults` prints HKCU `UserChoice` ProgIds (informational); `-OpenDefaultApps`
+opens Settings → Default apps.
 
 ## 2. M1 shell screenshot
 

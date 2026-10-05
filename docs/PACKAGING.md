@@ -18,7 +18,7 @@ Open, drag-drop, and recent files work unpackaged. Explorer double-click / defau
 1. **Single-project MSIX** — `src/Glyph.App/Package.appxmanifest` + conditional `GenerateAppxPackageOnBuild` when `-p:GlyphPackage=MSIX`.
 2. **File type declarations** — `uap:FileTypeAssociation` for `.pdf` and common image extensions (`PackageFileAssociationDeclaration`).
 3. **CI package** — Windows workflow publishes test-signed `Glyph.App_*.msix` + `Glyph.CI.TestSign.cer` (artifact `glyph-msix-layout`).
-4. **Sideload helper** — `scripts/install-msix-test.ps1` trusts the CI cert, runs `Add-AppxPackage`, and probes installed `uap:FileType` entries (`-VerifyOnly` supported).
+4. **Sideload helper** — `scripts/install-msix-test.ps1` trusts the CI cert, runs `Add-AppxPackage`, and probes installed `uap:FileType` entries (`-VerifyOnly`, `-ProbeUserDefaults`, `-OpenDefaultApps` supported).
 
 ## Publish (Windows)
 
@@ -39,7 +39,7 @@ On a machine with **Developer Mode** enabled:
 ```powershell
 ./scripts/install-msix-test.ps1 -PackageDir artifacts/msix -Force
 # later / without reinstall:
-./scripts/install-msix-test.ps1 -VerifyOnly
+./scripts/install-msix-test.ps1 -VerifyOnly -ProbeUserDefaults -OpenDefaultApps
 ```
 
 Then manually confirm:
