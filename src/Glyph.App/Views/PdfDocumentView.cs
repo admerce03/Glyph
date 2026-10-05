@@ -84,6 +84,10 @@ public sealed class PdfDocumentView : UserControl
     private bool _inkMode;
     private bool _highlightMode;
     private PdfAnnotationColor _highlightModeColor = PdfAnnotationColor.YellowHighlight;
+    private bool _formOverlayMode;
+    private IReadOnlyList<PdfFormFieldInfo> _formOverlayFields = [];
+    private int _formOverlayFocusIndex = -1;
+    private readonly List<FrameworkElement> _formOverlayVisuals = [];
     private bool _signatureMode;
     private bool _inkDrawing;
     private int _inkPageIndex = -1;
@@ -96,6 +100,7 @@ public sealed class PdfDocumentView : UserControl
     private FrameworkElement? _shapePreview;
     private Button? _inkButton;
     private Button? _highlightButton;
+    private Button? _formButton;
     private Button? _signButton;
     private Button? _rectButton;
     private Button? _ellipseButton;
@@ -343,6 +348,7 @@ public sealed class PdfDocumentView : UserControl
         _signButton = sign;
         _inkButton = ink;
         _highlightButton = highlight;
+        _formButton = formFill;
         _rectButton = rect;
         _ellipseButton = ellipse;
         _lineButton = line;
@@ -367,7 +373,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(textBox, "Add a FreeText text box on the current page");
         ToolTipService.SetToolTip(flatten, "Flatten annotations into page content (permanent)");
         ToolTipService.SetToolTip(sign, "Signature: draw with mouse or import PNG/JPEG (saved to library)");
-        ToolTipService.SetToolTip(formFill, "List and fill AcroForm fields (Tab order)");
+        ToolTipService.SetToolTip(formFill, "Form fill: overlay mode or field list (Tab order)");
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
         ToolTipService.SetToolTip(rect, "Draw a rectangle annotation");
         ToolTipService.SetToolTip(ellipse, "Draw an ellipse annotation");
@@ -422,7 +428,7 @@ public sealed class PdfDocumentView : UserControl
         textBox.Click += async (_, _) => await AddTextBoxAsync();
         flatten.Click += async (_, _) => await FlattenAnnotationsAsync();
         sign.Click += async (_, _) => await BeginSignatureAsync();
-        formFill.Click += async (_, _) => await EditFormFieldsAsync();
+        formFill.Click += async (_, _) => await OnFormButtonClickAsync();
         ink.Click += (_, _) => ToggleInkMode();
         rect.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Rectangle);
         ellipse.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Ellipse);
@@ -1078,6 +1084,32 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (_formOverlayMode && e.Key == VirtualKey.Escape)
+        {
+            ClearFormOverlayMode();
+            RefreshToolButtonChrome();
+            _status.Text = "Form overlay off.";
+            e.Handled = true;
+            return;
+        }
+
+        if (_formOverlayMode && e.Key == VirtualKey.Tab)
+        {
+            var shiftDownTab = Microsoft.UI.Input.InputKeyboardSource
+                .GetKeyStateForCurrentThread(VirtualKey.Shift)
+                .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+            await MoveFormOverlayFocusAsync(forward: !shiftDownTab);
+            e.Handled = true;
+            return;
+        }
+
+        if (_formOverlayMode && e.Key == VirtualKey.Enter)
+        {
+            await EditFocusedFormOverlayFieldAsync();
+            e.Handled = true;
+            return;
+        }
+
         if (_cropMode && e.Key == VirtualKey.Enter)
         {
             await ApplyCropModeAsync();
@@ -1347,6 +1379,24 @@ public sealed class PdfDocumentView : UserControl
             if (pageIndex == _cropPageIndex)
             {
                 BeginCropPointerDrag(border, e);
+            }
+
+            e.Handled = true;
+            return;
+        }
+
+        if (_formOverlayMode)
+        {
+            var formPage = _document.GetPage(pageIndex);
+            var formPoint = e.GetCurrentPoint(border).Position;
+            var formPdfX = formPoint.X / _scale;
+            var formPdfY = formPage.HeightPoints - (formPoint.Y / _scale);
+            var formHit = HitTestFormOverlayField(pageIndex, formPdfX, formPdfY);
+            if (formHit is not null)
+            {
+                _ = EditFormOverlayFieldAsync(formHit);
+                e.Handled = true;
+                return;
             }
 
             e.Handled = true;
@@ -2440,6 +2490,10 @@ public sealed class PdfDocumentView : UserControl
         ClearShapeMode();
         ClearSignatureMode();
         ClearHighlightMode();
+        if (_formOverlayMode)
+        {
+            ClearFormOverlayMode();
+        }
         _inkMode = !_inkMode;
         if (!_inkMode)
         {
@@ -2468,6 +2522,10 @@ public sealed class PdfDocumentView : UserControl
 
         ClearSignatureMode();
         ClearHighlightMode();
+        if (_formOverlayMode)
+        {
+            ClearFormOverlayMode();
+        }
 
         if (_shapeMode == kind)
         {
@@ -2522,6 +2580,11 @@ public sealed class PdfDocumentView : UserControl
         if (_highlightButton is not null)
         {
             _highlightButton.Background = _highlightMode ? active : null;
+        }
+
+        if (_formButton is not null)
+        {
+            _formButton.Background = _formOverlayMode ? active : null;
         }
 
         if (_signButton is not null)
@@ -2906,6 +2969,10 @@ public sealed class PdfDocumentView : UserControl
     {
         ClearShapeMode();
         ClearHighlightMode();
+        if (_formOverlayMode)
+        {
+            ClearFormOverlayMode();
+        }
         if (_inkMode)
         {
             _inkMode = false;
@@ -3084,6 +3151,245 @@ public sealed class PdfDocumentView : UserControl
         }
     }
 
+    private async Task OnFormButtonClickAsync()
+    {
+        if (_formOverlayMode)
+        {
+            ClearFormOverlayMode();
+            RefreshToolButtonChrome();
+            _status.Text = "Form overlay off.";
+            return;
+        }
+
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for form dialog.");
+
+        if (!await _forms.HasFormAsync(_document))
+        {
+            _status.Text = "No AcroForm fields in this document.";
+            return;
+        }
+
+        var chooser = new ContentDialog
+        {
+            Title = "Form fill",
+            Content = "Overlay draws clickable field boxes on the page. List opens the classic field picker.",
+            PrimaryButtonText = "Overlay",
+            SecondaryButtonText = "List fields",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        var choice = await chooser.ShowAsync();
+        if (choice == ContentDialogResult.Primary)
+        {
+            await BeginFormOverlayModeAsync();
+            return;
+        }
+
+        if (choice == ContentDialogResult.Secondary)
+        {
+            await EditFormFieldsAsync();
+        }
+    }
+
+    private async Task BeginFormOverlayModeAsync()
+    {
+        ClearShapeMode();
+        ClearSignatureMode();
+        ClearHighlightMode();
+        if (_inkMode)
+        {
+            _inkMode = false;
+            CancelInkStroke();
+        }
+
+        if (_cropMode)
+        {
+            CancelCropMode();
+        }
+
+        var fields = await _forms.ListFieldsAsync(_document);
+        if (fields.Count == 0)
+        {
+            _status.Text = "AcroForm present but no widget fields found.";
+            return;
+        }
+
+        _formOverlayMode = true;
+        _formOverlayFields = fields;
+        _formOverlayFocusIndex = 0;
+        RefreshToolButtonChrome();
+        DrawFormOverlays();
+        await GoToPageAsync(fields[0].PageIndex, recordHistory: true);
+        _status.Text = "Form overlay on — click a field, Tab/Shift+Tab to move, Enter to edit, Esc to exit.";
+    }
+
+    private void ClearFormOverlayMode()
+    {
+        _formOverlayMode = false;
+        _formOverlayFields = [];
+        _formOverlayFocusIndex = -1;
+        ClearFormOverlayVisuals();
+    }
+
+    private void ClearFormOverlayVisuals()
+    {
+        foreach (var visual in _formOverlayVisuals)
+        {
+            if (visual.Parent is Canvas canvas)
+            {
+                canvas.Children.Remove(visual);
+            }
+        }
+
+        _formOverlayVisuals.Clear();
+    }
+
+    private void DrawFormOverlays()
+    {
+        ClearFormOverlayVisuals();
+        if (!_formOverlayMode || _formOverlayFields.Count == 0)
+        {
+            return;
+        }
+
+        for (var i = 0; i < _formOverlayFields.Count; i++)
+        {
+            var field = _formOverlayFields[i];
+            if (!_pageOverlays.TryGetValue(field.PageIndex, out var overlay))
+            {
+                continue;
+            }
+
+            var page = _document.GetPage(field.PageIndex);
+            var b = field.Bounds;
+            var left = b.Left * _scale;
+            var top = (page.HeightPoints - b.Top) * _scale;
+            var width = Math.Max(4, (b.Right - b.Left) * _scale);
+            var height = Math.Max(4, (b.Top - b.Bottom) * _scale);
+            var focused = i == _formOverlayFocusIndex;
+            var rect = new Microsoft.UI.Xaml.Shapes.Rectangle
+            {
+                Width = width,
+                Height = height,
+                Stroke = new SolidColorBrush(focused ? Colors.Orange : Colors.DodgerBlue),
+                StrokeThickness = focused ? 2.5 : 1.5,
+                Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(
+                    focused ? (byte)70 : (byte)40,
+                    30,
+                    144,
+                    255)),
+                IsHitTestVisible = false,
+                Tag = field,
+            };
+            Canvas.SetLeft(rect, left);
+            Canvas.SetTop(rect, top);
+            overlay.Children.Add(rect);
+            _formOverlayVisuals.Add(rect);
+
+            var label = new TextBlock
+            {
+                Text = string.IsNullOrWhiteSpace(field.Name) ? field.Kind.ToString() : field.Name,
+                FontSize = 11,
+                Foreground = new SolidColorBrush(Colors.DodgerBlue),
+                IsHitTestVisible = false,
+            };
+            Canvas.SetLeft(label, left + 2);
+            Canvas.SetTop(label, Math.Max(0, top - 14));
+            overlay.Children.Add(label);
+            _formOverlayVisuals.Add(label);
+        }
+    }
+
+    private PdfFormFieldInfo? HitTestFormOverlayField(int pageIndex, double pdfX, double pdfY)
+    {
+        for (var i = _formOverlayFields.Count - 1; i >= 0; i--)
+        {
+            var field = _formOverlayFields[i];
+            if (field.PageIndex != pageIndex)
+            {
+                continue;
+            }
+
+            var b = field.Bounds;
+            if (pdfX >= b.Left && pdfX <= b.Right && pdfY >= b.Bottom && pdfY <= b.Top)
+            {
+                _formOverlayFocusIndex = i;
+                DrawFormOverlays();
+                return field;
+            }
+        }
+
+        return null;
+    }
+
+    private async Task MoveFormOverlayFocusAsync(bool forward)
+    {
+        if (_formOverlayFields.Count == 0)
+        {
+            return;
+        }
+
+        var current = _formOverlayFocusIndex >= 0 && _formOverlayFocusIndex < _formOverlayFields.Count
+            ? _formOverlayFields[_formOverlayFocusIndex]
+            : _formOverlayFields[0];
+
+        var next = await _forms.FocusAdjacentAsync(
+            _document,
+            current.PageIndex,
+            current.AnnotIndex,
+            forward);
+        if (next is null)
+        {
+            return;
+        }
+
+        var nextIndex = _formOverlayFields.ToList().FindIndex(
+            f => f.PageIndex == next.PageIndex && f.AnnotIndex == next.AnnotIndex);
+        if (nextIndex < 0)
+        {
+            return;
+        }
+
+        _formOverlayFocusIndex = nextIndex;
+        DrawFormOverlays();
+        await GoToPageAsync(next.PageIndex, recordHistory: true);
+        _status.Text = $"Focused {next.Name} ({next.Kind}).";
+    }
+
+    private async Task EditFocusedFormOverlayFieldAsync()
+    {
+        if (_formOverlayFocusIndex < 0 || _formOverlayFocusIndex >= _formOverlayFields.Count)
+        {
+            _status.Text = "No form field focused.";
+            return;
+        }
+
+        await EditFormOverlayFieldAsync(_formOverlayFields[_formOverlayFocusIndex]);
+    }
+
+    private async Task EditFormOverlayFieldAsync(PdfFormFieldInfo field)
+    {
+        var changed = await TryEditFormFieldAsync(field);
+        if (!changed)
+        {
+            return;
+        }
+
+        _formOverlayFields = await _forms.ListFieldsAsync(_document);
+        if (_formOverlayFocusIndex >= _formOverlayFields.Count)
+        {
+            _formOverlayFocusIndex = Math.Max(0, _formOverlayFields.Count - 1);
+        }
+
+        _cache.ClearDocument(_documentKey);
+        await RenderVisibleAsync();
+        DrawFormOverlays();
+    }
+
     private async Task EditFormFieldsAsync()
     {
         var window = _ownerWindow
@@ -3163,200 +3469,197 @@ public sealed class PdfDocumentView : UserControl
                 continue;
             }
 
-            // Edit
-            if (field.Kind == PdfFormFieldKind.RadioButton)
+            var changed = await TryEditFormFieldAsync(field);
+            if (!changed)
             {
-                var currentlyOn = !string.Equals(field.Value, "Off", StringComparison.OrdinalIgnoreCase)
-                    && !string.IsNullOrEmpty(field.Value);
-                var select = new ContentDialog
-                {
-                    Title = field.Name,
-                    Content = currentlyOn
-                        ? $"Radio is selected (\"{field.Value}\")."
-                        : "Radio is not selected. Selecting it turns off siblings in this group.",
-                    PrimaryButtonText = currentlyOn ? "OK" : "Select",
-                    CloseButtonText = currentlyOn ? "Close" : "Cancel",
-                    DefaultButton = ContentDialogButton.Primary,
-                    XamlRoot = window.Content.XamlRoot,
-                };
-
-                var radioResult = await select.ShowAsync();
-                if (currentlyOn || radioResult != ContentDialogResult.Primary)
-                {
-                    continue;
-                }
-
-                try
-                {
-                    await _forms.SetRadioButtonAsync(
-                        _document,
-                        field.PageIndex,
-                        field.AnnotIndex);
-                    fields = await _forms.ListFieldsAsync(_document);
-                    list.ItemsSource = fields
-                        .Select(f => $"{f.TabOrder + 1}. {f.Name} ({f.Kind}) = \"{f.Value}\"")
-                        .ToList();
-                    list.SelectedIndex = Math.Clamp(index, 0, fields.Count - 1);
-                    _cache.ClearDocument(_documentKey);
-                    await RenderVisibleAsync();
-                    _status.Text = $"Selected radio {field.Name}.";
-                }
-                catch (Exception ex)
-                {
-                    _status.Text = "Form fill failed: " + ex.Message;
-                }
-
                 continue;
             }
 
-            if (field.Kind == PdfFormFieldKind.CheckBox)
+            fields = await _forms.ListFieldsAsync(_document);
+            list.ItemsSource = fields
+                .Select(f => $"{f.TabOrder + 1}. {f.Name} ({f.Kind}) = \"{f.Value}\"")
+                .ToList();
+            list.SelectedIndex = Math.Clamp(index, 0, Math.Max(0, fields.Count - 1));
+            _cache.ClearDocument(_documentKey);
+            await RenderVisibleAsync();
+        }
+    }
+
+    /// <summary>
+    /// Opens the appropriate edit UI for one field. Returns true when the document was modified.
+    /// </summary>
+    private async Task<bool> TryEditFormFieldAsync(PdfFormFieldInfo field)
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for form dialog.");
+
+        if (field.Kind == PdfFormFieldKind.RadioButton)
+        {
+            var currentlyOn = !string.Equals(field.Value, "Off", StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrEmpty(field.Value);
+            var select = new ContentDialog
             {
-                var currentlyOn = !string.Equals(field.Value, "Off", StringComparison.OrdinalIgnoreCase)
-                    && !string.IsNullOrEmpty(field.Value);
-                var toggle = new ContentDialog
-                {
-                    Title = field.Name,
-                    Content = currentlyOn ? "Checkbox is checked." : "Checkbox is unchecked.",
-                    PrimaryButtonText = currentlyOn ? "Uncheck" : "Check",
-                    CloseButtonText = "Cancel",
-                    DefaultButton = ContentDialogButton.Primary,
-                    XamlRoot = window.Content.XamlRoot,
-                };
-
-                if (await toggle.ShowAsync() != ContentDialogResult.Primary)
-                {
-                    continue;
-                }
-
-                try
-                {
-                    await _forms.SetCheckBoxAsync(
-                        _document,
-                        field.PageIndex,
-                        field.AnnotIndex,
-                        isChecked: !currentlyOn);
-                    fields = await _forms.ListFieldsAsync(_document);
-                    list.ItemsSource = fields
-                        .Select(f => $"{f.TabOrder + 1}. {f.Name} ({f.Kind}) = \"{f.Value}\"")
-                        .ToList();
-                    list.SelectedIndex = Math.Clamp(index, 0, fields.Count - 1);
-                    _cache.ClearDocument(_documentKey);
-                    await RenderVisibleAsync();
-                    _status.Text = $"Updated {field.Name}.";
-                }
-                catch (Exception ex)
-                {
-                    _status.Text = "Form fill failed: " + ex.Message;
-                }
-
-                continue;
-            }
-
-            if (field.Kind is PdfFormFieldKind.ComboBox or PdfFormFieldKind.ListBox)
-            {
-                var options = field.ChoiceOptions;
-                if (options.Count > 0)
-                {
-                    var choiceList = new ListView
-                    {
-                        Height = 220,
-                        SelectionMode = ListViewSelectionMode.Single,
-                        ItemsSource = options.ToList(),
-                    };
-                    var selected = options.ToList().FindIndex(o => o == field.Value);
-                    choiceList.SelectedIndex = selected >= 0 ? selected : 0;
-                    var pick = new ContentDialog
-                    {
-                        Title = $"Select {field.Name}",
-                        Content = choiceList,
-                        PrimaryButtonText = "Apply",
-                        CloseButtonText = "Cancel",
-                        DefaultButton = ContentDialogButton.Primary,
-                        XamlRoot = window.Content.XamlRoot,
-                    };
-
-                    if (await pick.ShowAsync() != ContentDialogResult.Primary)
-                    {
-                        continue;
-                    }
-
-                    var choice = choiceList.SelectedItem as string ?? field.Value;
-                    try
-                    {
-                        await _forms.SetTextValueAsync(
-                            _document,
-                            field.PageIndex,
-                            field.AnnotIndex,
-                            choice);
-                        fields = await _forms.ListFieldsAsync(_document);
-                        list.ItemsSource = fields
-                            .Select(f => $"{f.TabOrder + 1}. {f.Name} ({f.Kind}) = \"{f.Value}\"")
-                            .ToList();
-                        list.SelectedIndex = Math.Clamp(index, 0, fields.Count - 1);
-                        _cache.ClearDocument(_documentKey);
-                        await RenderVisibleAsync();
-                        _status.Text = $"Updated {field.Name}.";
-                    }
-                    catch (Exception ex)
-                    {
-                        _status.Text = "Form fill failed: " + ex.Message;
-                    }
-
-                    continue;
-                }
-            }
-
-            if (field.Kind is not (PdfFormFieldKind.TextField
-                or PdfFormFieldKind.ComboBox
-                or PdfFormFieldKind.ListBox))
-            {
-                _status.Text = $"Editing {field.Kind} fields is not supported yet.";
-                continue;
-            }
-
-            var box = new TextBox
-            {
-                Text = field.Value,
-                AcceptsReturn = field.Kind == PdfFormFieldKind.TextField,
-                TextWrapping = TextWrapping.Wrap,
-                Height = 100,
-                PlaceholderText = field.Name,
+                Title = field.Name,
+                Content = currentlyOn
+                    ? $"Radio is selected (\"{field.Value}\")."
+                    : "Radio is not selected. Selecting it turns off siblings in this group.",
+                PrimaryButtonText = currentlyOn ? "OK" : "Select",
+                CloseButtonText = currentlyOn ? "Close" : "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = window.Content.XamlRoot,
             };
-            var edit = new ContentDialog
+
+            var radioResult = await select.ShowAsync();
+            if (currentlyOn || radioResult != ContentDialogResult.Primary)
             {
-                Title = $"Edit {field.Name}",
-                Content = box,
-                PrimaryButtonText = "Save",
+                return false;
+            }
+
+            try
+            {
+                await _forms.SetRadioButtonAsync(
+                    _document,
+                    field.PageIndex,
+                    field.AnnotIndex);
+                _status.Text = $"Selected radio {field.Name}.";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _status.Text = "Form fill failed: " + ex.Message;
+                return false;
+            }
+        }
+
+        if (field.Kind == PdfFormFieldKind.CheckBox)
+        {
+            var currentlyOn = !string.Equals(field.Value, "Off", StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrEmpty(field.Value);
+            var toggle = new ContentDialog
+            {
+                Title = field.Name,
+                Content = currentlyOn ? "Checkbox is checked." : "Checkbox is unchecked.",
+                PrimaryButtonText = currentlyOn ? "Uncheck" : "Check",
                 CloseButtonText = "Cancel",
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = window.Content.XamlRoot,
             };
 
-            if (await edit.ShowAsync() != ContentDialogResult.Primary)
+            if (await toggle.ShowAsync() != ContentDialogResult.Primary)
             {
-                continue;
+                return false;
             }
 
             try
             {
-                await _forms.SetTextValueAsync(
+                await _forms.SetCheckBoxAsync(
                     _document,
                     field.PageIndex,
                     field.AnnotIndex,
-                    box.Text ?? string.Empty);
-                fields = await _forms.ListFieldsAsync(_document);
-                list.ItemsSource = fields
-                    .Select(f => $"{f.TabOrder + 1}. {f.Name} ({f.Kind}) = \"{f.Value}\"")
-                    .ToList();
-                list.SelectedIndex = Math.Clamp(index, 0, fields.Count - 1);
-                _cache.ClearDocument(_documentKey);
-                await RenderVisibleAsync();
+                    isChecked: !currentlyOn);
                 _status.Text = $"Updated {field.Name}.";
+                return true;
             }
             catch (Exception ex)
             {
                 _status.Text = "Form fill failed: " + ex.Message;
+                return false;
             }
+        }
+
+        if (field.Kind is PdfFormFieldKind.ComboBox or PdfFormFieldKind.ListBox)
+        {
+            var options = field.ChoiceOptions;
+            if (options.Count > 0)
+            {
+                var choiceList = new ListView
+                {
+                    Height = 220,
+                    SelectionMode = ListViewSelectionMode.Single,
+                    ItemsSource = options.ToList(),
+                };
+                var selected = options.ToList().FindIndex(o => o == field.Value);
+                choiceList.SelectedIndex = selected >= 0 ? selected : 0;
+                var pick = new ContentDialog
+                {
+                    Title = $"Select {field.Name}",
+                    Content = choiceList,
+                    PrimaryButtonText = "Apply",
+                    CloseButtonText = "Cancel",
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = window.Content.XamlRoot,
+                };
+
+                if (await pick.ShowAsync() != ContentDialogResult.Primary)
+                {
+                    return false;
+                }
+
+                var choice = choiceList.SelectedItem as string ?? field.Value;
+                try
+                {
+                    await _forms.SetTextValueAsync(
+                        _document,
+                        field.PageIndex,
+                        field.AnnotIndex,
+                        choice);
+                    _status.Text = $"Updated {field.Name}.";
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    _status.Text = "Form fill failed: " + ex.Message;
+                    return false;
+                }
+            }
+        }
+
+        if (field.Kind is not (PdfFormFieldKind.TextField
+            or PdfFormFieldKind.ComboBox
+            or PdfFormFieldKind.ListBox))
+        {
+            _status.Text = $"Editing {field.Kind} fields is not supported yet.";
+            return false;
+        }
+
+        var box = new TextBox
+        {
+            Text = field.Value,
+            AcceptsReturn = field.Kind == PdfFormFieldKind.TextField,
+            TextWrapping = TextWrapping.Wrap,
+            Height = 100,
+            PlaceholderText = field.Name,
+        };
+        var edit = new ContentDialog
+        {
+            Title = $"Edit {field.Name}",
+            Content = box,
+            PrimaryButtonText = "Save",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await edit.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return false;
+        }
+
+        try
+        {
+            await _forms.SetTextValueAsync(
+                _document,
+                field.PageIndex,
+                field.AnnotIndex,
+                box.Text ?? string.Empty);
+            _status.Text = $"Updated {field.Name}.";
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Form fill failed: " + ex.Message;
+            return false;
         }
     }
 
@@ -4825,8 +5128,12 @@ public sealed class PdfDocumentView : UserControl
         {
             _renderGate.Release();
         }
-    }
 
+        if (_formOverlayMode)
+        {
+            DrawFormOverlays();
+        }
+    }
     private async Task RenderThumbnailsAsync()
     {
         for (var i = 0; i < _document.PageCount; i++)
