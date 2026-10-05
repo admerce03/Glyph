@@ -205,6 +205,7 @@ public sealed class JsonSettingsStore : ISettingsStore
         OpenFilesInSeparateWindows = settings.OpenFilesInSeparateWindows,
         AnnotationAuthor = settings.AnnotationAuthor ?? string.Empty,
         CompactToolbar = settings.CompactToolbar,
+        ToolbarVisible = settings.ToolbarVisible,
         ToolbarHiddenCommands = settings.ToolbarHiddenCommands?.ToList() ?? [],
         ToolbarCommandOrder = settings.ToolbarCommandOrder?.ToList() ?? [],
         ShortcutOverrides = settings.ShortcutOverrides is null

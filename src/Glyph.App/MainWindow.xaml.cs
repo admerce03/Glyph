@@ -169,6 +169,7 @@ public sealed partial class MainWindow : Window
     {
         ApplyThemePreference(_settingsStore.Current.Theme);
         ApplySidebarVisibility(_settingsStore.Current.SidebarVisible);
+        ToggleToolbarMenuItem.Text = ToolbarVisibilityLabel.For(_settingsStore.Current.ToolbarVisible);
         RefreshRecentList();
         UpdateEmptyState();
         StatusText.Text = AppShellStatus.FormatReady(OpenEntryPoints.Catalog[0]);
@@ -525,23 +526,36 @@ public sealed partial class MainWindow : Window
         await _settingsStore.SaveAsync(settings);
     }
 
-    private void ToggleToolbarMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void ToggleToolbarMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (DocumentTabs.SelectedItem is TabViewItem { Content: PdfDocumentView pdfView })
+        if (DocumentTabs.TabItems.Count == 0)
         {
-            pdfView.ToggleToolbarVisibility();
-            ToggleToolbarMenuItem.Text = ToolbarVisibilityLabel.For(pdfView.IsToolbarVisible);
+            StatusText.Text = AppShellStatus.OpenDocumentToToggleToolbar;
             return;
         }
 
-        if (DocumentTabs.SelectedItem is TabViewItem { Content: ImageDocumentView imageView })
-        {
-            imageView.ToggleToolbarVisibility();
-            ToggleToolbarMenuItem.Text = ToolbarVisibilityLabel.For(imageView.IsToolbarVisible);
-            return;
-        }
+        var visible = !_settingsStore.Current.ToolbarVisible;
+        ApplyToolbarVisibilityToOpenDocuments(visible);
+        var settings = _settingsStore.Current;
+        settings.ToolbarVisible = visible;
+        await _settingsStore.SaveAsync(settings);
+        ToggleToolbarMenuItem.Text = ToolbarVisibilityLabel.For(visible);
+    }
 
-        StatusText.Text = AppShellStatus.OpenDocumentToToggleToolbar;
+    private void ApplyToolbarVisibilityToOpenDocuments(bool visible)
+    {
+        foreach (var tab in DocumentTabs.TabItems.OfType<TabViewItem>())
+        {
+            switch (tab.Content)
+            {
+                case PdfDocumentView pdfView:
+                    pdfView.SetToolbarVisible(visible);
+                    break;
+                case ImageDocumentView imageView:
+                    imageView.SetToolbarVisible(visible);
+                    break;
+            }
+        }
     }
 
     private void FullscreenMenuItem_Click(object sender, RoutedEventArgs e) => ToggleFullscreen();
@@ -748,6 +762,7 @@ public sealed partial class MainWindow : Window
             StatusText.Text = _workspace.ActiveDocument?.Path ?? _workspace.ActiveDocument?.DisplayName ?? AppShellStatus.Ready;
         }
 
+        ToggleToolbarMenuItem.Text = ToolbarVisibilityLabel.For(_settingsStore.Current.ToolbarVisible);
         UpdateEmptyState();
     }
 
