@@ -1,7 +1,6 @@
 using Glyph.Core.Documents;
 using Glyph.Imaging.Abstractions;
 using Glyph.Pdf.Abstractions;
-using Glyph.Pdf.Rendering;
 
 namespace Glyph.App.Pdf;
 
