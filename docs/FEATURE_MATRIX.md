@@ -94,8 +94,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-15 | PDF viewing | Go to page. | M2 | Tested | Goto box (# + Enter); `PageGotoParser.TryParseZeroBased` |
 | F04-16 | PDF viewing | Previous page. | M2 | Tested | Prev / Page Up; `PageLayoutCalculator.PreviousPageIndex` unit tests |
 | F04-17 | PDF viewing | Next page. | M2 | Tested | Next / Page Down; `PageLayoutCalculator.NextPageIndex` unit tests |
-| F04-18 | PDF viewing | First page. | M2 | Implemented | First button / Home |
-| F04-19 | PDF viewing | Last page. | M2 | Implemented | Last button / End |
+| F04-18 | PDF viewing | First page. | M2 | Tested | First / Home; `PageLayoutCalculator.FirstPageIndex` unit tests |
+| F04-19 | PDF viewing | Last page. | M2 | Tested | Last / End; `PageLayoutCalculator.LastPageIndex` unit tests |
 | F04-20 | PDF viewing | Mouse-wheel scrolling. | M2 | Implemented | ScrollViewer wheel scrolling |
 | F04-21 | PDF viewing | Page Up/Page Down navigation. | M2 | Implemented | Key handlers in viewer |
 | F04-22 | PDF viewing | Fit page. | M2 | Tested | `PdfZoomCalculator.FitPage` + toolbar |

@@ -911,8 +911,12 @@ public sealed class PdfDocumentView : UserControl
             expandNote, collapseNote, exportNotes, underlineAnnot, colorAnnot, fillAnnot, tipAnnot,
             groupAnnot, ungroupAnnot, opacityAnnot, widthAnnot, rotateAnnot);
 
-        first.Click += async (_, _) => await GoToPageAsync(0, recordHistory: true);
-        last.Click += async (_, _) => await GoToPageAsync(_document.PageCount - 1, recordHistory: true);
+        first.Click += async (_, _) => await GoToPageAsync(
+            PageLayoutCalculator.FirstPageIndex(_layoutMode, _document.PageCount),
+            recordHistory: true);
+        last.Click += async (_, _) => await GoToPageAsync(
+            PageLayoutCalculator.LastPageIndex(_layoutMode, _document.PageCount),
+            recordHistory: true);
         prev.Click += async (_, _) => await GoToPageAsync(
             PageLayoutCalculator.PreviousPageIndex(_layoutMode, CurrentPageIndex, _document.PageCount),
             recordHistory: true);
@@ -2322,11 +2326,15 @@ public sealed class PdfDocumentView : UserControl
                 e.Handled = true;
                 break;
             case VirtualKey.Home:
-                await GoToPageAsync(0, recordHistory: true);
+                await GoToPageAsync(
+                    PageLayoutCalculator.FirstPageIndex(_layoutMode, _document.PageCount),
+                    recordHistory: true);
                 e.Handled = true;
                 break;
             case VirtualKey.End:
-                await GoToPageAsync(_document.PageCount - 1, recordHistory: true);
+                await GoToPageAsync(
+                    PageLayoutCalculator.LastPageIndex(_layoutMode, _document.PageCount),
+                    recordHistory: true);
                 e.Handled = true;
                 break;
         }
