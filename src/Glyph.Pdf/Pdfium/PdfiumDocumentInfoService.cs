@@ -56,7 +56,7 @@ public sealed class PdfiumDocumentInfoService : IPdfDocumentInfoService
                     Creator: update.Creator ?? current.Creator ?? string.Empty,
                     Producer: update.Producer ?? current.Producer ?? string.Empty,
                     CreationDate: current.CreationDate,
-                    ModDate: FormatPdfDate(DateTimeOffset.Now));
+                    ModDate: PdfDateFormat.Format(DateTimeOffset.Now));
 
             // Full rewrite first so trailer/startxref parsing is stable, then append Info update.
             var baseBytes = PdfiumDocumentSaver.SaveToBytes(pdfium.Handle, flags: 2);
@@ -64,9 +64,6 @@ public sealed class PdfiumDocumentInfoService : IPdfDocumentInfoService
             pdfium.ReplaceFromBytes(patched);
         }
     }
-
-    private static string FormatPdfDate(DateTimeOffset value) =>
-        "D:" + value.ToString("yyyyMMddHHmmss", System.Globalization.CultureInfo.InvariantCulture);
 
     public IReadOnlyList<PdfEmbeddedAttachmentInfo> ListAttachments(IPdfDocument document)
     {

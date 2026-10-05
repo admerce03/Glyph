@@ -281,7 +281,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F15-08 | Notes | Delete. | M4 | Tested | Sidebar Delete → `RemoveAsync`; markup remove unit test |
 | F15-09 | Notes | Show note author. | M4 | Tested | Sidebar label `/T`; `PdfAnnotationListLabel` author unit test |
 | F15-10 | Notes | Configurable annotation author name. | M4 | Tested | Author button + sticky `/T`; prefs `AnnotationAuthor` round-trip (F55-10) |
-| F15-11 | Notes | Optional date/time metadata. | M4 | Implemented | Sticky notes set `/CreationDate` and `/M` on create |
+| F15-11 | Notes | Optional date/time metadata. | M4 | Tested | Sticky notes set `/CreationDate` and `/M`; `PdfDateFormat` unit tests |
 | F15-12 | Notes | Show all notes in sidebar. | M4 | Tested | Annotations list; `PdfAnnotationListLabel` Note format + ListAsync |
 | F15-13 | Notes | Print notes optionally. | M4 | Tested | Annotations → Export notes → printable `.txt`; `PdfNotesExportTests` |
 | F16-01 | Text boxes and callouts | Add text box anywhere. | M4 | Tested | `AddTextBoxAsync` + TextBox toolbar |
@@ -445,9 +445,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-20 | Image viewing | slideshow | M5 | Tested | 3s folder loop; Esc stops; `SlideshowPolicy` unit tests |
 | F26-21 | Image viewing | drag-and-drop navigation | M5 | Tested | Shell drop + horizontal swipe; `ImageSwipeNavigation` unit tests |
 | F26-22 | Image viewing | high-resolution image support | M5 | Tested | Progressive maxEdge decode up to 8192; `DecodeTargetEdge` unit tests |
-| F26-23 | Image viewing | alpha transparency | M5 | Implemented | BGRA32 decode via Magick → WriteableBitmap |
+| F26-23 | Image viewing | alpha transparency | M5 | Tested | BGRA32 decode via Magick → WriteableBitmap; MagickBgraWriteTests |
 | F26-24 | Image viewing | HDR display where Windows/display stack supports it | M5 | Deferred | Needs WinUI HDR display pipeline; revisit with F39 |
-| F26-25 | Image viewing | color-managed display | M5 | Implemented | Via M8 F39-02: GetPixelsAsync ICC→sRGB (Meta toggle) |
+| F26-25 | Image viewing | color-managed display | M5 | Tested | Via F39-02: GetPixelsAsync ICC→sRGB; MagickColorManagedDisplayTests |
 | F27-01 | Animated images | play | M8 | Tested | Play uses frame delays + `NextPlaybackFrame` advance |
 | F27-02 | Animated images | pause | M8 | Tested | Pause + Esc; `AnimationFrameNav.Paused` unit tests |
 | F27-03 | Animated images | restart | M8 | Tested | Restart → frame 0 + play; `AnimationFrameNav.Restarted` |
@@ -461,7 +461,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F28-01 | Image selection tools | Rectangular selection. | M5 | Tested | Select toolbar → drag rectangle; `ImageSelectionGeometry.ContainsInRect` |
 | F28-02 | Image selection tools | Elliptical selection. | M5 | Tested | Select → Ellipse shape; extract/clear/move use oval mask |
 | F28-03 | Image selection tools | Freeform lasso. | M5 | Tested | Select → Lasso drag polyline; extract/clear/move use polygon mask |
-| F28-04 | Image selection tools | Smart lasso. | M5 | Implemented | Select → Smart; edge-snapping polyline (Sobel), polygon mask |
+| F28-04 | Image selection tools | Smart lasso. | M5 | Tested | Select → Smart; Sobel snap; `ImageSmartLassoEdges` unit tests |
 | F28-05 | Image selection tools | Select all. | M5 | Tested | Select → All / Ctrl+A; `ImagePixelSelectionPolicy` unit tests |
 | F28-06 | Image selection tools | Invert selection. | M5 | Tested | Select → Invert; extract/clear apply outside mask |
 | F28-07 | Image selection tools | Deselect. | M5 | Tested | Deselect / Esc; `ImagePixelSelectionPolicy` unit tests |
@@ -471,8 +471,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F28-11 | Image selection tools | Paste. | M5 | Tested | Paste / Ctrl+V → `PasteRectAsync` at selection origin |
 | F28-12 | Image selection tools | Delete selection. | M5 | Tested | Del sel → `ClearRectAsync` transparent |
 | F28-13 | Image selection tools | Crop to selection. | M5 | Tested | Crop sel → `CropAsync`; `ImageCropSelectionPolicy` unit tests |
-| F29-01 | Smart object/background selection | Smart Lasso. | M8 | Implemented | Same as F28-04 edge-snapping Smart selection |
-| F29-02 | Smart object/background selection | Edge-aware selection. | M8 | Implemented | Sobel edge map in Smart lasso (F28-04) |
+| F29-01 | Smart object/background selection | Smart Lasso. | M8 | Tested | Same as F28-04; `ImageSmartLassoEdges` unit tests |
+| F29-02 | Smart object/background selection | Edge-aware selection. | M8 | Tested | Sobel edge map via `ImageSmartLassoEdges.ComputeSobel` |
 | F29-03 | Smart object/background selection | Background removal. | M8 | Tested | BG dialog → corner flood-fill + fuzz |
 | F29-04 | Smart object/background selection | Subject extraction. | M8 | Implemented | BG → Extract subject (clipboard or PNG) |
 | F29-05 | Smart object/background selection | Automatic subject detection. | M8 | Deferred | Needs on-device ML model; flood-fill covers solid BG |

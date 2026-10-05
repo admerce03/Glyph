@@ -201,7 +201,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                                 throw new InvalidOperationException("Failed to set sticky note author (/T).");
                             }
 
-                            var now = FormatPdfDate(DateTimeOffset.Now);
+                            var now = PdfDateFormat.Format(DateTimeOffset.Now);
                             _ = PdfiumAnnotStrings.SetString(annot, "CreationDate", now);
                             _ = PdfiumAnnotStrings.SetString(annot, "M", now);
 
@@ -2969,9 +2969,6 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             arrowheadStyle: arrowhead,
             cancellationToken).ConfigureAwait(false);
     }
-
-    private static string FormatPdfDate(DateTimeOffset value) =>
-        "D:" + value.ToString("yyyyMMddHHmmss");
 
     private static PdfiumDocument RequirePdfium(IPdfDocument document)
     {

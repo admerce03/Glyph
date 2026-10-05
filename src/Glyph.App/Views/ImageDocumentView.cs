@@ -2338,31 +2338,8 @@ public sealed class ImageDocumentView : UserControl
             var pixels = await _document.GetPixelsAsync(maxEdge: Math.Max(256, Math.Max(_displayWidth, _displayHeight)));
             var w = pixels.Width;
             var h = pixels.Height;
-            var data = pixels.BgraPixels;
-            var lum = new float[h, w];
-            for (var y = 0; y < h; y++)
-            {
-                for (var x = 0; x < w; x++)
-                {
-                    var i = ((y * w) + x) * 4;
-                    lum[y, x] = (data[i] * 0.114f) + (data[i + 1] * 0.587f) + (data[i + 2] * 0.299f);
-                }
-            }
-
-            var edges = new float[h, w];
-            for (var y = 1; y < h - 1; y++)
-            {
-                for (var x = 1; x < w - 1; x++)
-                {
-                    var gx = -lum[y - 1, x - 1] - (2 * lum[y, x - 1]) - lum[y + 1, x - 1]
-                        + lum[y - 1, x + 1] + (2 * lum[y, x + 1]) + lum[y + 1, x + 1];
-                    var gy = -lum[y - 1, x - 1] - (2 * lum[y - 1, x]) - lum[y - 1, x + 1]
-                        + lum[y + 1, x - 1] + (2 * lum[y + 1, x]) + lum[y + 1, x + 1];
-                    edges[y, x] = MathF.Sqrt((gx * gx) + (gy * gy));
-                }
-            }
-
-            _smartEdgeMap = edges;
+            var lum = ImageSmartLassoEdges.LuminanceFromBgra(pixels.BgraPixels, w, h);
+            _smartEdgeMap = ImageSmartLassoEdges.ComputeSobel(lum);
             _smartEdgeMapWidth = w;
             _smartEdgeMapHeight = h;
         }
@@ -2388,32 +2365,13 @@ public sealed class ImageDocumentView : UserControl
         var scaleY = _smartEdgeMapHeight / (double)_displayHeight;
         var cx = (int)Math.Round(point.X * scaleX);
         var cy = (int)Math.Round(point.Y * scaleY);
-        const int radius = 8;
-        var best = 0f;
-        var bestX = cx;
-        var bestY = cy;
-        for (var dy = -radius; dy <= radius; dy++)
-        {
-            for (var dx = -radius; dx <= radius; dx++)
-            {
-                var x = cx + dx;
-                var y = cy + dy;
-                if (x < 0 || y < 0 || x >= _smartEdgeMapWidth || y >= _smartEdgeMapHeight)
-                {
-                    continue;
-                }
+        var (bestX, bestY) = ImageSmartLassoEdges.FindStrongestEdge(
+            _smartEdgeMap,
+            cx,
+            cy,
+            ImageSmartLassoEdges.DefaultSnapRadius);
 
-                var strength = _smartEdgeMap[y, x];
-                if (strength > best)
-                {
-                    best = strength;
-                    bestX = x;
-                    bestY = y;
-                }
-            }
-        }
-
-        if (best < 12f)
+        if (_smartEdgeMap[bestY, bestX] < 12f)
         {
             return point;
         }
