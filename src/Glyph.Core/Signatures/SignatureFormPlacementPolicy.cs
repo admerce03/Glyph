@@ -2,7 +2,7 @@ namespace Glyph.Core.Signatures;
 
 /// <summary>
 /// Visual signature stamp placement into form signature widgets (F20-09).
-/// PKCS#7 cryptographically signed fields are out of scope pending ADR-015.
+/// PKCS#7 cryptographically signed fields are out of scope (visual stamps only).
 /// </summary>
 public static class SignatureFormPlacementPolicy
 {

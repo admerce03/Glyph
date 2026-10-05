@@ -419,7 +419,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | User bookmarks | §9 | M2/M4 | Tested (app-local + export to PDF `/Outlines`) |
 | PDF page manipulation | §10–12 | M3 | Tested (selection/reorder/insert/merge/split/crop/DnD/clipboard unit-covered; §11 screen recording pending) |
 | PDF annotations/markup | §13–19 | M4 | Tested |
-| PDF forms | §20 | M4 | Tested (visual sig stamps; PKCS#7 → ADR-015) |
+| PDF forms | §20 | M4 | Tested (visual sig stamps; PKCS#7 crypto signing out of scope) |
 | Redaction | §21 | M7 | Tested (mark/preview/apply + sanitize + confirm copy; password-write separate) |
 | Flattening | §22 | M4 | Tested (`FlattenAsync` / FPDFPage_Flatten) |
 | PDF security | §23 | M7 | Tested (open + info/permissions/advisory; write-protect → ADR-015) |
