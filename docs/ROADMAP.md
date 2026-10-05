@@ -297,8 +297,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - FreeText Align / `/Q` quadding via post-save dict patch (F13-38 / F16-15)
 - Bookmarks → PDF `/Outlines` export (F09-08)
 - Password-protect write blocked on ADR-015 (Needs approval)
-- Local polish (+180 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
-- FEATURE_MATRIX: no Implemented rows remain (F64-00 Tested); password-write / MSIX / HDR / ML still Blocked or Deferred
+- Local polish (+181 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
+- FEATURE_MATRIX: no Implemented/In Progress rows; Blocked = ADR-015 password-write; Deferred catalogs unit-tested (`PackagingDeferredPolicy`, `PdfOptimizeDeferredPolicy`, `ImageAdvancedDeferredPolicy`, …)
 - Print N-up/scale/rotate/center extracted to `PrintSheetLayout`; scroll throttle + presentation defaults unit-tested
 - Search result snippets unified via `PdfSearchSnippet` (F06-10)
 - Page drop accept/copy helpers + ink dash preview pattern extracted
@@ -374,7 +374,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Toolbar customization polish
 - Installer / MSIX / file associations finalize
 - Complete feature-spec audit against `FEATURE_MATRIX.md`
-- No silent drops: every requirement Implemented/Tested or Deferred with reason
+- No silent drops: every requirement Tested or Deferred/Blocked with reason
 
 ### Completion criteria
 
@@ -387,7 +387,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 - Prefs, toolbar customization, session restore, crash recovery, version snapshots, a11y Names, cold-start timing shipped in matrix
 - MSIX / file associations still Deferred (ADR-012)
-- Matrix: essentially no In Progress rows left; remaining Blocked = ADR-015 password-write; F64-00 is product framing
+- Matrix: no In Progress/Implemented rows; Blocked = ADR-015 (`PdfPasswordWriteBlockedPolicy`); Deferred ADR-012/016 + HDR/HEIF/ML/map catalogued
 
 ---
 
