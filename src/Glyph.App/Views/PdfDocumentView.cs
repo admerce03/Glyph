@@ -4132,7 +4132,7 @@ public sealed class PdfDocumentView : UserControl
         ShowSidebarMode(3); // Search results panel
 
         var ocrHits = PdfPageTextSearch.Find(_ocrPageTexts, query, _searchCaseSensitive);
-        var merged = MergeSearchHits(result.Hits, ocrHits);
+        var merged = PdfPageTextSearch.Merge(result.Hits, ocrHits);
         var usedOcr = ocrHits.Count > 0;
         var status = result.Status;
         string? message = result.Message;
@@ -4220,36 +4220,6 @@ public sealed class PdfDocumentView : UserControl
         }
 
         await RefreshSearchHighlightsAsync();
-    }
-
-    private static IReadOnlyList<PdfSearchHit> MergeSearchHits(
-        IReadOnlyList<PdfSearchHit> nativeHits,
-        IReadOnlyList<PdfSearchHit> ocrHits)
-    {
-        if (ocrHits.Count == 0)
-        {
-            return nativeHits;
-        }
-
-        if (nativeHits.Count == 0)
-        {
-            return ocrHits;
-        }
-
-        var seen = new HashSet<(int Page, int Start, int Length)>();
-        var merged = new List<PdfSearchHit>(nativeHits.Count + ocrHits.Count);
-        foreach (var hit in nativeHits.Concat(ocrHits).OrderBy(h => h.PageIndex).ThenBy(h => h.MatchStart))
-        {
-            var key = (hit.PageIndex, hit.MatchStart, hit.MatchLength);
-            if (!seen.Add(key))
-            {
-                continue;
-            }
-
-            merged.Add(hit);
-        }
-
-        return merged;
     }
 
     private void ClearSearchResults(string status)

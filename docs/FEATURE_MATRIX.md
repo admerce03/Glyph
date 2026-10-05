@@ -135,7 +135,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F06-14 | PDF search | Previous match. | M2/M6 | Implemented | Toolbar previous-match control |
 | F06-15 | PDF search | Clear search. | M2/M6 | Implemented | Clear button + Escape; cancels in-flight search and overlays |
 | F06-16 | PDF search | Click result to jump to it. | M2/M6 | Tested | Selection jumps to hit page index |
-| F06-17 | PDF search | Search OCR text where OCR has been generated. | M2/M6 | Implemented | Session OCR cache merged into Find results (`PdfPageTextSearch`) |
+| F06-17 | PDF search | Search OCR text where OCR has been generated. | M2/M6 | Tested | `PdfPageTextSearch.Find` + `Merge` unit tests; session OCR cache |
 | F07-01 | PDF text interaction | Text selection. | M2/M6 | Implemented | Click near glyphs selects word-ish run via PDFium text |
 | F07-02 | PDF text interaction | Copy text. | M2/M6 | Implemented | Copy button / Ctrl+C |
 | F07-03 | PDF text interaction | Select across lines. | M2/M6 | Implemented | Drag stream selection across lines; Alt/wide drag = column rect |
@@ -153,7 +153,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F08-02 | OCR / Live Text equivalent | Select detected text directly over the image. | M6 | Implemented | PDF OCR word-box overlay (click/Ctrl+click) + Copy OCR; image overlay on Live Text PR |
 | F08-03 | OCR / Live Text equivalent | Copy text. | M6 | Implemented | OCR result dialog Copy text |
 | F08-04 | OCR / Live Text equivalent | Copy all recognized text. | M6 | Implemented | Same as copy full result text |
-| F08-05 | OCR / Live Text equivalent | Search recognized text. | M6 | Implemented | Find merges session OCR cache; OCR word overlays after page OCR |
+| F08-05 | OCR / Live Text equivalent | Search recognized text. | M6 | Tested | Find merges session OCR via `PdfPageTextSearch.Merge`; word overlays after page OCR |
 | F08-06 | OCR / Live Text equivalent | OCR current page. | M6 | Implemented | PdfDocumentView OCR uses selected-or-current pages |
 | F08-07 | OCR / Live Text equivalent | OCR selected pages. | M6 | Implemented | Multi-select thumbnails → OCR concatenates page sections |
 | F08-08 | OCR / Live Text equivalent | OCR entire PDF. | M6 | Implemented | OCR chooser Secondary = entire document page range |

@@ -50,6 +50,43 @@ public static class PdfPageTextSearch
         return hits;
     }
 
+    /// <summary>
+    /// Merges native extract hits with OCR-cache hits, ordered by page/offset and
+    /// deduped on (page, start, length) so overlapping OCR/native matches collapse.
+    /// </summary>
+    public static IReadOnlyList<PdfSearchHit> Merge(
+        IReadOnlyList<PdfSearchHit> nativeHits,
+        IReadOnlyList<PdfSearchHit> ocrHits)
+    {
+        ArgumentNullException.ThrowIfNull(nativeHits);
+        ArgumentNullException.ThrowIfNull(ocrHits);
+
+        if (ocrHits.Count == 0)
+        {
+            return nativeHits;
+        }
+
+        if (nativeHits.Count == 0)
+        {
+            return ocrHits;
+        }
+
+        var seen = new HashSet<(int Page, int Start, int Length)>();
+        var merged = new List<PdfSearchHit>(nativeHits.Count + ocrHits.Count);
+        foreach (var hit in nativeHits.Concat(ocrHits).OrderBy(h => h.PageIndex).ThenBy(h => h.MatchStart))
+        {
+            var key = (hit.PageIndex, hit.MatchStart, hit.MatchLength);
+            if (!seen.Add(key))
+            {
+                continue;
+            }
+
+            merged.Add(hit);
+        }
+
+        return merged;
+    }
+
     private static string BuildSnippet(string text, int matchStart, int matchLength)
     {
         const int pad = 28;
