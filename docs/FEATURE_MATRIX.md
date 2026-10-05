@@ -38,11 +38,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-01 | Main window and interface | Standard Windows title bar. | M1/M9 | Implemented | WinUI AppWindow system title bar |
 | F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | In Progress | MenuBar File/View/Window |
 | F02-03 | Main window and interface | Customizable toolbar. | M1/M9 | Not Started |  |
-| F02-04 | Main window and interface | Optional compact toolbar. | M1/M9 | Not Started |  |
+| F02-04 | Main window and interface | Optional compact toolbar. | M1/M9 | Implemented | Preferences → Compact document toolbars |
 | F02-05 | Main window and interface | Hide/show toolbar. | M1/M9 | Implemented | View → Hide/Show Toolbar |
-| F02-06 | Main window and interface | Hide/show sidebar. | M1/M9 | In Progress | Sidebar hide/show persisted |
+| F02-06 | Main window and interface | Hide/show sidebar. | M1/M9 | Implemented | View → Hide/Show Sidebar; persisted |
 | F02-07 | Main window and interface | Resizable sidebar. | M1/M9 | Implemented | Drag splitter; width persisted in settings |
-| F02-08 | Main window and interface | Resizable document area. | M1/M9 | Not Started |  |
+| F02-08 | Main window and interface | Resizable document area. | M1/M9 | Implemented | Content pane fills remaining space; window resize |
 | F02-09 | Main window and interface | Full-screen mode. | M1/M9 | Implemented | View → Full Screen / F11 / toolbar |
 | F02-10 | Main window and interface | Tabbed documents. | M1/M9 | In Progress | TabView + Ctrl+Tab navigation |
 | F02-11 | Main window and interface | Tear tab into separate window. | M1/M9 | Implemented | Window → Move Tab to New Window + tab context menu |
@@ -57,8 +57,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-20 | Main window and interface | Per-monitor DPI awareness. | M1/M9 | In Progress | PerMonitorV2 declared in app.manifest |
 | F02-21 | Main window and interface | Mouse support. | M1/M9 | Implemented | Pointer input throughout document and chrome UI |
 | F02-22 | Main window and interface | Precision touchpad gesture support where useful. | M1/M9 | Not Started |  |
-| F02-23 | Main window and interface | Keyboard-first operation. | M1/M9 | Not Started |  |
-| F02-24 | Main window and interface | Accessibility through Windows UI Automation. | M1/M9 | Not Started |  |
+| F02-23 | Main window and interface | Keyboard-first operation. | M1/M9 | In Progress | Menu accelerators + document Ctrl shortcuts |
+| F02-24 | Main window and interface | Accessibility through Windows UI Automation. | M1/M9 | In Progress | AutomationProperties.Name on chrome and tools |
 | F03-01 | Sidebar modes | Page thumbnails | M2-M5 | Implemented | Thumbnail strip in PDF viewer sidebar |
 | F03-02 | Sidebar modes | Table of contents | M2-M5 | Implemented | Outline TreeView when bookmarks present |
 | F03-03 | Sidebar modes | Search results | M2-M5 | Implemented | Find hits list under Search header |
@@ -695,14 +695,14 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F48-12 | File properties and inspector | GPS | M5/M9 | Implemented | Image Meta GPS + maps/remove |
 | F48-13 | File properties and inspector | file size | M5/M9 | Implemented | Image Properties file size + path |
 | F49-01 | Undo and redo | annotations | M1-M4 | Not Started |  |
-| F49-02 | Undo and redo | drawing | M1-M4 | Not Started |  |
-| F49-03 | Undo and redo | page insertion | M1-M4 | Not Started |  |
-| F49-04 | Undo and redo | page deletion | M1-M4 | Not Started |  |
-| F49-05 | Undo and redo | page ordering | M1-M4 | Not Started |  |
-| F49-06 | Undo and redo | page rotation | M1-M4 | Not Started |  |
-| F49-07 | Undo and redo | crop | M1-M4 | Not Started |  |
-| F49-08 | Undo and redo | resizing | M1-M4 | Not Started |  |
-| F49-09 | Undo and redo | image adjustments | M1-M4 | Not Started |  |
+| F49-02 | Undo and redo | drawing | M1-M4 | Implemented | PDF stroke undo stack; image markup undo |
+| F49-03 | Undo and redo | page insertion | M1-M4 | Implemented | Via `PdfPageEditHistory` snapshots |
+| F49-04 | Undo and redo | page deletion | M1-M4 | Implemented | Via `PdfPageEditHistory` snapshots |
+| F49-05 | Undo and redo | page ordering | M1-M4 | Implemented | Via `PdfPageEditHistory` snapshots |
+| F49-06 | Undo and redo | page rotation | M1-M4 | Implemented | Via `PdfPageEditHistory` snapshots |
+| F49-07 | Undo and redo | crop | M1-M4 | Implemented | PDF crop via page-edit history; image crop undo stack |
+| F49-08 | Undo and redo | resizing | M1-M4 | Implemented | Image resize undo checkpoints |
+| F49-09 | Undo and redo | image adjustments | M1-M4 | Implemented | Image adjust undo checkpoints |
 | F49-10 | Undo and redo | metadata editing | M1-M4 | Not Started |  |
 | F49-11 | Undo and redo | form filling | M1-M4 | Not Started |  |
 | F49-12 | Undo and redo | signature placement | M1-M4 | Not Started |  |
@@ -772,10 +772,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-04 | Preferences | check for updates | M1/M9 | Not Started |  |
 | F55-05 | Preferences | default page layout | M1/M9 | Not Started |  |
 | F55-06 | Preferences | default zoom | M1/M9 | Not Started |  |
-| F55-07 | Preferences | remember last page | M1/M9 | Not Started |  |
-| F55-08 | Preferences | remember zoom | M1/M9 | Not Started |  |
-| F55-09 | Preferences | open PDF in tabs/windows | M1/M9 | Not Started |  |
-| F55-10 | Preferences | annotation author | M1/M9 | Not Started |  |
+| F55-07 | Preferences | remember last page | M1/M9 | Implemented | `JsonDocumentViewStateStore` per-path page index |
+| F55-08 | Preferences | remember zoom | M1/M9 | Implemented | View-state zoom restored on open |
+| F55-09 | Preferences | open PDF in tabs/windows | M1/M9 | Implemented | Preferences → Open each file in a separate window |
+| F55-10 | Preferences | annotation author | M1/M9 | Implemented | Preferences + PDF Author button; persisted |
 | F55-11 | Preferences | OCR behavior | M1/M9 | Not Started |  |
 | F55-12 | Preferences | autosave behavior | M1/M9 | Implemented | Auto-save to original checkbox |
 | F55-13 | Preferences | open multiple images in same window or separate windows | M1/M9 | Not Started |  |
@@ -799,7 +799,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F56-06 | Accessibility | Windows text scaling. | M9 | Not Started |  |
 | F56-07 | Accessibility | Logical tab order. | M9 | Not Started |  |
 | F56-08 | Accessibility | Descriptive names for toolbar icons. | M9 | Implemented | PDF/image toolbars set AutomationProperties.Name |
-| F56-09 | Accessibility | Custom description/alt text for images where PDF/image format supports it. | M9 | Not Started |  |
+| F56-09 | Accessibility | Custom description/alt text for images where PDF/image format supports it. | M9 | Implemented | IPTC/EXIF description → AutomationProperties.Name on image |
 | F56-10 | Accessibility | Signature descriptions. | M9 | Implemented | Library Description + stamp `/Contents` for a11y |
 | F56-11 | Accessibility | Zoom without breaking UI layout. | M9 | Not Started |  |
 | F57-01 | Performance behavior | very fast startup | M2+/M9 | Not Started |  |

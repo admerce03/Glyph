@@ -28,5 +28,11 @@ public sealed class AppSettings
     /// <summary>Max snapshots retained per document path.</summary>
     public int VersionSnapshotCapacity { get; set; } = 5;
 
+    /// <summary>Default annotation author for sticky notes / text markup (F55-10).</summary>
+    public string AnnotationAuthor { get; set; } = string.Empty;
+
+    /// <summary>When true, document toolbars use tighter padding (F02-04).</summary>
+    public bool CompactToolbar { get; set; }
+
     public bool SidebarVisible { get; set; } = true;
 }

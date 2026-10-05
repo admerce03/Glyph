@@ -2393,11 +2393,27 @@ public sealed partial class MainWindow : Window
             Content = "Open each file in a separate window",
             IsChecked = settings.OpenFilesInSeparateWindows,
         };
+        var authorBox = new TextBox
+        {
+            Header = "Default annotation author",
+            Text = settings.AnnotationAuthor,
+            PlaceholderText = Environment.UserName,
+            Width = 280,
+        };
+        var compactToolbarBox = new CheckBox
+        {
+            Content = "Compact document toolbars (tighter padding)",
+            IsChecked = settings.CompactToolbar,
+        };
 
         var panel = new StackPanel
         {
             Spacing = 12,
-            Children = { restoreBox, autoSaveBox, intervalBox, recentBox, snapshotsBox, snapshotCapBox, separateWindowsBox },
+            Children =
+            {
+                restoreBox, autoSaveBox, intervalBox, recentBox, snapshotsBox, snapshotCapBox,
+                separateWindowsBox, authorBox, compactToolbarBox,
+            },
         };
         var dialog = new ContentDialog
         {
@@ -2420,6 +2436,8 @@ public sealed partial class MainWindow : Window
         settings.VersionSnapshotsEnabled = snapshotsBox.IsChecked == true;
         settings.VersionSnapshotCapacity = (int)Math.Clamp(snapshotCapBox.Value, 1, 50);
         settings.OpenFilesInSeparateWindows = separateWindowsBox.IsChecked == true;
+        settings.AnnotationAuthor = authorBox.Text?.Trim() ?? string.Empty;
+        settings.CompactToolbar = compactToolbarBox.IsChecked == true;
         await _settingsStore.SaveAsync(settings);
         ConfigureRecoveryTimer();
         await PersistSessionAsync();

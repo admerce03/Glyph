@@ -5,11 +5,13 @@ using Glyph.Core.Documents;
 using Glyph.Core.Signatures;
 using Glyph.Imaging.Abstractions;
 using Glyph.Infrastructure.Forms;
+using Glyph.Infrastructure.Settings;
 using Glyph.Ocr.Abstractions;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Editing;
 using Glyph.Pdf.Rendering;
 using Glyph.Pdf.Text;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
@@ -256,6 +258,12 @@ public sealed class PdfDocumentView : UserControl
         _ownerWindow = ownerWindow;
         _onEdited = onEdited;
         _viewState = viewState ?? new DocumentViewState();
+        var settings = TryGetSettings();
+        if (!string.IsNullOrWhiteSpace(settings?.AnnotationAuthor))
+        {
+            _annotationAuthor = settings.AnnotationAuthor.Trim();
+        }
+
         _scale = PdfZoomCalculator.Clamp(_viewState.Zoom <= 0 ? 1.25 : _viewState.Zoom);
         _layoutMode = _viewState.PageLayout;
         CurrentPageIndex = Math.Clamp(_viewState.CurrentPageIndex, 0, Math.Max(0, document.PageCount - 1));
@@ -757,8 +765,8 @@ public sealed class PdfDocumentView : UserControl
         _toolbar = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 6,
-            Padding = new Thickness(8),
+            Spacing = settings?.CompactToolbar == true ? 2 : 6,
+            Padding = settings?.CompactToolbar == true ? new Thickness(4, 2, 4, 2) : new Thickness(8),
             Children =
             {
                 first, prev, _gotoBox, next, last, back, forward,
@@ -9205,7 +9213,34 @@ public sealed class PdfDocumentView : UserControl
         _annotationAuthor = string.IsNullOrWhiteSpace(box.Text)
             ? Environment.UserName
             : box.Text.Trim();
+        try
+        {
+            var store = App.Services.GetService<ISettingsStore>();
+            if (store is not null)
+            {
+                var settings = store.Current;
+                settings.AnnotationAuthor = _annotationAuthor;
+                await store.SaveAsync(settings);
+            }
+        }
+        catch
+        {
+            // Preference persist is best-effort.
+        }
+
         _status.Text = $"Annotation author set to {_annotationAuthor}.";
+    }
+
+    private static AppSettings? TryGetSettings()
+    {
+        try
+        {
+            return App.Services.GetService<ISettingsStore>()?.Current;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private async Task EditSelectedAnnotationContentsAsync()

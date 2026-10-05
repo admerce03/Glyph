@@ -3,7 +3,9 @@ using Glyph.App.Printing;
 using Glyph.Core.Documents;
 using Glyph.Core.Signatures;
 using Glyph.Imaging.Abstractions;
+using Glyph.Infrastructure.Settings;
 using Glyph.Ocr.Abstractions;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -426,11 +428,21 @@ public sealed class ImageDocumentView : UserControl
         _markupOverlay.PointerReleased += MarkupOverlay_PointerReleased;
         _markupOverlay.PointerCaptureLost += (_, _) => _drawDragging = false;
 
+        var compact = false;
+        try
+        {
+            compact = App.Services.GetService<ISettingsStore>()?.Current.CompactToolbar == true;
+        }
+        catch
+        {
+            // settings optional during construction
+        }
+
         var toolbar = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 6,
-            Padding = new Thickness(8),
+            Spacing = compact ? 2 : 6,
+            Padding = compact ? new Thickness(4, 2, 4, 2) : new Thickness(8),
             Children =
             {
                 _prevButton, _nextButton, _slideshowButton,
@@ -1527,6 +1539,32 @@ public sealed class ImageDocumentView : UserControl
         if (_cropMode)
         {
             ClearCropSelection();
+        }
+
+        await ApplyImageAccessibleNameAsync();
+    }
+
+    private async Task ApplyImageAccessibleNameAsync()
+    {
+        try
+        {
+            var meta = await _document.GetMetadataAsync();
+            var name = !string.IsNullOrWhiteSpace(meta.Description)
+                ? meta.Description!
+                : !string.IsNullOrWhiteSpace(meta.Title)
+                    ? meta.Title!
+                    : !string.IsNullOrWhiteSpace(_document.Path)
+                        ? System.IO.Path.GetFileName(_document.Path)
+                        : "Image";
+            AutomationProperties.SetName(_image, name);
+            AutomationProperties.SetName(this, name);
+        }
+        catch
+        {
+            var fallback = !string.IsNullOrWhiteSpace(_document.Path)
+                ? System.IO.Path.GetFileName(_document.Path)
+                : "Image";
+            AutomationProperties.SetName(_image, fallback!);
         }
     }
 

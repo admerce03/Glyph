@@ -123,6 +123,8 @@ public sealed class JsonSettingsStore : ISettingsStore
         VersionSnapshotsEnabled = settings.VersionSnapshotsEnabled,
         VersionSnapshotCapacity = settings.VersionSnapshotCapacity,
         OpenFilesInSeparateWindows = settings.OpenFilesInSeparateWindows,
+        AnnotationAuthor = settings.AnnotationAuthor ?? string.Empty,
+        CompactToolbar = settings.CompactToolbar,
         SidebarVisible = settings.SidebarVisible,
     };
 }
