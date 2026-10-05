@@ -405,6 +405,22 @@ public sealed partial class MainWindow : Window
         UpdateEmptyState();
     }
 
+    private void DocumentTabs_TabItemsChanged(TabView sender, Windows.Foundation.Collections.IVectorChangedEventArgs args)
+    {
+        var ordered = DocumentTabs.TabItems
+            .OfType<TabViewItem>()
+            .Select(t => t.Tag)
+            .OfType<DocumentId>()
+            .ToList();
+        if (ordered.Count == 0)
+        {
+            return;
+        }
+
+        _workspace.Reorder(ordered);
+        _ = PersistSessionAsync();
+    }
+
     private async void RecentList_ItemClick(object sender, ItemClickEventArgs e)
     {
         if (e.ClickedItem is RecentFileEntry entry)

@@ -35,4 +35,18 @@ public class WorkspaceStateTests
         workspace.Documents.Should().Equal(a, c);
         workspace.ActiveDocument.Should().BeSameAs(c);
     }
+
+    [Fact]
+    public void Reorder_updates_document_list_to_match_tab_order()
+    {
+        var workspace = new WorkspaceState();
+        var a = workspace.Open(DocumentKind.Pdf, "a.pdf");
+        var b = workspace.Open(DocumentKind.Pdf, "b.pdf");
+        var c = workspace.Open(DocumentKind.Pdf, "c.pdf");
+
+        workspace.Reorder([c.Id, a.Id, b.Id]);
+
+        workspace.Documents.Should().Equal(c, a, b);
+        workspace.ActiveDocument.Should().BeSameAs(c);
+    }
 }

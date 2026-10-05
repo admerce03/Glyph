@@ -34,7 +34,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-24 | Application and file handling | Optional autosave. | M1/M9 | Implemented | Preferences → Auto-save to original (F50-04 timer) |
 | F01-25 | Application and file handling | Crash-recovery copy. | M1/M9 | Implemented | `FileCrashRecoveryStore` + periodic snapshots |
 | F01-26 | Application and file handling | Undo/redo history. | M1/M9 | In Progress | Page-edit snapshot undo via `PdfPageEditHistory`; app-wide stack later |
-| F01-27 | Application and file handling | Do not silently overwrite originals by default. | M1/M9 | Not Started |  |
+| F01-27 | Application and file handling | Do not silently overwrite originals by default. | M1/M9 | Implemented | Autosave-to-original is opt-in (off by default) |
 | F02-01 | Main window and interface | Standard Windows title bar. | M1/M9 | Not Started |  |
 | F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | In Progress | MenuBar File/View/Window |
 | F02-03 | Main window and interface | Customizable toolbar. | M1/M9 | Not Started |  |
@@ -47,7 +47,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-10 | Main window and interface | Tabbed documents. | M1/M9 | In Progress | TabView + Ctrl+Tab navigation |
 | F02-11 | Main window and interface | Tear tab into separate window. | M1/M9 | Not Started |  |
 | F02-12 | Main window and interface | Move tabs between windows. | M1/M9 | Not Started |  |
-| F02-13 | Main window and interface | Reorder tabs. | M1/M9 | Not Started |  |
+| F02-13 | Main window and interface | Reorder tabs. | M1/M9 | Implemented | TabView CanReorderTabs + WorkspaceState.Reorder |
 | F02-14 | Main window and interface | Context menus throughout. | M1/M9 | Not Started |  |
 | F02-15 | Main window and interface | Dark mode. | M1/M9 | In Progress | Theme preference Dark |
 | F02-16 | Main window and interface | Light mode. | M1/M9 | In Progress | Theme preference Light |

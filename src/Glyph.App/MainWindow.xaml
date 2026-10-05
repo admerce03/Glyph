@@ -172,8 +172,11 @@
                     Padding="16">
                 <Grid RowDefinitions="Auto,*">
                     <TabView x:Name="DocumentTabs"
+                             CanReorderTabs="True"
+                             AllowDropTabs="True"
                              AddTabButtonClick="DocumentTabs_AddTabButtonClick"
                              TabCloseRequested="DocumentTabs_TabCloseRequested"
+                             TabItemsChanged="DocumentTabs_TabItemsChanged"
                              SelectionChanged="DocumentTabs_SelectionChanged" />
 
                     <StackPanel Grid.Row="1"
