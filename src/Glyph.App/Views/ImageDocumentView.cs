@@ -65,16 +65,20 @@ public sealed class ImageDocumentView : UserControl
         var flipV = new Button { Content = "Flip V" };
         var crop = new Button { Content = "Crop" };
         var resize = new Button { Content = "Resize" };
+        var adjust = new Button { Content = "Adjust" };
         var rotate180 = new Button { Content = "180°" };
         var save = new Button { Content = "Save" };
         var exportPng = new Button { Content = "→PNG" };
         var exportJpeg = new Button { Content = "→JPEG" };
+        var convert = new Button { Content = "Convert" };
 
         ToolTipService.SetToolTip(crop, "Crop using x,y,w,h pixels (origin top-left)");
         ToolTipService.SetToolTip(resize, "Resize width/height with optional aspect lock");
+        ToolTipService.SetToolTip(adjust, "Brightness / contrast / saturation");
         ToolTipService.SetToolTip(rotate180, "Rotate 180°");
         ToolTipService.SetToolTip(exportPng, "Export as PNG");
         ToolTipService.SetToolTip(exportJpeg, "Export as JPEG");
+        ToolTipService.SetToolTip(convert, "Export as WebP, TIFF, BMP, or GIF");
 
         zoomOut.Click += async (_, _) => await SetZoomAsync(_zoom / 1.25);
         zoomIn.Click += async (_, _) => await SetZoomAsync(_zoom * 1.25);
@@ -87,9 +91,11 @@ public sealed class ImageDocumentView : UserControl
         flipV.Click += async (_, _) => await MutateAsync(() => _processor.FlipVerticalAsync(_document), "Flipped vertically.");
         crop.Click += async (_, _) => await CropAsync();
         resize.Click += async (_, _) => await ResizeAsync();
+        adjust.Click += async (_, _) => await AdjustAsync();
         save.Click += async (_, _) => await SaveAsync();
         exportPng.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Png, ".png");
         exportJpeg.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Jpeg, ".jpg");
+        convert.Click += async (_, _) => await ConvertAsync();
 
         var toolbar = new StackPanel
         {
@@ -99,7 +105,7 @@ public sealed class ImageDocumentView : UserControl
             Children =
             {
                 zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, flipH, flipV,
-                _cropBox, crop, resize, save, exportPng, exportJpeg, _status,
+                _cropBox, crop, resize, adjust, save, exportPng, exportJpeg, convert, _status,
             },
         };
 
@@ -332,6 +338,115 @@ public sealed class ImageDocumentView : UserControl
         await MutateAsync(
             () => _processor.ResizeAsync(_document, width, height),
             $"Resized to {width}×{height}.");
+    }
+
+    private async Task AdjustAsync()
+    {
+        Slider MakeSlider(string header, double min, double max, double value)
+        {
+            return new Slider
+            {
+                Header = header,
+                Minimum = min,
+                Maximum = max,
+                Value = value,
+                StepFrequency = 1,
+                Width = 280,
+            };
+        }
+
+        var brightness = MakeSlider("Brightness (−100…100)", -100, 100, 0);
+        var contrast = MakeSlider("Contrast (−100…100)", -100, 100, 0);
+        var saturation = MakeSlider("Saturation (−100…100)", -100, 100, 0);
+        var reset = new Button { Content = "Reset", HorizontalAlignment = HorizontalAlignment.Left };
+        reset.Click += (_, _) =>
+        {
+            brightness.Value = 0;
+            contrast.Value = 0;
+            saturation.Value = 0;
+        };
+
+        var panel = new StackPanel
+        {
+            Spacing = 10,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = "Values apply destructively on OK (save to keep).",
+                    Opacity = 0.75,
+                    TextWrapping = TextWrapping.Wrap,
+                },
+                brightness,
+                contrast,
+                saturation,
+                reset,
+            },
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = "Color adjustments",
+            Content = panel,
+            PrimaryButtonText = "Apply",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        if (Math.Abs(brightness.Value) < 0.0001
+            && Math.Abs(contrast.Value) < 0.0001
+            && Math.Abs(saturation.Value) < 0.0001)
+        {
+            _status.Text = "No adjustments to apply.";
+            return;
+        }
+
+        var adjustments = new ImageAdjustments(brightness.Value, contrast.Value, saturation.Value);
+        await MutateAsync(
+            () => _processor.AdjustAsync(_document, adjustments),
+            $"Adjusted B{brightness.Value:0}/C{contrast.Value:0}/S{saturation.Value:0}.");
+    }
+
+    private async Task ConvertAsync()
+    {
+        var formatBox = new ComboBox
+        {
+            Header = "Format",
+            Width = 200,
+            ItemsSource = new[] { "WebP", "TIFF", "BMP", "GIF" },
+            SelectedIndex = 0,
+        };
+        var panel = new StackPanel { Spacing = 8, Children = { formatBox } };
+        var dialog = new ContentDialog
+        {
+            Title = "Convert image",
+            Content = panel,
+            PrimaryButtonText = "Export…",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var (format, extension) = (formatBox.SelectedItem as string) switch
+        {
+            "WebP" => (ImageEncodeFormat.Webp, ".webp"),
+            "TIFF" => (ImageEncodeFormat.Tiff, ".tif"),
+            "BMP" => (ImageEncodeFormat.Bmp, ".bmp"),
+            "GIF" => (ImageEncodeFormat.Gif, ".gif"),
+            _ => (ImageEncodeFormat.Webp, ".webp"),
+        };
+        await ExportAsync(format, extension);
     }
 
     private async Task SaveAsync()
