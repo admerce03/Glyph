@@ -809,7 +809,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F57-05 | Performance behavior | background text indexing | M2+/M9 | Deferred | Search is on-demand; full-doc index not required yet |
 | F57-06 | Performance behavior | lazy OCR | M2+/M9 | Implemented | OCR runs only on explicit toolbar/dialog request |
 | F57-07 | Performance behavior | GPU acceleration where appropriate | M2+/M9 | Deferred | Win2D/Composition GPU path not adopted yet |
-| F57-08 | Performance behavior | smooth scrolling | M2+/M9 | In Progress | ScrollViewer + cached bitmaps; continuous polish open |
+| F57-08 | Performance behavior | smooth scrolling | M2+/M9 | Implemented | Continuous: page sync + throttled render while flinging; settle render on idle |
 | F57-09 | Performance behavior | large-document virtualization | M2+/M9 | Implemented | On-demand visible-page render; distant Image.Source cleared |
 | F57-10 | Performance behavior | low memory usage | M2+/M9 | Implemented | Bounded `PageRenderCache` (capacity 32) |
 | F57-11 | Performance behavior | unload distant PDF pages | M2+/M9 | Implemented | Clear distant page Image.Source; LRU evicts bitmaps |

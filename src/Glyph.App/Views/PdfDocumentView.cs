@@ -122,6 +122,8 @@ public sealed class PdfDocumentView : UserControl
     private double _scale = 1.25;
     private PageLayoutMode _layoutMode = PageLayoutMode.Continuous;
     private int _renderGeneration;
+    private long _lastIntermediateRenderTick;
+    private const int IntermediateRenderMinMs = 72;
     private bool _loaded;
     private bool _suppressThumbnailNav;
     private IReadOnlyList<PdfSearchHit> _hits = [];
@@ -11505,11 +11507,27 @@ public sealed class PdfDocumentView : UserControl
 
     private async void ScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
-        if (!e.IsIntermediate && _layoutMode == PageLayoutMode.Continuous)
+        if (_layoutMode != PageLayoutMode.Continuous)
         {
-            UpdateCurrentPageFromScroll();
-            await RenderVisibleAsync();
+            return;
         }
+
+        // Keep page chrome in sync while flinging; throttle bitmap fills so scroll stays smooth (F57-08).
+        UpdateCurrentPageFromScroll();
+        if (!e.IsIntermediate)
+        {
+            await RenderVisibleAsync();
+            return;
+        }
+
+        var now = Environment.TickCount64;
+        if (now - _lastIntermediateRenderTick < IntermediateRenderMinMs)
+        {
+            return;
+        }
+
+        _lastIntermediateRenderTick = now;
+        _ = RenderVisibleAsync();
     }
 
     private void UpdateCurrentPageFromScroll()
