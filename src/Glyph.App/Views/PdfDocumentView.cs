@@ -11077,7 +11077,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderThumbnailsAsync();
             RefreshPropertiesSidebar();
             NotifyEdited();
-            _status.Text = "Undid document info edit.";
+            _status.Text = PdfDocumentInfoUi.UndidStatus;
         }
         catch (Exception ex)
         {
@@ -13055,7 +13055,7 @@ public sealed class PdfDocumentView : UserControl
             if (choice == ContentDialogResult.Secondary)
             {
                 _documentInfo.SetInfo(_document, new PdfDocumentInfoUpdate(ClearAll: true));
-                _status.Text = "Document info cleared. Save the PDF to keep changes on disk.";
+                _status.Text = PdfDocumentInfoUi.ClearedStatus;
             }
             else
             {
@@ -13068,7 +13068,7 @@ public sealed class PdfDocumentView : UserControl
                         Keywords: keywordsBox.Text,
                         Creator: creatorBox.Text,
                         Producer: producerBox.Text));
-                _status.Text = "Document info updated. Save the PDF to keep changes on disk.";
+                _status.Text = PdfDocumentInfoUi.UpdatedStatus;
             }
 
             _cache.ClearDocument(_documentKey);
@@ -13081,7 +13081,7 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _infoUndoStack.TryDiscardTop();
-            _status.Text = "Info edit failed: " + ex.Message;
+            _status.Text = PdfDocumentInfoUi.FailedStatus(ex.Message);
         }
     }
 

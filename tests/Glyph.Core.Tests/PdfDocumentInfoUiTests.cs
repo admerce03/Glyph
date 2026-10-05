@@ -14,5 +14,8 @@ public class PdfDocumentInfoUiTests
         PdfDocumentInfoUi.EditableFieldLabels.Should().Contain(PdfDocumentInfoUi.FieldAuthor);
         PdfDocumentInfoUi.PropertiesUnavailablePrefix.Should().Contain("unavailable");
         PdfDocumentInfoUi.EditCancelledStatus.Should().Contain("cancelled");
+        PdfDocumentInfoUi.ClearedStatus.Should().Contain("cleared");
+        PdfDocumentInfoUi.UpdatedStatus.Should().Contain("updated");
+        PdfDocumentInfoUi.FailedStatus("x").Should().Contain("x");
     }
 }

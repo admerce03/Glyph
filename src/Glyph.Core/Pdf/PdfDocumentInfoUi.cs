@@ -13,6 +13,10 @@ public static class PdfDocumentInfoUi
     public const string CloseButton = "Close";
     public const string PropertiesUnavailablePrefix = "Properties unavailable: ";
     public const string EditCancelledStatus = "Info edit cancelled.";
+    public const string ClearedStatus = "Document info cleared. Save the PDF to keep changes on disk.";
+    public const string UpdatedStatus = "Document info updated. Save the PDF to keep changes on disk.";
+    public const string UndidStatus = "Undid document info edit.";
+    public const string FailedPrefix = "Info edit failed: ";
 
     public const string FieldTitle = "Title";
     public const string FieldAuthor = "Author";
@@ -30,4 +34,6 @@ public static class PdfDocumentInfoUi
         FieldCreator,
         FieldProducer,
     ];
+
+    public static string FailedStatus(string message) => FailedPrefix + message;
 }
