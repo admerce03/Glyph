@@ -519,7 +519,8 @@ public sealed partial class MainWindow : Window
                 _pdfForms,
                 _pdfFactory,
                 session.ViewState,
-                ownerWindow: this);
+                ownerWindow: this,
+                ocr: _ocr);
         }
 
         if (session.Kind == DocumentKind.Image && session.Path is not null)

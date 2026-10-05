@@ -45,6 +45,37 @@ public class PdfiumOpenRenderTests
     }
 
     [Fact]
+    public async Task Render_respects_max_edge_for_ocr_sized_bitmaps()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-ocr-render-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            CreateSamplePdf(path);
+
+            var factory = new PdfiumDocumentFactory();
+            var renderer = new PdfiumRenderer();
+            await using var document = await factory.OpenAsync(path);
+
+            const int maxEdge = 512;
+            using var result = await renderer.RenderPageAsync(
+                document,
+                pageIndex: 0,
+                new PdfRenderRequest(Scale: 8.0, MaxWidthPixels: maxEdge, MaxHeightPixels: maxEdge));
+
+            result.Width.Should().BeLessThanOrEqualTo(maxEdge);
+            result.Height.Should().BeLessThanOrEqualTo(maxEdge);
+            result.Pixels.Length.Should().Be(result.Width * result.Height * 4);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Open_reads_page_rotation_and_swaps_display_size()
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-rotated-" + Guid.NewGuid().ToString("N") + ".pdf");

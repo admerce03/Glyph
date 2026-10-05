@@ -252,7 +252,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - `IOcrEngine` / `OcrRequest` / `OcrResult` abstractions in `Glyph.Ocr`
 - `WindowsOcrEngine` (Windows.Media.Ocr) registered in App DI; **OCR** toolbar on `ImageDocumentView` with result dialog + copy
 - `UnsupportedOcrEngine` + Fake engine coverage in `Glyph.Ocr.Tests` (Linux)
-- PDF-page OCR / text-layer embed / entity actions still outstanding
+- PDF **OCR** current page on `PdfDocumentView` (render → BGRA → same engine + result dialog)
+- Multi-page OCR / text-layer embed / entity actions / Live Text overlays still outstanding
 ---
 
 ## Milestone 7 — Redaction, PDF security, optimization, metadata
