@@ -4820,9 +4820,15 @@ public sealed class ImageDocumentView : UserControl
         UpdateFlattenButtonVisibility();
     }
 
-    private void UpdateFlattenButtonVisibility() =>
+    private void UpdateFlattenButtonVisibility()
+    {
         _flattenMarkupButton.Visibility =
             _markupStrokes.Count > 0 || _markupShapes.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (_markupStrokes.Count > 0 || _markupShapes.Count > 0)
+        {
+            _onEdited?.Invoke();
+        }
+    }
 
     private async Task FlattenMarkupAsync()
     {
