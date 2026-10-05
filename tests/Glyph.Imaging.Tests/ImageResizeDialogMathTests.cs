@@ -36,4 +36,13 @@ public class ImageResizeDialogMathTests
         ImageResizeDialogMath.EstimateRawBgraMegabytes(1024, 1024).Should().Be(4.0);
         ImageResizeDialogMath.EstimateRawBgraMegabytes(0, 10).Should().Be(0);
     }
+
+    [Fact]
+    public void Aspect_lock_and_percent_scale()
+    {
+        ImageResizeDialogMath.HeightForWidth(200, 2.0).Should().Be(100);
+        ImageResizeDialogMath.WidthForHeight(100, 2.0).Should().Be(200);
+        ImageResizeDialogMath.ScaleByPercent(100, 50, 50).Should().Be((50, 25));
+        ImageResizeDialogMath.ScaleByPercent(100, 50, 200).Should().Be((200, 100));
+    }
 }

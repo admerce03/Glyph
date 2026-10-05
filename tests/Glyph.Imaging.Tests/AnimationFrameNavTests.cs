@@ -67,4 +67,15 @@ public class AnimationFrameNavTests
             .Should().BeNull();
         loops.Should().Be(2);
     }
+
+    [Fact]
+    public void Playback_status_and_save_names()
+    {
+        AnimationFrameNav.Paused.Should().Contain("paused");
+        AnimationFrameNav.Restarted.Should().Contain("restarted");
+        AnimationFrameNav.Finished(4).Should().Contain("4/4");
+        AnimationFrameNav.SuggestedFileName("photo", 3).Should().Be("photo-frame3.png");
+        AnimationFrameNav.PlayButtonLabel(true).Should().Be("Pause");
+        AnimationFrameNav.SavedFrame(2, "a.png").Should().Contain("frame 2");
+    }
 }

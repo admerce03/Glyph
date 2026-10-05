@@ -358,7 +358,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F20-08 | PDF forms | buttons where applicable | M4 | Tested | PushButton listed; URI `/A` via PdfPig; Form Overlay/Edit activates (Launcher) |
 | F20-09 | PDF forms | signatures where supported | M4 | Implemented | Sig widgets listed; Form Overlay/Edit places stamp in field bounds (visual, not PKCS#7) |
 | F20-10 | PDF forms | tab-order navigation | M4 | Tested | `FocusAdjacentAsync` + Form dialog Next |
-| F20-11 | PDF forms | form-filling mode that overlays text fields manually. | M4 | Implemented | Form → Overlay draws clickable field boxes; Tab/Enter/Esc |
+| F20-11 | PDF forms | form-filling mode that overlays text fields manually. | M4 | Tested | Form → Overlay; Tab/Enter/Esc; `FormOverlayModePolicy` unit tests |
 | F20-12 | PDF forms | automatic font sizing | M4 | Tested | `SetTextValueAsync` rewrites text `/DA` to `0 Tf`; `PdfFormDefaultAppearance` |
 | F20-13 | PDF forms | remember recently entered values, optionally | M4 | Tested | `IFormValueHistory` JSON store; text edit dialog Recent values list |
 | F20-14 | PDF forms | user-defined profile for: | M4 | Tested | Name/Address/Email/Phone via `IFormAutofillProfileStore` |
@@ -449,15 +449,15 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-24 | Image viewing | HDR display where Windows/display stack supports it | M5 | Deferred | Needs WinUI HDR display pipeline; revisit with F39 |
 | F26-25 | Image viewing | color-managed display | M5 | Implemented | Via M8 F39-02: GetPixelsAsync ICC→sRGB (Meta toggle) |
 | F27-01 | Animated images | play | M8 | Tested | Play uses frame delays + `NextPlaybackFrame` advance |
-| F27-02 | Animated images | pause | M8 | Implemented | Pause + Esc stops playback |
-| F27-03 | Animated images | restart | M8 | Implemented | Restart → frame 0 + play |
+| F27-02 | Animated images | pause | M8 | Tested | Pause + Esc; `AnimationFrameNav.Paused` unit tests |
+| F27-03 | Animated images | restart | M8 | Tested | Restart → frame 0 + play; `AnimationFrameNav.Restarted` |
 | F27-04 | Animated images | next frame | M8 | Tested | frm⟩; `AnimationFrameNav.WrapStep` unit tests |
 | F27-05 | Animated images | previous frame | M8 | Tested | ⟨frm; `AnimationFrameNav.WrapStep` unit tests |
 | F27-06 | Animated images | timeline/frame number | M8 | Tested | Frame N/M; `AnimationFrameNav.FormatLabel` unit tests |
 | F27-07 | Animated images | loop | M8 | Tested | Loop checkbox; `AnimationFrameNav.NextPlaybackFrame` unit tests |
 | F27-08 | Animated images | inspect individual frames | M8 | Implemented | Step frames; Meta shows Animation entries |
 | F27-09 | Animated images | extract frame | M8 | Tested | ExtractFrameAsync BGRA for any index |
-| F27-10 | Animated images | save selected frame as image | M8 | Implemented | Save frame → PNG picker |
+| F27-10 | Animated images | save selected frame as image | M8 | Tested | Save frame → PNG; `AnimationFrameNav.SuggestedFileName` |
 | F28-01 | Image selection tools | Rectangular selection. | M5 | Tested | Select toolbar → drag rectangle; `ImageSelectionGeometry.ContainsInRect` |
 | F28-02 | Image selection tools | Elliptical selection. | M5 | Tested | Select → Ellipse shape; extract/clear/move use oval mask |
 | F28-03 | Image selection tools | Freeform lasso. | M5 | Tested | Select → Lasso drag polyline; extract/clear/move use polygon mask |
@@ -470,7 +470,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F28-10 | Image selection tools | Cut. | M5 | Tested | Cut sel / Ctrl+X; `ImageSelectionClipboardPolicy` unit tests |
 | F28-11 | Image selection tools | Paste. | M5 | Tested | Paste / Ctrl+V → `PasteRectAsync` at selection origin |
 | F28-12 | Image selection tools | Delete selection. | M5 | Tested | Del sel → `ClearRectAsync` transparent |
-| F28-13 | Image selection tools | Crop to selection. | M5 | Implemented | Crop sel → `CropAsync` |
+| F28-13 | Image selection tools | Crop to selection. | M5 | Tested | Crop sel → `CropAsync`; `ImageCropSelectionPolicy` unit tests |
 | F29-01 | Smart object/background selection | Smart Lasso. | M8 | Implemented | Same as F28-04 edge-snapping Smart selection |
 | F29-02 | Smart object/background selection | Edge-aware selection. | M8 | Implemented | Sobel edge map in Smart lasso (F28-04) |
 | F29-03 | Smart object/background selection | Background removal. | M8 | Tested | BG dialog → corner flood-fill + fuzz |
@@ -482,7 +482,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F29-09 | Smart object/background selection | Undo. | M8 | Implemented | MutateAsync checkpoint undo (Ctrl+Z) |
 | F29-10 | Smart object/background selection | Copy extracted subject. | M8 | Implemented | BG → Extract subject → clipboard PNG |
 | F29-11 | Smart object/background selection | Save extracted subject as separate image. | M8 | Implemented | BG → Extract subject → save PNG |
-| F30-01 | Image crop | Interactive crop box. | M5 | Implemented | Drag rectangle overlay (Crop…) |
+| F30-01 | Image crop | Interactive crop box. | M5 | Tested | Drag rectangle overlay; `ImageCropSelectionPolicy` unit tests |
 | F30-02 | Image crop | Free aspect ratio. | M5 | Tested | Free drag; `ImageCropAspect.Constrain` free-mode unit test |
 | F30-03 | Image crop | Original aspect ratio. | M5 | Tested | Crop… aspect dropdown → Original (`ImageCropAspect`) |
 | F30-04 | Image crop | Common presets: | M5 | Tested | Crop… aspect: 1:1, 4:3, 3:2, 16:9 (+ Free/Original) |
@@ -490,10 +490,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F30-06 | Image crop | Apply crop. | M5 | Tested | Crop → `MagickImageProcessor.CropAsync`; crop round-trip unit tests |
 | F30-07 | Image crop | Undo. | M5 | Tested | Undo / Ctrl+Z via `CaptureCheckpoint`/`RestoreCheckpoint` (crop and other edits) |
 | F30-08 | Image crop | Non-destructive editing internally until save where practical. | M5 | Implemented | Edits mutate in-memory Magick image; disk unchanged until Save |
-| F31-01 | Image resizing | Adjust width. | M5 | Implemented | Resize dialog width (px) |
-| F31-02 | Image resizing | Adjust height. | M5 | Implemented | Resize dialog height (px) |
-| F31-03 | Image resizing | Lock aspect ratio. | M5 | Implemented | Resize dialog lock checkbox |
-| F31-04 | Image resizing | Percentage scaling. | M5 | Implemented | Resize dialog scale % |
+| F31-01 | Image resizing | Adjust width. | M5 | Tested | Resize dialog width; `ImageResizeDialogMath.HeightForWidth` |
+| F31-02 | Image resizing | Adjust height. | M5 | Tested | Resize dialog height; `ImageResizeDialogMath.WidthForHeight` |
+| F31-03 | Image resizing | Lock aspect ratio. | M5 | Tested | Resize dialog lock; aspect helpers unit-tested |
+| F31-04 | Image resizing | Percentage scaling. | M5 | Tested | Resize dialog %; `ImageResizeDialogMath.ScaleByPercent` |
 | F31-05 | Image resizing | Pixel units. | M5 | Implemented | Width/height in pixels |
 | F31-06 | Image resizing | Physical units. | M5 | Tested | Resize dialog Units: Pixels / Inches / Centimeters |
 | F31-07 | Image resizing | DPI/PPI. | M5 | Tested | Resize dialog DPI + `ImageResizeOptions.DensityDpi` |

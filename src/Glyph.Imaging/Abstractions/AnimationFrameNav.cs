@@ -60,4 +60,19 @@ public static class AnimationFrameNav
 
         return 0;
     }
+
+    public const string Paused = "Animation paused.";
+    public const string Restarted = "Animation restarted.";
+    public const string SaveCancelled = "Save frame cancelled.";
+
+    public static string Finished(int frameCount) =>
+        $"Animation finished · frame {frameCount}/{frameCount}.";
+
+    public static string SavedFrame(int oneBasedFrame, string fileName) =>
+        $"Saved frame {oneBasedFrame} → {fileName}";
+
+    public static string SuggestedFileName(string baseName, int oneBasedFrame) =>
+        $"{baseName}-frame{oneBasedFrame}.png";
+
+    public static string PlayButtonLabel(bool playing) => playing ? "Pause" : "Play";
 }

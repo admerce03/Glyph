@@ -734,7 +734,7 @@ public sealed class ImageDocumentView : UserControl
             return;
         }
 
-        _animPlayButton.Content = _animationPlaying ? "Pause" : "Play";
+        _animPlayButton.Content = AnimationFrameNav.PlayButtonLabel(_animationPlaying);
         _animFrameLabel.Text = AnimationFrameNav.FormatLabel(
             _document.CurrentFrameIndex,
             _document.FrameCount);
@@ -750,7 +750,7 @@ public sealed class ImageDocumentView : UserControl
         if (_animationPlaying)
         {
             PauseAnimation();
-            _status.Text = "Animation paused.";
+            _status.Text = AnimationFrameNav.Paused;
             return;
         }
 
@@ -835,7 +835,7 @@ public sealed class ImageDocumentView : UserControl
             PauseAnimation();
             _status.Text = _animLoopBox.IsChecked == true
                 ? "Animation finished looping."
-                : $"Animation finished · frame {_document.FrameCount}/{_document.FrameCount}.";
+                : AnimationFrameNav.Finished(_document.FrameCount);
             return;
         }
 
@@ -880,7 +880,7 @@ public sealed class ImageDocumentView : UserControl
         await RefreshAsync();
         _animationLoopsCompleted = 0;
         StartAnimationPlayback();
-        _status.Text = "Animation restarted.";
+        _status.Text = AnimationFrameNav.Restarted;
     }
 
     private async Task SaveCurrentFrameAsync()
@@ -903,11 +903,13 @@ public sealed class ImageDocumentView : UserControl
             var baseName = string.IsNullOrWhiteSpace(_document.Path)
                 ? "frame"
                 : System.IO.Path.GetFileNameWithoutExtension(_document.Path);
-            picker.SuggestedFileName = $"{baseName}-frame{_document.CurrentFrameIndex + 1}.png";
+            picker.SuggestedFileName = AnimationFrameNav.SuggestedFileName(
+                baseName,
+                _document.CurrentFrameIndex + 1);
             var file = await picker.PickSaveFileAsync();
             if (file is null)
             {
-                _status.Text = "Save frame cancelled.";
+                _status.Text = AnimationFrameNav.SaveCancelled;
                 return;
             }
 
@@ -918,7 +920,9 @@ public sealed class ImageDocumentView : UserControl
                 buffer.Height,
                 file.Path,
                 ImageEncodeFormat.Png);
-            _status.Text = $"Saved frame {_document.CurrentFrameIndex + 1} → {file.Name}";
+            _status.Text = AnimationFrameNav.SavedFrame(
+                _document.CurrentFrameIndex + 1,
+                file.Name);
         }
         catch (Exception ex)
         {
@@ -999,7 +1003,7 @@ public sealed class ImageDocumentView : UserControl
             if (_animationPlaying)
             {
                 PauseAnimation();
-                _status.Text = "Animation paused.";
+                _status.Text = AnimationFrameNav.Paused;
                 e.Handled = true;
                 return;
             }
@@ -1372,14 +1376,14 @@ public sealed class ImageDocumentView : UserControl
 
         if (_selectionInverted)
         {
-            _status.Text = "Cannot crop an inverted selection — Invert again or Deselect.";
+            _status.Text = ImageCropSelectionPolicy.CannotCropInverted;
             return;
         }
 
         ExitSelectionMode(keepSelection: false);
         await MutateAsync(
             () => _processor.CropAsync(_document, sel),
-            $"Cropped to selection {sel.Width}×{sel.Height}.");
+            ImageCropSelectionPolicy.CroppedToSelection(sel.Width, sel.Height));
     }
 
     private async Task MutateAsync(Func<Task> mutation, string okStatus)
@@ -1726,13 +1730,13 @@ public sealed class ImageDocumentView : UserControl
     {
         if (ImageCropRectParser.TryParse(_cropBox.Text) is not { } rect)
         {
-            _status.Text = "Crop needs x,y,w,h integers.";
+            _status.Text = ImageCropSelectionPolicy.NeedIntegerBox;
             return;
         }
 
         await MutateAsync(
             () => _processor.CropAsync(_document, rect),
-            $"Cropped to {rect.Width}×{rect.Height}.");
+            ImageCropSelectionPolicy.CroppedTo(rect.Width, rect.Height));
     }
 
     private void EnterCropMode()
@@ -1756,7 +1760,7 @@ public sealed class ImageDocumentView : UserControl
         _cropRect.Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 200, 0));
         _cropRect.Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 255, 200, 0));
         ClearCropSelection();
-        _status.Text = "Drag on the image to select a crop region (aspect from dropdown).";
+        _status.Text = ImageCropSelectionPolicy.InteractiveHint;
     }
 
     private void ExitCropMode()
@@ -2548,7 +2552,7 @@ public sealed class ImageDocumentView : UserControl
         {
             var mapped = ImageCropMapper.ToDocumentPixels(
                 x, y, w, h, _displayWidth, _displayHeight, _document.PixelWidth, _document.PixelHeight);
-            _status.Text = $"Crop selection → {mapped.Width}×{mapped.Height} px";
+            _status.Text = ImageCropSelectionPolicy.SelectionPreview(mapped.Width, mapped.Height);
             _cropBox.Text = $"{mapped.X},{mapped.Y},{mapped.Width},{mapped.Height}";
         }
     }
@@ -2570,13 +2574,13 @@ public sealed class ImageDocumentView : UserControl
     {
         if (_cropRect.Visibility != Visibility.Visible || _cropRect.Width < 1 || _cropRect.Height < 1)
         {
-            _status.Text = "Drag a crop region first.";
+            _status.Text = ImageCropSelectionPolicy.NeedRegion;
             return;
         }
 
         if (_displayWidth <= 0 || _displayHeight <= 0)
         {
-            _status.Text = "Image not ready to crop.";
+            _status.Text = ImageCropSelectionPolicy.ImageNotReady;
             return;
         }
 
@@ -2593,7 +2597,7 @@ public sealed class ImageDocumentView : UserControl
         ExitCropMode();
         await MutateAsync(
             () => _processor.CropAsync(_document, mapped),
-            $"Cropped to {mapped.Width}×{mapped.Height}.");
+            ImageCropSelectionPolicy.CroppedTo(mapped.Width, mapped.Height));
     }
 
     private async Task ResizeAsync()
@@ -2726,7 +2730,7 @@ public sealed class ImageDocumentView : UserControl
 
             if (lockAspect.IsChecked == true)
             {
-                h = Math.Max(1, (int)Math.Round(w / aspect));
+                h = ImageResizeDialogMath.HeightForWidth(w, aspect);
                 WritePhysicalFromPixels(w, h);
             }
             else
@@ -2750,7 +2754,7 @@ public sealed class ImageDocumentView : UserControl
 
             if (lockAspect.IsChecked == true)
             {
-                w = Math.Max(1, (int)Math.Round(h * aspect));
+                w = ImageResizeDialogMath.WidthForHeight(h, aspect);
                 WritePhysicalFromPixels(w, h);
             }
             else
@@ -2766,10 +2770,7 @@ public sealed class ImageDocumentView : UserControl
                 return;
             }
 
-            var w = Math.Max(1, (int)Math.Round(srcW * pct / 100.0));
-            var h = lockAspect.IsChecked == true
-                ? Math.Max(1, (int)Math.Round(w / aspect))
-                : Math.Max(1, (int)Math.Round(srcH * pct / 100.0));
+            var (w, h) = ImageResizeDialogMath.ScaleByPercent(srcW, srcH, pct);
             WritePhysicalFromPixels(w, h);
         }
 

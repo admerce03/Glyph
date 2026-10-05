@@ -2063,7 +2063,7 @@ public sealed class PdfDocumentView : UserControl
         {
             ClearFormOverlayMode();
             RefreshToolButtonChrome();
-            _status.Text = "Form overlay off.";
+            _status.Text = FormOverlayModePolicy.Exited;
             e.Handled = true;
             return;
         }
@@ -7734,7 +7734,7 @@ public sealed class PdfDocumentView : UserControl
         var fields = await _forms.ListFieldsAsync(_document);
         if (fields.Count == 0)
         {
-            _status.Text = "AcroForm present but no widget fields found.";
+            _status.Text = FormOverlayModePolicy.NoFields;
             return;
         }
 
@@ -7744,7 +7744,7 @@ public sealed class PdfDocumentView : UserControl
         RefreshToolButtonChrome();
         DrawFormOverlays();
         await GoToPageAsync(fields[0].PageIndex, recordHistory: true);
-        _status.Text = "Form overlay on — click a field, Tab/Shift+Tab to move, Enter to edit, Esc to exit.";
+        _status.Text = FormOverlayModePolicy.Started;
     }
 
     private void ClearFormOverlayMode()
