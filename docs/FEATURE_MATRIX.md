@@ -607,7 +607,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F40-02 | Clipboard integration | PDF region → bitmap | M1/M5 | Not Started |  |
 | F40-03 | Clipboard integration | image selection → image | M1/M5 | Implemented | Copy sel / Ctrl+C with selection → clipboard PNG |
 | F40-04 | Clipboard integration | whole image → image | M1/M5 | Implemented | Copy toolbar / Ctrl+C without selection → clipboard PNG |
-| F40-05 | Clipboard integration | recognized OCR text → text | M1/M5 | Not Started |  |
+| F40-05 | Clipboard integration | recognized OCR text → text | M1/M5 | Implemented | OCR dialog / Copy OCR toolbar → clipboard text |
 | F40-06 | Clipboard integration | annotation where possible | M1/M5 | Not Started |  |
 | F40-07 | Clipboard integration | image from clipboard into image document | M1/M5 | Implemented | Paste / Ctrl+V → system bitmap or selection clipboard via `PasteFileAsync` |
 | F40-08 | Clipboard integration | image clipboard → create new image | M1/M5 | Implemented | File → New from Clipboard → temp PNG tab |
