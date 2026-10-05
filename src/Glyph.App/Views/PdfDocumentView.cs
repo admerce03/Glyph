@@ -103,6 +103,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly ListView _bookmarkList;
     private readonly ListView _searchResults;
     private StackPanel? _toolbar;
+    private IReadOnlyList<UIElement>? _toolbarDefaults;
     private readonly ListView _annotationList;
     private readonly ListView _attachmentList;
     private readonly TextBlock _propertiesSummary;
@@ -1088,7 +1089,8 @@ public sealed class PdfDocumentView : UserControl
         ToolbarCommandApplicator.Tag(_clearOcrOverlayButton, ToolbarCommands.Ocr);
         ToolbarCommandApplicator.Tag(_ocrSavePdfButton, ToolbarCommands.Ocr);
         ToolbarCommandApplicator.Tag(_ocrEntitiesButton, ToolbarCommands.Ocr);
-        ToolbarCommandApplicator.Apply(_toolbar, settings);
+        _toolbarDefaults = _toolbar.Children.Cast<UIElement>().ToList();
+        ToolbarCommandApplicator.Apply(_toolbar, settings, _toolbarDefaults);
 
         var body = new Grid
         {
@@ -13013,6 +13015,10 @@ public sealed class PdfDocumentView : UserControl
             : Visibility.Visible;
         _status.Text = _toolbar.Visibility == Visibility.Visible ? AnnotationMutationStatus.ToolbarShown : AnnotationMutationStatus.ToolbarHidden;
     }
+
+    /// <summary>Re-apply F54 hide/reorder (+ compact spacing) from Preferences without reopening.</summary>
+    public void ApplyToolbarCustomization(AppSettings? settings) =>
+        ToolbarCommandApplicator.Apply(_toolbar, settings, _toolbarDefaults);
 
     public bool IsToolbarVisible => _toolbar?.Visibility != Visibility.Collapsed;
 

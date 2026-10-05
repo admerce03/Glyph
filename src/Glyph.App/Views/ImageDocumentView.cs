@@ -41,6 +41,7 @@ public sealed class ImageDocumentView : UserControl
     private readonly Func<string, Task>? _openSibling;
     private readonly ScrollViewer _scrollViewer;
     private StackPanel? _toolbar;
+    private IReadOnlyList<UIElement>? _toolbarDefaults;
     private readonly Grid _imageSurface;
     private readonly Image _image;
     private readonly Canvas _cropOverlay;
@@ -576,7 +577,8 @@ public sealed class ImageDocumentView : UserControl
         ToolbarCommandApplicator.Tag(_ocrFindButton, ToolbarCommands.Ocr);
         ToolbarCommandApplicator.Tag(_ocrFindNextButton, ToolbarCommands.Ocr);
         ToolbarCommandApplicator.Tag(_clearOcrButton, ToolbarCommands.Ocr);
-        ToolbarCommandApplicator.Apply(_toolbar, settings);
+        _toolbarDefaults = _toolbar.Children.Cast<UIElement>().ToList();
+        ToolbarCommandApplicator.Apply(_toolbar, settings, _toolbarDefaults);
 
         var body = new Grid
         {
@@ -1661,6 +1663,10 @@ public sealed class ImageDocumentView : UserControl
             : Visibility.Visible;
         _status.Text = _toolbar.Visibility == Visibility.Visible ? ImageViewerStatus.ToolbarShown : ImageViewerStatus.ToolbarHidden;
     }
+
+    /// <summary>Re-apply F54 hide/reorder (+ compact spacing) from Preferences without reopening.</summary>
+    public void ApplyToolbarCustomization(AppSettings? settings) =>
+        ToolbarCommandApplicator.Apply(_toolbar, settings, _toolbarDefaults);
 
     public bool IsToolbarVisible => _toolbar?.Visibility != Visibility.Collapsed;
 

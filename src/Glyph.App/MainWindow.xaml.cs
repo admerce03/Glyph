@@ -3102,9 +3102,26 @@ public sealed partial class MainWindow : Window
         settings.OcrLanguageTag = ocrLanguageBox.Text?.Trim() ?? string.Empty;
         await _settingsStore.SaveAsync(settings);
         ApplyShellKeyboardShortcuts();
+        ApplyToolbarCustomizationToOpenDocuments(settings);
         ConfigureRecoveryTimer();
         await PersistSessionAsync();
         StatusText.Text = AppShellStatus.PreferencesSaved;
+    }
+
+    private void ApplyToolbarCustomizationToOpenDocuments(AppSettings settings)
+    {
+        foreach (var tab in DocumentTabs.TabItems.OfType<TabViewItem>())
+        {
+            switch (tab.Content)
+            {
+                case PdfDocumentView pdfView:
+                    pdfView.ApplyToolbarCustomization(settings);
+                    break;
+                case ImageDocumentView imageView:
+                    imageView.ApplyToolbarCustomization(settings);
+                    break;
+            }
+        }
     }
 
     private void ApplyShellKeyboardShortcuts()
