@@ -364,10 +364,14 @@ public sealed class PdfDocumentView : UserControl
         var pasteAnnot = new Button { Content = "Paste", Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(pasteAnnot, "Paste annotation clipboard (Ctrl+V when clipboard has an annotation)");
         pasteAnnot.Click += async (_, _) => await PasteAnnotationClipboardAsync();
+        var editAnnot = new Button { Content = "Edit", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(editAnnot, "Edit contents of selected sticky note, text box, or callout");
+        editAnnot.Click += async (_, _) => await EditSelectedAnnotationContentsAsync();
         var authorAnnot = new Button { Content = "Author", Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(authorAnnot, "Set default annotation author name for new sticky notes");
         authorAnnot.Click += async (_, _) => await ConfigureAnnotationAuthorAsync();
         annotHeaderRow.Children.Add(duplicateAnnot);
+        annotHeaderRow.Children.Add(editAnnot);
         annotHeaderRow.Children.Add(copyAnnot);
         annotHeaderRow.Children.Add(cutAnnot);
         annotHeaderRow.Children.Add(pasteAnnot);
@@ -6554,6 +6558,73 @@ public sealed class PdfDocumentView : UserControl
             ? Environment.UserName
             : box.Text.Trim();
         _status.Text = $"Annotation author set to {_annotationAuthor}.";
+    }
+
+    private async Task EditSelectedAnnotationContentsAsync()
+    {
+        if (!TryGetSelectedAnnotation(out var item))
+        {
+            _status.Text = "Select a sticky note, text box, or callout to edit.";
+            return;
+        }
+
+        if (!item.IsStickyNote && !item.IsTextBox && !item.IsCallout)
+        {
+            _status.Text = "Edit applies to sticky notes, text boxes, and callouts.";
+            return;
+        }
+
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for edit dialog.");
+
+        var box = new TextBox
+        {
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            Height = 140,
+            Text = item.Contents ?? string.Empty,
+            PlaceholderText = item.IsStickyNote ? "Note text" : "Text contents",
+        };
+        var title = item.IsCallout ? "Edit callout" : item.IsStickyNote ? "Edit sticky note" : "Edit text box";
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = box,
+            PrimaryButtonText = "Save",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            _status.Text = "Edit cancelled.";
+            return;
+        }
+
+        try
+        {
+            await _annotations.SetContentsAsync(
+                _document,
+                item.PageIndex,
+                item.AnnotIndex,
+                box.Text ?? string.Empty);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            var updated = item with { Contents = box.Text ?? string.Empty };
+            _selectedAnnot = updated;
+            SyncSidebarSelection(updated);
+            DrawAnnotSelection(updated);
+            _status.Text = $"Updated {FormatAnnotationLabel(updated)}.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Edit annotation failed: " + ex.Message;
+        }
     }
 
     private async Task DuplicateSelectedAnnotationAsync()
