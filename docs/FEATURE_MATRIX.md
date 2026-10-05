@@ -743,7 +743,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F52-20 | Keyboard shortcuts | Delete — Delete selected annotation/page when appropriate | M1/M9 | Tested | PDF Delete; `DocumentKeyboardShortcuts` |
 | F52-21 | Keyboard shortcuts | arrow keys — navigation | M1/M9 | Tested | PDF page selection; image nudge (viewer key handlers) |
 | F52-22 | Keyboard shortcuts | Page Up/Page Down — page navigation | M1/M9 | Tested | PDF PageUp/PageDown; `DocumentKeyboardShortcuts` |
-| F52-23 | Keyboard shortcuts | Shortcuts should be configurable eventually. | M9 | Tested | Preferences override map; `ShortcutCustomizationPolicy` + shell accelerators + PDF KeyDown |
+| F52-23 | Keyboard shortcuts | Shortcuts should be configurable eventually. | M9 | Tested | Preferences override map; shell accelerators + PDF/image KeyDown (`ShortcutCustomizationPolicy`) |
 | F53-01 | Precision touchpad behavior | two-finger scroll | M1/M2 | Tested | ScrollViewer pan; `TouchpadGesturePolicy.TwoFingerScrollUsesScrollViewer` |
 | F53-02 | Precision touchpad behavior | pinch zoom on supported precision touchpads | M1/M2 | Tested | Ctrl+wheel + Manipulation Scale; `TouchpadGesturePolicy.PreferPinchZoom` |
 | F53-03 | Precision touchpad behavior | standard Windows touchpad gestures where they map naturally to application navigation | M1/M2 | Tested | Scroll/pinch map; `TouchpadGesturePolicy` (no custom touchscreen) |
