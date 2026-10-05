@@ -429,7 +429,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
 
         var subtype = kind switch
         {
-            PdfShapeKind.Rectangle => PdfiumAnnotSubtypes.Square,
+            PdfShapeKind.Rectangle or PdfShapeKind.RoundedRectangle => PdfiumAnnotSubtypes.Square,
             PdfShapeKind.Ellipse => PdfiumAnnotSubtypes.Circle,
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
@@ -498,7 +498,20 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                                 }
                             }
 
-                            if (PdfiumNative.AnnotSetBorder(annot.__Instance, 0, 0, borderWidthPoints) == 0)
+                            var radius = 0f;
+                            if (kind == PdfShapeKind.RoundedRectangle)
+                            {
+                                radius = (float)Math.Clamp(
+                                    Math.Min(bounds.Width, bounds.Height) * 0.2,
+                                    4.0,
+                                    36.0);
+                                if (!PdfiumAnnotStrings.SetString(annot, "Contents", "RoundedRect"))
+                                {
+                                    throw new InvalidOperationException("Failed to label rounded rectangle.");
+                                }
+                            }
+
+                            if (PdfiumNative.AnnotSetBorder(annot.__Instance, radius, radius, borderWidthPoints) == 0)
                             {
                                 throw new InvalidOperationException("FPDFAnnot_SetBorder failed for shape.");
                             }
@@ -516,7 +529,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                                 TextMarkupKind: null,
                                 bounds,
                                 borderColor,
-                                Contents: null,
+                                Contents: kind == PdfShapeKind.RoundedRectangle ? "RoundedRect" : null,
                                 IsStickyNote: false,
                                 IsInk: false,
                                 ShapeKind: kind);
@@ -1116,6 +1129,18 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
 
                     markupKind = FromSubtype(subtype);
                     shapeKind = FromShapeSubtype(subtype);
+                    if (shapeKind == PdfShapeKind.Rectangle
+                        && (string.Equals(contents, "RoundedRect", StringComparison.Ordinal)
+                            || (PdfiumNative.AnnotGetBorder(
+                                    annot.__Instance,
+                                    out var hr,
+                                    out var vr,
+                                    out _) != 0
+                                && (hr > 0.5f || vr > 0.5f))))
+                    {
+                        shapeKind = PdfShapeKind.RoundedRectangle;
+                    }
+
                     if (shapeKind is null && subtype == PdfiumAnnotSubtypes.Ink)
                     {
                         shapeKind = FromInkShapeContents(contents);
@@ -1239,9 +1264,10 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
 
         if (subtype is PdfiumAnnotSubtypes.Square or PdfiumAnnotSubtypes.Circle)
         {
-            var kind = subtype == PdfiumAnnotSubtypes.Square
-                ? PdfShapeKind.Rectangle
-                : PdfShapeKind.Ellipse;
+            var kind = shapeKind
+                ?? (subtype == PdfiumAnnotSubtypes.Square
+                    ? PdfShapeKind.Rectangle
+                    : PdfShapeKind.Ellipse);
             return await AddShapeAsync(
                 document,
                 pageIndex,
@@ -1490,6 +1516,23 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                     var isSticky = subtype == PdfiumAnnotSubtypes.Text;
                     var isInk = subtype == PdfiumAnnotSubtypes.Ink;
                     var shapeKind = FromShapeSubtype(subtype);
+                    if (shapeKind == PdfShapeKind.Rectangle)
+                    {
+                        if (string.Equals(contents, "RoundedRect", StringComparison.Ordinal))
+                        {
+                            shapeKind = PdfShapeKind.RoundedRectangle;
+                        }
+                        else if (PdfiumNative.AnnotGetBorder(
+                                     annot.__Instance,
+                                     out var hr,
+                                     out var vr,
+                                     out _) != 0
+                                 && (hr > 0.5f || vr > 0.5f))
+                        {
+                            shapeKind = PdfShapeKind.RoundedRectangle;
+                        }
+                    }
+
                     if (shapeKind is null && isInk)
                     {
                         shapeKind = FromInkShapeContents(contents);

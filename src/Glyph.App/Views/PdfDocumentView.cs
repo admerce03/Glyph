@@ -127,6 +127,7 @@ public sealed class PdfDocumentView : UserControl
     private Button? _formButton;
     private Button? _signButton;
     private Button? _rectButton;
+    private Button? _roundRectButton;
     private Button? _ellipseButton;
     private Button? _lineButton;
     private Button? _arrowButton;
@@ -433,6 +434,7 @@ public sealed class PdfDocumentView : UserControl
         var ink = new Button { Content = "Ink" };
         var freeform = new Button { Content = "Freeform" };
         var rect = new Button { Content = "Rect" };
+        var roundRect = new Button { Content = "Round" };
         var ellipse = new Button { Content = "Ellipse" };
         var line = new Button { Content = "Line" };
         var arrow = new Button { Content = "Arrow" };
@@ -442,6 +444,7 @@ public sealed class PdfDocumentView : UserControl
         _highlightButton = highlight;
         _formButton = formFill;
         _rectButton = rect;
+        _roundRectButton = roundRect;
         _ellipseButton = ellipse;
         _lineButton = line;
         _arrowButton = arrow;
@@ -476,6 +479,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
         ToolTipService.SetToolTip(freeform, "Draw a closed freeform shape (auto-closes path)");
         ToolTipService.SetToolTip(rect, "Draw a rectangle annotation");
+        ToolTipService.SetToolTip(roundRect, "Draw a rounded rectangle annotation");
         ToolTipService.SetToolTip(ellipse, "Draw an ellipse annotation");
         ToolTipService.SetToolTip(line, "Draw a line (stored as a 2-point ink stroke)");
         ToolTipService.SetToolTip(arrow, "Draw an arrow (ink shaft + arrowhead)");
@@ -537,6 +541,7 @@ public sealed class PdfDocumentView : UserControl
         ink.Click += async (_, _) => await ToggleInkModeAsync();
         freeform.Click += async (_, _) => await ToggleFreeformModeAsync();
         rect.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Rectangle);
+        roundRect.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.RoundedRectangle);
         ellipse.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Ellipse);
         line.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Line);
         arrow.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Arrow);
@@ -554,7 +559,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, sign, formFill, ink, freeform, rect, ellipse, line, arrow,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, sign, formFill, ink, freeform, rect, roundRect, ellipse, line, arrow,
                 _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -3662,6 +3667,7 @@ public sealed class PdfDocumentView : UserControl
             var shapeName = shape switch
             {
                 PdfShapeKind.Rectangle => "Rect",
+                PdfShapeKind.RoundedRectangle => "Round",
                 PdfShapeKind.Ellipse => "Ellipse",
                 PdfShapeKind.Line => "Line",
                 PdfShapeKind.Arrow => "Arrow",
@@ -3946,6 +3952,7 @@ public sealed class PdfDocumentView : UserControl
         _status.Text = kind switch
         {
             PdfShapeKind.Rectangle => "Rectangle mode — drag on the page.",
+            PdfShapeKind.RoundedRectangle => "Rounded rectangle mode — drag on the page.",
             PdfShapeKind.Ellipse => "Ellipse mode — drag on the page.",
             PdfShapeKind.Arrow => "Arrow mode — drag from tail to tip.",
             _ => "Line mode — drag on the page.",
@@ -4069,6 +4076,11 @@ public sealed class PdfDocumentView : UserControl
         if (_rectButton is not null)
         {
             _rectButton.Background = _shapeMode == PdfShapeKind.Rectangle ? active : null;
+        }
+
+        if (_roundRectButton is not null)
+        {
+            _roundRectButton.Background = _shapeMode == PdfShapeKind.RoundedRectangle ? active : null;
         }
 
         if (_ellipseButton is not null)
@@ -4250,6 +4262,7 @@ public sealed class PdfDocumentView : UserControl
             _status.Text = kind switch
             {
                 PdfShapeKind.Rectangle => "Rectangle added.",
+                PdfShapeKind.RoundedRectangle => "Rounded rectangle added.",
                 PdfShapeKind.Ellipse => "Ellipse added.",
                 PdfShapeKind.Arrow => "Arrow added.",
                 _ => "Line added.",

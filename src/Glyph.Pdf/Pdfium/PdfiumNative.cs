@@ -93,4 +93,8 @@ internal static partial class PdfiumNative
     [LibraryImport(LibraryName, EntryPoint = "FPDFAnnot_SetBorder")]
     [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
     public static partial int AnnotSetBorder(IntPtr annot, float horizontalRadius, float verticalRadius, float borderWidth);
+
+    [LibraryImport(LibraryName, EntryPoint = "FPDFAnnot_GetBorder")]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    public static partial int AnnotGetBorder(IntPtr annot, out float horizontalRadius, out float verticalRadius, out float borderWidth);
 }

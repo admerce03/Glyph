@@ -424,6 +424,15 @@ public class PdfiumAnnotationServiceTests
                 arrow.IsInk.Should().BeTrue();
                 arrow.Contents.Should().Be("Arrow");
 
+                var rounded = await annots.AddShapeAsync(
+                    document,
+                    0,
+                    PdfShapeKind.RoundedRectangle,
+                    new PdfRect(340, 600, 480, 700),
+                    new PdfAnnotationColor(255, 140, 0));
+                rounded.ShapeKind.Should().Be(PdfShapeKind.RoundedRectangle);
+                rounded.Contents.Should().Be("RoundedRect");
+
                 await editor.SaveAsync(document, outPath);
             }
 
@@ -434,6 +443,7 @@ public class PdfiumAnnotationServiceTests
                 listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Ellipse);
                 listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Line && a.IsInk);
                 listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Arrow && a.IsInk);
+                listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.RoundedRectangle);
             }
         }
         finally

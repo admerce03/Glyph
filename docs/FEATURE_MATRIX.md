@@ -231,7 +231,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-05 | PDF annotations | Lines | M4 | Tested | `AddShapeAsync(Line)` via 2-point ink (no PDFium SetLine) |
 | F13-06 | PDF annotations | Arrows | M4 | Tested | `AddShapeAsync(Arrow)` ink shaft + head |
 | F13-07 | PDF annotations | Rectangles | M4 | Tested | `AddShapeAsync(Rectangle)` + Rect draw mode |
-| F13-08 | PDF annotations | Rounded rectangles | M4 | Not Started |  |
+| F13-08 | PDF annotations | Rounded rectangles | M4 | Tested | `AddShapeAsync(RoundedRectangle)` via Square + `FPDFAnnot_SetBorder` radii |
 | F13-09 | PDF annotations | Ellipses | M4 | Tested | `AddShapeAsync(Ellipse)` + Ellipse draw mode |
 | F13-10 | PDF annotations | Polygons | M4 | Not Started |  |
 | F13-11 | PDF annotations | Callouts | M4 | Tested | `AddCalloutAsync` FreeText+ink pointer; Callout draw mode |
@@ -304,7 +304,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F17-01 | Shapes | line | M4 | Tested | Same as F13-05 Line draw mode |
 | F17-02 | Shapes | arrow | M4 | Tested | Same as F13-06 Arrow draw mode |
 | F17-03 | Shapes | rectangle | M4 | Tested | Same as F13-07 Rect draw mode |
-| F17-04 | Shapes | rounded rectangle | M4 | Not Started |  |
+| F17-04 | Shapes | rounded rectangle | M4 | Tested | Same as F13-08 Round draw mode |
 | F17-05 | Shapes | ellipse | M4 | Tested | Same as F13-09 Ellipse draw mode |
 | F17-06 | Shapes | polygon | M4 | Implemented | Freeform closed ink path |
 | F17-07 | Shapes | star | M4 | Not Started |  |
