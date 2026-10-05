@@ -83,7 +83,7 @@ public sealed class ImageDocumentView : UserControl
     private ImageMarkupShapeKind? _markupShapeTool;
     private string? _pendingText;
     private double _pendingFontSize = 24;
-    private const int MaxEditUndo = 12;
+    private const int MaxEditUndo = ImageEditUndoPolicy.MaxDepth;
     private double _zoom = 1.0;
     private bool _loaded;
     private int _refreshGeneration;
@@ -1484,7 +1484,7 @@ public sealed class ImageDocumentView : UserControl
     {
         if (_editUndoStack.Count == 0)
         {
-            _status.Text = "Nothing to undo.";
+            _status.Text = ImageEditUndoPolicy.NothingToUndo;
             return;
         }
 
@@ -1496,11 +1496,11 @@ public sealed class ImageDocumentView : UserControl
             _undoButton.IsEnabled = _editUndoStack.Count > 0;
             await RefreshAsync();
             UpdateStatus();
-            _status.Text = "Edit undone.";
+            _status.Text = ImageEditUndoPolicy.Undone;
         }
         catch (Exception ex)
         {
-            _status.Text = "Undo failed: " + ex.Message;
+            _status.Text = ImageEditUndoPolicy.Failed(ex.Message);
         }
     }
 
@@ -4326,24 +4326,24 @@ public sealed class ImageDocumentView : UserControl
 
             var colorManaged = new CheckBox
             {
-                Content = "Color-managed display (ICC → sRGB)",
+                Content = ImageColorManagedDisplayPolicy.ColorManagedLabel,
                 IsChecked = _document.ColorManagedDisplay,
             };
             colorManaged.Checked += async (_, _) =>
             {
                 _document.ColorManagedDisplay = true;
                 await RefreshAsync();
-                _status.Text = "Color-managed display on.";
+                _status.Text = ImageColorManagedDisplayPolicy.ColorManagedOn;
             };
             colorManaged.Unchecked += async (_, _) =>
             {
                 _document.ColorManagedDisplay = false;
                 await RefreshAsync();
-                _status.Text = "Color-managed display off.";
+                _status.Text = ImageColorManagedDisplayPolicy.ColorManagedOff;
             };
             var softProof = new CheckBox
             {
-                Content = "Soft-proof Adobe RGB",
+                Content = ImageColorManagedDisplayPolicy.SoftProofLabel,
                 IsChecked = _document.SoftProofProfile == ImageColorProfileKind.AdobeRgb,
             };
             softProof.Checked += async (_, _) =>
@@ -4352,13 +4352,13 @@ public sealed class ImageDocumentView : UserControl
                 _document.ColorManagedDisplay = true;
                 colorManaged.IsChecked = true;
                 await RefreshAsync();
-                _status.Text = "Soft-proof Adobe RGB on.";
+                _status.Text = ImageColorManagedDisplayPolicy.SoftProofOn;
             };
             softProof.Unchecked += async (_, _) =>
             {
                 _document.SoftProofProfile = null;
                 await RefreshAsync();
-                _status.Text = "Soft-proof off.";
+                _status.Text = ImageColorManagedDisplayPolicy.SoftProofOff;
             };
             var intentBox = new ComboBox
             {

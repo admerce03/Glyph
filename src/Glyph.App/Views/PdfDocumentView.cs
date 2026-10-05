@@ -9219,7 +9219,7 @@ public sealed class PdfDocumentView : UserControl
         };
         var dialog = new ContentDialog
         {
-            Title = "Text box",
+            Title = PdfTextBoxDialogStatus.Title,
             Content = panel,
             PrimaryButtonText = "Add",
             CloseButtonText = "Cancel",
@@ -9230,7 +9230,7 @@ public sealed class PdfDocumentView : UserControl
         var result = await dialog.ShowAsync();
         if (result != ContentDialogResult.Primary)
         {
-            _status.Text = "Text box cancelled.";
+            _status.Text = PdfTextBoxDialogStatus.Cancelled;
             return;
         }
 
@@ -9262,7 +9262,7 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
-            _status.Text = "Adding text box…";
+            _status.Text = PdfTextBoxDialogStatus.Adding;
             var created = await _annotations.AddTextBoxAsync(
                 _document,
                 CurrentPageIndex,
@@ -9281,11 +9281,11 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = "Text box added.";
+            _status.Text = PdfTextBoxDialogStatus.Added;
         }
         catch (Exception ex)
         {
-            _status.Text = "Text box failed: " + ex.Message;
+            _status.Text = PdfTextBoxDialogStatus.Failed(ex.Message);
         }
     }
 

@@ -285,7 +285,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F15-12 | Notes | Show all notes in sidebar. | M4 | Tested | Annotations list; `PdfAnnotationListLabel` Note format + ListAsync |
 | F15-13 | Notes | Print notes optionally. | M4 | Tested | Annotations → Export notes → printable `.txt`; `PdfNotesExportTests` |
 | F16-01 | Text boxes and callouts | Add text box anywhere. | M4 | Tested | `AddTextBoxAsync` + TextBox toolbar |
-| F16-02 | Text boxes and callouts | Type arbitrary text over PDF. | M4 | Implemented | Contents via dialog |
+| F16-02 | Text boxes and callouts | Type arbitrary text over PDF. | M4 | Tested | Contents via dialog; `PdfTextBoxDialogStatus` unit tests |
 | F16-03 | Text boxes and callouts | Move it. | M4 | Tested | `MoveAsync` API |
 | F16-04 | Text boxes and callouts | Resize it. | M4 | Tested | `MoveAsync` with new bounds |
 | F16-05 | Text boxes and callouts | Rotate where appropriate. | M4 | Tested | Sidebar Rotate → `RotateAsync` swaps FreeText bounds around center |
@@ -479,7 +479,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F29-06 | Smart object/background selection | Remove background. | M8 | Tested | Alias of F29-03 |
 | F29-07 | Smart object/background selection | Preserve transparent background. | M8 | Tested | Remove keeps alpha; `FormatSupportsAlpha` |
 | F29-08 | Smart object/background selection | Offer conversion to transparency-capable format if source format cannot support alpha. | M8 | Tested | Status hint via `ImageBackgroundSubjectPolicy.TransparencyHint` |
-| F29-09 | Smart object/background selection | Undo. | M8 | Implemented | MutateAsync checkpoint undo (Ctrl+Z) |
+| F29-09 | Smart object/background selection | Undo. | M8 | Tested | MutateAsync checkpoint undo; `ImageEditUndoPolicy` unit tests |
 | F29-10 | Smart object/background selection | Copy extracted subject. | M8 | Tested | Extract → clipboard PNG; `ExtractToClipboard` |
 | F29-11 | Smart object/background selection | Save extracted subject as separate image. | M8 | Tested | Extract → save PNG; `SuggestedSubjectFileName` |
 | F30-01 | Image crop | Interactive crop box. | M5 | Tested | Drag rectangle overlay; `ImageCropSelectionPolicy` unit tests |
@@ -489,7 +489,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F30-05 | Image crop | Numeric width/height. | M5 | Tested | Crop x,y,w,h text box; `ImageCropRectParser` unit tests |
 | F30-06 | Image crop | Apply crop. | M5 | Tested | Crop → `MagickImageProcessor.CropAsync`; crop round-trip unit tests |
 | F30-07 | Image crop | Undo. | M5 | Tested | Undo / Ctrl+Z via `CaptureCheckpoint`/`RestoreCheckpoint` (crop and other edits) |
-| F30-08 | Image crop | Non-destructive editing internally until save where practical. | M5 | Implemented | Edits mutate in-memory Magick image; disk unchanged until Save |
+| F30-08 | Image crop | Non-destructive editing internally until save where practical. | M5 | Tested | In-memory Magick edits until Save; `ImageEditUndoPolicy` |
 | F31-01 | Image resizing | Adjust width. | M5 | Tested | Resize dialog width; `ImageResizeDialogMath.HeightForWidth` |
 | F31-02 | Image resizing | Adjust height. | M5 | Tested | Resize dialog height; `ImageResizeDialogMath.WidthForHeight` |
 | F31-03 | Image resizing | Lock aspect ratio. | M5 | Tested | Resize dialog lock; aspect helpers unit-tested |
@@ -600,7 +600,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F39-03 | Color management | Assign ICC profile. | M8 | Tested | Meta → Assign sRGB; `AssignColorProfileAsync` |
 | F39-04 | Color management | Convert between profiles. | M8 | Tested | Meta → Convert → sRGB; `ConvertColorProfileAsync` (sRGB/Adobe RGB) |
 | F39-05 | Color management | Use monitor profile. | M8 | Deferred | Needs WinUI/monitor ICC plumbing; sRGB display is interim |
-| F39-06 | Color management | Soft-proof through another ICC profile. | M8 | Implemented | Meta → Soft-proof Adobe RGB (proof → sRGB display) |
+| F39-06 | Color management | Soft-proof through another ICC profile. | M8 | Tested | Meta → Soft-proof Adobe RGB; `ImageColorManagedDisplayPolicy` |
 | F39-07 | Color management | Toggle soft proof. | M8 | Implemented | Meta soft-proof checkbox |
 | F39-08 | Color management | Gamut-warning option, advanced. | M8 | Deferred | Needs gamut visualization overlay |
 | F39-09 | Color management | Rendering intent selection: | M8 | Implemented | Meta Intent combo (Perceptual/Relative/Saturation/Absolute) |
