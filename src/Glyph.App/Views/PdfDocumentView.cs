@@ -12654,22 +12654,15 @@ public sealed class PdfDocumentView : UserControl
         var presetBox = new ComboBox
         {
             Width = 260,
-            SelectedIndex = 2,
-            Items =
-            {
-                "Lossless (full rewrite)",
-                "High quality (200 DPI)",
-                "Balanced (150 DPI)",
-                "Small file (96 DPI + strip attachments/metadata)",
-                "Custom",
-            },
+            SelectedIndex = PdfOptimizeDialogUi.DefaultPresetIndex,
+            ItemsSource = PdfOptimizeDialogUi.PresetLabels.ToList(),
         };
 
         var aboveDpiBox = new TextBox { Width = 80, Text = "225", IsEnabled = false };
         var targetDpiBox = new TextBox { Width = 80, Text = "150", IsEnabled = false };
         var jpegQualityBox = new NumberBox
         {
-            Header = "JPEG quality",
+            Header = PdfOptimizeDialogUi.JpegQualityHeader,
             Width = 140,
             Value = 75,
             Minimum = 1,
@@ -12679,13 +12672,13 @@ public sealed class PdfDocumentView : UserControl
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
             IsEnabled = false,
         };
-        var stripAttachments = new CheckBox { Content = "Remove embedded files", IsEnabled = false };
-        var preserveMono = new CheckBox { Content = "Preserve monochrome images", IsChecked = true, IsEnabled = false };
-        var stripMetadata = new CheckBox { Content = "Remove metadata", IsEnabled = false };
+        var stripAttachments = new CheckBox { Content = PdfOptimizeDialogUi.StripAttachmentsLabel, IsEnabled = false };
+        var preserveMono = new CheckBox { Content = PdfOptimizeDialogUi.PreserveMonoLabel, IsChecked = true, IsEnabled = false };
+        var stripMetadata = new CheckBox { Content = PdfOptimizeDialogUi.StripMetadataLabel, IsEnabled = false };
 
         void SyncCustomEnabled()
         {
-            var custom = presetBox.SelectedIndex == 4;
+            var custom = PdfOptimizeDialogUi.IsCustomIndex(presetBox.SelectedIndex);
             aboveDpiBox.IsEnabled = custom;
             targetDpiBox.IsEnabled = custom;
             jpegQualityBox.IsEnabled = custom;
@@ -12715,14 +12708,7 @@ public sealed class PdfDocumentView : UserControl
             Text = "Choose a preset (or Custom), then Estimate or Apply. Downsampled images are rewritten as JPEG when quality settings apply.",
         };
 
-        PdfOptimizePreset SelectedPreset() => presetBox.SelectedIndex switch
-        {
-            0 => PdfOptimizePreset.Lossless,
-            1 => PdfOptimizePreset.HighQuality,
-            3 => PdfOptimizePreset.SmallFile,
-            4 => PdfOptimizePreset.Custom,
-            _ => PdfOptimizePreset.Balanced,
-        };
+        PdfOptimizePreset SelectedPreset() => PdfOptimizeDialogUi.FromComboIndex(presetBox.SelectedIndex);
 
         PdfOptimizeOptions BuildOptions()
         {
@@ -12808,7 +12794,7 @@ public sealed class PdfDocumentView : UserControl
 
         var dialog = new ContentDialog
         {
-            Title = "Optimize PDF",
+            Title = PdfOptimizeDialogUi.DialogTitle,
             Content = panel,
             PrimaryButtonText = "Apply",
             CloseButtonText = "Cancel",
@@ -12818,7 +12804,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
         {
-            _status.Text = "Optimize cancelled.";
+            _status.Text = PdfOptimizeDialogUi.CancelledStatus;
             return;
         }
 
@@ -12831,14 +12817,14 @@ public sealed class PdfDocumentView : UserControl
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
-            _status.Text =
-                $"Optimized: {result.ImagesDownsampled} image(s) downsampled, "
-                + $"{result.AttachmentsRemoved} attachment(s) removed; "
-                + $"{ByteSizeFormat.Format(result.BytesBefore)} → {ByteSizeFormat.Format(result.BytesAfter)}. Save to keep.";
+            _status.Text = PdfOptimizeDialogUi.ResultStatus(
+                result,
+                ByteSizeFormat.Format(result.BytesBefore),
+                ByteSizeFormat.Format(result.BytesAfter));
         }
         catch (Exception ex)
         {
-            _status.Text = "Optimize failed: " + ex.Message;
+            _status.Text = PdfOptimizeDialogUi.FailedStatus(ex.Message);
         }
         finally
         {
