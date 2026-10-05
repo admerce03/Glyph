@@ -117,6 +117,12 @@ try {
                 }
                 Write-Host ("Signature OK: $($pkg.Name) status=$($sig.Status) thumbprint=$($sig.SignerCertificate.Thumbprint)")
             }
+
+            $cerOut = Join-Path $outDir 'Glyph.CI.TestSign.cer'
+            if (-not (Test-Path -LiteralPath $cerOut)) {
+                throw "TestSign completed but trust cert missing: $cerOut"
+            }
+            Write-Host "Trust cert present: $cerOut"
         }
     }
     elseif ($manifest.Count -gt 0) {
