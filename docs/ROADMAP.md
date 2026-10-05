@@ -21,7 +21,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M1 | Application shell and basic file opening | **Implemented** (CI green; interactive screenshot pending) | M0 |
 | M2 | Core PDF viewer | **Implemented** (landed via PR #7 → `33deca2`) | M1 |
 | M3 | Core PDF page manipulation | **In Progress** | M2 |
-| M4 | PDF markup and editing | Not Started | M2 (forms/security touch M7) |
+| M4 | PDF markup and editing | **In Progress** | M2 (forms/security touch M7) |
 | M5 | Image viewer/editor | Not Started | M1 (shares shell/DnD with M3) |
 | M6 | OCR and scanned-document capabilities | Not Started | M2, M5 |
 | M7 | Redaction, PDF security, optimization, metadata | Not Started | M2–M4 |
@@ -165,7 +165,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 4 — PDF markup and editing
 
-**Status:** Not Started · Depends on M2
+**Status:** In Progress · Depends on M2
 
 ### Scope (`FEATURES.md` §13–20, §22)
 
@@ -183,6 +183,12 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Flatten produces non-editable visuals
 - Form field tab order works on sample AcroForms
 - Tests for annotation model serialization
+
+### Progress notes
+
+- `IPdfAnnotationStore` / `PdfiumAnnotationStore`: highlight, underline, strikeout, sticky note, list, delete, recolor, contents.
+- Viewer: HL/U/S/Note/Unmark/Recolor/Save, color combo, persistent HL mode, Annotations sidebar jump-to.
+- Tests: save/reopen highlight, underline/strike delete, sticky note color/contents, JSON model serializer.
 
 ---
 

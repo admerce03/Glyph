@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.Core.Documents;
 using Glyph.Pdf.Abstractions;
+using Glyph.Pdf.Annotations;
 using Glyph.Pdf.Editing;
 using Glyph.Pdf.Rendering;
 using Glyph.Pdf.Text;
@@ -33,6 +34,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfOutlineService _outlineService;
     private readonly IPdfLinkService _linkService;
     private readonly IPdfPageEditor _pageEditor;
+    private readonly IPdfAnnotationStore _annotationStore;
     private readonly IPdfDocumentFactory _documentFactory;
     private readonly DocumentViewState _viewState;
     private readonly DocumentNavigationHistory _history = new();
@@ -48,14 +50,20 @@ public sealed class PdfDocumentView : UserControl
     private readonly ScrollViewer _thumbnailScroll;
     private readonly TreeView _outlineTree;
     private readonly ListView _searchResults;
+    private readonly ListView _annotationList;
     private readonly TextBox _searchBox;
     private readonly TextBox _gotoBox;
     private readonly CheckBox _caseSensitiveBox;
+    private readonly CheckBox _persistentHighlightBox;
+    private readonly ComboBox _markupColorBox;
     private readonly ComboBox _layoutBox;
     private readonly TextBlock _status;
     private readonly Dictionary<int, IReadOnlyList<PdfTextChar>> _pageChars = new();
     private readonly Dictionary<int, IReadOnlyList<PdfLink>> _pageLinks = new();
     private string _selectedText = string.Empty;
+    private int _selectionPageIndex = -1;
+    private PdfRect? _selectionRect;
+    private IReadOnlyList<PdfAnnotation> _annotations = [];
     private readonly Dictionary<int, Image> _pageImages = new();
     private readonly Dictionary<int, Canvas> _pageOverlays = new();
     private readonly Dictionary<int, Image> _thumbnailImages = new();
@@ -83,6 +91,7 @@ public sealed class PdfDocumentView : UserControl
         IPdfOutlineService outlineService,
         IPdfLinkService linkService,
         IPdfPageEditor pageEditor,
+        IPdfAnnotationStore annotationStore,
         IPdfDocumentFactory documentFactory,
         DocumentViewState? viewState = null)
     {
@@ -94,6 +103,7 @@ public sealed class PdfDocumentView : UserControl
         _outlineService = outlineService;
         _linkService = linkService;
         _pageEditor = pageEditor;
+        _annotationStore = annotationStore;
         _documentFactory = documentFactory;
         _viewState = viewState ?? new DocumentViewState();
         _scale = PdfZoomCalculator.Clamp(_viewState.Zoom <= 0 ? 1.25 : _viewState.Zoom);
@@ -156,9 +166,15 @@ public sealed class PdfDocumentView : UserControl
         _searchResults = new ListView
         {
             SelectionMode = ListViewSelectionMode.Single,
-            Height = 160,
+            Height = 120,
         };
         _searchResults.SelectionChanged += SearchResults_SelectionChanged;
+        _annotationList = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            Height = 140,
+        };
+        _annotationList.SelectionChanged += AnnotationList_SelectionChanged;
 
         var sidePanel = new Grid
         {
@@ -168,9 +184,11 @@ public sealed class PdfDocumentView : UserControl
                 new RowDefinition { Height = GridLength.Auto },
                 new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
                 new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(120) },
+                new RowDefinition { Height = new GridLength(100) },
                 new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(140) },
+                new RowDefinition { Height = new GridLength(110) },
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(130) },
             },
         };
         sidePanel.Children.Add(new TextBlock { Text = "Pages", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(8, 8, 8, 4) });
@@ -186,6 +204,11 @@ public sealed class PdfDocumentView : UserControl
         sidePanel.Children.Add(searchHeader);
         Grid.SetRow(_searchResults, 5);
         sidePanel.Children.Add(_searchResults);
+        var annotHeader = new TextBlock { Text = "Annotations", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(8, 8, 8, 4) };
+        Grid.SetRow(annotHeader, 6);
+        sidePanel.Children.Add(annotHeader);
+        Grid.SetRow(_annotationList, 7);
+        sidePanel.Children.Add(_annotationList);
 
         _status = new TextBlock { Opacity = 0.75, FontSize = 12, Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
         _gotoBox = new TextBox { PlaceholderText = "#", Width = 48 };
@@ -222,8 +245,26 @@ public sealed class PdfDocumentView : UserControl
         var merge = new Button { Content = "Merge" };
         var split = new Button { Content = "Split" };
         var crop = new Button { Content = "Crop" };
+        var highlight = new Button { Content = "HL" };
+        var underline = new Button { Content = "U" };
+        var strike = new Button { Content = "S" };
+        var note = new Button { Content = "Note" };
+        var removeMarkup = new Button { Content = "Unmark" };
+        var recolor = new Button { Content = "Recolor" };
+        var saveDoc = new Button { Content = "Save" };
         var undoEdit = new Button { Content = "Undo" };
         var redoEdit = new Button { Content = "Redo" };
+        _markupColorBox = new ComboBox
+        {
+            Width = 96,
+            ItemsSource = new[] { "Yellow", "Green", "Pink", "Blue", "Red" },
+            SelectedIndex = 0,
+        };
+        _persistentHighlightBox = new CheckBox
+        {
+            Content = "HL mode",
+            VerticalAlignment = VerticalAlignment.Center,
+        };
         ToolTipService.SetToolTip(rotateLeft, "Rotate selected pages left");
         ToolTipService.SetToolTip(rotateRight, "Rotate selected pages right");
         ToolTipService.SetToolTip(deletePages, "Delete selected pages");
@@ -235,6 +276,15 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(merge, "Merge other PDF files into this document");
         ToolTipService.SetToolTip(split, "Split document before each selected page");
         ToolTipService.SetToolTip(crop, "Crop selected pages (non-destructive CropBox)");
+        ToolTipService.SetToolTip(highlight, "Highlight selected text");
+        ToolTipService.SetToolTip(underline, "Underline selected text");
+        ToolTipService.SetToolTip(strike, "Strikethrough selected text");
+        ToolTipService.SetToolTip(note, "Add sticky note on current page");
+        ToolTipService.SetToolTip(removeMarkup, "Delete selected annotation from sidebar");
+        ToolTipService.SetToolTip(recolor, "Apply selected color to sidebar annotation");
+        ToolTipService.SetToolTip(saveDoc, "Save PDF including markup");
+        ToolTipService.SetToolTip(_markupColorBox, "Markup color");
+        ToolTipService.SetToolTip(_persistentHighlightBox, "Persistent highlight mode: every text selection is highlighted");
         ToolTipService.SetToolTip(undoEdit, "Undo last page edit (Ctrl+Z)");
         ToolTipService.SetToolTip(redoEdit, "Redo page edit (Ctrl+Y)");
 
@@ -277,6 +327,13 @@ public sealed class PdfDocumentView : UserControl
         merge.Click += async (_, _) => await MergePdfsAsync();
         split.Click += async (_, _) => await SplitDocumentAsync();
         crop.Click += async (_, _) => await CropSelectedAsync();
+        highlight.Click += async (_, _) => await ApplyTextMarkupAsync(PdfAnnotationKind.Highlight);
+        underline.Click += async (_, _) => await ApplyTextMarkupAsync(PdfAnnotationKind.Underline);
+        strike.Click += async (_, _) => await ApplyTextMarkupAsync(PdfAnnotationKind.StrikeOut);
+        note.Click += async (_, _) => await AddStickyNoteAsync();
+        removeMarkup.Click += async (_, _) => await DeleteSelectedAnnotationAsync();
+        recolor.Click += async (_, _) => await RecolorSelectedAnnotationAsync();
+        saveDoc.Click += async (_, _) => await SaveDocumentAsync();
         undoEdit.Click += async (_, _) => await UndoPageEditAsync();
         redoEdit.Click += async (_, _) => await RedoPageEditAsync();
 
@@ -288,9 +345,10 @@ public sealed class PdfDocumentView : UserControl
             Children =
             {
                 first, prev, _gotoBox, next, last, back, forward,
-                zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
+                zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy, saveDoc,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
+                highlight, underline, strike, note, removeMarkup, recolor, _markupColorBox, _persistentHighlightBox,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -345,6 +403,7 @@ public sealed class PdfDocumentView : UserControl
         await RenderVisibleAsync();
         _ = RenderThumbnailsAsync();
         _ = LoadOutlineAsync();
+        _ = RefreshAnnotationSidebarAsync();
     }
 
     private void PdfDocumentView_Unloaded(object sender, RoutedEventArgs e)
@@ -1124,8 +1183,16 @@ public sealed class PdfDocumentView : UserControl
             var bottom = page.HeightPoints - (topUi / _scale);
             var selection = new PdfRect(left, bottom, right, top);
             _selectedText = PdfTextSelection.CopyCharsInRect(chars, selection);
+            _selectionPageIndex = pageIndex;
+            _selectionRect = selection;
             await RefreshSearchHighlightsAsync();
             DrawSelectionOverlay(pageIndex, chars, selection);
+            if (_persistentHighlightBox.IsChecked == true && !string.IsNullOrEmpty(_selectedText))
+            {
+                await ApplyTextMarkupAsync(PdfAnnotationKind.Highlight);
+                return;
+            }
+
             _status.Text = string.IsNullOrEmpty(_selectedText)
                 ? "No text in selection."
                 : $"Selected “{TrimForStatus(_selectedText)}”";
@@ -1155,6 +1222,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _selectedText = PdfTextSelection.CopyText(chars, start, end);
+        _selectionPageIndex = pageIndex;
         await RefreshSearchHighlightsAsync();
         if (start <= end)
         {
@@ -1169,7 +1237,13 @@ public sealed class PdfDocumentView : UserControl
                     Math.Max(union.Top, b.Top));
             }
 
+            _selectionRect = union;
             DrawSelectionOverlay(pageIndex, chars, union);
+            if (_persistentHighlightBox.IsChecked == true && !string.IsNullOrEmpty(_selectedText))
+            {
+                await ApplyTextMarkupAsync(PdfAnnotationKind.Highlight);
+                return;
+            }
         }
 
         _status.Text = string.IsNullOrEmpty(_selectedText)
@@ -1765,6 +1839,242 @@ public sealed class PdfDocumentView : UserControl
             _status.Text = "Crop failed: " + ex.Message;
         }
     }
+
+    private async Task ApplyTextMarkupAsync(PdfAnnotationKind kind)
+    {
+        if (_selectionPageIndex < 0 || _selectionRect is null || string.IsNullOrEmpty(_selectedText))
+        {
+            _status.Text = "Select text to mark up.";
+            return;
+        }
+
+        if (!_pageChars.ContainsKey(_selectionPageIndex))
+        {
+            _pageChars[_selectionPageIndex] = await _textExtractor.GetCharsAsync(_document, _selectionPageIndex);
+        }
+
+        var chars = PdfTextSelection.CharsInRect(_pageChars[_selectionPageIndex], _selectionRect.Value);
+        var quads = PdfAnnotationQuads.FromChars(chars);
+        if (quads.Count == 0)
+        {
+            _status.Text = "No text geometry for markup.";
+            return;
+        }
+
+        try
+        {
+            await _annotationStore.AddTextMarkupAsync(
+                _document,
+                new PdfTextMarkupRequest(
+                    _selectionPageIndex,
+                    kind,
+                    quads,
+                    SelectedMarkupColor(),
+                    SelectedText: _selectedText,
+                    Author: "Glyph"));
+            _cache.ClearDocument(_documentKey);
+            await RefreshAnnotationSidebarAsync();
+            await RenderVisibleAsync();
+            _status.Text = kind switch
+            {
+                PdfAnnotationKind.Highlight => "Highlighted selection.",
+                PdfAnnotationKind.Underline => "Underlined selection.",
+                PdfAnnotationKind.StrikeOut => "Struck through selection.",
+                _ => "Markup applied.",
+            };
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Markup failed: " + ex.Message;
+        }
+    }
+
+    private async Task AddStickyNoteAsync()
+    {
+        var input = new TextBox
+        {
+            PlaceholderText = "Note text",
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            Height = 100,
+        };
+        var dialog = new ContentDialog
+        {
+            Title = "Sticky note",
+            PrimaryButtonText = "Add",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+            Content = input,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            _status.Text = "Note cancelled.";
+            return;
+        }
+
+        var text = input.Text?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(text))
+        {
+            _status.Text = "Note text required.";
+            return;
+        }
+
+        var page = _document.GetPage(CurrentPageIndex);
+        try
+        {
+            await _annotationStore.AddStickyNoteAsync(
+                _document,
+                new PdfStickyNoteRequest(
+                    CurrentPageIndex,
+                    page.WidthPoints * 0.1,
+                    page.HeightPoints * 0.9,
+                    text,
+                    SelectedMarkupColor(),
+                    Author: "Glyph"));
+            _cache.ClearDocument(_documentKey);
+            await RefreshAnnotationSidebarAsync();
+            await RenderVisibleAsync();
+            _status.Text = "Sticky note added.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Note failed: " + ex.Message;
+        }
+    }
+
+    private async Task DeleteSelectedAnnotationAsync()
+    {
+        if (_annotationList.SelectedIndex < 0 || _annotationList.SelectedIndex >= _annotations.Count)
+        {
+            _status.Text = "Select an annotation in the sidebar.";
+            return;
+        }
+
+        var annot = _annotations[_annotationList.SelectedIndex];
+        try
+        {
+            await _annotationStore.DeleteAsync(_document, annot.PageIndex, annot.AnnotIndex);
+            _cache.ClearDocument(_documentKey);
+            await RefreshAnnotationSidebarAsync();
+            await RenderVisibleAsync();
+            _status.Text = "Annotation removed.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Remove failed: " + ex.Message;
+        }
+    }
+
+    private async Task RecolorSelectedAnnotationAsync()
+    {
+        if (_annotationList.SelectedIndex < 0 || _annotationList.SelectedIndex >= _annotations.Count)
+        {
+            _status.Text = "Select an annotation in the sidebar.";
+            return;
+        }
+
+        var annot = _annotations[_annotationList.SelectedIndex];
+        try
+        {
+            await _annotationStore.SetColorAsync(
+                _document,
+                annot.PageIndex,
+                annot.AnnotIndex,
+                SelectedMarkupColor());
+            _cache.ClearDocument(_documentKey);
+            await RefreshAnnotationSidebarAsync();
+            await RenderVisibleAsync();
+            _status.Text = "Annotation color updated.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Recolor failed: " + ex.Message;
+        }
+    }
+
+    private async Task SaveDocumentAsync()
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(_document.Path))
+            {
+                await _pageEditor.SaveAsync(_document, _document.Path);
+                _status.Text = "Saved " + Path.GetFileName(_document.Path);
+                return;
+            }
+
+            var window = App.CurrentApp.MainWindowInstance
+                ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+            var picker = new Windows.Storage.Pickers.FileSavePicker();
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+            picker.FileTypeChoices.Add("PDF", [".pdf"]);
+            picker.SuggestedFileName = "document.pdf";
+            var file = await picker.PickSaveFileAsync();
+            if (file is null)
+            {
+                _status.Text = "Save cancelled.";
+                return;
+            }
+
+            await _pageEditor.SaveAsync(_document, file.Path);
+            _status.Text = "Saved " + file.Name;
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Save failed: " + ex.Message;
+        }
+    }
+
+    private async Task RefreshAnnotationSidebarAsync()
+    {
+        try
+        {
+            _annotations = await _annotationStore.ListAsync(_document);
+            _annotationList.ItemsSource = _annotations
+                .Select(a =>
+                {
+                    var label = a.Kind.ToString();
+                    var snippet = a.Contents ?? a.SelectedText;
+                    if (!string.IsNullOrWhiteSpace(snippet))
+                    {
+                        snippet = snippet.Length > 28 ? snippet[..28] + "…" : snippet;
+                        return $"p{a.PageIndex + 1} {label}: {snippet}";
+                    }
+
+                    return $"p{a.PageIndex + 1} {label}";
+                })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Annotation list failed: " + ex.Message;
+        }
+    }
+
+    private async void AnnotationList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_annotationList.SelectedIndex < 0 || _annotationList.SelectedIndex >= _annotations.Count)
+        {
+            return;
+        }
+
+        var annot = _annotations[_annotationList.SelectedIndex];
+        await GoToPageAsync(annot.PageIndex, recordHistory: true);
+        _status.Text = $"{annot.Kind} on page {annot.PageIndex + 1}.";
+    }
+
+    private PdfAnnotationColor SelectedMarkupColor() => _markupColorBox.SelectedIndex switch
+    {
+        1 => PdfAnnotationColor.Green,
+        2 => PdfAnnotationColor.Pink,
+        3 => PdfAnnotationColor.Blue,
+        4 => PdfAnnotationColor.Red,
+        _ => PdfAnnotationColor.Yellow,
+    };
 
     private async Task MergePdfsAsync()
     {

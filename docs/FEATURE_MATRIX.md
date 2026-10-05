@@ -23,7 +23,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-13 | Application and file handling | Warn when attempting to overwrite a read-only file. | M1/M9 | Not Started |  |
 | F01-14 | Application and file handling | File → New from Clipboard. | M1/M9 | In Progress | Menu + Ctrl+Shift+N; clipboard bitmap → temp PNG dirty tab |
 | F01-15 | Application and file handling | File → Duplicate. | M1/M9 | Not Started |  |
-| F01-16 | Application and file handling | File → Save. | M1/M9 | Not Started |  |
+| F01-16 | Application and file handling | File → Save. | M1/M9 | In Progress | PDF Save toolbar via `IPdfPageEditor.SaveAsync` |
 | F01-17 | Application and file handling | File → Save As. | M1/M9 | Not Started |  |
 | F01-18 | Application and file handling | File → Export. | M1/M9 | Not Started |  |
 | F01-19 | Application and file handling | File → Rename. | M1/M9 | Not Started |  |
@@ -224,9 +224,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F12-08 | PDF crop | Undo crop. | M3 | Implemented | Via `PdfPageEditHistory` snapshots |
 | F12-09 | PDF crop | Preserve underlying PDF content if using non-destructive CropBox changes. | M3 | Tested | Sets CropBox only |
 | F12-10 | PDF crop | Optional permanent crop/export function. | M3 | Not Started |  |
-| F13-01 | PDF annotations | Highlight | M4 | Not Started |  |
-| F13-02 | PDF annotations | Underline | M4 | Not Started |  |
-| F13-03 | PDF annotations | Strikethrough | M4 | Not Started |  |
+| F13-01 | PDF annotations | Highlight | M4 | Tested | `IPdfAnnotationStore.AddTextMarkupAsync` + HL toolbar |
+| F13-02 | PDF annotations | Underline | M4 | Tested | Underline toolbar + PDFium subtype |
+| F13-03 | PDF annotations | Strikethrough | M4 | Tested | StrikeOut toolbar + PDFium subtype |
 | F13-04 | PDF annotations | Freehand ink | M4 | Not Started |  |
 | F13-05 | PDF annotations | Lines | M4 | Not Started |  |
 | F13-06 | PDF annotations | Arrows | M4 | Not Started |  |
@@ -236,7 +236,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-10 | PDF annotations | Polygons | M4 | Not Started |  |
 | F13-11 | PDF annotations | Callouts | M4 | Not Started |  |
 | F13-12 | PDF annotations | Text boxes | M4 | Not Started |  |
-| F13-13 | PDF annotations | Sticky notes | M4 | Not Started |  |
+| F13-13 | PDF annotations | Sticky notes | M4 | Tested | `AddStickyNoteAsync` + Note dialog |
 | F13-14 | PDF annotations | Speech-bubble-like callouts | M4 | Not Started |  |
 | F13-15 | PDF annotations | Stamps, optionally | M4 | Not Started |  |
 | F13-16 | PDF annotations | Signatures | M4 | Not Started |  |
@@ -246,14 +246,14 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-20 | PDF annotations | resize | M4 | Not Started |  |
 | F13-21 | PDF annotations | rotate where appropriate | M4 | Not Started |  |
 | F13-22 | PDF annotations | duplicate | M4 | Not Started |  |
-| F13-23 | PDF annotations | delete | M4 | Not Started |  |
+| F13-23 | PDF annotations | delete | M4 | Tested | Unmark + `DeleteAsync` |
 | F13-24 | PDF annotations | cut | M4 | Not Started |  |
 | F13-25 | PDF annotations | copy | M4 | Not Started |  |
 | F13-26 | PDF annotations | paste | M4 | Not Started |  |
 | F13-27 | PDF annotations | multi-select | M4 | Not Started |  |
 | F13-28 | PDF annotations | group where useful | M4 | Not Started |  |
 | F13-29 | PDF annotations | change border color | M4 | Not Started |  |
-| F13-30 | PDF annotations | change fill color | M4 | Not Started |  |
+| F13-30 | PDF annotations | change fill color | M4 | Implemented | Recolor + `SetColorAsync` for selected annot |
 | F13-31 | PDF annotations | change opacity | M4 | Not Started |  |
 | F13-32 | PDF annotations | change line thickness | M4 | Not Started |  |
 | F13-33 | PDF annotations | change line style | M4 | Not Started |  |
@@ -262,27 +262,27 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-36 | PDF annotations | change font size | M4 | Not Started |  |
 | F13-37 | PDF annotations | change text color | M4 | Not Started |  |
 | F13-38 | PDF annotations | change text alignment | M4 | Not Started |  |
-| F14-01 | Highlight workflow | Select text and apply highlight. | M4 | Not Started |  |
-| F14-02 | Highlight workflow | Persistent highlight mode: | M4 | Not Started |  |
-| F14-03 | Highlight workflow | Multiple highlight colors. | M4 | Not Started |  |
-| F14-04 | Highlight workflow | Change existing highlight color. | M4 | Not Started |  |
-| F14-05 | Highlight workflow | Underline selection. | M4 | Not Started |  |
-| F14-06 | Highlight workflow | Strikethrough selection. | M4 | Not Started |  |
-| F14-07 | Highlight workflow | Remove markup. | M4 | Not Started |  |
-| F14-08 | Highlight workflow | Annotation sidebar showing all: | M4 | Not Started |  |
-| F14-09 | Highlight workflow | Click annotation in sidebar to jump to it. | M4 | Not Started |  |
-| F15-01 | Notes | Add sticky note. | M4 | Not Started |  |
-| F15-02 | Notes | Enter note text. | M4 | Not Started |  |
+| F14-01 | Highlight workflow | Select text and apply highlight. | M4 | Implemented | Selection + HL button |
+| F14-02 | Highlight workflow | Persistent highlight mode: | M4 | Implemented | HL mode checkbox auto-applies highlight |
+| F14-03 | Highlight workflow | Multiple highlight colors. | M4 | Implemented | Color combo Yellow/Green/Pink/Blue/Red |
+| F14-04 | Highlight workflow | Change existing highlight color. | M4 | Implemented | Recolor toolbar action |
+| F14-05 | Highlight workflow | Underline selection. | M4 | Implemented | U toolbar |
+| F14-06 | Highlight workflow | Strikethrough selection. | M4 | Implemented | S toolbar |
+| F14-07 | Highlight workflow | Remove markup. | M4 | Implemented | Unmark + sidebar selection |
+| F14-08 | Highlight workflow | Annotation sidebar showing all: | M4 | Implemented | Annotations list in document pane |
+| F14-09 | Highlight workflow | Click annotation in sidebar to jump to it. | M4 | Implemented | SelectionChanged → GoToPage |
+| F15-01 | Notes | Add sticky note. | M4 | Tested | Note dialog → Text annot |
+| F15-02 | Notes | Enter note text. | M4 | Tested | Contents via dialog / SetContentsAsync |
 | F15-03 | Notes | Collapse note. | M4 | Not Started |  |
 | F15-04 | Notes | Expand note. | M4 | Not Started |  |
 | F15-05 | Notes | Move note icon. | M4 | Not Started |  |
-| F15-06 | Notes | Change note color. | M4 | Not Started |  |
-| F15-07 | Notes | Edit. | M4 | Not Started |  |
-| F15-08 | Notes | Delete. | M4 | Not Started |  |
-| F15-09 | Notes | Show note author. | M4 | Not Started |  |
+| F15-06 | Notes | Change note color. | M4 | Implemented | Recolor |
+| F15-07 | Notes | Edit. | M4 | In Progress | `SetContentsAsync` API; dialog edit next |
+| F15-08 | Notes | Delete. | M4 | Tested | Shared Unmark path |
+| F15-09 | Notes | Show note author. | M4 | Implemented | Author stored as `T` and listed in model |
 | F15-10 | Notes | Configurable annotation author name. | M4 | Not Started |  |
 | F15-11 | Notes | Optional date/time metadata. | M4 | Not Started |  |
-| F15-12 | Notes | Show all notes in sidebar. | M4 | Not Started |  |
+| F15-12 | Notes | Show all notes in sidebar. | M4 | Implemented | Included in Annotations list |
 | F15-13 | Notes | Print notes optionally. | M4 | Not Started |  |
 | F16-01 | Text boxes and callouts | Add text box anywhere. | M4 | Not Started |  |
 | F16-02 | Text boxes and callouts | Type arbitrary text over PDF. | M4 | Not Started |  |
@@ -840,7 +840,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F60-07 | Context-sensitive commands | Duplicate | M1/M3 | Not Started |  |
 | F60-08 | Context-sensitive commands | Delete | M1/M3 | Not Started |  |
 | F60-09 | Context-sensitive commands | Copy | M1/M3 | Not Started |  |
-| F61-01 | Non-destructive editing where practical | PDF annotations | M3-M5 | Not Started |  |
+| F61-01 | Non-destructive editing where practical | PDF annotations | M3-M5 | Implemented | Native PDF annots (highlight/underline/strike/note) |
 | F61-02 | Non-destructive editing where practical | image markup | M3-M5 | Not Started |  |
 | F61-03 | Non-destructive editing where practical | crops | M3-M5 | Implemented | PDF CropBox crop preserves page content |
 | F61-04 | Non-destructive editing where practical | adjustments | M3-M5 | Not Started |  |
