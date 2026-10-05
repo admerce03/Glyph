@@ -46,4 +46,7 @@ public static class PackagingDeferredPolicy
     public const string PublishScript = "scripts/publish-msix.ps1";
     public const string InstallScript = "scripts/install-msix-test.ps1";
     public const string ManifestPath = "src/Glyph.App/Package.appxmanifest";
+
+    /// <summary>Operator guide for MSIX / sideload / Store signing posture.</summary>
+    public const string PackagingDocsPath = "docs/PACKAGING.md";
 }

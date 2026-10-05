@@ -359,6 +359,10 @@ Native Explorer double-click / Open With associations are most reliable with MSI
 
 Defer durable file-association registration to installer/MSIX work (Milestone 9), while Milestone 1 continues to support Open, drag-drop, and recent files. Document the gap in the feature matrix as Deferred with this reason.
 
+### Progress (Milestone 9)
+
+Test-signed MSIX + sideload/association probe are in-repo. Operator steps and Store-signing options: [`PACKAGING.md`](PACKAGING.md). F01-06/07 stay Deferred until Explorer default-app verification on Windows.
+
 ---
 
 ## ADR-011 — FluentAssertions 7.x (not 8.x)

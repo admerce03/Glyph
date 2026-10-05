@@ -390,12 +390,12 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 1. **ADR-015** — Accept Option A (PdfSharp MIT write-encrypt), C (commercial), or D (defer). Until Accepted, F23-02–07 / F45-09 stay **Blocked**.
 2. **Windows interactive** — run `install-msix-test.ps1`, confirm Explorer Open With / defaults for `.pdf`/images (F01-06/07); capture M1/M2 screenshots + M3 §11 DnD recording.
-3. **Production / Store signing** — distribution decision (test cert is CI/Developer Mode only).
+3. **Production / Store signing** — distribution decision (test cert is CI/Developer Mode only); options catalogued in [`PACKAGING.md`](PACKAGING.md).
 
 ### Progress notes
 
 - Prefs, toolbar customization, shortcut customization (F52-23), check-for-updates (F55-04), session restore, crash recovery, version snapshots, a11y Names, cold-start timing, background Find index (F57-05/F58-06) shipped in matrix
-- MSIX: Windows CI produces test-signed `Glyph.App_*.msix` + `Glyph.CI.TestSign.cer` via `scripts/publish-msix.ps1 -TestSign` (`GenerateAppxPackageOnBuild`, artifact `glyph-msix-layout`). `scripts/install-msix-test.ps1` trusts the cert, sideloads, and probes installed `uap:FileType` associations (`-VerifyOnly` supported). F01-06/07 remain Deferred until Explorer default-app verification (ADR-012). **Blocked:** ADR-015 password-write (Needs approval, prefer Option A PdfSharp).
+- MSIX: Windows CI produces test-signed `Glyph.App_*.msix` + `Glyph.CI.TestSign.cer` via `scripts/publish-msix.ps1 -TestSign` (`GenerateAppxPackageOnBuild`, artifact `glyph-msix-layout`). `scripts/install-msix-test.ps1` trusts the cert, sideloads, and probes installed `uap:FileType` associations (`-VerifyOnly` supported). Operator guide: [`PACKAGING.md`](PACKAGING.md). F01-06/07 remain Deferred until Explorer default-app verification (ADR-012). **Blocked:** ADR-015 password-write (Needs approval, prefer Option A PdfSharp).
 - Matrix audit (2026-10-05): 881 rows — 862 Tested / 12 Deferred / 7 Blocked (all Blocked = ADR-015 password-write); zero Not Started / In Progress / Implemented
 - Interactive proof debt: M1 shell screenshot, M2 viewer screenshots, M3 §11 cross-doc DnD recording (Windows interactive environment required)
 - Deferred catalogs unit-tested (`PackagingDeferredPolicy`, `PdfOptimizeDeferredPolicy`, `ImageAdvancedDeferredPolicy`, …)

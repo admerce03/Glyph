@@ -21,7 +21,21 @@ public class PackagingDeferredPolicyTests
         PackagingDeferredPolicy.PublishScript.Should().Contain("publish-msix");
         PackagingDeferredPolicy.InstallScript.Should().Contain("install-msix-test");
         PackagingDeferredPolicy.ManifestPath.Should().Contain("Package.appxmanifest");
+        PackagingDeferredPolicy.PackagingDocsPath.Should().Be("docs/PACKAGING.md");
         PackagingDeferredPolicy.Reason.Should().Contain("association probe");
+    }
+
+    [Fact]
+    public void Packaging_docs_exist_at_policy_path()
+    {
+        var root = FindRepoRoot();
+        var docsPath = Path.Combine(root, PackagingDeferredPolicy.PackagingDocsPath);
+        File.Exists(docsPath).Should().BeTrue(docsPath);
+        var text = File.ReadAllText(docsPath);
+        text.Should().Contain("publish-msix");
+        text.Should().Contain("install-msix-test");
+        text.Should().Contain("ADR-012");
+        text.Should().Contain("Store");
     }
 
     [Fact]

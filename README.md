@@ -90,7 +90,7 @@ Output lands under `artifacts/msix/` (`Glyph.App_*.msix`; with `-TestSign`, also
 ./scripts/install-msix-test.ps1 -PackageDir artifacts/msix -Force
 ```
 
-That imports the test cert into Trusted People, runs `Add-AppxPackage`, and probes installed file-type associations. Re-check later with `./scripts/install-msix-test.ps1 -VerifyOnly`. Store signing and Explorer default-app verification remain open (ADR-012).
+That imports the test cert into Trusted People, runs `Add-AppxPackage`, and probes installed file-type associations. Re-check later with `./scripts/install-msix-test.ps1 -VerifyOnly`. Store signing and Explorer default-app verification remain open (ADR-012) — full checklist in [`docs/PACKAGING.md`](docs/PACKAGING.md).
 
 ## Contributing / agents
 

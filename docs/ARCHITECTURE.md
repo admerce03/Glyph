@@ -3,7 +3,8 @@
 Authoritative product scope: [`FEATURES.md`](FEATURES.md).  
 Roadmap: [`ROADMAP.md`](ROADMAP.md).  
 Decisions log: [`DECISIONS.md`](DECISIONS.md).  
-Feature tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
+Feature tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).  
+Packaging / MSIX: [`PACKAGING.md`](PACKAGING.md).
 
 ## 1. Goals
 
@@ -250,7 +251,7 @@ Explicitly unsupported and must not be implemented: touchscreen gestures, stylus
 
 ## 12. Distribution posture
 
-Phase 0–8 develop and validate as an unpackaged WinUI app for Preview-like Explorer integration. Milestone 9 adds installer/MSIX/signing strategy (`Package.appxmanifest` + `scripts/publish-msix.ps1`; default build remains unpackaged). Self-contained publish (`WindowsAppSDKSelfContained`) remains available for machines without a preinstalled Windows App SDK runtime.
+Phase 0–8 develop and validate as an unpackaged WinUI app for Preview-like Explorer integration. Milestone 9 adds installer/MSIX/signing strategy (`Package.appxmanifest` + `scripts/publish-msix.ps1`; default build remains unpackaged). See [`PACKAGING.md`](PACKAGING.md) for publish, Developer Mode sideload, Explorer verify checklist, and Store-signing options. Self-contained publish (`WindowsAppSDKSelfContained`) remains available for machines without a preinstalled Windows App SDK runtime.
 
 ## 13. Build topology
 
