@@ -356,7 +356,7 @@ public sealed class PdfDocumentView : UserControl
         _outlineTree.KeyDown += OutlineTree_KeyDown;
         AutomationProperties.SetName(_outlineTree, "Table of contents");
 
-        _searchBox = new TextBox { PlaceholderText = "Find in document", Width = 160 };
+        _searchBox = new TextBox { PlaceholderText = PdfDialogPlaceholders.FindInDocument, Width = 160 };
         _searchBox.KeyDown += SearchBox_KeyDown;
         _caseSensitiveBox = new CheckBox { Content = "Aa", VerticalAlignment = VerticalAlignment.Center };
         ToolTipService.SetToolTip(_caseSensitiveBox, PdfViewerTooltips.MatchCase);
@@ -725,7 +725,7 @@ public sealed class PdfDocumentView : UserControl
         ApplySidebarMode();
 
         _status = new TextBlock { Opacity = 0.75, FontSize = 12, Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
-        _gotoBox = new TextBox { PlaceholderText = "#", Width = 48 };
+        _gotoBox = new TextBox { PlaceholderText = PdfDialogPlaceholders.GotoPage, Width = 48 };
         _gotoBox.KeyDown += GotoBox_KeyDown;
         _layoutBox = new ComboBox
         {
@@ -5342,12 +5342,12 @@ public sealed class PdfDocumentView : UserControl
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
             Height = 100,
-            PlaceholderText = "Callout text",
+            PlaceholderText = PdfDialogPlaceholders.CalloutText,
         };
         await SeedTextBoxFromClipboardAsync(box);
         var fontSizeBox = new NumberBox
         {
-            Header = "Font size (pt)",
+            Header = PdfDialogHeaders.FontSizePt,
             Value = 12,
             Minimum = 6,
             Maximum = 72,
@@ -5357,7 +5357,7 @@ public sealed class PdfDocumentView : UserControl
         };
         var fontFamilyBox = new ComboBox
         {
-            Header = "Font",
+            Header = PdfDialogHeaders.Font,
             ItemsSource = new[] { "Helvetica", "Times", "Courier" },
             SelectedIndex = 0,
             Width = 220,
@@ -5367,7 +5367,7 @@ public sealed class PdfDocumentView : UserControl
         var underlineCheck = new CheckBox { Content = "Underline", IsChecked = false };
         var alignBox = new ComboBox
         {
-            Header = "Align",
+            Header = PdfDialogHeaders.Align,
             ItemsSource = new[] { "Left", "Center", "Right" },
             SelectedIndex = 0,
             Width = 220,
@@ -5956,7 +5956,7 @@ public sealed class PdfDocumentView : UserControl
         {
             lineStyleBox = new ComboBox
             {
-                Header = "Line style",
+                Header = PdfDialogHeaders.LineStyle,
                 ItemsSource = new[] { "Solid", "Dashed", "Dotted" },
                 SelectedIndex = (int)_drawInkLineStyle,
                 Width = 220,
@@ -5968,7 +5968,7 @@ public sealed class PdfDocumentView : UserControl
         {
             arrowheadBox = new ComboBox
             {
-                Header = "Arrowhead",
+                Header = PdfDialogHeaders.Arrowhead,
                 ItemsSource = new[] { "Open", "Filled", "Diamond" },
                 SelectedIndex = (int)_drawArrowheadStyle,
                 Width = 220,
@@ -6931,8 +6931,8 @@ public sealed class PdfDocumentView : UserControl
         };
         var descBox = new TextBox
         {
-            Header = "Accessibility description (F56-10)",
-            PlaceholderText = "e.g. Signature of Jane Doe",
+            Header = PdfDialogHeaders.AccessibilityDescriptionF5610,
+            PlaceholderText = PdfDialogPlaceholders.SignatureOfExample,
             Width = 360,
         };
         var up = new Button { Content = "↑", Padding = new Thickness(10, 4, 10, 4) };
@@ -7269,13 +7269,13 @@ public sealed class PdfDocumentView : UserControl
         var nameBox = new TextBox
         {
             Text = "Signature",
-            PlaceholderText = "Signature name",
-            Header = "Name",
+            PlaceholderText = PdfDialogPlaceholders.SignatureName,
+            Header = PdfDialogHeaders.Name,
         };
         var descBox = new TextBox
         {
-            PlaceholderText = "e.g. Signature of Jane Doe",
-            Header = "Accessibility description",
+            PlaceholderText = PdfDialogPlaceholders.SignatureOfExample,
+            Header = PdfDialogHeaders.AccessibilityDescription,
         };
         AutomationProperties.SetName(nameBox, "Signature name");
         AutomationProperties.SetName(descBox, "Signature accessibility description");
@@ -7604,18 +7604,18 @@ public sealed class PdfDocumentView : UserControl
             ?? throw new InvalidOperationException("Main window unavailable for profile dialog.");
 
         var current = _formProfile.Current;
-        var nameBox = new TextBox { Header = "Name", Text = current.Name, Width = 320 };
+        var nameBox = new TextBox { Header = PdfDialogHeaders.Name, Text = current.Name, Width = 320 };
         var addressBox = new TextBox
         {
-            Header = "Address",
+            Header = PdfDialogHeaders.Address,
             Text = current.Address,
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
             Height = 72,
             Width = 320,
         };
-        var emailBox = new TextBox { Header = "Email", Text = current.Email, Width = 320 };
-        var phoneBox = new TextBox { Header = "Phone", Text = current.Phone, Width = 320 };
+        var emailBox = new TextBox { Header = PdfDialogHeaders.Email, Text = current.Email, Width = 320 };
+        var phoneBox = new TextBox { Header = PdfDialogHeaders.Phone, Text = current.Phone, Width = 320 };
         var panel = new StackPanel
         {
             Spacing = 8,
@@ -9055,13 +9055,13 @@ public sealed class PdfDocumentView : UserControl
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
             Height = 120,
-            PlaceholderText = "Note text",
+            PlaceholderText = PdfDialogPlaceholders.NoteText,
         };
         await SeedTextBoxFromClipboardAsync(box);
         var authorBox = new TextBox
         {
             Text = _annotationAuthor,
-            PlaceholderText = "Author",
+            PlaceholderText = PdfDialogPlaceholders.Author,
             Width = 220,
         };
         var colorList = new ListView
@@ -9149,12 +9149,12 @@ public sealed class PdfDocumentView : UserControl
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
             Height = 120,
-            PlaceholderText = "Text box contents",
+            PlaceholderText = PdfDialogPlaceholders.TextBoxContents,
         };
         await SeedTextBoxFromClipboardAsync(box);
         var fontSizeBox = new NumberBox
         {
-            Header = "Font size (pt)",
+            Header = PdfDialogHeaders.FontSizePt,
             Value = 12,
             Minimum = 6,
             Maximum = 72,
@@ -9164,7 +9164,7 @@ public sealed class PdfDocumentView : UserControl
         };
         var fontFamilyBox = new ComboBox
         {
-            Header = "Font",
+            Header = PdfDialogHeaders.Font,
             ItemsSource = new[] { "Helvetica", "Times", "Courier" },
             SelectedIndex = 0,
             Width = 220,
@@ -9174,7 +9174,7 @@ public sealed class PdfDocumentView : UserControl
         var underlineCheck = new CheckBox { Content = "Underline", IsChecked = false };
         var alignBox = new ComboBox
         {
-            Header = "Align",
+            Header = PdfDialogHeaders.Align,
             ItemsSource = new[] { "Left", "Center", "Right" },
             SelectedIndex = 0,
             Width = 220,
@@ -10254,7 +10254,7 @@ public sealed class PdfDocumentView : UserControl
 
         var alignBox = new ComboBox
         {
-            Header = "Align",
+            Header = PdfDialogHeaders.Align,
             ItemsSource = new[] { "Left", "Center", "Right" },
             SelectedIndex = Math.Clamp((int)(item.TextQuadding ?? PdfTextQuadding.Left), 0, 2),
             Width = 220,
@@ -10394,7 +10394,7 @@ public sealed class PdfDocumentView : UserControl
         var box = new TextBox
         {
             Text = _annotationAuthor,
-            PlaceholderText = "Author name",
+            PlaceholderText = PdfDialogPlaceholders.AuthorName,
             Width = 260,
         };
         var dialog = new ContentDialog
@@ -10618,7 +10618,7 @@ public sealed class PdfDocumentView : UserControl
             TextWrapping = TextWrapping.Wrap,
             Height = 140,
             Text = item.Contents ?? string.Empty,
-            PlaceholderText = item.IsStickyNote ? "Note text" : "Text contents",
+            PlaceholderText = item.IsStickyNote ? PdfDialogPlaceholders.NoteText : PdfDialogPlaceholders.TextContents,
         };
         await SeedTextBoxFromClipboardAsync(box);
         var title = item.IsCallout ? "Edit callout" : item.IsStickyNote ? "Edit sticky note" : "Edit text box";
@@ -10817,7 +10817,7 @@ public sealed class PdfDocumentView : UserControl
 
         var widthBox = new NumberBox
         {
-            Header = "Width (pt)",
+            Header = PdfDialogHeaders.WidthPt,
             Value = initial,
             Minimum = 0.5,
             Maximum = 24,
@@ -11452,35 +11452,35 @@ public sealed class PdfDocumentView : UserControl
 
         var unitBox = new ComboBox
         {
-            Header = "Units",
+            Header = PdfDialogHeaders.Units,
             ItemsSource = new[] { "Points (pt)", "Inches (in)", "Centimeters (cm)", "Millimeters (mm)" },
             SelectedIndex = (int)_cropUnit,
             Width = 220,
         };
         var leftBox = new NumberBox
         {
-            Header = "Left",
+            Header = PdfDialogHeaders.Left,
             Value = PdfLengthUnits.FromPoints(_cropMode ? _cropMarginLeftPt : 36, _cropUnit),
             Minimum = 0,
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
         };
         var topBox = new NumberBox
         {
-            Header = "Top",
+            Header = PdfDialogHeaders.Top,
             Value = PdfLengthUnits.FromPoints(_cropMode ? _cropMarginTopPt : 36, _cropUnit),
             Minimum = 0,
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
         };
         var rightBox = new NumberBox
         {
-            Header = "Right",
+            Header = PdfDialogHeaders.Right,
             Value = PdfLengthUnits.FromPoints(_cropMode ? _cropMarginRightPt : 36, _cropUnit),
             Minimum = 0,
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
         };
         var bottomBox = new NumberBox
         {
-            Header = "Bottom",
+            Header = PdfDialogHeaders.Bottom,
             Value = PdfLengthUnits.FromPoints(_cropMode ? _cropMarginBottomPt : 36, _cropUnit),
             Minimum = 0,
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
@@ -12121,7 +12121,7 @@ public sealed class PdfDocumentView : UserControl
         var page = CurrentPageIndex;
         var box = new TextBox
         {
-            Header = "Bookmark title",
+            Header = PdfDialogHeaders.BookmarkTitle,
             Text = $"Page {page + 1}",
             Width = 280,
         };
@@ -12164,7 +12164,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var box = new TextBox { Header = "Title", Text = bookmark.Title, Width = 280 };
+        var box = new TextBox { Header = PdfDialogHeaders.Title, Text = bookmark.Title, Width = 280 };
         var dialog = new ContentDialog
         {
             Title = PdfDialogTitles.RenameBookmark,
@@ -12262,21 +12262,21 @@ public sealed class PdfDocumentView : UserControl
             };
             var rangeBox = new TextBox
             {
-                Header = "Range (e.g. 1-3,5)",
+                Header = PdfDialogHeaders.RangeEG135,
                 Width = 220,
                 Text = $"{CurrentPageIndex + 1}",
                 Visibility = Visibility.Collapsed,
             };
             var scaleBox = new ComboBox
             {
-                Header = "Scale",
+                Header = PdfDialogHeaders.Scale,
                 Width = 220,
                 ItemsSource = new[] { "Fit to printable area", "Fill page", "Actual size" },
                 SelectedIndex = 0,
             };
             var nUpBox = new ComboBox
             {
-                Header = "Pages per sheet",
+                Header = PdfDialogHeaders.PagesPerSheet,
                 Width = 220,
                 ItemsSource = new[] { "1", "2", "4" },
                 SelectedIndex = 0,

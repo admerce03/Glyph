@@ -201,7 +201,7 @@ public sealed class ImageDocumentView : UserControl
         _status = new TextBlock { Opacity = 0.75, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
         _cropBox = new TextBox
         {
-            PlaceholderText = "Crop x,y,w,h",
+            PlaceholderText = ImageDialogPlaceholders.CropXyWh,
             Width = 140,
         };
         _siblingList = new ListView
@@ -2575,14 +2575,14 @@ public sealed class ImageDocumentView : UserControl
         var updating = false;
         var unitBox = new ComboBox
         {
-            Header = "Units",
+            Header = ImageDialogHeaders.Units,
             Width = 140,
             ItemsSource = new[] { "Pixels", "Inches", "Centimeters" },
             SelectedIndex = 0,
         };
         var dpiBox = new NumberBox
         {
-            Header = "DPI / PPI",
+            Header = ImageDialogHeaders.DpiPpi,
             Value = currentDpi,
             Minimum = 1,
             Maximum = 1200,
@@ -2591,13 +2591,13 @@ public sealed class ImageDocumentView : UserControl
             Width = 140,
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact,
         };
-        var widthBox = new TextBox { Text = srcW.ToString(), Width = 96, Header = "Width" };
-        var heightBox = new TextBox { Text = srcH.ToString(), Width = 96, Header = "Height" };
-        var percentBox = new TextBox { Text = "100", Width = 96, Header = "Scale %" };
+        var widthBox = new TextBox { Text = srcW.ToString(), Width = 96, Header = ImageDialogHeaders.Width };
+        var heightBox = new TextBox { Text = srcH.ToString(), Width = 96, Header = ImageDialogHeaders.Height };
+        var percentBox = new TextBox { Text = "100", Width = 96, Header = ImageDialogHeaders.Scale2 };
         var lockAspect = new CheckBox { Content = "Lock aspect ratio", IsChecked = true };
         var filterBox = new ComboBox
         {
-            Header = "Resampling",
+            Header = ImageDialogHeaders.Resampling,
             Width = 180,
             ItemsSource = new[] { "Auto", "Nearest-neighbor", "Bilinear", "Bicubic" },
             SelectedIndex = ResolveDefaultInterpolationIndex(),
@@ -2872,14 +2872,14 @@ public sealed class ImageDocumentView : UserControl
 
         var categoryBox = new ComboBox
         {
-            Header = "Category",
+            Header = ImageDialogHeaders.Category,
             Width = 260,
             ItemsSource = new[] { "Orientation", "Convert / export", "Strip metadata", "Rename", "Color profile" },
             SelectedIndex = 0,
         };
         var opBox = new ComboBox
         {
-            Header = "Operation",
+            Header = ImageDialogHeaders.Operation,
             Width = 260,
             ItemsSource = new[]
             {
@@ -2894,7 +2894,7 @@ public sealed class ImageDocumentView : UserControl
         };
         var formatBox = new ComboBox
         {
-            Header = "Export format",
+            Header = ImageDialogHeaders.ExportFormat,
             Width = 260,
             Visibility = Visibility.Collapsed,
             ItemsSource = new[] { "PNG", "JPEG", "WebP", "TIFF", "BMP", "GIF", "AVIF", "JPEG 2000" },
@@ -2902,7 +2902,7 @@ public sealed class ImageDocumentView : UserControl
         };
         var quality = new Slider
         {
-            Header = "Quality (JPEG/WebP/AVIF)",
+            Header = ImageDialogHeaders.QualityJpegWebpAvif,
             Minimum = 1,
             Maximum = 100,
             Value = 85,
@@ -2912,14 +2912,14 @@ public sealed class ImageDocumentView : UserControl
         };
         var renamePattern = new TextBox
         {
-            Header = "Rename pattern ({n}=1-based index, {name}=base name)",
+            Header = ImageDialogHeaders.RenamePatternN1BasedIndexNameBase,
             Text = BatchRenamePattern.DefaultPattern,
             Width = 260,
             Visibility = Visibility.Collapsed,
         };
         var profileBox = new ComboBox
         {
-            Header = "Color profile",
+            Header = ImageDialogHeaders.ColorProfile,
             Width = 260,
             Visibility = Visibility.Collapsed,
             ItemsSource = new[] { "Assign sRGB", "Convert → sRGB", "Assign Adobe RGB", "Convert → Adobe RGB" },
@@ -3963,14 +3963,14 @@ public sealed class ImageDocumentView : UserControl
         {
             var scaleBox = new ComboBox
             {
-                Header = "Scale",
+                Header = ImageDialogHeaders.Scale,
                 Width = 240,
                 ItemsSource = new[] { "Fit to printable area", "Fill page", "Actual size" },
                 SelectedIndex = 0,
             };
             var nUpBox = new ComboBox
             {
-                Header = "Pages per sheet",
+                Header = ImageDialogHeaders.PagesPerSheet,
                 Width = 240,
                 ItemsSource = new[] { "1", "2", "4" },
                 SelectedIndex = 0,
@@ -4099,14 +4099,14 @@ public sealed class ImageDocumentView : UserControl
     {
         var formatBox = new ComboBox
         {
-            Header = "Format",
+            Header = ImageDialogHeaders.Format,
             Width = 200,
             ItemsSource = new[] { "WebP", "TIFF", "BMP", "GIF", "AVIF", "JPEG 2000", "HEIC", "PDF" },
             SelectedIndex = 0,
         };
         var quality = new Slider
         {
-            Header = "Quality (1–100)",
+            Header = ImageDialogHeaders.Quality1100,
             Minimum = 1,
             Maximum = 100,
             Value = 85,
@@ -4133,7 +4133,7 @@ public sealed class ImageDocumentView : UserControl
         var embedSrgb = new CheckBox { Content = ImageEncodeEmbedSrgb.CheckboxLabel, IsChecked = false };
         var tiffCompression = new ComboBox
         {
-            Header = "TIFF compression",
+            Header = ImageDialogHeaders.TiffCompression,
             Width = 200,
             Visibility = Visibility.Collapsed,
             ItemsSource = new[] { "Default", "None", "LZW", "ZIP", "JPEG" },
@@ -4244,7 +4244,7 @@ public sealed class ImageDocumentView : UserControl
     {
         var quality = new Slider
         {
-            Header = "JPEG quality (1–100)",
+            Header = ImageDialogHeaders.JpegQuality1100,
             Minimum = 1,
             Maximum = 100,
             Value = 90,
@@ -4532,10 +4532,10 @@ public sealed class ImageDocumentView : UserControl
 
     private async Task EditDescriptiveMetadataAsync(ImageMetadataInfo current)
     {
-        var title = new TextBox { Header = "Title", Text = current.Title ?? string.Empty, Width = 360 };
+        var title = new TextBox { Header = ImageDialogHeaders.Title, Text = current.Title ?? string.Empty, Width = 360 };
         var description = new TextBox
         {
-            Header = "Description / caption",
+            Header = ImageDialogHeaders.DescriptionCaption,
             Text = current.Description ?? string.Empty,
             Width = 360,
             AcceptsReturn = true,
@@ -4544,11 +4544,11 @@ public sealed class ImageDocumentView : UserControl
         };
         var keywords = new TextBox
         {
-            Header = "Keywords (comma-separated)",
+            Header = ImageDialogHeaders.KeywordsCommaSeparated,
             Text = current.Keywords ?? string.Empty,
             Width = 360,
         };
-        var copyright = new TextBox { Header = "Copyright", Text = current.Copyright ?? string.Empty, Width = 360 };
+        var copyright = new TextBox { Header = ImageDialogHeaders.Copyright, Text = current.Copyright ?? string.Empty, Width = 360 };
         var editDialog = new ContentDialog
         {
             Title = ImageDialogTitles.EditDescriptiveMetadata,
@@ -4898,14 +4898,14 @@ public sealed class ImageDocumentView : UserControl
 
         var toolBox = new ComboBox
         {
-            Header = "Tool",
+            Header = ImageDialogHeaders.Tool,
             Width = 200,
             ItemsSource = new[] { "Freehand", "Rectangle", "Ellipse", "Line", "Arrow", "Text", "Callout" },
             SelectedIndex = 0,
         };
         var widthSlider = new Slider
         {
-            Header = "Stroke width (px)",
+            Header = ImageDialogHeaders.StrokeWidthPx,
             Minimum = 1,
             Maximum = 32,
             Value = _drawWidthPixels,
@@ -4914,7 +4914,7 @@ public sealed class ImageDocumentView : UserControl
         };
         var colorBox = new ComboBox
         {
-            Header = "Color",
+            Header = ImageDialogHeaders.Color,
             Width = 200,
             ItemsSource = new[] { "Red", "Black", "White", "Yellow", "Blue", "Green" },
             SelectedIndex = 0,
@@ -4965,7 +4965,7 @@ public sealed class ImageDocumentView : UserControl
             };
             var fontSlider = new Slider
             {
-                Header = "Font size (px)",
+                Header = ImageDialogHeaders.FontSizePx,
                 Minimum = 8,
                 Maximum = 96,
                 Value = isCallout ? 18 : 24,
