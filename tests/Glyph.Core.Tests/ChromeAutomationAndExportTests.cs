@@ -14,6 +14,9 @@ public class ChromeAutomationNamesTests
         {
             xaml.Should().Contain($"AutomationProperties.Name=\"{name}\"", because: name);
         }
+
+        ChromeAutomationNames.RequiredNames.Should().Contain(ChromeAutomationNames.CheckForUpdates);
+        ChromeAutomationNames.RequiredNames.Should().Contain(ChromeAutomationNames.AboutGlyph);
     }
 
     private static string FindRepoRoot()

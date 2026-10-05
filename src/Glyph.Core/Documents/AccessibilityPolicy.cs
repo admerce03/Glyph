@@ -20,5 +20,6 @@ public static class AccessibilityPolicy
         "Search",
         "Annotations",
         "Signatures",
+        "Help",
     ];
 }

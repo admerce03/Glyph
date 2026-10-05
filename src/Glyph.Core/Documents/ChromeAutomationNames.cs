@@ -11,6 +11,8 @@ public static class ChromeAutomationNames
     public const string Preferences = "Preferences";
     public const string Paste = "Paste";
     public const string VersionSnapshots = "Version snapshots";
+    public const string CheckForUpdates = "Check for updates";
+    public const string AboutGlyph = "About Glyph";
 
     public static IReadOnlyList<string> RequiredNames { get; } =
     [
@@ -20,5 +22,7 @@ public static class ChromeAutomationNames
         Preferences,
         Paste,
         VersionSnapshots,
+        CheckForUpdates,
+        AboutGlyph,
     ];
 }

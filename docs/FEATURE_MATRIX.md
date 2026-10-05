@@ -58,7 +58,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-21 | Main window and interface | Mouse support. | M1/M9 | Tested | Pointer input throughout; `PointerInputPolicy` unit tests |
 | F02-22 | Main window and interface | Precision touchpad gesture support where useful. | M1/M9 | Tested | Ctrl+wheel + Manipulation Scale; `PdfZoomCalculator`/`ImageZoomCalculator` ApplyWheelZoom/ApplyManipulationScale unit tests |
 | F02-23 | Main window and interface | Keyboard-first operation. | M1/M9 | Tested | Menu accelerators + document Ctrl shortcuts; `ShellKeyboardShortcuts` catalog unit tests |
-| F02-24 | Main window and interface | Accessibility through Windows UI Automation. | M1/M9 | Tested | AutomationProperties.Name on chrome; `ChromeAutomationNames` unit tests |
+| F02-24 | Main window and interface | Accessibility through Windows UI Automation. | M1/M9 | Tested | AutomationProperties.Name on chrome incl. Help; `ChromeAutomationNames` unit tests |
 | F03-01 | Sidebar modes | Page thumbnails | M2-M5 | Tested | Thumbnail strip; `ThumbnailWidthConstraints` clamp unit tests |
 | F03-02 | Sidebar modes | Table of contents | M2-M5 | Tested | Outline TreeView; `SidebarModeCombo` Contents + `PdfOutlineTree` unit tests |
 | F03-03 | Sidebar modes | Search results | M2-M5 | Tested | Find hits under Search; `SidebarModeCombo.SearchIndex` unit tests |
@@ -792,10 +792,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-23 | Preferences | clear recent files | M1/M9 | Tested | File → Clear Recent; `ClearAsync_empties_persisted_list` |
 | F55-24 | Preferences | clear saved signatures | M1/M9 | Tested | Preferences → Clear saved signatures (`ClearAllAsync` unit test) |
 | F55-25 | Preferences | strip metadata defaults | M1/M9 | Tested | Preferences toggle; settings round-trip |
-| F56-01 | Accessibility | Windows UI Automation. | M9 | Tested | WinUI Automation tree; `ChromeAutomationNames` + toolbar Names |
+| F56-01 | Accessibility | Windows UI Automation. | M9 | Tested | WinUI Automation tree; `ChromeAutomationNames` (incl. Help Check for updates / About) + toolbar Names |
 | F56-02 | Accessibility | Keyboard-accessible controls. | M9 | Tested | Menus/accelerators; `AccessibilityPolicy.KeyboardAccessibleChrome` |
 | F56-03 | Accessibility | Visible focus indicators. | M9 | Tested | WinUI focus visuals; `AccessibilityPolicy.UsesWinUiFocusVisuals` |
-| F56-04 | Accessibility | Screen-reader labels. | M9 | Tested | ToolTips as Name; `AccessibilityPolicy.ScreenReaderLabeledSurfaces` |
+| F56-04 | Accessibility | Screen-reader labels. | M9 | Tested | ToolTips as Name; `AccessibilityPolicy.ScreenReaderLabeledSurfaces` (incl. Help) |
 | F56-05 | Accessibility | High-contrast mode. | M9 | Tested | ThemeResources; `AccessibilityPolicy.HighContrastViaThemeResources` |
 | F56-06 | Accessibility | Windows text scaling. | M9 | Tested | XamlRoot text scale; `AccessibilityPolicy.TextScalingViaXamlRoot` |
 | F56-07 | Accessibility | Logical tab order. | M9 | Tested | TabIndex + IsTabStop; `AccessibilityPolicy.DocumentViewsAreTabStops` |

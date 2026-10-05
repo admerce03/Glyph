@@ -48,6 +48,7 @@ public class AccessibilityPolicyTests
     {
         AccessibilityPolicy.KeyboardAccessibleChrome.Should().BeTrue();
         AccessibilityPolicy.ScreenReaderLabeledSurfaces.Should().Contain("Toolbar");
+        AccessibilityPolicy.ScreenReaderLabeledSurfaces.Should().Contain("Help");
         AccessibilityPolicy.ZoomScalesPageBitmapsOnly.Should().BeTrue();
     }
 }
