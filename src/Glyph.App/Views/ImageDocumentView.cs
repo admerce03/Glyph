@@ -1013,7 +1013,17 @@ public sealed class ImageDocumentView : UserControl
 
         var ctrl = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control)
             .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-        if (ctrl && e.Key == Windows.System.VirtualKey.Z)
+        var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        var alt = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Menu)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        var shortcutOverrides = App.Services.GetService<ISettingsStore>()?.Current.ShortcutOverrides;
+
+        bool Hit(string command) =>
+            WinUiKeyboardGestures.MatchesCommand(
+                command, shortcutOverrides, e.Key, ctrl, shift, alt);
+
+        if (Hit("Undo"))
         {
             if (_markupStrokes.Count > 0 || _markupShapes.Count > 0)
             {
@@ -1028,72 +1038,77 @@ public sealed class ImageDocumentView : UserControl
             return;
         }
 
-        if (ctrl && e.Key == Windows.System.VirtualKey.C)
+        if (Hit("Copy"))
         {
             _ = CopyImageAsync();
             e.Handled = true;
             return;
         }
 
-        if (ctrl && e.Key == Windows.System.VirtualKey.P)
+        if (Hit("Print"))
         {
             _ = PrintImageAsync();
             e.Handled = true;
             return;
         }
 
-        if (ctrl && e.Key == Windows.System.VirtualKey.S)
+        if (Hit("Save As"))
         {
-            var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift)
-                .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-            _ = SaveDocumentAsync(saveAs: shift);
+            _ = SaveDocumentAsync(saveAs: true);
             e.Handled = true;
             return;
         }
 
-        if (e.Key == Windows.System.VirtualKey.F11)
+        if (Hit("Save"))
+        {
+            _ = SaveDocumentAsync(saveAs: false);
+            e.Handled = true;
+            return;
+        }
+
+        if (Hit("Full Screen"))
         {
             ToggleFullscreen();
             e.Handled = true;
             return;
         }
 
-        if (ctrl && (e.Key == Windows.System.VirtualKey.Add || e.Key == (Windows.System.VirtualKey)187))
+        if (Hit("Zoom in"))
         {
             _ = SetZoomAsync(ImageZoomCalculator.ZoomIn(_zoom));
             e.Handled = true;
             return;
         }
 
-        if (ctrl && (e.Key == Windows.System.VirtualKey.Subtract || e.Key == (Windows.System.VirtualKey)189))
+        if (Hit("Zoom out"))
         {
             _ = SetZoomAsync(ImageZoomCalculator.ZoomOut(_zoom));
             e.Handled = true;
             return;
         }
 
-        if (ctrl && e.Key == Windows.System.VirtualKey.Number0)
+        if (Hit("Fit / actual size"))
         {
             _ = FitAsync();
             e.Handled = true;
             return;
         }
 
-        if (ctrl && e.Key == Windows.System.VirtualKey.X && _pixelSelection is not null)
+        if (Hit("Cut") && _pixelSelection is not null)
         {
             _ = CutSelectionAsync();
             e.Handled = true;
             return;
         }
 
-        if (ctrl && e.Key == Windows.System.VirtualKey.V)
+        if (Hit("Paste"))
         {
             _ = PasteImageAsync();
             e.Handled = true;
             return;
         }
 
-        if (ctrl && e.Key == Windows.System.VirtualKey.A && _selectionMode)
+        if (Hit("Select all") && _selectionMode)
         {
             SelectAllPixels();
             e.Handled = true;

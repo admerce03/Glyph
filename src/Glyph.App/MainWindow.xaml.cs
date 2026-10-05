@@ -29,7 +29,6 @@ using Windows.Graphics;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
-using Windows.System;
 using WinRT.Interop;
 
 namespace Glyph.App;
@@ -144,10 +143,7 @@ public sealed partial class MainWindow : Window
         _logger = logger;
 
         InitializeComponent();
-        // WinUI XAML rejects Key="OemComma"; use VK code 188 (comma) — VirtualKey.OemComma
-        // is missing from some Windows App SDK projections.
-        PreferencesMenuItem.KeyboardAccelerators.Add(
-            new KeyboardAccelerator { Key = (VirtualKey)188, Modifiers = VirtualKeyModifiers.Control });
+        ApplyShellKeyboardShortcuts();
         ResizeAndCenter(1180, 760);
         RootGrid.Loaded += RootGrid_Loaded;
         Closed += MainWindow_Closed;
@@ -2629,6 +2625,48 @@ public sealed partial class MainWindow : Window
         }
 
         toolbarPanel.Children.Add(toolbarReset);
+
+        var shortcutBoxes = new List<(string Command, TextBox Box)>();
+        var shortcutPanel = new StackPanel { Spacing = 4 };
+        shortcutPanel.Children.Add(new TextBlock
+        {
+            Text = PreferencesDialogUi.ShortcutsHeader,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Margin = new Thickness(0, 8, 0, 4),
+            TextWrapping = TextWrapping.WrapWholeWords,
+            MaxWidth = 360,
+        });
+        foreach (var (command, defaultGesture) in ShortcutCustomizationPolicy.DefaultCatalog)
+        {
+            var box = new TextBox
+            {
+                Header = command,
+                Text = ShortcutCustomizationPolicy.Resolve(command, settings.ShortcutOverrides),
+                PlaceholderText = defaultGesture,
+                Width = 280,
+                Margin = new Thickness(0, 2, 0, 2),
+            };
+            shortcutBoxes.Add((command, box));
+            shortcutPanel.Children.Add(box);
+        }
+
+        var shortcutReset = new Button
+        {
+            Content = PreferencesDialogUi.ResetShortcuts,
+            Margin = new Thickness(0, 4, 0, 0),
+        };
+        shortcutReset.Click += (_, _) =>
+        {
+            foreach (var (command, box) in shortcutBoxes)
+            {
+                var def = ShortcutCustomizationPolicy.DefaultCatalog
+                    .First(c => string.Equals(c.Command, command, StringComparison.OrdinalIgnoreCase))
+                    .DefaultGesture;
+                box.Text = def;
+            }
+        };
+        shortcutPanel.Children.Add(shortcutReset);
+
         var highlightColorBox = new ComboBox
         {
             Header = PreferencesDialogUi.DefaultHighlightColorHeader,
@@ -2785,7 +2823,7 @@ public sealed partial class MainWindow : Window
             Children =
             {
                 restoreBox, autoSaveBox, intervalBox, recentBox, snapshotsBox, snapshotCapBox,
-                separateWindowsBox, authorBox, compactToolbarBox, toolbarPanel,
+                separateWindowsBox, authorBox, compactToolbarBox, toolbarPanel, shortcutPanel,
                 highlightColorBox, strokeColorBox, stickyColorBox, strokeWidthBox,
                 animationAutoplayBox, stripMetadataBox, layoutBox, defaultZoomBox,
                 zoom100Box, interpolationBox, colorManagedBox, localOcrNote, ocrLanguageBox,
@@ -2811,6 +2849,24 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        var shortcutDraft = shortcutBoxes.ToDictionary(
+            x => x.Command,
+            x => x.Box.Text?.Trim() ?? string.Empty,
+            StringComparer.OrdinalIgnoreCase);
+        var shortcutError = ShortcutCustomizationPolicy.ValidationError(shortcutDraft);
+        if (shortcutError is not null)
+        {
+            var err = new ContentDialog
+            {
+                Title = PreferencesDialogUi.DialogTitle,
+                Content = shortcutError,
+                CloseButtonText = PreferencesDialogUi.CancelButton,
+                XamlRoot = RootGrid.XamlRoot,
+            };
+            await err.ShowAsync();
+            return;
+        }
+
         settings.RestorePreviousSession = restoreBox.IsChecked == true;
         settings.AutoSaveToOriginal = autoSaveBox.IsChecked == true;
         settings.CrashRecoveryIntervalSeconds = (int)Math.Clamp(intervalBox.Value, 0, 3600);
@@ -2824,6 +2880,7 @@ public sealed partial class MainWindow : Window
             .Where(b => b.IsChecked != true && b.Tag is string id)
             .Select(b => (string)b.Tag!)
             .ToList();
+        settings.ShortcutOverrides = ShortcutCustomizationPolicy.NormalizeOverrides(shortcutDraft);
         settings.DefaultHighlightColor = highlightColorBox.SelectedItem as string ?? "Yellow";
         settings.DefaultStrokeColor = strokeColorBox.SelectedItem as string ?? "Red";
         settings.DefaultStickyNoteColor = stickyColorBox.SelectedItem as string ?? "Yellow";
@@ -2838,9 +2895,43 @@ public sealed partial class MainWindow : Window
         settings.LocalOnlyOcr = true;
         settings.OcrLanguageTag = ocrLanguageBox.Text?.Trim() ?? string.Empty;
         await _settingsStore.SaveAsync(settings);
+        ApplyShellKeyboardShortcuts();
         ConfigureRecoveryTimer();
         await PersistSessionAsync();
         StatusText.Text = AppShellStatus.PreferencesSaved;
+    }
+
+    private void ApplyShellKeyboardShortcuts()
+    {
+        var overrides = _settingsStore.Current.ShortcutOverrides;
+        (string Command, MenuFlyoutItem Item)[] targets =
+        [
+            ("Open", OpenMenuItem),
+            ("New from Clipboard", NewFromClipboardMenuItem),
+            ("Save", SaveMenuItem),
+            ("Save As", SaveAsMenuItem),
+            ("Duplicate", DuplicateMenuItem),
+            ("Properties", PropertiesMenuItem),
+            ("New Window", NewWindowMenuItem),
+            ("Close Tab", CloseTabMenuItem),
+            ("Exit", ExitMenuItem),
+            ("Paste", PasteMenuItem),
+            ("Find in all open PDFs", FindAllPdfsMenuItem),
+            ("Full Screen", FullscreenMenuItem),
+            ("Preferences", PreferencesMenuItem),
+            ("Next Tab", NextTabMenuItem),
+            ("Previous Tab", PreviousTabMenuItem),
+        ];
+
+        foreach (var (command, item) in targets)
+        {
+            item.KeyboardAccelerators.Clear();
+            var gesture = ShortcutCustomizationPolicy.Resolve(command, overrides);
+            if (WinUiKeyboardGestures.TryCreateAccelerator(gesture, out var accelerator))
+            {
+                item.KeyboardAccelerators.Add(accelerator);
+            }
+        }
     }
 
     private async Task ShowVersionSnapshotsAsync()

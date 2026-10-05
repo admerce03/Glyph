@@ -25,6 +25,9 @@ public static class PreferencesDialogUi
     public const string ToolbarCommandsHeader =
         "Toolbar commands (unchecked = hidden; reopen documents to apply)";
     public const string ResetToolbar = "Reset toolbar to default";
+    public const string ShortcutsHeader =
+        "Keyboard shortcuts (blank = default; reopen menus apply immediately)";
+    public const string ResetShortcuts = "Reset shortcuts to default";
     public const string DefaultHighlightColorHeader = "Default highlight color";
     public const string DefaultStrokeColorHeader = "Default stroke color";
     public const string DefaultStickyColorHeader = "Default sticky-note color";
