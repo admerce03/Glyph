@@ -41,11 +41,35 @@ public class TesseractCliOcrEngineTests
             FillColor = MagickColors.Black,
             FontPointsize = 48,
             TextGravity = Gravity.Center,
+            Font = ResolveCaptionFont(),
         };
         using var image = new MagickImage($"caption:{text}", settings);
         image.Depth = 8;
         image.ColorType = ColorType.TrueColorAlpha;
         var bgra = image.ToByteArray(MagickFormat.Bgra);
         return (checked((int)image.Width), checked((int)image.Height), bgra);
+    }
+
+    private static string ResolveCaptionFont()
+    {
+        string[] candidates =
+        [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+            @"C:\Windows\Fonts\arial.ttf",
+            @"C:\Windows\Fonts\segoeui.ttf",
+        ];
+
+        foreach (var path in candidates)
+        {
+            if (File.Exists(path))
+            {
+                return path;
+            }
+        }
+
+        // Fall back to a Magick font name when a file path is unavailable.
+        return "Helvetica";
     }
 }

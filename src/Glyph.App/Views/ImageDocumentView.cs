@@ -71,12 +71,12 @@ public sealed class ImageDocumentView : UserControl
         var save = new Button { Content = "Save" };
         var exportPng = new Button { Content = "→PNG" };
         var exportJpeg = new Button { Content = "→JPEG" };
-        var ocr = new Button { Content = "OCR" };
+        var ocrButton = new Button { Content = "OCR" };
 
         ToolTipService.SetToolTip(crop, "Crop using x,y,w,h pixels (origin top-left)");
         ToolTipService.SetToolTip(exportPng, "Export as PNG");
         ToolTipService.SetToolTip(exportJpeg, "Export as JPEG");
-        ToolTipService.SetToolTip(ocr, "Offline OCR of the current image");
+        ToolTipService.SetToolTip(ocrButton, "Offline OCR of the current image");
 
         zoomOut.Click += async (_, _) => await SetZoomAsync(_zoom / 1.25);
         zoomIn.Click += async (_, _) => await SetZoomAsync(_zoom * 1.25);
@@ -90,7 +90,7 @@ public sealed class ImageDocumentView : UserControl
         save.Click += async (_, _) => await SaveAsync();
         exportPng.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Png, ".png");
         exportJpeg.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Jpeg, ".jpg");
-        ocr.Click += async (_, _) => await RunOcrAsync();
+        ocrButton.Click += async (_, _) => await RunOcrAsync();
 
         var toolbar = new StackPanel
         {
@@ -100,7 +100,7 @@ public sealed class ImageDocumentView : UserControl
             Children =
             {
                 zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, flipH, flipV,
-                _cropBox, crop, save, exportPng, exportJpeg, ocr, _status,
+                _cropBox, crop, save, exportPng, exportJpeg, ocrButton, _status,
             },
         };
 
