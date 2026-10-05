@@ -132,6 +132,69 @@ public class PdfiumAnnotationStoreTests
         }
     }
 
+    [Fact]
+    public async Task Square_circle_freetext_and_ink_can_be_created()
+    {
+        var path = CreatePdfWithText();
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var store = new PdfiumAnnotationStore();
+            await using var document = await factory.OpenAsync(path);
+
+            var square = await store.AddShapeAsync(
+                document,
+                new PdfShapeRequest(
+                    0,
+                    PdfAnnotationKind.Square,
+                    new PdfRect(40, 600, 200, 700),
+                    PdfAnnotationColor.Blue,
+                    FillColor: new PdfAnnotationColor(120, 180, 255, 60)));
+            square.Kind.Should().Be(PdfAnnotationKind.Square);
+
+            var circle = await store.AddShapeAsync(
+                document,
+                new PdfShapeRequest(
+                    0,
+                    PdfAnnotationKind.Circle,
+                    new PdfRect(220, 600, 320, 700),
+                    PdfAnnotationColor.Red));
+            circle.Kind.Should().Be(PdfAnnotationKind.Circle);
+
+            var box = await store.AddFreeTextAsync(
+                document,
+                new PdfFreeTextRequest(
+                    0,
+                    new PdfRect(40, 500, 240, 560),
+                    "Callout text",
+                    PdfAnnotationColor.Black));
+            box.Kind.Should().Be(PdfAnnotationKind.FreeText);
+            box.Contents.Should().Be("Callout text");
+
+            var ink = await store.AddInkAsync(
+                document,
+                new PdfInkRequest(
+                    0,
+                    [
+                        [
+                            new PdfUserPoint(50, 400),
+                            new PdfUserPoint(80, 420),
+                            new PdfUserPoint(120, 390),
+                        ],
+                    ],
+                    PdfAnnotationColor.Red,
+                    StrokeWidth: 3));
+            ink.Kind.Should().Be(PdfAnnotationKind.Ink);
+
+            var listed = await store.ListPageAsync(document, 0);
+            listed.Should().HaveCount(4);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static string CreatePdfWithText()
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-annot-src-" + Guid.NewGuid().ToString("N") + ".pdf");

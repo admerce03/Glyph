@@ -63,7 +63,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-02 | Sidebar modes | Table of contents | M2-M5 | Implemented | Outline TreeView when bookmarks present |
 | F03-03 | Sidebar modes | Search results | M2-M5 | Implemented | Find hits list under Search header |
 | F03-04 | Sidebar modes | Bookmarks | M2-M5 | Not Started |  |
-| F03-05 | Sidebar modes | Highlights and annotations | M2-M5 | Not Started |  |
+| F03-05 | Sidebar modes | Highlights and annotations | M2-M5 | Implemented | Annotations list in PDF document pane |
 | F03-06 | Sidebar modes | Image list | M2-M5 | Not Started |  |
 | F03-07 | Sidebar modes | Contact sheet | M2-M5 | Not Started |  |
 | F03-08 | Sidebar modes | Document attachments, if supported | M2-M5 | Not Started |  |
@@ -227,15 +227,15 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-01 | PDF annotations | Highlight | M4 | Tested | `IPdfAnnotationStore.AddTextMarkupAsync` + HL toolbar |
 | F13-02 | PDF annotations | Underline | M4 | Tested | Underline toolbar + PDFium subtype |
 | F13-03 | PDF annotations | Strikethrough | M4 | Tested | StrikeOut toolbar + PDFium subtype |
-| F13-04 | PDF annotations | Freehand ink | M4 | Not Started |  |
+| F13-04 | PDF annotations | Freehand ink | M4 | Tested | `AddInkAsync` + Ink draw tool |
 | F13-05 | PDF annotations | Lines | M4 | Not Started |  |
 | F13-06 | PDF annotations | Arrows | M4 | Not Started |  |
-| F13-07 | PDF annotations | Rectangles | M4 | Not Started |  |
+| F13-07 | PDF annotations | Rectangles | M4 | Tested | Square annot + Rect draw tool |
 | F13-08 | PDF annotations | Rounded rectangles | M4 | Not Started |  |
-| F13-09 | PDF annotations | Ellipses | M4 | Not Started |  |
+| F13-09 | PDF annotations | Ellipses | M4 | Tested | Circle annot + Ellipse draw tool |
 | F13-10 | PDF annotations | Polygons | M4 | Not Started |  |
 | F13-11 | PDF annotations | Callouts | M4 | Not Started |  |
-| F13-12 | PDF annotations | Text boxes | M4 | Not Started |  |
+| F13-12 | PDF annotations | Text boxes | M4 | Tested | FreeText + Text box draw tool |
 | F13-13 | PDF annotations | Sticky notes | M4 | Tested | `AddStickyNoteAsync` + Note dialog |
 | F13-14 | PDF annotations | Speech-bubble-like callouts | M4 | Not Started |  |
 | F13-15 | PDF annotations | Stamps, optionally | M4 | Not Started |  |
@@ -284,8 +284,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F15-11 | Notes | Optional date/time metadata. | M4 | Not Started |  |
 | F15-12 | Notes | Show all notes in sidebar. | M4 | Implemented | Included in Annotations list |
 | F15-13 | Notes | Print notes optionally. | M4 | Not Started |  |
-| F16-01 | Text boxes and callouts | Add text box anywhere. | M4 | Not Started |  |
-| F16-02 | Text boxes and callouts | Type arbitrary text over PDF. | M4 | Not Started |  |
+| F16-01 | Text boxes and callouts | Add text box anywhere. | M4 | Implemented | Drag Text box tool |
+| F16-02 | Text boxes and callouts | Type arbitrary text over PDF. | M4 | Implemented | FreeText contents dialog |
 | F16-03 | Text boxes and callouts | Move it. | M4 | Not Started |  |
 | F16-04 | Text boxes and callouts | Resize it. | M4 | Not Started |  |
 | F16-05 | Text boxes and callouts | Rotate where appropriate. | M4 | Not Started |  |
@@ -303,9 +303,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F16-17 | Text boxes and callouts | Move pointer separately from text box. | M4 | Not Started |  |
 | F17-01 | Shapes | line | M4 | Not Started |  |
 | F17-02 | Shapes | arrow | M4 | Not Started |  |
-| F17-03 | Shapes | rectangle | M4 | Not Started |  |
+| F17-03 | Shapes | rectangle | M4 | Tested | Square annotation |
 | F17-04 | Shapes | rounded rectangle | M4 | Not Started |  |
-| F17-05 | Shapes | ellipse | M4 | Not Started |  |
+| F17-05 | Shapes | ellipse | M4 | Tested | Circle annotation |
 | F17-06 | Shapes | polygon | M4 | Not Started |  |
 | F17-07 | Shapes | star | M4 | Not Started |  |
 | F17-08 | Shapes | speech bubble/callout | M4 | Not Started |  |
@@ -322,7 +322,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F17-19 | Shapes | fill color | M4 | Not Started |  |
 | F17-20 | Shapes | opacity | M4 | Not Started |  |
 | F17-21 | Shapes | shape-specific adjustment handles | M4 | Not Started |  |
-| F18-01 | Freehand drawing | Mouse drawing. | M4 | Not Started |  |
+| F18-01 | Freehand drawing | Mouse drawing. | M4 | Tested | Ink draw tool → Ink annot |
 | F18-02 | Freehand drawing | Stroke color. | M4 | Not Started |  |
 | F18-03 | Freehand drawing | Stroke width. | M4 | Not Started |  |
 | F18-04 | Freehand drawing | Stroke opacity. | M4 | Not Started |  |

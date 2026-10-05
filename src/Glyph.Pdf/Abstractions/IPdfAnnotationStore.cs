@@ -24,6 +24,21 @@ public interface IPdfAnnotationStore
         PdfStickyNoteRequest request,
         CancellationToken cancellationToken = default);
 
+    Task<PdfAnnotation> AddShapeAsync(
+        IPdfDocument document,
+        PdfShapeRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<PdfAnnotation> AddInkAsync(
+        IPdfDocument document,
+        PdfInkRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<PdfAnnotation> AddFreeTextAsync(
+        IPdfDocument document,
+        PdfFreeTextRequest request,
+        CancellationToken cancellationToken = default);
+
     Task SetColorAsync(
         IPdfDocument document,
         int pageIndex,

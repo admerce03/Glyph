@@ -56,6 +56,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly CheckBox _caseSensitiveBox;
     private readonly CheckBox _persistentHighlightBox;
     private readonly ComboBox _markupColorBox;
+    private readonly ComboBox _drawToolBox;
     private readonly ComboBox _layoutBox;
     private readonly TextBlock _status;
     private readonly Dictionary<int, IReadOnlyList<PdfTextChar>> _pageChars = new();
@@ -81,6 +82,7 @@ public sealed class PdfDocumentView : UserControl
     private int _dragPageIndex = -1;
     private string _searchQuery = string.Empty;
     private bool _searchCaseSensitive;
+    private readonly List<PdfUserPoint> _inkStroke = [];
 
     public PdfDocumentView(
         IPdfDocument document,
@@ -260,6 +262,12 @@ public sealed class PdfDocumentView : UserControl
             ItemsSource = new[] { "Yellow", "Green", "Pink", "Blue", "Red" },
             SelectedIndex = 0,
         };
+        _drawToolBox = new ComboBox
+        {
+            Width = 100,
+            ItemsSource = new[] { "Select", "Rect", "Ellipse", "Ink", "Text box" },
+            SelectedIndex = 0,
+        };
         _persistentHighlightBox = new CheckBox
         {
             Content = "HL mode",
@@ -284,6 +292,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(recolor, "Apply selected color to sidebar annotation");
         ToolTipService.SetToolTip(saveDoc, "Save PDF including markup");
         ToolTipService.SetToolTip(_markupColorBox, "Markup color");
+        ToolTipService.SetToolTip(_drawToolBox, "Drawing tool for shapes, ink, and text boxes");
         ToolTipService.SetToolTip(_persistentHighlightBox, "Persistent highlight mode: every text selection is highlighted");
         ToolTipService.SetToolTip(undoEdit, "Undo last page edit (Ctrl+Z)");
         ToolTipService.SetToolTip(redoEdit, "Redo page edit (Ctrl+Y)");
@@ -348,7 +357,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy, saveDoc,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strike, note, removeMarkup, recolor, _markupColorBox, _persistentHighlightBox,
+                highlight, underline, strike, note, removeMarkup, recolor, _markupColorBox, _drawToolBox, _persistentHighlightBox,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -1094,6 +1103,13 @@ public sealed class PdfDocumentView : UserControl
         _dragSelecting = true;
         _dragPageIndex = pageIndex;
         _dragStart = e.GetCurrentPoint(border).Position;
+        _inkStroke.Clear();
+        if (_drawToolBox.SelectedIndex == 3)
+        {
+            var page = _document.GetPage(pageIndex);
+            _inkStroke.Add(UiToPdfPoint(page, _dragStart));
+        }
+
         border.CapturePointer(e.Pointer);
     }
 
@@ -1111,12 +1127,47 @@ public sealed class PdfDocumentView : UserControl
 
         var current = e.GetCurrentPoint(border).Position;
         overlay.Children.Clear();
+        if (_drawToolBox.SelectedIndex == 3)
+        {
+            var page = _document.GetPage(pageIndex);
+            _inkStroke.Add(UiToPdfPoint(page, current));
+            var polyline = new Microsoft.UI.Xaml.Shapes.Polyline
+            {
+                Stroke = new SolidColorBrush(Colors.IndianRed),
+                StrokeThickness = 2,
+                Points = new PointCollection(),
+            };
+            foreach (var pt in _inkStroke)
+            {
+                polyline.Points.Add(new Windows.Foundation.Point(pt.X * _scale, (page.HeightPoints - pt.Y) * _scale));
+            }
+
+            overlay.Children.Add(polyline);
+            return;
+        }
+
         var left = Math.Min(_dragStart.X, current.X);
         var top = Math.Min(_dragStart.Y, current.Y);
         var width = Math.Abs(current.X - _dragStart.X);
         var height = Math.Abs(current.Y - _dragStart.Y);
         if (width < 2 || height < 2)
         {
+            return;
+        }
+
+        if (_drawToolBox.SelectedIndex == 2)
+        {
+            var ellipse = new Microsoft.UI.Xaml.Shapes.Ellipse
+            {
+                Width = width,
+                Height = height,
+                Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 30, 144, 255)),
+                Stroke = new SolidColorBrush(Colors.DodgerBlue),
+                StrokeThickness = 1.5,
+            };
+            Canvas.SetLeft(ellipse, left);
+            Canvas.SetTop(ellipse, top);
+            overlay.Children.Add(ellipse);
             return;
         }
 
@@ -1144,18 +1195,29 @@ public sealed class PdfDocumentView : UserControl
         var page = _document.GetPage(pageIndex);
         var wasDragging = _dragSelecting;
         var dragStart = _dragStart;
+        var drawTool = _drawToolBox.SelectedIndex;
         _dragSelecting = false;
         border.ReleasePointerCapture(e.Pointer);
 
         var pdfX = point.Position.X / _scale;
         var pdfY = page.HeightPoints - (point.Position.Y / _scale);
+        var dragDistance = Math.Abs(point.Position.X - dragStart.X) + Math.Abs(point.Position.Y - dragStart.Y);
+
+        if (drawTool is 1 or 2 or 3 or 4)
+        {
+            if (wasDragging && dragDistance >= 4)
+            {
+                await CommitDrawToolAsync(pageIndex, page, dragStart, point.Position, drawTool);
+            }
+
+            return;
+        }
 
         if (!_pageLinks.ContainsKey(pageIndex))
         {
             _pageLinks[pageIndex] = await _linkService.GetPageLinksAsync(_document, pageIndex);
         }
 
-        var dragDistance = Math.Abs(point.Position.X - dragStart.X) + Math.Abs(point.Position.Y - dragStart.Y);
         if (!wasDragging || dragDistance < 4)
         {
             var link = _pageLinks[pageIndex].FirstOrDefault(l => l.Bounds.ContainsPoint(pdfX, pdfY));
@@ -2075,6 +2137,104 @@ public sealed class PdfDocumentView : UserControl
         4 => PdfAnnotationColor.Red,
         _ => PdfAnnotationColor.Yellow,
     };
+
+    private static PdfUserPoint UiToPdfPoint(IPdfPage page, Windows.Foundation.Point ui, double scale) =>
+        new(ui.X / scale, page.HeightPoints - (ui.Y / scale));
+
+    private PdfUserPoint UiToPdfPoint(IPdfPage page, Windows.Foundation.Point ui) =>
+        UiToPdfPoint(page, ui, _scale);
+
+    private async Task CommitDrawToolAsync(
+        int pageIndex,
+        IPdfPage page,
+        Windows.Foundation.Point dragStart,
+        Windows.Foundation.Point dragEnd,
+        int drawTool)
+    {
+        try
+        {
+            if (drawTool == 3)
+            {
+                if (_inkStroke.Count < 2)
+                {
+                    _status.Text = "Ink stroke too short.";
+                    return;
+                }
+
+                await _annotationStore.AddInkAsync(
+                    _document,
+                    new PdfInkRequest(pageIndex, [_inkStroke.ToList()], SelectedMarkupColor(), StrokeWidth: 2.5f));
+                _inkStroke.Clear();
+                _status.Text = "Ink stroke added.";
+            }
+            else
+            {
+                var left = Math.Min(dragStart.X, dragEnd.X) / _scale;
+                var right = Math.Max(dragStart.X, dragEnd.X) / _scale;
+                var topUi = Math.Min(dragStart.Y, dragEnd.Y);
+                var bottomUi = Math.Max(dragStart.Y, dragEnd.Y);
+                var top = page.HeightPoints - (bottomUi / _scale);
+                var bottom = page.HeightPoints - (topUi / _scale);
+                var bounds = new PdfRect(left, bottom, right, top);
+
+                if (drawTool == 4)
+                {
+                    var input = new TextBox
+                    {
+                        PlaceholderText = "Text box contents",
+                        Text = "Text",
+                        AcceptsReturn = true,
+                        TextWrapping = TextWrapping.Wrap,
+                        Height = 80,
+                    };
+                    var dialog = new ContentDialog
+                    {
+                        Title = "Text box",
+                        PrimaryButtonText = "Add",
+                        CloseButtonText = "Cancel",
+                        DefaultButton = ContentDialogButton.Primary,
+                        XamlRoot = XamlRoot,
+                        Content = input,
+                    };
+                    if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+                    {
+                        _status.Text = "Text box cancelled.";
+                        return;
+                    }
+
+                    await _annotationStore.AddFreeTextAsync(
+                        _document,
+                        new PdfFreeTextRequest(pageIndex, bounds, input.Text?.Trim() ?? string.Empty, SelectedMarkupColor()));
+                    _status.Text = "Text box added.";
+                }
+                else
+                {
+                    var kind = drawTool == 2 ? PdfAnnotationKind.Circle : PdfAnnotationKind.Square;
+                    await _annotationStore.AddShapeAsync(
+                        _document,
+                        new PdfShapeRequest(
+                            pageIndex,
+                            kind,
+                            bounds,
+                            SelectedMarkupColor(),
+                            FillColor: new PdfAnnotationColor(
+                                SelectedMarkupColor().R,
+                                SelectedMarkupColor().G,
+                                SelectedMarkupColor().B,
+                                60)));
+                    _status.Text = kind == PdfAnnotationKind.Circle ? "Ellipse added." : "Rectangle added.";
+                }
+            }
+
+            _cache.ClearDocument(_documentKey);
+            await RefreshAnnotationSidebarAsync();
+            await RenderVisibleAsync();
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Draw failed: " + ex.Message;
+        }
+    }
 
     private async Task MergePdfsAsync()
     {

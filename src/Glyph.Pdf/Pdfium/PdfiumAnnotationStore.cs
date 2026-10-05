@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Annotations;
@@ -172,6 +174,226 @@ public sealed class PdfiumAnnotationStore : IPdfAnnotationStore
                         // Icon-sized rect anchored at the click point.
                         var bounds = new PdfRect(request.X, request.Y - 20, request.X + 20, request.Y);
                         SetRect(annot, bounds);
+                        SetColor(annot, request.Color);
+                        SetString(annot, "Contents", request.Contents ?? string.Empty);
+                        if (!string.IsNullOrWhiteSpace(request.Author))
+                        {
+                            SetString(annot, "T", request.Author);
+                        }
+
+                        var index = fpdf_annot.FPDFPageGetAnnotIndex(page, annot);
+                        return ReadAnnotation(pdfium, request.PageIndex, page, index, annot);
+                    }
+                    finally
+                    {
+                        if (annot is not null)
+                        {
+                            fpdf_annot.FPDFPageCloseAnnot(annot);
+                        }
+
+                        fpdfview.FPDF_ClosePage(page);
+                    }
+                }
+            },
+            cancellationToken);
+    }
+
+    public Task<PdfAnnotation> AddShapeAsync(
+        IPdfDocument document,
+        PdfShapeRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.Kind is not (PdfAnnotationKind.Square or PdfAnnotationKind.Circle))
+        {
+            throw new ArgumentException("Shape kind must be Square or Circle.", nameof(request));
+        }
+
+        if (request.Bounds.Width <= 0 || request.Bounds.Height <= 0)
+        {
+            throw new ArgumentException("Shape bounds must have positive size.", nameof(request));
+        }
+
+        var pdfium = RequirePdfium(document);
+        ValidatePage(pdfium, request.PageIndex);
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    var page = fpdfview.FPDF_LoadPage(pdfium.Handle, request.PageIndex);
+                    if (page is null)
+                    {
+                        throw new InvalidOperationException($"Failed to load page {request.PageIndex}.");
+                    }
+
+                    FpdfAnnotationT? annot = null;
+                    try
+                    {
+                        annot = fpdf_annot.FPDFPageCreateAnnot(page, (int)request.Kind);
+                        if (annot is null)
+                        {
+                            throw new InvalidOperationException($"Failed to create {request.Kind} annotation.");
+                        }
+
+                        SetRect(annot, request.Bounds);
+                        SetColor(annot, request.StrokeColor);
+                        if (request.FillColor is { } fill)
+                        {
+                            fpdf_annot.FPDFAnnotSetColor(
+                                annot,
+                                FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_InteriorColor,
+                                fill.R,
+                                fill.G,
+                                fill.B,
+                                fill.A);
+                        }
+
+                        fpdf_annot.FPDFAnnotSetBorder(annot, 0, 0, request.BorderWidth);
+                        if (!string.IsNullOrWhiteSpace(request.Author))
+                        {
+                            SetString(annot, "T", request.Author);
+                        }
+
+                        var index = fpdf_annot.FPDFPageGetAnnotIndex(page, annot);
+                        return ReadAnnotation(pdfium, request.PageIndex, page, index, annot);
+                    }
+                    finally
+                    {
+                        if (annot is not null)
+                        {
+                            fpdf_annot.FPDFPageCloseAnnot(annot);
+                        }
+
+                        fpdfview.FPDF_ClosePage(page);
+                    }
+                }
+            },
+            cancellationToken);
+    }
+
+    public Task<PdfAnnotation> AddInkAsync(
+        IPdfDocument document,
+        PdfInkRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.Strokes.Count == 0 || request.Strokes.All(s => s.Count < 2))
+        {
+            throw new ArgumentException("At least one stroke with two points is required.", nameof(request));
+        }
+
+        var pdfium = RequirePdfium(document);
+        ValidatePage(pdfium, request.PageIndex);
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    var page = fpdfview.FPDF_LoadPage(pdfium.Handle, request.PageIndex);
+                    if (page is null)
+                    {
+                        throw new InvalidOperationException($"Failed to load page {request.PageIndex}.");
+                    }
+
+                    FpdfAnnotationT? annot = null;
+                    try
+                    {
+                        annot = fpdf_annot.FPDFPageCreateAnnot(page, (int)PdfAnnotationKind.Ink);
+                        if (annot is null)
+                        {
+                            throw new InvalidOperationException("Failed to create ink annotation.");
+                        }
+
+                        double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
+                        foreach (var stroke in request.Strokes)
+                        {
+                            if (stroke.Count < 2)
+                            {
+                                continue;
+                            }
+
+                            foreach (var pt in stroke)
+                            {
+                                minX = Math.Min(minX, pt.X);
+                                minY = Math.Min(minY, pt.Y);
+                                maxX = Math.Max(maxX, pt.X);
+                                maxY = Math.Max(maxY, pt.Y);
+                            }
+
+                            if (!TryAddInkStroke(annot, stroke))
+                            {
+                                throw new InvalidOperationException("Failed to add ink stroke.");
+                            }
+                        }
+
+                        var pad = Math.Max(2, request.StrokeWidth);
+                        SetRect(annot, new PdfRect(minX - pad, minY - pad, maxX + pad, maxY + pad));
+                        SetColor(annot, request.Color);
+                        fpdf_annot.FPDFAnnotSetBorder(annot, 0, 0, request.StrokeWidth);
+                        if (!string.IsNullOrWhiteSpace(request.Author))
+                        {
+                            SetString(annot, "T", request.Author);
+                        }
+
+                        var index = fpdf_annot.FPDFPageGetAnnotIndex(page, annot);
+                        return ReadAnnotation(pdfium, request.PageIndex, page, index, annot);
+                    }
+                    finally
+                    {
+                        if (annot is not null)
+                        {
+                            fpdf_annot.FPDFPageCloseAnnot(annot);
+                        }
+
+                        fpdfview.FPDF_ClosePage(page);
+                    }
+                }
+            },
+            cancellationToken);
+    }
+
+    public Task<PdfAnnotation> AddFreeTextAsync(
+        IPdfDocument document,
+        PdfFreeTextRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var pdfium = RequirePdfium(document);
+        ValidatePage(pdfium, request.PageIndex);
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    var page = fpdfview.FPDF_LoadPage(pdfium.Handle, request.PageIndex);
+                    if (page is null)
+                    {
+                        throw new InvalidOperationException($"Failed to load page {request.PageIndex}.");
+                    }
+
+                    FpdfAnnotationT? annot = null;
+                    try
+                    {
+                        annot = fpdf_annot.FPDFPageCreateAnnot(page, (int)PdfAnnotationKind.FreeText);
+                        if (annot is null)
+                        {
+                            throw new InvalidOperationException("Failed to create free-text annotation.");
+                        }
+
+                        SetRect(annot, request.Bounds);
                         SetColor(annot, request.Color);
                         SetString(annot, "Contents", request.Contents ?? string.Empty);
                         if (!string.IsNullOrWhiteSpace(request.Author))
@@ -459,6 +681,41 @@ public sealed class PdfiumAnnotationStore : IPdfAnnotationStore
             Y4 = (float)quad.Y4,
         };
         return native;
+    }
+
+    private static readonly ConstructorInfo? PointFromPointerCtor =
+        typeof(FS_POINTF_).GetConstructor(
+            BindingFlags.Instance | BindingFlags.NonPublic,
+            binder: null,
+            [typeof(void*), typeof(bool)],
+            modifiers: null);
+
+    private static unsafe bool TryAddInkStroke(FpdfAnnotationT annot, IReadOnlyList<PdfUserPoint> stroke)
+    {
+        var floats = new float[stroke.Count * 2];
+        for (var i = 0; i < stroke.Count; i++)
+        {
+            floats[i * 2] = (float)stroke[i].X;
+            floats[(i * 2) + 1] = (float)stroke[i].Y;
+        }
+
+        var handle = GCHandle.Alloc(floats, GCHandleType.Pinned);
+        try
+        {
+            var ptr = handle.AddrOfPinnedObject();
+            if (PointFromPointerCtor is null)
+            {
+                return false;
+            }
+
+            var boxedPtr = Pointer.Box(ptr.ToPointer(), typeof(void*));
+            using var wrapper = (FS_POINTF_)PointFromPointerCtor.Invoke([boxedPtr, false])!;
+            return fpdf_annot.FPDFAnnotAddInkStroke(annot, wrapper, (ulong)stroke.Count) != -1;
+        }
+        finally
+        {
+            handle.Free();
+        }
     }
 
     private static unsafe void SetString(FpdfAnnotationT annot, string key, string value)

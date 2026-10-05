@@ -49,3 +49,40 @@ public sealed record PdfStickyNoteRequest(
     string Contents,
     PdfAnnotationColor Color,
     string? Author = null);
+
+/// <summary>
+/// Request to create a square or circle annotation.
+/// </summary>
+public sealed record PdfShapeRequest(
+    int PageIndex,
+    PdfAnnotationKind Kind,
+    PdfRect Bounds,
+    PdfAnnotationColor StrokeColor,
+    PdfAnnotationColor? FillColor = null,
+    float BorderWidth = 1.5f,
+    string? Author = null);
+
+/// <summary>
+/// Request to create a freehand ink annotation from one or more strokes.
+/// </summary>
+public sealed record PdfInkRequest(
+    int PageIndex,
+    IReadOnlyList<IReadOnlyList<PdfUserPoint>> Strokes,
+    PdfAnnotationColor Color,
+    float StrokeWidth = 2f,
+    string? Author = null);
+
+/// <summary>
+/// Request to create a FreeText text-box annotation.
+/// </summary>
+public sealed record PdfFreeTextRequest(
+    int PageIndex,
+    PdfRect Bounds,
+    string Contents,
+    PdfAnnotationColor Color,
+    string? Author = null);
+
+/// <summary>
+/// Point in PDF user space (points). Named to avoid clashing with PdfPig's PdfPoint.
+/// </summary>
+public readonly record struct PdfUserPoint(double X, double Y);

@@ -186,9 +186,9 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Progress notes
 
-- `IPdfAnnotationStore` / `PdfiumAnnotationStore`: highlight, underline, strikeout, sticky note, list, delete, recolor, contents.
-- Viewer: HL/U/S/Note/Unmark/Recolor/Save, color combo, persistent HL mode, Annotations sidebar jump-to.
-- Tests: save/reopen highlight, underline/strike delete, sticky note color/contents, JSON model serializer.
+- `IPdfAnnotationStore` / `PdfiumAnnotationStore`: highlight, underline, strikeout, sticky note, square, circle, ink, free text, list, delete, recolor, contents.
+- Viewer: HL/U/S/Note/Unmark/Recolor/Save, color combo, draw tools (Rect/Ellipse/Ink/Text box), persistent HL mode, Annotations sidebar jump-to.
+- Tests: save/reopen highlight, underline/strike delete, sticky note color/contents, shapes/ink/freetext create, JSON model serializer.
 
 ---
 
@@ -311,7 +311,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | OCR / Live Text | §8 | M6 | Not Started |
 | User bookmarks | §9 | M2/M4 | Not Started |
 | PDF page manipulation | §10–12 | M3 | In Progress |
-| PDF annotations/markup | §13–19 | M4 | Not Started |
+| PDF annotations/markup | §13–19 | M4 | In Progress |
 | PDF forms | §20 | M4 | Not Started |
 | Redaction | §21 | M7 | Not Started |
 | Flattening | §22 | M4 | Not Started |
