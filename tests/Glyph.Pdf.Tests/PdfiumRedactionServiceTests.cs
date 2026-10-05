@@ -35,6 +35,72 @@ public class PdfiumRedactionServiceTests
     }
 
     [Fact]
+    public async Task Mark_text_regions_for_each_search_hit_then_apply()
+    {
+        var path = CreateTextPdf("alpha SECRET beta SECRET gamma");
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-redact-search-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var redaction = new PdfiumRedactionService();
+            var editor = new PdfiumPageEditor();
+            var search = new PdfPigTextSearchService();
+            var extractor = new PdfiumTextExtractor();
+
+            await using var document = await factory.OpenAsync(path);
+            var hits = await search.SearchAsync(path, "SECRET");
+            hits.Hits.Should().HaveCount(2);
+
+            var chars = await extractor.GetCharsAsync(document, 0);
+            var pageText = string.Concat(chars.Select(c => c.Value));
+            var from = 0;
+            while (true)
+            {
+                var found = pageText.IndexOf("SECRET", from, StringComparison.Ordinal);
+                if (found < 0)
+                {
+                    break;
+                }
+
+                var end = Math.Min(chars.Count - 1, found + "SECRET".Length - 1);
+                var union = chars[found].Bounds;
+                for (var i = found; i <= end; i++)
+                {
+                    var b = chars[i].Bounds;
+                    union = new PdfRect(
+                        Math.Min(union.Left, b.Left),
+                        Math.Min(union.Bottom, b.Bottom),
+                        Math.Max(union.Right, b.Right),
+                        Math.Max(union.Top, b.Top));
+                }
+
+                redaction.MarkTextRegion(document, 0, new PdfRect(union.Left - 1, union.Bottom - 1, union.Right + 1, union.Top + 1));
+                from = found + 1;
+            }
+
+            redaction.GetPending(document).Should().HaveCount(2);
+            var result = await redaction.ApplyAsync(document, new PdfRedactionApplyOptions(RemoveIntersectingTextObjects: true));
+            result.MarksApplied.Should().Be(2);
+
+            await editor.SaveAsync(document, outPath);
+            var after = await search.SearchAsync(outPath, "SECRET");
+            after.Hits.Should().BeEmpty();
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Apply_removes_searchable_text_under_redaction()
     {
         var path = CreateTextPdf("CONFIDENTIAL");

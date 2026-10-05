@@ -372,7 +372,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F21-07 | Redaction | Warn before permanent application. | M7 | Implemented | ContentDialog confirm before `ApplyAsync` |
 | F21-08 | Redaction | Sanitize associated hidden content where practical. | M7 | Not Started |  |
 | F21-09 | Redaction | Option to remove: | M7 | Not Started | metadata / annotations / embedded files / layers |
-| F21-10 | Redaction | Search and redact matching text, later/advanced. | M7 | Not Started |  |
+| F21-10 | Redaction | Search and redact matching text, later/advanced. | M7 | Implemented | Redact → Mark find matches from current Find query |
 | F22-01 | PDF annotation flattening | highlights | M4 | Tested | `FlattenAsync` via `FPDFPage_Flatten` |
 | F22-02 | PDF annotation flattening | notes as configured | M4 | Tested | Same flatten path |
 | F22-03 | PDF annotation flattening | shapes | M4 | Tested | Same flatten path |

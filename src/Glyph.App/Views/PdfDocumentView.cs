@@ -5210,6 +5210,7 @@ public sealed class PdfDocumentView : UserControl
         var hasRegion = _regionCopyPageIndex >= 0
             && _regionCopyDisplayRect.Width >= 4
             && _regionCopyDisplayRect.Height >= 4;
+        var hasFindMatches = !string.IsNullOrWhiteSpace(_searchQuery) && _hits.Count > 0;
 
         if (_redactionMode)
         {
@@ -5242,7 +5243,11 @@ public sealed class PdfDocumentView : UserControl
             dialog.PrimaryButtonText = "Draw marks";
             dialog.CloseButtonText = "Cancel";
             dialog.DefaultButton = ContentDialogButton.Primary;
-            if (hasSelection)
+            if (hasFindMatches)
+            {
+                dialog.SecondaryButtonText = $"Mark find matches ({_hits.Count})";
+            }
+            else if (hasSelection)
             {
                 dialog.SecondaryButtonText = "Mark selection";
             }
@@ -5279,7 +5284,11 @@ public sealed class PdfDocumentView : UserControl
 
         if (result == ContentDialogResult.Secondary)
         {
-            if (hasSelection)
+            if (hasFindMatches)
+            {
+                await MarkFindMatchesForRedactionAsync();
+            }
+            else if (hasSelection)
             {
                 MarkSelectionForRedaction();
             }
