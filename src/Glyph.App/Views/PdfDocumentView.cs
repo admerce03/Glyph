@@ -2465,7 +2465,7 @@ public sealed class PdfDocumentView : UserControl
         try
         {
             _status.Text = "Loading signature…";
-            await using var winStream = await file.OpenAsync(FileAccessMode.Read);
+            using var winStream = await file.OpenAsync(FileAccessMode.Read);
             var decoder = await BitmapDecoder.CreateAsync(winStream);
             var pixelData = await decoder.GetPixelDataAsync(
                 BitmapPixelFormat.Bgra8,
