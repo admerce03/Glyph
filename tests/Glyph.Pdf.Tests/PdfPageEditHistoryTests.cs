@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Editing;
 using Glyph.Pdf.Pdfium;
 using UglyToad.PdfPig.Content;
@@ -118,6 +119,36 @@ public class PdfPageEditHistoryTests
         {
             File.Delete(destPath);
             File.Delete(srcPath);
+        }
+    }
+
+    [Fact]
+    public async Task Undo_restores_page_size_after_crop()
+    {
+        var path = CreatePdf(pageCount: 1);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var editor = new PdfiumPageEditor();
+            var history = new PdfPageEditHistory();
+            await using var document = await factory.OpenAsync(path);
+
+            var beforeW = document.GetPage(0).WidthPoints;
+            var beforeH = document.GetPage(0).HeightPoints;
+            await history.ExecuteAsync(
+                document,
+                editor,
+                () => editor.CropPagesAsync(document, [0], new PdfCropMargins(36, 36, 36, 36)));
+            document.GetPage(0).WidthPoints.Should().BeLessThan(beforeW - 1);
+            document.GetPage(0).HeightPoints.Should().BeLessThan(beforeH - 1);
+
+            await history.UndoAsync(document, editor);
+            document.GetPage(0).WidthPoints.Should().BeApproximately(beforeW, 0.5);
+            document.GetPage(0).HeightPoints.Should().BeApproximately(beforeH, 0.5);
+        }
+        finally
+        {
+            File.Delete(path);
         }
     }
 

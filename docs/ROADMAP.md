@@ -305,6 +305,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Page paste/drag-out/registry helpers moved to Core/Pdf with tests (F10-24, F11-07/09)
 - Cross-window page drop same-doc semantics via `PageDragSemantics` (F11-08)
 - Merge prepend + undo-after-insert + PageReorder→ReorderPagesAsync edge tests
+- Crop undo restores page size via `PdfPageEditHistory` (F12-08 / F49-07)
 
 ---
 

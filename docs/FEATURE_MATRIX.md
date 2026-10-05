@@ -16,7 +16,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-06 | Application and file handling | Native Windows file associations. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
 | F01-07 | Application and file handling | Configurable default associations for supported formats. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
 | F01-08 | Application and file handling | Drag files from Explorer into an existing application window. | M1/M9 | Implemented | Explorer → window drop opens documents |
-| F01-09 | Application and file handling | Drag files from the application into Explorer where meaningful. | M1/M9 | Implemented | Thumbnail drag exposes extracted PDF via deferred StorageItems |
+| F01-09 | Application and file handling | Drag files from the application into Explorer where meaningful. | M1/M9 | Tested | Thumbnail drag deferred StorageItems + `PageExtractFileNames` unit tests |
 | F01-10 | Application and file handling | Open files from: | M1/M9 | Tested | Local/UNC/OneDrive/removable via `PathUtilities.NormalizeOpenPath` unit tests |
 | F01-11 | Application and file handling | Normal Windows long-path and Unicode filename support. | M1/M9 | Tested | Unicode + `\\?\` long-path prefix unit tests |
 | F01-12 | Application and file handling | Read-only file detection. | M1/M9 | Tested | Sets session.IsReadOnly; Execute blocked (DocumentSession unit test) |
@@ -221,7 +221,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F12-05 | PDF crop | Apply to current page. | M3 | Tested | `PageSelection.SelectedOrFallback` when none selected |
 | F12-06 | PDF crop | Apply to selected pages. | M3 | Tested | Multi-select crop |
 | F12-07 | PDF crop | Apply to all pages. | M3 | Tested | Dialog checkbox → `PageSelection.ResolveTargets` |
-| F12-08 | PDF crop | Undo crop. | M3 | Tested | Via `PdfPageEditHistory` snapshots (same path as F49-07) |
+| F12-08 | PDF crop | Undo crop. | M3 | Tested | `PdfPageEditHistory` restores page size after `CropPagesAsync` (unit) |
 | F12-09 | PDF crop | Preserve underlying PDF content if using non-destructive CropBox changes. | M3 | Tested | Sets CropBox only |
 | F12-10 | PDF crop | Optional permanent crop/export function. | M3 | Tested | `PermanentCropPagesAsync` + Export cropped… |
 | F13-01 | PDF annotations | Highlight | M4 | Tested | `AddTextMarkupAsync(Highlight)` + toolbar |
@@ -700,7 +700,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F49-04 | Undo and redo | page deletion | M1-M4 | Tested | `PdfPageEditHistory` snapshot undo/redo unit tests |
 | F49-05 | Undo and redo | page ordering | M1-M4 | Tested | `PdfPageEditHistory` snapshot undo/redo unit tests |
 | F49-06 | Undo and redo | page rotation | M1-M4 | Tested | `PdfPageEditHistory` snapshot undo/redo unit tests |
-| F49-07 | Undo and redo | crop | M1-M4 | Tested | PDF crop via `PdfPageEditHistory`; image crop undo stack |
+| F49-07 | Undo and redo | crop | M1-M4 | Tested | PDF crop undo restores page size (`PdfPageEditHistory`); image crop undo stack |
 | F49-08 | Undo and redo | resizing | M1-M4 | Implemented | Image resize undo checkpoints |
 | F49-09 | Undo and redo | image adjustments | M1-M4 | Implemented | Image adjust undo checkpoints |
 | F49-10 | Undo and redo | metadata editing | M1-M4 | Tested | Image IPTC/GPS via `MutateAsync`; PDF Info `DocumentInfoUndoStack` |
