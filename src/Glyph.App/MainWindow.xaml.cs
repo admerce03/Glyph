@@ -515,7 +515,7 @@ public sealed partial class MainWindow : Window
         if (DocumentTabs.SelectedItem is TabViewItem { Content: ImageDocumentView imageView })
         {
             imageView.ToggleToolbarVisibility();
-            ToggleToolbarMenuItem.Text = imageView.IsToolbarVisible ? "Hide Toolbar" : "Show Toolbar";
+            ToggleToolbarMenuItem.Text = ToolbarVisibilityLabel.For(imageView.IsToolbarVisible);
             return;
         }
 
