@@ -34,9 +34,32 @@ public class AppUpdateCheckPolicyTests
     }
 
     [Fact]
-    public void ShippedVersion_matches_three_part_semver()
+    public void ShippedVersion_matches_package_manifest_identity()
     {
         AppUpdateCheckPolicy.ShippedVersion.Should().MatchRegex(@"^\d+\.\d+\.\d+$");
         AppUpdateCheckPolicy.ReleasesUrl.Should().Contain("releases");
+
+        var root = FindRepoRoot();
+        var manifestPath = Path.Combine(root, PackageFileAssociationDeclaration.ManifestRelativePath);
+        File.Exists(manifestPath).Should().BeTrue(manifestPath);
+        var xml = File.ReadAllText(manifestPath);
+        // Identity Version is four-part (0.1.0.0); shipped marketing version is three-part.
+        xml.Should().Contain($"Version=\"{AppUpdateCheckPolicy.ShippedVersion}.0\"");
+    }
+
+    private static string FindRepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "Glyph.sln")))
+            {
+                return dir.FullName;
+            }
+
+            dir = dir.Parent;
+        }
+
+        throw new InvalidOperationException("Repo root not found from " + AppContext.BaseDirectory);
     }
 }
