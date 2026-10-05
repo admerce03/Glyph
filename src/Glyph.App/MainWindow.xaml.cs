@@ -2519,17 +2519,17 @@ public sealed partial class MainWindow : Window
         var settings = _settingsStore.Current;
         var restoreBox = new CheckBox
         {
-            Content = "Restore previously open tabs on startup",
+            Content = PreferencesDialogUi.RestoreTabs,
             IsChecked = settings.RestorePreviousSession,
         };
         var autoSaveBox = new CheckBox
         {
-            Content = "Automatically save changes to the original file",
+            Content = PreferencesDialogUi.AutoSaveToOriginal,
             IsChecked = settings.AutoSaveToOriginal,
         };
         var intervalBox = new NumberBox
         {
-            Header = "Crash recovery interval (seconds, 0 = off)",
+            Header = PreferencesDialogUi.CrashRecoveryIntervalHeader,
             Value = settings.CrashRecoveryIntervalSeconds,
             Minimum = 0,
             Maximum = 3600,
@@ -2540,7 +2540,7 @@ public sealed partial class MainWindow : Window
         };
         var recentBox = new NumberBox
         {
-            Header = "Recent file list capacity",
+            Header = PreferencesDialogUi.RecentFileCapacityHeader,
             Value = settings.RecentFileCapacity,
             Minimum = 1,
             Maximum = 100,
@@ -2549,12 +2549,12 @@ public sealed partial class MainWindow : Window
         };
         var snapshotsBox = new CheckBox
         {
-            Content = "Keep local version snapshots on Save",
+            Content = PreferencesDialogUi.VersionSnapshots,
             IsChecked = settings.VersionSnapshotsEnabled,
         };
         var snapshotCapBox = new NumberBox
         {
-            Header = "Snapshots kept per file",
+            Header = PreferencesDialogUi.SnapshotCapacityHeader,
             Value = settings.VersionSnapshotCapacity,
             Minimum = 1,
             Maximum = 50,
@@ -2563,19 +2563,19 @@ public sealed partial class MainWindow : Window
         };
         var separateWindowsBox = new CheckBox
         {
-            Content = "Open each file in a separate window",
+            Content = PreferencesDialogUi.SeparateWindows,
             IsChecked = settings.OpenFilesInSeparateWindows,
         };
         var authorBox = new TextBox
         {
-            Header = "Default annotation author",
+            Header = PreferencesDialogUi.AnnotationAuthorHeader,
             Text = settings.AnnotationAuthor,
             PlaceholderText = Environment.UserName,
             Width = 280,
         };
         var compactToolbarBox = new CheckBox
         {
-            Content = "Compact document toolbars (tighter padding)",
+            Content = PreferencesDialogUi.CompactToolbar,
             IsChecked = settings.CompactToolbar,
         };
         var toolbarHidden = new HashSet<string>(
@@ -2590,7 +2590,7 @@ public sealed partial class MainWindow : Window
                 Margin = new Thickness(0, 2, 0, 2),
             })
             .ToList();
-        var toolbarReset = new Button { Content = "Reset toolbar to default", Margin = new Thickness(0, 4, 0, 0) };
+        var toolbarReset = new Button { Content = PreferencesDialogUi.ResetToolbar, Margin = new Thickness(0, 4, 0, 0) };
         toolbarReset.Click += (_, _) =>
         {
             foreach (var box in toolbarChecks)
@@ -2605,7 +2605,7 @@ public sealed partial class MainWindow : Window
             {
                 new TextBlock
                 {
-                    Text = "Toolbar commands (unchecked = hidden; reopen documents to apply)",
+                    Text = PreferencesDialogUi.ToolbarCommandsHeader,
                     FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                     Margin = new Thickness(0, 8, 0, 4),
                 },
@@ -2619,7 +2619,7 @@ public sealed partial class MainWindow : Window
         toolbarPanel.Children.Add(toolbarReset);
         var highlightColorBox = new ComboBox
         {
-            Header = "Default highlight color",
+            Header = PreferencesDialogUi.DefaultHighlightColorHeader,
             Width = 280,
             ItemsSource = PdfAnnotationColor.HighlightPresets.Select(p => p.Name).ToList(),
             SelectedItem = PdfAnnotationColor.HighlightPresets
@@ -2629,7 +2629,7 @@ public sealed partial class MainWindow : Window
         };
         var strokeColorBox = new ComboBox
         {
-            Header = "Default stroke color",
+            Header = PreferencesDialogUi.DefaultStrokeColorHeader,
             Width = 280,
             ItemsSource = PdfAnnotationColor.StrokePresets.Select(p => p.Name).ToList(),
             SelectedItem = PdfAnnotationColor.StrokePresets
@@ -2639,7 +2639,7 @@ public sealed partial class MainWindow : Window
         };
         var stickyColorBox = new ComboBox
         {
-            Header = "Default sticky-note color",
+            Header = PreferencesDialogUi.DefaultStickyColorHeader,
             Width = 280,
             ItemsSource = PdfAnnotationColor.StickyNotePresets.Select(p => p.Name).ToList(),
             SelectedItem = PdfAnnotationColor.StickyNotePresets
@@ -2649,7 +2649,7 @@ public sealed partial class MainWindow : Window
         };
         var strokeWidthBox = new NumberBox
         {
-            Header = "Default stroke width (pt)",
+            Header = PreferencesDialogUi.DefaultStrokeWidthHeader,
             Value = settings.DefaultStrokeWidthPoints,
             Minimum = 0.5,
             Maximum = 12,
@@ -2660,26 +2660,25 @@ public sealed partial class MainWindow : Window
         };
         var animationAutoplayBox = new CheckBox
         {
-            Content = "Autoplay animated images on open",
+            Content = PreferencesDialogUi.AnimationAutoplay,
             IsChecked = settings.AnimationAutoplay,
         };
         var stripMetadataBox = new CheckBox
         {
-            Content = "Strip metadata by default when converting images",
+            Content = PreferencesDialogUi.StripMetadataByDefault,
             IsChecked = settings.StripMetadataByDefault,
         };
-        var layoutNames = new[] { "Continuous", "Single", "TwoPage", "TwoPageWithCover" };
-        var layoutLabels = new[] { "Continuous", "Single page", "Two-up", "Two-up with cover" };
+        var layoutNames = PreferencesDialogUi.PdfLayoutNames;
         var layoutBox = new ComboBox
         {
-            Header = "Default PDF page layout",
+            Header = PreferencesDialogUi.DefaultPdfLayoutHeader,
             Width = 280,
-            ItemsSource = layoutLabels.ToList(),
-            SelectedIndex = Math.Max(0, Array.IndexOf(layoutNames, settings.DefaultPageLayout)),
+            ItemsSource = PreferencesDialogUi.PdfLayoutLabels.ToList(),
+            SelectedIndex = Math.Max(0, layoutNames.ToList().IndexOf(settings.DefaultPageLayout)),
         };
         var defaultZoomBox = new NumberBox
         {
-            Header = "Default PDF zoom (scale, e.g. 1.25 = 125%)",
+            Header = PreferencesDialogUi.DefaultPdfZoomHeader,
             Value = settings.DefaultZoom,
             Minimum = 0.1,
             Maximum = 8,
@@ -2690,27 +2689,21 @@ public sealed partial class MainWindow : Window
         };
         var zoom100Box = new ComboBox
         {
-            Header = "Image 100% zoom means",
+            Header = PreferencesDialogUi.ImageZoom100Header,
             Width = 280,
-            ItemsSource = new[] { "1:1 pixels", "Print size (use image DPI)" }.ToList(),
-            SelectedIndex = string.Equals(settings.Zoom100Meaning, "Print", StringComparison.OrdinalIgnoreCase) ? 1 : 0,
+            ItemsSource = PreferencesDialogUi.ImageZoom100Labels.ToList(),
+            SelectedIndex = PreferencesDialogUi.Zoom100Index(settings.Zoom100Meaning),
         };
         var interpolationBox = new ComboBox
         {
-            Header = "Default resize interpolation",
+            Header = PreferencesDialogUi.DefaultInterpolationHeader,
             Width = 280,
-            ItemsSource = new[] { "Auto", "Nearest-neighbor", "Bilinear", "Bicubic" }.ToList(),
-            SelectedIndex = settings.DefaultInterpolation switch
-            {
-                "NearestNeighbor" => 1,
-                "Bilinear" => 2,
-                "Bicubic" => 3,
-                _ => 0,
-            },
+            ItemsSource = PreferencesDialogUi.InterpolationLabels.ToList(),
+            SelectedIndex = PreferencesDialogUi.InterpolationIndex(settings.DefaultInterpolation),
         };
         var colorManagedBox = new CheckBox
         {
-            Content = "Color-managed image display by default",
+            Content = PreferencesDialogUi.ColorManagedDisplay,
             IsChecked = settings.ColorManagedDisplayDefault,
         };
         var localOcrNote = new TextBlock
@@ -2789,14 +2782,14 @@ public sealed partial class MainWindow : Window
         };
         var dialog = new ContentDialog
         {
-            Title = "Preferences",
+            Title = PreferencesDialogUi.DialogTitle,
             Content = new ScrollViewer
             {
                 Content = panel,
                 MaxHeight = 520,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             },
-            PrimaryButtonText = "Save",
+            PrimaryButtonText = PreferencesDialogUi.SaveButton,
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = RootGrid.XamlRoot,
@@ -2825,22 +2818,10 @@ public sealed partial class MainWindow : Window
         settings.DefaultStrokeWidthPoints = Math.Clamp(strokeWidthBox.Value, 0.5, 12);
         settings.AnimationAutoplay = animationAutoplayBox.IsChecked == true;
         settings.StripMetadataByDefault = stripMetadataBox.IsChecked == true;
-        settings.DefaultPageLayout = layoutBox.SelectedIndex switch
-        {
-            1 => "Single",
-            2 => "TwoPage",
-            3 => "TwoPageWithCover",
-            _ => "Continuous",
-        };
+        settings.DefaultPageLayout = PreferencesDialogUi.PdfLayoutNames[Math.Clamp(layoutBox.SelectedIndex, 0, PreferencesDialogUi.PdfLayoutNames.Count - 1)];
         settings.DefaultZoom = Math.Clamp(defaultZoomBox.Value, 0.1, 8);
-        settings.Zoom100Meaning = zoom100Box.SelectedIndex == 1 ? "Print" : "Pixels";
-        settings.DefaultInterpolation = interpolationBox.SelectedIndex switch
-        {
-            1 => "NearestNeighbor",
-            2 => "Bilinear",
-            3 => "Bicubic",
-            _ => "Auto",
-        };
+        settings.Zoom100Meaning = PreferencesDialogUi.Zoom100Setting(zoom100Box.SelectedIndex);
+        settings.DefaultInterpolation = PreferencesDialogUi.InterpolationSetting(interpolationBox.SelectedIndex);
         settings.ColorManagedDisplayDefault = colorManagedBox.IsChecked == true;
         settings.LocalOnlyOcr = true;
         settings.OcrLanguageTag = ocrLanguageBox.Text?.Trim() ?? string.Empty;
