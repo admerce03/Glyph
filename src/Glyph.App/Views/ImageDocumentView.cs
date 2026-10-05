@@ -2568,7 +2568,7 @@ public sealed class ImageDocumentView : UserControl
         }
 
         var point = e.GetCurrentPoint(_markupOverlay).Position;
-        if (_markupShapeTool is { } kind)
+        if (_markupShapeTool is { } kind && kind != ImageMarkupShapeKind.Text)
         {
             UpdateShapePreview(kind, _drawPoints[0], point);
             e.Handled = true;
