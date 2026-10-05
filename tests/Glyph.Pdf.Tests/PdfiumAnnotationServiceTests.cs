@@ -287,6 +287,51 @@ public class PdfiumAnnotationServiceTests
     }
 
     [Fact]
+    public async Task Add_freeform_survives_save()
+    {
+        var path = CreateTextPdf("Freeform host page");
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-freeform-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var created = await annots.AddFreeformAsync(
+                    document,
+                    0,
+                    [
+                        new PdfPagePoint(100, 100),
+                        new PdfPagePoint(200, 120),
+                        new PdfPagePoint(180, 200),
+                        new PdfPagePoint(90, 180),
+                    ],
+                    new PdfAnnotationColor(40, 160, 60));
+                created.ShapeKind.Should().Be(PdfShapeKind.Freeform);
+                created.IsInk.Should().BeTrue();
+
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var listed = await annots.ListAsync(reopened, 0);
+                listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Freeform);
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Add_callout_survives_save_and_lists_as_callout()
     {
         var path = CreateTextPdf("Callout host page");

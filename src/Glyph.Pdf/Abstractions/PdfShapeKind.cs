@@ -9,4 +9,5 @@ public enum PdfShapeKind
     Ellipse = 1,
     Line = 2,
     Arrow = 3,
+    Freeform = 4,
 }
