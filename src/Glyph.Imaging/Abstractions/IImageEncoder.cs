@@ -8,6 +8,7 @@ public interface IImageEncoder
         IImageDocument document,
         string path,
         ImageEncodeFormat format,
+        ImageEncodeOptions? options = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -20,3 +21,9 @@ public enum ImageEncodeFormat
     Tiff,
     Gif,
 }
+
+/// <summary>
+/// Optional encode knobs. Quality is 1–100 when set (JPEG/WebP).
+/// Lossless applies to WebP when true.
+/// </summary>
+public sealed record ImageEncodeOptions(int? Quality = null, bool? Lossless = null);

@@ -23,6 +23,7 @@ public sealed class MagickImageEncoder : IImageEncoder
         IImageDocument document,
         string path,
         ImageEncodeFormat format,
+        ImageEncodeOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         var magick = RequireMagick(document);
@@ -42,10 +43,38 @@ public sealed class MagickImageEncoder : IImageEncoder
                     ImageEncodeFormat.Gif => MagickFormat.Gif,
                     _ => MagickFormat.Png,
                 };
+
+                ApplyOptions(clone, format, options);
                 clone.Write(path);
                 magick.Path = path;
             },
             cancellationToken);
+    }
+
+    internal static void ApplyOptions(IMagickImage<ushort> image, ImageEncodeFormat format, ImageEncodeOptions? options)
+    {
+        if (options is null)
+        {
+            return;
+        }
+
+        if (options.Quality is int quality)
+        {
+            if (quality is < 1 or > 100)
+            {
+                throw new ArgumentOutOfRangeException(nameof(options), "Quality must be between 1 and 100.");
+            }
+
+            if (format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Webp)
+            {
+                image.Quality = (uint)quality;
+            }
+        }
+
+        if (format == ImageEncodeFormat.Webp && options.Lossless == true)
+        {
+            image.Settings.SetDefine(MagickFormat.WebP, "lossless", true);
+        }
     }
 
     private static MagickImageDocument RequireMagick(IImageDocument document)
