@@ -4211,11 +4211,16 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var wrapped = (hitIndex % _hits.Count + _hits.Count) % _hits.Count;
+        var wrapped = PdfSearchHitNav.WrapIndex(hitIndex, _hits.Count);
+        if (wrapped < 0)
+        {
+            return;
+        }
+
         _activeHitIndex = wrapped;
         _searchResults.SelectedIndex = wrapped;
         await GoToPageAsync(_hits[wrapped].PageIndex, recordHistory: true);
-        _status.Text = $"Match {wrapped + 1} / {_hits.Count} · p.{_hits[wrapped].PageIndex + 1}";
+        _status.Text = PdfSearchHitNav.FormatStatus(wrapped, _hits.Count, _hits[wrapped].PageIndex);
     }
 
     private async void SearchResults_SelectionChanged(object sender, SelectionChangedEventArgs e)

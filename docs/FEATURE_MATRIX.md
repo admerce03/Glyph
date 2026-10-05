@@ -64,10 +64,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-03 | Sidebar modes | Search results | M2-M5 | Implemented | Find hits list under Search header |
 | F03-04 | Sidebar modes | Bookmarks | M2-M5 | Tested | PDF sidebar Bookmarks list; view-state bookmark round-trip |
 | F03-05 | Sidebar modes | Highlights and annotations | M2-M5 | Tested | PDF sidebar Annotations list; `PdfAnnotationListLabel` unit-tested |
-| F03-06 | Sidebar modes | Image list | M2-M5 | Implemented | Image viewer folder sibling ListView (`ImageFolderNavigator`) |
+| F03-06 | Sidebar modes | Image list | M2-M5 | Tested | Image viewer folder sibling ListView; `ImageFolderNavigator` unit tests |
 | F03-07 | Sidebar modes | Contact sheet | M2-M5 | Implemented | Layout → Contact sheet grid; click page returns to continuous |
 | F03-08 | Sidebar modes | Document attachments, if supported | M2-M5 | Tested | PDF sidebar Attachments list + Save…; `ListAttachments` unit test |
-| F03-09 | Sidebar modes | Metadata/properties where useful | M2-M5 | Tested | PDF sidebar Properties summary; GetInfo Creator/Producer unit tests (F48) |
+| F03-09 | Sidebar modes | Metadata/properties where useful | M2-M5 | Tested | PDF sidebar Properties; `DisplayValue`/`PdfPageSizeFormat`/`ByteSizeFormat`; GetInfo unit tests (F48) |
 | F03-10 | Sidebar modes | Switch sidebar mode without opening another window. | M2-M5 | Implemented | Sidebar mode ComboBox: Pages/Contents/Bookmarks/Search/Annotations/Properties/Attachments |
 | F03-11 | Sidebar modes | Resize thumbnail size. | M2-M5 | Tested | Pages S/M/L; `ThumbnailWidth` clamp + prefs unit tests |
 | F03-12 | Sidebar modes | Multi-select sidebar items. | M2-M5 | Tested | `PageSelection` Toggle/SelectAll unit tests |
@@ -92,8 +92,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-13 | PDF viewing | Page thumbnails. | M2 | Implemented | Bitmap thumbnails at low scale |
 | F04-14 | PDF viewing | Page number navigation. | M2 | Implemented | Status + goto box + thumbs |
 | F04-15 | PDF viewing | Go to page. | M2 | Implemented | Goto box (# + Enter) |
-| F04-16 | PDF viewing | Previous page. | M2 | Implemented | Prev button / Page Up |
-| F04-17 | PDF viewing | Next page. | M2 | Implemented | Next button / Page Down |
+| F04-16 | PDF viewing | Previous page. | M2 | Tested | Prev / Page Up; `PageLayoutCalculator.PreviousPageIndex` unit tests |
+| F04-17 | PDF viewing | Next page. | M2 | Tested | Next / Page Down; `PageLayoutCalculator.NextPageIndex` unit tests |
 | F04-18 | PDF viewing | First page. | M2 | Implemented | First button / Home |
 | F04-19 | PDF viewing | Last page. | M2 | Implemented | Last button / End |
 | F04-20 | PDF viewing | Mouse-wheel scrolling. | M2 | Implemented | ScrollViewer wheel scrolling |
@@ -101,11 +101,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-22 | PDF viewing | Fit page. | M2 | Tested | `PdfZoomCalculator.FitPage` + toolbar |
 | F04-23 | PDF viewing | Fit width. | M2 | Tested | `PdfZoomCalculator.FitWidth` + toolbar |
 | F04-24 | PDF viewing | Actual size / 100%. | M2 | Tested | 100% control |
-| F04-25 | PDF viewing | Custom zoom percentage. | M2 | Implemented | Zoom percentage shown in status |
-| F04-26 | PDF viewing | Zoom in/out. | M2 | Implemented | Zoom +/- controls |
-| F04-27 | PDF viewing | Ctrl+mouse wheel zoom. | M2 | Implemented | Ctrl+wheel → zoom steps |
-| F04-28 | PDF viewing | Pinch-to-zoom on supported precision touchpads. | M2 | Implemented | Ctrl+wheel + Manipulation Scale pinch |
-| F04-29 | PDF viewing | Rectangular zoom-to-area. | M2 | Implemented | Zoom ▭ toolbar: drag rectangle on page; Esc cancels |
+| F04-25 | PDF viewing | Custom zoom percentage. | M2 | Tested | Zoom % status; `PdfZoomCalculator.Clamp` unit tests |
+| F04-26 | PDF viewing | Zoom in/out. | M2 | Tested | Zoom +/-; `PdfZoomCalculator.ZoomIn`/`ZoomOut` unit tests |
+| F04-27 | PDF viewing | Ctrl+mouse wheel zoom. | M2 | Tested | Ctrl+wheel → `ApplyWheelZoom` unit tests |
+| F04-28 | PDF viewing | Pinch-to-zoom on supported precision touchpads. | M2 | Tested | Ctrl+wheel + Manipulation Scale; same zoom clamp path |
+| F04-29 | PDF viewing | Rectangular zoom-to-area. | M2 | Tested | Zoom ▭ drag rectangle; `PdfZoomCalculator.ZoomToArea` unit tests |
 | F04-30 | PDF viewing | Magnifier/loupe tool. | M2 | Implemented | Glass toolbar: cursor-follow magnifier over page bitmaps |
 | F04-31 | PDF viewing | Presentation/slideshow mode. | M2 | Implemented | Present: fullscreen, hide chrome, single-page fit; ←/→; auto-advance 8s; Esc exits |
 | F04-32 | PDF viewing | Remember last viewed page, optionally. | M2 | Tested | `IDocumentViewStateStore` persists page on close/reopen |
@@ -131,8 +131,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F06-10 | PDF search | Results sidebar. | M2/M6 | Implemented | Results list in viewer sidebar |
 | F06-11 | PDF search | Show contextual snippets around matches. | M2/M6 | Tested | Snippet around match |
 | F06-12 | PDF search | Sort results by: | M2/M6 | Implemented | Page order (document scan order); relevance sort deferred |
-| F06-13 | PDF search | Next match. | M2/M6 | Implemented | Toolbar next-match control |
-| F06-14 | PDF search | Previous match. | M2/M6 | Implemented | Toolbar previous-match control |
+| F06-13 | PDF search | Next match. | M2/M6 | Tested | Toolbar next; `PdfSearchHitNav.WrapIndex` unit tests |
+| F06-14 | PDF search | Previous match. | M2/M6 | Tested | Toolbar previous; same wrap helper |
 | F06-15 | PDF search | Clear search. | M2/M6 | Implemented | Clear button + Escape; cancels in-flight search and overlays |
 | F06-16 | PDF search | Click result to jump to it. | M2/M6 | Tested | Selection jumps to hit page index |
 | F06-17 | PDF search | Search OCR text where OCR has been generated. | M2/M6 | Tested | `PdfPageTextSearch.Find` + `Merge` unit tests; session OCR cache |
@@ -439,8 +439,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-14 | Image viewing | fit image | M5 | Implemented | Fit toolbar |
 | F26-15 | Image viewing | actual size | M5 | Implemented | 100% toolbar |
 | F26-16 | Image viewing | fullscreen | M5 | Implemented | Fullscreen toolbar → MainWindow.ToggleFullscreen |
-| F26-17 | Image viewing | next/previous image | M5 | Implemented | ◀/▶ + ImageFolderNavigator |
-| F26-18 | Image viewing | image list sidebar | M5 | Implemented | Folder ListView in ImageDocumentView |
+| F26-17 | Image viewing | next/previous image | M5 | Tested | ◀/▶ + `ImageFolderNavigator` Previous/Next unit tests |
+| F26-18 | Image viewing | image list sidebar | M5 | Tested | Folder ListView; `ImageFolderNavigator.ListSiblings` unit tests |
 | F26-19 | Image viewing | open group of images together | M5 | Implemented | Open With picker PickMultipleFilesAsync |
 | F26-20 | Image viewing | slideshow | M5 | Implemented | Slideshow toolbar: 3s loop through folder; Esc / Stop show; resumes across sibling opens via `ViewState.IsSlideshowActive` |
 | F26-21 | Image viewing | drag-and-drop navigation | M5 | Implemented | Shell drop opens images (`DropHost`); horizontal swipe on image → prev/next in folder |
@@ -483,7 +483,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F29-10 | Smart object/background selection | Copy extracted subject. | M8 | Implemented | BG → Extract subject → clipboard PNG |
 | F29-11 | Smart object/background selection | Save extracted subject as separate image. | M8 | Implemented | BG → Extract subject → save PNG |
 | F30-01 | Image crop | Interactive crop box. | M5 | Implemented | Drag rectangle overlay (Crop…) |
-| F30-02 | Image crop | Free aspect ratio. | M5 | Implemented | Free drag selection |
+| F30-02 | Image crop | Free aspect ratio. | M5 | Tested | Free drag; `ImageCropAspect.Constrain` free-mode unit test |
 | F30-03 | Image crop | Original aspect ratio. | M5 | Tested | Crop… aspect dropdown → Original (`ImageCropAspect`) |
 | F30-04 | Image crop | Common presets: | M5 | Tested | Crop… aspect: 1:1, 4:3, 3:2, 16:9 (+ Free/Original) |
 | F30-05 | Image crop | Numeric width/height. | M5 | Implemented | Crop x,y,w,h text box |
