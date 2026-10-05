@@ -107,7 +107,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-28 | PDF viewing | Pinch-to-zoom on supported precision touchpads. | M2 | Tested | Ctrl+wheel + Manipulation Scale; same zoom clamp path |
 | F04-29 | PDF viewing | Rectangular zoom-to-area. | M2 | Tested | Zoom ▭ drag rectangle; `PdfZoomCalculator.ZoomToArea` unit tests |
 | F04-30 | PDF viewing | Magnifier/loupe tool. | M2 | Implemented | Glass toolbar: cursor-follow magnifier over page bitmaps |
-| F04-31 | PDF viewing | Presentation/slideshow mode. | M2 | Implemented | Present: fullscreen, hide chrome, single-page fit; ←/→; auto-advance 8s; Esc exits |
+| F04-31 | PDF viewing | Presentation/slideshow mode. | M2 | Tested | Present: fullscreen, hide chrome, single-page fit; ←/→; `PresentationModeDefaults` 8s auto-advance + status copy |
 | F04-32 | PDF viewing | Remember last viewed page, optionally. | M2 | Tested | `IDocumentViewStateStore` persists page on close/reopen |
 | F04-33 | PDF viewing | Remember zoom/layout per document, optionally. | M2 | Tested | Persists zoom + layout with page index |
 | F05-01 | PDF table of contents and navigation | Read embedded PDF outlines/bookmarks. | M2 | Tested | `IPdfOutlineService` / PDFium bookmarks |
@@ -648,13 +648,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F44-10 | Printing | paper size | M8 | Implemented | System print UI / printer properties |
 | F44-11 | Printing | orientation | M8 | Implemented | System print UI + auto-rotate option |
 | F44-12 | Printing | margins | M8 | Implemented | Uses ImageableRect printable area |
-| F44-13 | Printing | scale | M8 | Implemented | Fit / Fill / Actual size |
-| F44-14 | Printing | actual size | M8 | Implemented | Print scale → Actual size |
-| F44-15 | Printing | fit to printable area | M8 | Implemented | Default Fit scale |
-| F44-16 | Printing | fill page | M8 | Implemented | Print scale → Fill page |
-| F44-17 | Printing | pages per sheet | M8 | Implemented | Print dialog 1 / 2 / 4-up layout |
-| F44-18 | Printing | auto rotate | M8 | Implemented | Print dialog Auto-rotate |
-| F44-19 | Printing | center | M8 | Implemented | Print dialog Center on page |
+| F44-13 | Printing | scale | M8 | Tested | Fit / Fill / Actual size via `PrintSheetLayout.ComputeTarget` |
+| F44-14 | Printing | actual size | M8 | Tested | `PrintScaleMode.ActualSize` clamps to cell |
+| F44-15 | Printing | fit to printable area | M8 | Tested | Default Fit uniform scale unit tests |
+| F44-16 | Printing | fill page | M8 | Tested | `PrintScaleMode.Fill` uses full cell |
+| F44-17 | Printing | pages per sheet | M8 | Tested | `PrintSheetLayout.Cells` 1/2/4-up + `SheetCount` |
+| F44-18 | Printing | auto rotate | M8 | Tested | `ShouldAutoRotate` + occupied-size swap unit tests |
+| F44-19 | Printing | center | M8 | Tested | `PrintSheetLayout.PlaceInCell` center/offset unit tests |
 | F44-20 | Printing | print annotations | M8 | Implemented | PDFium render includes annotations |
 | F44-21 | Printing | print notes optionally | M8 | Implemented | Print → Append notes page |
 | F44-22 | Printing | grayscale | M8 | Tested | Print dialog Grayscale (`ImagePixelOps`) |
@@ -809,7 +809,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F57-05 | Performance behavior | background text indexing | M2+/M9 | Deferred | Search is on-demand; full-doc index not required yet |
 | F57-06 | Performance behavior | lazy OCR | M2+/M9 | Implemented | OCR runs only on explicit toolbar/dialog request |
 | F57-07 | Performance behavior | GPU acceleration where appropriate | M2+/M9 | Deferred | Win2D/Composition GPU path not adopted yet |
-| F57-08 | Performance behavior | smooth scrolling | M2+/M9 | Implemented | Continuous: page sync + throttled render while flinging; settle render on idle |
+| F57-08 | Performance behavior | smooth scrolling | M2+/M9 | Tested | Continuous: page sync + `IntermediateScrollThrottle` (72ms) while flinging; settle render on idle |
 | F57-09 | Performance behavior | large-document virtualization | M2+/M9 | Implemented | On-demand visible-page render; distant Image.Source cleared |
 | F57-10 | Performance behavior | low memory usage | M2+/M9 | Tested | Bounded `PageRenderCache` (capacity 32); same coverage as F58-05 |
 | F57-11 | Performance behavior | unload distant PDF pages | M2+/M9 | Implemented | Clear distant page Image.Source; LRU evicts bitmaps |

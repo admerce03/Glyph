@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices.WindowsRuntime;
+using Glyph.Core.Printing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -9,11 +10,12 @@ using Windows.Graphics.Printing.OptionDetails;
 
 namespace Glyph.App.Printing;
 
+/// <summary>App alias for <see cref="PrintScaleMode"/> (F44-13–16).</summary>
 public enum DocumentPrintScaleMode
 {
-    Fit = 0,
-    Fill = 1,
-    ActualSize = 2,
+    Fit = PrintScaleMode.Fit,
+    Fill = PrintScaleMode.Fill,
+    ActualSize = PrintScaleMode.ActualSize,
 }
 
 /// <summary>
@@ -50,7 +52,7 @@ public sealed class DocumentPrintHelper : IDisposable
         _scaleMode = scaleMode;
         _center = center;
         _autoRotate = autoRotate;
-        _pagesPerSheet = pagesPerSheet is 2 or 4 ? pagesPerSheet : 1;
+        _pagesPerSheet = PrintSheetLayout.NormalizePagesPerSheet(pagesPerSheet);
     }
 
     public async Task PrintAsync(IReadOnlyList<WriteableBitmap> pages, CancellationToken cancellationToken = default)
@@ -132,6 +134,7 @@ public sealed class DocumentPrintHelper : IDisposable
         var pageWidth = printable.Width;
         var pageHeight = printable.Height;
 
+        var cells = PrintSheetLayout.Cells(pageWidth, pageHeight, _pagesPerSheet);
         if (_pagesPerSheet <= 1)
         {
             foreach (var bitmap in _bitmaps)
@@ -139,44 +142,15 @@ public sealed class DocumentPrintHelper : IDisposable
                 _previewPages.Add(BuildSinglePage(bitmap, pageWidth, pageHeight));
             }
         }
-        else if (_pagesPerSheet == 2)
+        else
         {
-            const double gap = 12;
-            var cellW = (pageWidth - gap) / 2;
-            for (var i = 0; i < _bitmaps.Count; i += 2)
+            for (var i = 0; i < _bitmaps.Count; i += cells.Count)
             {
                 var canvas = new Canvas { Width = pageWidth, Height = pageHeight };
-                PlaceInCell(canvas, _bitmaps[i], 0, 0, cellW, pageHeight);
-                if (i + 1 < _bitmaps.Count)
+                for (var c = 0; c < cells.Count && i + c < _bitmaps.Count; c++)
                 {
-                    PlaceInCell(canvas, _bitmaps[i + 1], cellW + gap, 0, cellW, pageHeight);
-                }
-
-                _previewPages.Add(canvas);
-            }
-        }
-        else // 4-up
-        {
-            const double gap = 10;
-            var cellW = (pageWidth - gap) / 2;
-            var cellH = (pageHeight - gap) / 2;
-            for (var i = 0; i < _bitmaps.Count; i += 4)
-            {
-                var canvas = new Canvas { Width = pageWidth, Height = pageHeight };
-                PlaceInCell(canvas, _bitmaps[i], 0, 0, cellW, cellH);
-                if (i + 1 < _bitmaps.Count)
-                {
-                    PlaceInCell(canvas, _bitmaps[i + 1], cellW + gap, 0, cellW, cellH);
-                }
-
-                if (i + 2 < _bitmaps.Count)
-                {
-                    PlaceInCell(canvas, _bitmaps[i + 2], 0, cellH + gap, cellW, cellH);
-                }
-
-                if (i + 3 < _bitmaps.Count)
-                {
-                    PlaceInCell(canvas, _bitmaps[i + 3], cellW + gap, cellH + gap, cellW, cellH);
+                    var cell = cells[c];
+                    PlaceInCell(canvas, _bitmaps[i + c], cell.Left, cell.Top, cell.Width, cell.Height);
                 }
 
                 _previewPages.Add(canvas);
@@ -189,8 +163,7 @@ public sealed class DocumentPrintHelper : IDisposable
     private void PlaceInCell(Canvas sheet, WriteableBitmap bitmap, double left, double top, double cellW, double cellH)
     {
         var content = BuildContent(bitmap, cellW, cellH, out var targetW, out var targetH);
-        var x = left + (_center ? Math.Max(0, (cellW - targetW) / 2) : 0);
-        var y = top + (_center ? Math.Max(0, (cellH - targetH) / 2) : 0);
+        var (x, y) = PrintSheetLayout.PlaceInCell(left, top, cellW, cellH, targetW, targetH, _center);
         Canvas.SetLeft(content, x);
         Canvas.SetTop(content, y);
         sheet.Children.Add(content);
@@ -204,8 +177,7 @@ public sealed class DocumentPrintHelper : IDisposable
             Height = pageHeight,
         };
         var content = BuildContent(bitmap, pageWidth, pageHeight, out var targetW, out var targetH);
-        var left = _center ? Math.Max(0, (pageWidth - targetW) / 2) : 0;
-        var top = _center ? Math.Max(0, (pageHeight - targetH) / 2) : 0;
+        var (left, top) = PrintSheetLayout.PlaceInCell(0, 0, pageWidth, pageHeight, targetW, targetH, _center);
         Canvas.SetLeft(content, left);
         Canvas.SetTop(content, top);
         canvas.Children.Add(content);
@@ -227,56 +199,39 @@ public sealed class DocumentPrintHelper : IDisposable
 
         var contentW = (double)bitmap.PixelWidth;
         var contentH = (double)bitmap.PixelHeight;
-        var rotate = _autoRotate
-            && ((contentW > contentH && availW < availH)
-                || (contentH > contentW && availH < availW));
-
-        var layoutW = rotate ? availH : availW;
-        var layoutH = rotate ? availW : availH;
-
-        switch (_scaleMode)
+        var coreMode = _scaleMode switch
         {
-            case DocumentPrintScaleMode.ActualSize:
-                // Assume 96 DPI bitmap ≈ CSS pixels; map 1:1 into DIPs.
-                targetW = Math.Min(contentW, layoutW);
-                targetH = Math.Min(contentH, layoutH);
-                image.Stretch = Stretch.None;
-                image.Width = targetW;
-                image.Height = targetH;
-                break;
-            case DocumentPrintScaleMode.Fill:
-                image.Stretch = Stretch.UniformToFill;
-                targetW = layoutW;
-                targetH = layoutH;
-                image.Width = targetW;
-                image.Height = targetH;
-                break;
-            default:
-                image.Stretch = Stretch.Uniform;
-                var scale = Math.Min(layoutW / Math.Max(1, contentW), layoutH / Math.Max(1, contentH));
-                targetW = contentW * scale;
-                targetH = contentH * scale;
-                image.Width = targetW;
-                image.Height = targetH;
-                break;
-        }
+            DocumentPrintScaleMode.ActualSize => PrintScaleMode.ActualSize,
+            DocumentPrintScaleMode.Fill => PrintScaleMode.Fill,
+            _ => PrintScaleMode.Fit,
+        };
+        var layout = PrintSheetLayout.ComputeTarget(
+            contentW, contentH, availW, availH, coreMode, _autoRotate);
+
+        image.Stretch = coreMode switch
+        {
+            PrintScaleMode.ActualSize => Stretch.None,
+            PrintScaleMode.Fill => Stretch.UniformToFill,
+            _ => Stretch.Uniform,
+        };
+        image.Width = layout.ImageWidth;
+        image.Height = layout.ImageHeight;
 
         UIElement content = image;
-        if (rotate)
+        if (layout.Rotate)
         {
-            var host = new Grid
+            content = new Grid
             {
-                Width = targetH,
-                Height = targetW,
+                Width = layout.OccupiedWidth,
+                Height = layout.OccupiedHeight,
                 RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5),
                 RenderTransform = new RotateTransform { Angle = 90 },
                 Children = { image },
             };
-            content = host;
-            targetW = host.Width;
-            targetH = host.Height;
         }
 
+        targetW = layout.OccupiedWidth;
+        targetH = layout.OccupiedHeight;
         return content;
     }
 
