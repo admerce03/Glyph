@@ -749,18 +749,18 @@ public sealed partial class MainWindow : Window
             var root = Content?.XamlRoot;
             if (root is null)
             {
-                StatusText.Text = "Camera UI unavailable.";
+                StatusText.Text = WebcamCaptureUi.CameraUiUnavailable;
                 return;
             }
 
-            StatusText.Text = "Starting camera…";
+            StatusText.Text = WebcamCaptureUi.StartingCamera;
             var captured = await WebcamCaptureHelper.CaptureAsync(
                 root,
                 title: "Capture from camera",
                 hint: "Frame the document or photo, then Capture. Use Crop after open if needed.");
             if (captured is null)
             {
-                StatusText.Text = "Camera capture cancelled or unavailable.";
+                StatusText.Text = WebcamCaptureUi.CaptureCancelledOrUnavailable;
                 return;
             }
 

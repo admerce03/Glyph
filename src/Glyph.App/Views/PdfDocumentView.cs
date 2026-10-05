@@ -5201,7 +5201,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = "Annotation color updated.";
+            _status.Text = AnnotationMutationStatus.ColorUpdated;
         }
         catch (Exception ex)
         {
@@ -5579,7 +5579,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = $"Erased {PdfAnnotationListLabel.Format(hit)}.";
+            _status.Text = AnnotationMutationStatus.FormatErased(PdfAnnotationListLabel.Format(hit));
         }
         catch (Exception ex)
         {
@@ -6745,7 +6745,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = $"Undid {PdfAnnotationListLabel.Format(target)}.";
+            _status.Text = AnnotationMutationStatus.FormatUndid(PdfAnnotationListLabel.Format(target));
         }
         catch (Exception ex)
         {
@@ -8334,7 +8334,7 @@ public sealed class PdfDocumentView : UserControl
                     field.AnnotIndex,
                     isChecked: !currentlyOn);
                 NotifyEdited();
-                _status.Text = $"Updated {field.Name}.";
+                _status.Text = AnnotationMutationStatus.FormatUpdated(field.Name);
                 return true;
             }
             catch (Exception ex)
@@ -8383,7 +8383,7 @@ public sealed class PdfDocumentView : UserControl
                         choice);
                     await _formValueHistory.RememberAsync(field.Name, choice);
                     NotifyEdited();
-                    _status.Text = $"Updated {field.Name}.";
+                    _status.Text = AnnotationMutationStatus.FormatUpdated(field.Name);
                     return true;
                 }
                 catch (Exception ex)
@@ -8471,7 +8471,7 @@ public sealed class PdfDocumentView : UserControl
                 value);
             await _formValueHistory.RememberAsync(field.Name, value);
             NotifyEdited();
-            _status.Text = $"Updated {field.Name}.";
+            _status.Text = AnnotationMutationStatus.FormatUpdated(field.Name);
             return true;
         }
         catch (Exception ex)
@@ -9760,7 +9760,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
             RestoreSelectionAfterRefresh(_selectedAnnot.PageIndex, _selectedAnnot.AnnotIndex, resized);
-            _status.Text = "Annotation resized.";
+            _status.Text = AnnotationMutationStatus.Resized;
         }
         catch (Exception ex)
         {
@@ -10203,7 +10203,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
             RestoreSelectionAfterRefresh(updated.PageIndex, updated.AnnotIndex, updated.Bounds);
-            _status.Text = "Annotation rotated 90°.";
+            _status.Text = AnnotationMutationStatus.Rotated90;
         }
         catch (Exception ex)
         {
@@ -10430,7 +10430,7 @@ public sealed class PdfDocumentView : UserControl
             // Preference persist is best-effort.
         }
 
-        _status.Text = $"Annotation author set to {_annotationAuthor}.";
+        _status.Text = AnnotationMutationStatus.FormatAuthorSet(_annotationAuthor);
     }
 
     private static AppSettings? TryGetSettings()
@@ -10634,7 +10634,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
         {
-            _status.Text = "Edit cancelled.";
+            _status.Text = AnnotationMutationStatus.EditCancelled;
             return;
         }
 
@@ -10654,7 +10654,7 @@ public sealed class PdfDocumentView : UserControl
             _selectedAnnot = updated;
             SyncSidebarSelection(updated);
             DrawAnnotSelection(updated);
-            _status.Text = $"Updated {PdfAnnotationListLabel.Format(updated)}.";
+            _status.Text = AnnotationMutationStatus.FormatUpdated(PdfAnnotationListLabel.Format(updated));
         }
         catch (Exception ex)
         {
@@ -10688,7 +10688,7 @@ public sealed class PdfDocumentView : UserControl
             _selectedAnnot = copy;
             SyncSidebarSelection(copy);
             DrawAnnotSelection(copy);
-            _status.Text = $"Duplicated {PdfAnnotationListLabel.Format(item)}.";
+            _status.Text = AnnotationMutationStatus.FormatDuplicated(PdfAnnotationListLabel.Format(item));
         }
         catch (Exception ex)
         {
@@ -11231,7 +11231,7 @@ public sealed class PdfDocumentView : UserControl
             _cropChrome.Visibility = Visibility.Collapsed;
         }
 
-        _status.Text = "Crop cancelled.";
+        _status.Text = PageEditStatus.CropCancelled;
     }
 
     private async Task ApplyCropModeAsync()
@@ -11282,7 +11282,7 @@ public sealed class PdfDocumentView : UserControl
         var files = await picker.PickMultipleFilesAsync();
         if (files is null || files.Count == 0)
         {
-            _status.Text = "Merge cancelled.";
+            _status.Text = PageEditStatus.MergeCancelled;
             return;
         }
 
@@ -12342,7 +12342,7 @@ public sealed class PdfDocumentView : UserControl
             };
             if (indexes.Count == 0)
             {
-                _status.Text = "No pages to print.";
+                _status.Text = PrintPageScopeChooser.NoPagesToPrint;
                 return;
             }
 

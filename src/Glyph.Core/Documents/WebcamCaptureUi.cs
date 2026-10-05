@@ -12,6 +12,7 @@ public static class WebcamCaptureUi
     public const string StartingWebcam = "Starting webcam…";
     public const string CaptureCancelledOrUnavailable =
         "Camera capture cancelled or unavailable.";
+    public const string CameraUiUnavailable = "Camera UI unavailable.";
     public const bool InsertsIntoPdfAsStamp = true;
     public const bool OpensAsImageTab = true;
 }

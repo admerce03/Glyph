@@ -10,6 +10,7 @@ public static class PrintPageScopeChooser
     public const string PageRange = "Page range…";
     public const string AllPages = "All pages";
     public const string CancelledStatus = "Print cancelled.";
+    public const string NoPagesToPrint = "No pages to print.";
 
     public static IReadOnlyList<string> Labels { get; } =
     [

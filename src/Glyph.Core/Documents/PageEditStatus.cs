@@ -19,6 +19,8 @@ public static class PageEditStatus
     public const string RedidPageEdit = "Redid page edit.";
     public const string SplitCancelled = "Split cancelled.";
     public const string SplitWouldBeSingle = "Split would produce a single document.";
+    public const string CropCancelled = "Crop cancelled.";
+    public const string MergeCancelled = "Merge cancelled.";
     public const string PastePagesFailedPrefix = "Paste pages failed: ";
 
     public static string FormatPastePagesFailed(string message) =>
