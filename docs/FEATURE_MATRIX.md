@@ -610,7 +610,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F40-05 | Clipboard integration | recognized OCR text → text | M1/M5 | Not Started |  |
 | F40-06 | Clipboard integration | annotation where possible | M1/M5 | Not Started |  |
 | F40-07 | Clipboard integration | image from clipboard into image document | M1/M5 | Implemented | Paste / Ctrl+V → system bitmap or selection clipboard via `PasteFileAsync` |
-| F40-08 | Clipboard integration | image clipboard → create new image | M1/M5 | In Progress | New from Clipboard creates image document |
+| F40-08 | Clipboard integration | image clipboard → create new image | M1/M5 | Implemented | File → New from Clipboard → temp PNG tab |
 | F40-09 | Clipboard integration | text into annotation/text field | M1/M5 | Not Started |  |
 | F40-10 | Clipboard integration | file paths where appropriate | M1/M5 | Not Started |  |
 | F41-00 | Screenshot workflow | (see FEATURES.md §41) | M1/M5 | Not Started | |
@@ -841,9 +841,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F60-08 | Context-sensitive commands | Delete | M1/M3 | Not Started |  |
 | F60-09 | Context-sensitive commands | Copy | M1/M3 | Not Started |  |
 | F61-01 | Non-destructive editing where practical | PDF annotations | M3-M5 | Not Started |  |
-| F61-02 | Non-destructive editing where practical | image markup | M3-M5 | In Progress | Draw overlay until Flatten/Save (F34) |
+| F61-02 | Non-destructive editing where practical | image markup | M3-M5 | Implemented | Draw overlay until Flatten/Save (F34) |
 | F61-03 | Non-destructive editing where practical | crops | M3-M5 | Tested | CropBox-only until optional permanent export |
-| F61-04 | Non-destructive editing where practical | adjustments | M3-M5 | Not Started |  |
+| F61-04 | Non-destructive editing where practical | adjustments | M3-M5 | Implemented | Image Adjust live preview via checkpoint clone; Apply/Cancel |
 | F61-05 | Non-destructive editing where practical | signatures | M3-M5 | Not Started |  |
 | F61-06 | Non-destructive editing where practical | shapes | M3-M5 | Not Started |  |
 | F61-07 | Non-destructive editing where practical | text | M3-M5 | Not Started |  |
