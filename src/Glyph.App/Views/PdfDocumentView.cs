@@ -34,6 +34,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfLinkService _linkService;
     private readonly IPdfPageEditor _pageEditor;
     private readonly IPdfDocumentFactory _documentFactory;
+    private readonly Window? _ownerWindow;
     private readonly DocumentViewState _viewState;
     private readonly DocumentNavigationHistory _history = new();
     private readonly PdfPageEditHistory _editHistory = new();
@@ -84,7 +85,8 @@ public sealed class PdfDocumentView : UserControl
         IPdfLinkService linkService,
         IPdfPageEditor pageEditor,
         IPdfDocumentFactory documentFactory,
-        DocumentViewState? viewState = null)
+        DocumentViewState? viewState = null,
+        Window? ownerWindow = null)
     {
         _document = document;
         _renderer = renderer;
@@ -95,6 +97,7 @@ public sealed class PdfDocumentView : UserControl
         _linkService = linkService;
         _pageEditor = pageEditor;
         _documentFactory = documentFactory;
+        _ownerWindow = ownerWindow;
         _viewState = viewState ?? new DocumentViewState();
         _scale = PdfZoomCalculator.Clamp(_viewState.Zoom <= 0 ? 1.25 : _viewState.Zoom);
         _layoutMode = _viewState.PageLayout;
@@ -1670,7 +1673,8 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var window = App.CurrentApp.MainWindowInstance
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
             ?? throw new InvalidOperationException("Main window unavailable for save picker.");
         var picker = new Windows.Storage.Pickers.FileSavePicker();
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);

@@ -212,7 +212,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F11-05 | Preview-style PDF drag-and-drop workflows | visible insertion indicator | M3 | Implemented | Orange before/after border highlight |
 | F11-06 | Preview-style PDF drag-and-drop workflows | insert entire PDF at drop location. | M3 | Implemented | Explorer `.pdf` StorageItems → insert |
 | F11-07 | Preview-style PDF drag-and-drop workflows | create a new PDF containing those selected pages. | M3 | Implemented | Deferred StorageItems extract on drag-out |
-| F11-08 | Preview-style PDF drag-and-drop workflows | different windows | M3 | In Progress | Same-process registry; multi-window shell later |
+| F11-08 | Preview-style PDF drag-and-drop workflows | different windows | M3 | Implemented | File → New Window; per-window workspace + shared page drag registry |
 | F11-09 | Preview-style PDF drag-and-drop workflows | different tabs | M3 | Implemented | Cross-tab insert via `PdfPageDragRegistry` |
 | F12-01 | PDF crop | Rectangular page crop. | M3 | Not Started |  |
 | F12-02 | PDF crop | Visual crop handles. | M3 | Not Started |  |
