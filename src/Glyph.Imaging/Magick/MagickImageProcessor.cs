@@ -243,6 +243,7 @@ public sealed class MagickImageProcessor : IImageProcessor
         bool transparent = true,
         ImageSelectionKind kind = ImageSelectionKind.Rectangle,
         IReadOnlyList<ImageMarkupPoint>? polygon = null,
+        bool inverted = false,
         CancellationToken cancellationToken = default)
     {
         var magick = RequireMagick(document);
@@ -255,7 +256,14 @@ public sealed class MagickImageProcessor : IImageProcessor
             () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                ClearRegionCore(magick.Native, pixels, transparent, kind, polygon);
+                if (inverted)
+                {
+                    ClearOutsideCore(magick.Native, pixels, transparent, kind, polygon);
+                }
+                else
+                {
+                    ClearRegionCore(magick.Native, pixels, transparent, kind, polygon);
+                }
             },
             cancellationToken);
     }
@@ -265,6 +273,7 @@ public sealed class MagickImageProcessor : IImageProcessor
         ImageRect pixels,
         ImageSelectionKind kind = ImageSelectionKind.Rectangle,
         IReadOnlyList<ImageMarkupPoint>? polygon = null,
+        bool inverted = false,
         CancellationToken cancellationToken = default)
     {
         var magick = RequireMagick(document);
@@ -277,7 +286,9 @@ public sealed class MagickImageProcessor : IImageProcessor
             () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                return ExtractRegionCore(magick.Native, pixels, kind, polygon);
+                return inverted
+                    ? ExtractInvertedCore(magick.Native, pixels, kind, polygon)
+                    : ExtractRegionCore(magick.Native, pixels, kind, polygon);
             },
             cancellationToken);
     }
@@ -360,6 +371,54 @@ public sealed class MagickImageProcessor : IImageProcessor
         return new ImagePixelBuffer(checked((int)clone.Width), checked((int)clone.Height), bgra);
     }
 
+    /// <summary>
+    /// Full-image extract with the positive selection punched to transparent.
+    /// </summary>
+    private static ImagePixelBuffer ExtractInvertedCore(
+        MagickImage image,
+        ImageRect pixels,
+        ImageSelectionKind kind,
+        IReadOnlyList<ImageMarkupPoint>? polygon)
+    {
+        using var clone = (MagickImage)image.Clone();
+        clone.Depth = 8;
+        clone.ColorType = ColorType.TrueColorAlpha;
+        clone.Alpha(AlphaOption.Set);
+        PunchSelectionAlpha(clone, pixels, kind, polygon);
+        var bgra = clone.ToByteArray(MagickFormat.Bgra);
+        return new ImagePixelBuffer(checked((int)clone.Width), checked((int)clone.Height), bgra);
+    }
+
+    /// <summary>
+    /// Clears everything outside the selection (keeps selected pixels).
+    /// </summary>
+    private static void ClearOutsideCore(
+        MagickImage image,
+        ImageRect pixels,
+        bool transparent,
+        ImageSelectionKind kind,
+        IReadOnlyList<ImageMarkupPoint>? polygon)
+    {
+        var kept = ExtractRegionCore(image, pixels, kind, polygon);
+        if (transparent)
+        {
+            image.Alpha(AlphaOption.Set);
+            using var blank = new MagickImage(MagickColors.Transparent, image.Width, image.Height);
+            blank.Alpha(AlphaOption.Set);
+            image.Composite(blank, CompositeOperator.Copy);
+        }
+        else
+        {
+            new Drawables()
+                .FillColor(MagickColors.White)
+                .StrokeColor(MagickColors.White)
+                .Rectangle(0, 0, (int)image.Width - 1, (int)image.Height - 1)
+                .Draw(image);
+        }
+
+        PasteRectCore(image, kept, pixels.X, pixels.Y);
+    }
+
     private static void ClearRegionCore(
         MagickImage image,
         ImageRect pixels,
@@ -367,36 +426,66 @@ public sealed class MagickImageProcessor : IImageProcessor
         ImageSelectionKind kind,
         IReadOnlyList<ImageMarkupPoint>? polygon)
     {
+        if (transparent)
+        {
+            image.Alpha(AlphaOption.Set);
+            PunchSelectionAlpha(image, pixels, kind, polygon);
+            return;
+        }
+
         var x = Math.Clamp(pixels.X, 0, Math.Max(0, (int)image.Width - 1));
         var y = Math.Clamp(pixels.Y, 0, Math.Max(0, (int)image.Height - 1));
         var right = Math.Clamp(pixels.X + pixels.Width, x + 1, (int)image.Width);
         var bottom = Math.Clamp(pixels.Y + pixels.Height, y + 1, (int)image.Height);
-        if (transparent)
-        {
-            image.Alpha(AlphaOption.Set);
-        }
+        var drawables = new Drawables().FillColor(MagickColors.White).StrokeColor(MagickColors.White);
+        DrawSelectionShape(drawables, x, y, right, bottom, kind, polygon).Draw(image);
+    }
 
-        var fill = transparent ? MagickColors.Transparent : MagickColors.White;
-        var drawables = new Drawables().FillColor(fill).StrokeColor(fill);
+    /// <summary>
+    /// Punches the selection geometry to transparent via DstOut (drawing Transparent is a no-op).
+    /// </summary>
+    private static void PunchSelectionAlpha(
+        MagickImage image,
+        ImageRect pixels,
+        ImageSelectionKind kind,
+        IReadOnlyList<ImageMarkupPoint>? polygon)
+    {
+        var x = Math.Clamp(pixels.X, 0, Math.Max(0, (int)image.Width - 1));
+        var y = Math.Clamp(pixels.Y, 0, Math.Max(0, (int)image.Height - 1));
+        var right = Math.Clamp(pixels.X + pixels.Width, x + 1, (int)image.Width);
+        var bottom = Math.Clamp(pixels.Y + pixels.Height, y + 1, (int)image.Height);
+        using var mask = new MagickImage(MagickColors.Transparent, image.Width, image.Height);
+        mask.Alpha(AlphaOption.Set);
+        var drawables = new Drawables().FillColor(MagickColors.White);
+        DrawSelectionShape(drawables, x, y, right, bottom, kind, polygon).Draw(mask);
+        image.Composite(mask, CompositeOperator.DstOut);
+    }
+
+    private static IDrawables<ushort> DrawSelectionShape(
+        IDrawables<ushort> drawables,
+        int x,
+        int y,
+        int right,
+        int bottom,
+        ImageSelectionKind kind,
+        IReadOnlyList<ImageMarkupPoint>? polygon)
+    {
         if (kind == ImageSelectionKind.Ellipse)
         {
             var originX = (x + right - 1) / 2.0;
             var originY = (y + bottom - 1) / 2.0;
             var radiusX = Math.Max(0.5, (right - x) / 2.0);
             var radiusY = Math.Max(0.5, (bottom - y) / 2.0);
-            drawables.Ellipse(originX, originY, radiusX, radiusY, 0, 360);
-        }
-        else if (kind == ImageSelectionKind.Freeform && polygon is { Count: >= 3 })
-        {
-            var coords = polygon.Select(p => new PointD(p.X, p.Y)).ToArray();
-            drawables.Polygon(coords);
-        }
-        else
-        {
-            drawables.Rectangle(x, y, right - 1, bottom - 1);
+            return drawables.Ellipse(originX, originY, radiusX, radiusY, 0, 360);
         }
 
-        drawables.Draw(image);
+        if (kind == ImageSelectionKind.Freeform && polygon is { Count: >= 3 })
+        {
+            var coords = polygon.Select(p => new PointD(p.X, p.Y)).ToArray();
+            return drawables.Polygon(coords);
+        }
+
+        return drawables.Rectangle(x, y, right - 1, bottom - 1);
     }
 
     /// <summary>

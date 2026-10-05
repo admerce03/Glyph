@@ -46,6 +46,7 @@ public sealed class ImageDocumentView : UserControl
     private readonly Button _selectButton;
     private readonly Button _selectAllButton;
     private readonly Button _deselectButton;
+    private readonly Button _invertSelButton;
     private readonly Button _copySelButton;
     private readonly Button _cutSelButton;
     private readonly Button _pasteSelButton;
@@ -82,6 +83,7 @@ public sealed class ImageDocumentView : UserControl
     private Windows.Foundation.Point _navStart;
     private ImageRect? _pixelSelection;
     private ImagePixelBuffer? _selectionClipboard;
+    private bool _selectionInverted;
     private readonly List<ImageMarkupPoint> _lassoDocPoints = [];
     private Polyline? _lassoPolyline;
     private readonly List<Windows.Foundation.Point> _drawPoints = [];
@@ -203,6 +205,7 @@ public sealed class ImageDocumentView : UserControl
             SelectedIndex = 0,
         };
         _selectAllButton = new Button { Content = "All", Visibility = Visibility.Collapsed };
+        _invertSelButton = new Button { Content = "Invert", Visibility = Visibility.Collapsed };
         _deselectButton = new Button { Content = "Deselect", Visibility = Visibility.Collapsed };
         _copySelButton = new Button { Content = "Copy sel", Visibility = Visibility.Collapsed };
         _cutSelButton = new Button { Content = "Cut sel", Visibility = Visibility.Collapsed };
@@ -214,6 +217,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(_selectButton, "Pixel selection (drag on image; drag inside to move; arrow keys nudge)");
         ToolTipService.SetToolTip(_selectionKindBox, "Selection shape: rectangle, ellipse, or freeform lasso");
         ToolTipService.SetToolTip(_selectAllButton, "Select entire image");
+        ToolTipService.SetToolTip(_invertSelButton, "Invert selection (operations apply to outside)");
         ToolTipService.SetToolTip(_deselectButton, "Clear selection");
         ToolTipService.SetToolTip(_copySelButton, "Copy selection to clipboard as PNG");
         ToolTipService.SetToolTip(_cutSelButton, "Cut selection (copy + clear)");
@@ -290,6 +294,7 @@ public sealed class ImageDocumentView : UserControl
             SyncSelectionOverlayShape();
         };
         _selectAllButton.Click += (_, _) => SelectAllPixels();
+        _invertSelButton.Click += (_, _) => InvertSelection();
         _deselectButton.Click += (_, _) => ClearPixelSelection();
         _copySelButton.Click += async (_, _) => await CopySelectionAsync();
         _cutSelButton.Click += async (_, _) => await CutSelectionAsync();
@@ -343,7 +348,7 @@ public sealed class ImageDocumentView : UserControl
             {
                 _prevButton, _nextButton, _slideshowButton, _undoButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
                 _cropBox, crop, _interactiveCropButton, _cropAspectBox, _applyCropButton, _cancelCropButton,
-                _selectButton, _selectionKindBox, _selectAllButton, _deselectButton, _copySelButton, _cutSelButton, _pasteSelButton, _deleteSelButton, _cropSelButton,
+                _selectButton, _selectionKindBox, _selectAllButton, _invertSelButton, _deselectButton, _copySelButton, _cutSelButton, _pasteSelButton, _deleteSelButton, _cropSelButton,
                 _drawButton, _flattenMarkupButton,
                 resize, adjust, stamp, meta, ocrButton, copyImage, pasteImage, save, exportPng, exportJpeg, convert, _status,
             },
@@ -733,6 +738,12 @@ public sealed class ImageDocumentView : UserControl
 
     private async Task NudgeSelectionAsync(ImageRect sel, int dx, int dy)
     {
+        if (_selectionInverted)
+        {
+            _status.Text = "Cannot move an inverted selection — Invert again first.";
+            return;
+        }
+
         var destX = Math.Clamp(sel.X + dx, 0, Math.Max(0, _document.PixelWidth - sel.Width));
         var destY = Math.Clamp(sel.Y + dy, 0, Math.Max(0, _document.PixelHeight - sel.Height));
         if (destX == sel.X && destY == sel.Y)
@@ -865,7 +876,12 @@ public sealed class ImageDocumentView : UserControl
 
         try
         {
-            var buffer = await _processor.ExtractRectAsync(_document, sel, _selectionKind, CurrentLassoOrNull());
+            var buffer = await _processor.ExtractRectAsync(
+                _document,
+                sel,
+                _selectionKind,
+                CurrentLassoOrNull(),
+                _selectionInverted);
             _selectionClipboard = buffer;
             var temp = System.IO.Path.Combine(
                 System.IO.Path.GetTempPath(),
@@ -882,7 +898,8 @@ public sealed class ImageDocumentView : UserControl
                 var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
                 package.SetBitmap(Windows.Storage.Streams.RandomAccessStreamReference.CreateFromFile(file));
                 Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
-                _status.Text = $"Copied selection {sel.Width}×{sel.Height}.";
+                var label = _selectionInverted ? "inverted selection" : "selection";
+                _status.Text = $"Copied {label} {buffer.Width}×{buffer.Height}.";
             }
             finally
             {
@@ -910,8 +927,16 @@ public sealed class ImageDocumentView : UserControl
         }
 
         await MutateAsync(
-            () => _processor.ClearRectAsync(_document, sel, transparent: true, _selectionKind, CurrentLassoOrNull()),
-            $"Cut selection {sel.Width}×{sel.Height}.");
+            () => _processor.ClearRectAsync(
+                _document,
+                sel,
+                transparent: true,
+                _selectionKind,
+                CurrentLassoOrNull(),
+                _selectionInverted),
+            _selectionInverted
+                ? $"Cut inverted selection (kept {sel.Width}×{sel.Height} hole)."
+                : $"Cut selection {sel.Width}×{sel.Height}.");
     }
 
     private async Task PasteSelectionAsync()
@@ -939,8 +964,16 @@ public sealed class ImageDocumentView : UserControl
         }
 
         await MutateAsync(
-            () => _processor.ClearRectAsync(_document, sel, transparent: true, _selectionKind, CurrentLassoOrNull()),
-            $"Cleared selection {sel.Width}×{sel.Height}.");
+            () => _processor.ClearRectAsync(
+                _document,
+                sel,
+                transparent: true,
+                _selectionKind,
+                CurrentLassoOrNull(),
+                _selectionInverted),
+            _selectionInverted
+                ? $"Cleared outside selection (kept {sel.Width}×{sel.Height})."
+                : $"Cleared selection {sel.Width}×{sel.Height}.");
     }
 
     private async Task CropToSelectionAsync()
@@ -948,6 +981,12 @@ public sealed class ImageDocumentView : UserControl
         if (_pixelSelection is not { } sel || sel.Width < 1 || sel.Height < 1)
         {
             _status.Text = "Make a selection first.";
+            return;
+        }
+
+        if (_selectionInverted)
+        {
+            _status.Text = "Cannot crop an inverted selection — Invert again or Deselect.";
             return;
         }
 
@@ -1164,6 +1203,7 @@ public sealed class ImageDocumentView : UserControl
         _selectButton.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(60, 255, 140, 0));
         _selectionKindBox.Visibility = Visibility.Visible;
         _selectAllButton.Visibility = Visibility.Visible;
+        _invertSelButton.Visibility = Visibility.Visible;
         _deselectButton.Visibility = Visibility.Visible;
         _copySelButton.Visibility = Visibility.Visible;
         _cutSelButton.Visibility = Visibility.Visible;
@@ -1174,6 +1214,8 @@ public sealed class ImageDocumentView : UserControl
         _cropRect.Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 30, 144, 255));
         ClearCropSelection();
         _pixelSelection = null;
+        _selectionInverted = false;
+        ApplySelectionChrome();
         _status.Text = "Selection mode — drag a shape; drag inside to move (arrow keys nudge; Esc exits).";
     }
 
@@ -1191,6 +1233,7 @@ public sealed class ImageDocumentView : UserControl
         _selectButton.Background = null;
         _selectionKindBox.Visibility = Visibility.Collapsed;
         _selectAllButton.Visibility = Visibility.Collapsed;
+        _invertSelButton.Visibility = Visibility.Collapsed;
         _deselectButton.Visibility = Visibility.Collapsed;
         _copySelButton.Visibility = Visibility.Collapsed;
         _cutSelButton.Visibility = Visibility.Collapsed;
@@ -1210,8 +1253,82 @@ public sealed class ImageDocumentView : UserControl
             ToggleSelectionMode();
         }
 
+        _lassoDocPoints.Clear();
+        ClearLassoPolyline();
+        _selectionInverted = false;
+        if (_selectionKind == ImageSelectionKind.Freeform)
+        {
+            _selectionKind = ImageSelectionKind.Rectangle;
+            _selectionKindBox.SelectedIndex = 0;
+        }
+
         SetPixelSelection(new ImageRect(0, 0, _document.PixelWidth, _document.PixelHeight));
+        ApplySelectionChrome();
         _status.Text = $"Selected all {_document.PixelWidth}×{_document.PixelHeight}.";
+    }
+
+    private void InvertSelection()
+    {
+        if (!_selectionMode)
+        {
+            ToggleSelectionMode();
+        }
+
+        if (_pixelSelection is not { } sel || sel.Width < 1 || sel.Height < 1)
+        {
+            _status.Text = "Make a selection first.";
+            return;
+        }
+
+        var fullImage = sel.X == 0
+            && sel.Y == 0
+            && sel.Width == _document.PixelWidth
+            && sel.Height == _document.PixelHeight
+            && _selectionKind == ImageSelectionKind.Rectangle
+            && _lassoDocPoints.Count == 0;
+
+        if (!_selectionInverted && fullImage)
+        {
+            ClearPixelSelection();
+            _status.Text = "Inverted full selection → empty.";
+            return;
+        }
+
+        _selectionInverted = !_selectionInverted;
+        ApplySelectionChrome();
+        _status.Text = _selectionInverted
+            ? $"Selection inverted — copy/cut/delete apply outside {sel.Width}×{sel.Height}."
+            : $"Selection restored ({SelectionKindLabel()} {sel.Width}×{sel.Height}).";
+    }
+
+    private void ApplySelectionChrome()
+    {
+        var stroke = _selectionInverted
+            ? Windows.UI.Color.FromArgb(255, 220, 20, 60)
+            : Windows.UI.Color.FromArgb(255, 30, 144, 255);
+        var fill = _selectionInverted
+            ? Windows.UI.Color.FromArgb(50, 220, 20, 60)
+            : Windows.UI.Color.FromArgb(40, 30, 144, 255);
+        var strokeBrush = new SolidColorBrush(stroke);
+        var fillBrush = new SolidColorBrush(fill);
+        _cropRect.Stroke = strokeBrush;
+        _cropRect.Fill = fillBrush;
+        _cropRect.StrokeDashArray = _selectionInverted
+            ? new DoubleCollection { 4, 3 }
+            : null;
+        _selectionEllipse.Stroke = strokeBrush;
+        _selectionEllipse.Fill = fillBrush;
+        _selectionEllipse.StrokeDashArray = _selectionInverted
+            ? new DoubleCollection { 4, 3 }
+            : null;
+        if (_lassoPolyline is not null)
+        {
+            _lassoPolyline.Stroke = strokeBrush;
+            _lassoPolyline.Fill = fillBrush;
+            _lassoPolyline.StrokeDashArray = _selectionInverted
+                ? new DoubleCollection { 4, 3 }
+                : null;
+        }
     }
 
     private void SetPixelSelection(ImageRect pixels)
@@ -1284,9 +1401,11 @@ public sealed class ImageDocumentView : UserControl
         _pixelSelection = null;
         _selectionMoving = false;
         _moveSourcePixels = null;
+        _selectionInverted = false;
         _lassoDocPoints.Clear();
         ClearLassoPolyline();
         ClearCropSelection();
+        ApplySelectionChrome();
         if (_selectionMode)
         {
             _status.Text = "Selection cleared.";
@@ -1387,6 +1506,13 @@ public sealed class ImageDocumentView : UserControl
         var point = e.GetCurrentPoint(_cropOverlay).Position;
         if (_selectionMode && IsPointInSelectionOverlay(point))
         {
+            if (_selectionInverted)
+            {
+                _status.Text = "Cannot move an inverted selection — Invert again first.";
+                e.Handled = true;
+                return;
+            }
+
             _selectionMoving = true;
             _cropDragging = false;
             _moveStart = point;
@@ -1403,6 +1529,8 @@ public sealed class ImageDocumentView : UserControl
         _moveSourcePixels = null;
         _cropDragging = true;
         _cropStart = point;
+        _selectionInverted = false;
+        ApplySelectionChrome();
         if (_selectionMode && _selectionKind == ImageSelectionKind.Freeform)
         {
             _lassoDocPoints.Clear();
@@ -1530,6 +1658,7 @@ public sealed class ImageDocumentView : UserControl
                 _document.PixelHeight);
             _lassoDocPoints.Clear();
             SyncSelectionOverlayShape();
+            ApplySelectionChrome();
             _status.Text =
                 $"Selected {_pixelSelection.Value.Width}×{_pixelSelection.Value.Height} px ({SelectionKindLabel()})";
         }
@@ -1587,6 +1716,7 @@ public sealed class ImageDocumentView : UserControl
             y * (_displayHeight / (double)_document.PixelHeight),
             (right - x) * (_displayWidth / (double)_document.PixelWidth),
             (bottom - y) * (_displayHeight / (double)_document.PixelHeight));
+        ApplySelectionChrome();
         _status.Text = $"Lasso selected {_pixelSelection.Value.Width}×{_pixelSelection.Value.Height} px ({_lassoDocPoints.Count} pts)";
     }
 

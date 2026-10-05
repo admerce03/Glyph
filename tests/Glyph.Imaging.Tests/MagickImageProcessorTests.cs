@@ -291,6 +291,55 @@ public class MagickImageProcessorTests
     }
 
     [Fact]
+    public async Task Invert_extract_punches_selection_and_clear_keeps_it()
+    {
+        var path = CreateSolidPng(40, 30);
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            await using var document = await decoder.OpenAsync(path);
+
+            var region = new ImageRect(10, 8, 12, 10);
+            var inverted = await processor.ExtractRectAsync(
+                document,
+                region,
+                ImageSelectionKind.Rectangle,
+                polygon: null,
+                inverted: true);
+            inverted.Width.Should().Be(40);
+            inverted.Height.Should().Be(30);
+            // Pixel inside the punched rect (local offset into full buffer) → alpha 0.
+            var punchIndex = (((8 + 2) * 40) + (10 + 2)) * 4 + 3;
+            inverted.BgraPixels[punchIndex].Should().Be(0);
+            // Corner outside selection stays opaque.
+            inverted.BgraPixels[3].Should().Be(255);
+
+            await processor.ClearRectAsync(
+                document,
+                region,
+                transparent: true,
+                ImageSelectionKind.Rectangle,
+                polygon: null,
+                inverted: true);
+            // Outside selection should now be transparent; inside stays opaque.
+            var after = await processor.ExtractRectAsync(
+                document,
+                new ImageRect(0, 0, 40, 30),
+                ImageSelectionKind.Rectangle);
+            after.BgraPixels[3].Should().Be(0);
+            var keptIndex = ((8 * 40) + 10) * 4 + 3;
+            after.BgraPixels[keptIndex].Should().Be(255);
+            document.PixelWidth.Should().Be(40);
+            document.PixelHeight.Should().Be(30);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Ellipse_extract_clears_corners_to_transparent()
     {
         var path = CreateSolidPng(40, 30);

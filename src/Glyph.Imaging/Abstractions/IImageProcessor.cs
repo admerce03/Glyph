@@ -33,6 +33,7 @@ public interface IImageProcessor
     /// Clears a region to transparent (or opaque white when <paramref name="transparent"/> is false).
     /// <paramref name="kind"/> selects rectangle, ellipse, or freeform polygon within <paramref name="pixels"/> bounds.
     /// For freeform, pass document-space <paramref name="polygon"/> vertices (at least 3).
+    /// When <paramref name="inverted"/> is true, clears everything outside the region (keeps the selection).
     /// </summary>
     Task ClearRectAsync(
         IImageDocument document,
@@ -40,16 +41,19 @@ public interface IImageProcessor
         bool transparent = true,
         ImageSelectionKind kind = ImageSelectionKind.Rectangle,
         IReadOnlyList<ImageMarkupPoint>? polygon = null,
+        bool inverted = false,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns BGRA32 pixels for a region (document pixel space). Ellipse/freeform clear outside the mask to transparent.
+    /// When <paramref name="inverted"/> is true, returns the full image with the selection punched to transparent.
     /// </summary>
     Task<ImagePixelBuffer> ExtractRectAsync(
         IImageDocument document,
         ImageRect pixels,
         ImageSelectionKind kind = ImageSelectionKind.Rectangle,
         IReadOnlyList<ImageMarkupPoint>? polygon = null,
+        bool inverted = false,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -66,6 +70,7 @@ public interface IImageProcessor
     /// Moves pixels from <paramref name="source"/> to a new top-left
     /// (<paramref name="destinationX"/>, <paramref name="destinationY"/>), clearing the source
     /// region to transparent. No-ops when the destination equals the source origin.
+    /// Inverted selections are not supported.
     /// </summary>
     Task MoveRectAsync(
         IImageDocument document,
