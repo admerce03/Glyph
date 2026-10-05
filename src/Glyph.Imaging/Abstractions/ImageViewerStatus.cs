@@ -120,4 +120,15 @@ public static class ImageViewerStatus
     public static string FormatPrintUiShown(int imageCount, int pagesPerSheet) =>
         $"Print UI shown · {imageCount} image(s)"
         + (pagesPerSheet > 1 ? $" · {pagesPerSheet}-up." : ".");
+
+    public const string RotatedLeft = "Rotated left.";
+    public const string RotatedRight = "Rotated right.";
+    public const string Rotated180 = "Rotated 180°.";
+    public const string OrientationNormalized = "Orientation normalized.";
+    public const string Straightened = "Straightened (deskew).";
+    public const string FlippedHorizontally = "Flipped horizontally.";
+    public const string FlippedVertically = "Flipped vertically.";
+    public const string AssignedSrgbIcc = "Assigned sRGB ICC profile.";
+    public const string ConvertedPixelsToSrgb = "Converted pixels to sRGB.";
+    public const string DescriptiveMetadataUpdated = "Descriptive metadata updated (IPTC).";
 }

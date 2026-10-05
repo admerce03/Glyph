@@ -358,17 +358,17 @@ public sealed class ImageDocumentView : UserControl
         zoomIn.Click += async (_, _) => await SetZoomAsync(ImageZoomCalculator.ZoomIn(_zoom));
         fit.Click += async (_, _) => await FitAsync();
         actual.Click += async (_, _) => await ZoomActualSizeAsync();
-        rotateLeft.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, -90), "Rotated left.");
-        rotateRight.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 90), "Rotated right.");
-        rotate180.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 180), "Rotated 180°.");
-        orient.Click += async (_, _) => await MutateAsync(() => _processor.NormalizeOrientationAsync(_document), "Orientation normalized.");
+        rotateLeft.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, -90), ImageViewerStatus.RotatedLeft);
+        rotateRight.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 90), ImageViewerStatus.RotatedRight);
+        rotate180.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 180), ImageViewerStatus.Rotated180);
+        orient.Click += async (_, _) => await MutateAsync(() => _processor.NormalizeOrientationAsync(_document), ImageViewerStatus.OrientationNormalized);
         straighten.Click += async (_, _) => await MutateAsync(
             () => _processor.DeskewAsync(_document, thresholdPercent: 40, crop: true),
-            "Straightened (deskew).");
+            ImageViewerStatus.Straightened);
         batchOrient.Click += async (_, _) => await BatchOrientFolderAsync();
         fullscreen.Click += (_, _) => ToggleFullscreen();
-        flipH.Click += async (_, _) => await MutateAsync(() => _processor.FlipHorizontalAsync(_document), "Flipped horizontally.");
-        flipV.Click += async (_, _) => await MutateAsync(() => _processor.FlipVerticalAsync(_document), "Flipped vertically.");
+        flipH.Click += async (_, _) => await MutateAsync(() => _processor.FlipHorizontalAsync(_document), ImageViewerStatus.FlippedHorizontally);
+        flipV.Click += async (_, _) => await MutateAsync(() => _processor.FlipVerticalAsync(_document), ImageViewerStatus.FlippedVertically);
         crop.Click += async (_, _) => await CropAsync();
         _interactiveCropButton.Click += (_, _) => EnterCropMode();
         _applyCropButton.Click += async (_, _) => await ApplyInteractiveCropAsync();
@@ -896,7 +896,7 @@ public sealed class ImageDocumentView : UserControl
         {
             PauseAnimation();
             var window = App.CurrentApp.MainWindowInstance
-                ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+                ?? throw new InvalidOperationException(MainWindowRequiredMessages.SavePicker);
             var picker = new Windows.Storage.Pickers.FileSavePicker();
             var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
@@ -1945,10 +1945,10 @@ public sealed class ImageDocumentView : UserControl
         fitItem.Click += async (_, _) => await FitAsync();
         flyout.Items.Add(fitItem);
         var rotateLeftItem = new MenuFlyoutItem { Text = ImageViewerTextLabels.RotateLeft };
-        rotateLeftItem.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, -90), "Rotated left.");
+        rotateLeftItem.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, -90), ImageViewerStatus.RotatedLeft);
         flyout.Items.Add(rotateLeftItem);
         var rotateRightItem = new MenuFlyoutItem { Text = ImageViewerTextLabels.RotateRight };
-        rotateRightItem.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 90), "Rotated right.");
+        rotateRightItem.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 90), ImageViewerStatus.RotatedRight);
         flyout.Items.Add(rotateRightItem);
 
         flyout.ShowAt(target, e.GetPosition(target));
@@ -3525,7 +3525,7 @@ public sealed class ImageDocumentView : UserControl
                 else
                 {
                     var window = App.CurrentApp.MainWindowInstance
-                        ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+                        ?? throw new InvalidOperationException(MainWindowRequiredMessages.SavePicker);
                     var picker = new Windows.Storage.Pickers.FileSavePicker();
                     var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
                     WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
@@ -4078,7 +4078,7 @@ public sealed class ImageDocumentView : UserControl
             }
 
             var window = App.CurrentApp.MainWindowInstance
-                ?? throw new InvalidOperationException("Main window unavailable for print.");
+                ?? throw new InvalidOperationException(MainWindowRequiredMessages.Print);
             using var helper = new DocumentPrintHelper(
                 window,
                 jobName: System.IO.Path.GetFileName(_document.Path) ?? "Glyph image",
@@ -4315,14 +4315,14 @@ public sealed class ImageDocumentView : UserControl
             {
                 await MutateAsync(
                     () => _processor.AssignColorProfileAsync(_document, ImageColorProfileKind.Srgb),
-                    "Assigned sRGB ICC profile.");
+                    ImageViewerStatus.AssignedSrgbIcc);
             };
             var convertSrgb = new Button { Content = ImageViewerChromeLabels.ConvertToSrgb };
             convertSrgb.Click += async (_, _) =>
             {
                 await MutateAsync(
                     () => _processor.ConvertColorProfileAsync(_document, ImageColorProfileKind.Srgb),
-                    "Converted pixels to sRGB.");
+                    ImageViewerStatus.ConvertedPixelsToSrgb);
             };
             actions.Children.Add(assignSrgb);
             actions.Children.Add(convertSrgb);
@@ -4500,7 +4500,7 @@ public sealed class ImageDocumentView : UserControl
 
             var (format, extension) = GuessSaveFormat(_document.FormatName);
             var window = App.CurrentApp.MainWindowInstance
-                ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+                ?? throw new InvalidOperationException(MainWindowRequiredMessages.SavePicker);
             var picker = new Windows.Storage.Pickers.FileSavePicker();
             var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
@@ -4588,7 +4588,7 @@ public sealed class ImageDocumentView : UserControl
             Copyright: copyright.Text);
         await MutateAsync(
             () => _processor.SetDescriptiveMetadataAsync(_document, metadata),
-            "Descriptive metadata updated (IPTC).");
+            ImageViewerStatus.DescriptiveMetadataUpdated);
     }
 
     private async Task RunOcrAsync()
@@ -4820,7 +4820,7 @@ public sealed class ImageDocumentView : UserControl
             }
 
             var window = App.CurrentApp.MainWindowInstance
-                ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+                ?? throw new InvalidOperationException(MainWindowRequiredMessages.SavePicker);
             var picker = new Windows.Storage.Pickers.FileSavePicker();
             var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);

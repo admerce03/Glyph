@@ -49,4 +49,21 @@ public static class PageEditStatus
 
     public static string FormatSplitDone(int partCount, string folderName) =>
         $"Split into {partCount} PDFs in {folderName}.";
+
+    public static string FormatCropped(int count) =>
+        count == 1 ? "Cropped 1 page." : $"Cropped {count} pages.";
+
+    public static string FormatInserting(int count) =>
+        count == 1 ? "Inserting page…" : $"Inserting {count} pages…";
+
+    public static string FormatInserted(int count) =>
+        count == 1 ? "Inserted 1 page." : $"Inserted {count} pages.";
+
+    public static string FormatInsertedFromFile(int count, int fileCount) =>
+        count == 1
+            ? "Inserted 1 page from file."
+            : $"Inserted {count} pages from file{(fileCount == 1 ? string.Empty : "s")}.";
+
+    public static string FormatSelectedPages(int count) =>
+        count == 1 ? "Selected 1 page." : $"Selected {count} pages.";
 }

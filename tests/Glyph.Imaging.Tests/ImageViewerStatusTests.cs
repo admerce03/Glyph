@@ -18,6 +18,9 @@ public class ImageViewerStatusTests
         BatchProgressUi.FormatRenamed(3).Should().Contain("3");
         ImageViewerStatus.FormatSelectionRestored("rect", 1, 2).Should().Contain("rect");
         ImageViewerStatus.FormatPrintUiShown(2, 2).Should().Contain("2-up");
+        ImageViewerStatus.RotatedLeft.Should().Be("Rotated left.");
+        ImageViewerStatus.FlippedHorizontally.Should().Contain("horizontally");
+        ImageViewerStatus.AssignedSrgbIcc.Should().Contain("sRGB");
     }
 }
 

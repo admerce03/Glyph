@@ -35,5 +35,9 @@ public class PageEditStatusTests
         PageEditStatus.FormatSplitting(2).Should().Contain("2 PDFs");
         PageEditStatus.FormatSplitDone(2, "Out").Should().Contain("Out");
         PageEditStatus.FormatPastePagesFailed("x").Should().Be("Paste pages failed: x");
+        PageEditStatus.FormatCropped(1).Should().Be("Cropped 1 page.");
+        PageEditStatus.FormatCropped(3).Should().Contain("3 pages");
+        PageEditStatus.FormatInsertedFromFile(2, 2).Should().Contain("files");
+        PageEditStatus.FormatSelectedPages(1).Should().Be("Selected 1 page.");
     }
 }

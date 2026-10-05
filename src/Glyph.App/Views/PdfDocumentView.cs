@@ -1933,7 +1933,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var count = sourceIndexes.Count;
-        _status.Text = count == 1 ? "Inserting page…" : $"Inserting {count} pages…";
+        _status.Text = PageEditStatus.FormatInserting(count);
         await RunPageEditAsync(() => _pageEditor.InsertPagesAsync(_document, source, sourceIndexes, insertBefore));
 
         _pageSelection.Clear();
@@ -1944,7 +1944,7 @@ public sealed class PdfDocumentView : UserControl
 
         await ReloadAfterPageEditAsync();
         await GoToPageAsync(insertBefore, recordHistory: true);
-        _status.Text = count == 1 ? "Inserted 1 page." : $"Inserted {count} pages.";
+        _status.Text = PageEditStatus.FormatInserted(count);
     }
 
     private async Task InsertPdfFilesAsync(IReadOnlyList<StorageFile> pdfFiles, int insertBefore)
@@ -1981,9 +1981,7 @@ public sealed class PdfDocumentView : UserControl
 
         await ReloadAfterPageEditAsync();
         await GoToPageAsync(insertBefore, recordHistory: true);
-        _status.Text = totalInserted == 1
-            ? "Inserted 1 page from file."
-            : $"Inserted {totalInserted} pages from file{(pdfFiles.Count == 1 ? string.Empty : "s")}.";
+        _status.Text = PageEditStatus.FormatInsertedFromFile(totalInserted, pdfFiles.Count);
     }
 
     private async void SearchBox_KeyDown(object sender, KeyRoutedEventArgs e)
@@ -2404,9 +2402,7 @@ public sealed class PdfDocumentView : UserControl
     {
         _pageSelection.SelectAll(_document.PageCount);
         RefreshThumbnailSelectionChrome();
-        _status.Text = _document.PageCount == 1
-            ? "Selected 1 page."
-            : $"Selected {_document.PageCount} pages.";
+        _status.Text = PageEditStatus.FormatSelectedPages(_document.PageCount);
     }
 
     private async Task SelectAllTextOrPagesAsync()
@@ -3706,7 +3702,7 @@ public sealed class PdfDocumentView : UserControl
             var pdfBytes = OcrSearchablePdfWriter.BuildPages(pages);
             var window = _ownerWindow
                 ?? App.CurrentApp.MainWindowInstance
-                ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+                ?? throw new InvalidOperationException(MainWindowRequiredMessages.SavePicker);
             var picker = new FileSavePicker();
             var hwnd = WindowNative.GetWindowHandle(window);
             InitializeWithWindow.Initialize(picker, hwnd);
@@ -4945,7 +4941,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for color dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.ColorDialog);
 
         var list = new ListView
         {
@@ -5039,7 +5035,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for fill dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.FillDialog);
 
         if (!TryGetSelectedAnnotation(out var item))
         {
@@ -5109,7 +5105,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for color dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.ColorDialog);
 
         var index = _annotationList.SelectedIndex;
         PdfAnnotationInfo? item = index >= 0 && index < _annotationItems.Count
@@ -5336,7 +5332,7 @@ public sealed class PdfDocumentView : UserControl
 
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for callout dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.CalloutDialog);
         var box = new TextBox
         {
             AcceptsReturn = true,
@@ -5930,7 +5926,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for stroke style dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.StrokeStyleDialog);
 
         float[] widths = PdfStrokeWidthPresets.Points.ToArray();
         var colorList = new ListView
@@ -6848,7 +6844,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for signature dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.SignatureDialog);
 
         if (_signatureMode)
         {
@@ -7264,7 +7260,7 @@ public sealed class PdfDocumentView : UserControl
 
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for signature name.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.SignatureName);
 
         var nameBox = new TextBox
         {
@@ -7407,7 +7403,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for camera.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.Camera);
         try
         {
             _status.Text = WebcamCaptureUi.StartingCamera;
@@ -7544,7 +7540,7 @@ public sealed class PdfDocumentView : UserControl
 
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for form dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.FormDialog);
 
         if (!await _forms.HasFormAsync(_document))
         {
@@ -7601,7 +7597,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for profile dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.ProfileDialog);
 
         var current = _formProfile.Current;
         var nameBox = new TextBox { Header = PdfDialogHeaders.Name, Text = current.Name, Width = 320 };
@@ -7917,7 +7913,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for form dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.FormDialog);
 
         if (!await _forms.HasFormAsync(_document))
         {
@@ -8016,7 +8012,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for button dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.ButtonDialog);
 
         var action = field.ButtonAction;
         var caption = !string.IsNullOrWhiteSpace(action?.Caption)
@@ -8099,7 +8095,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for signature dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.SignatureDialog);
 
         IReadOnlyList<SignatureEntry> library;
         try
@@ -8210,7 +8206,7 @@ public sealed class PdfDocumentView : UserControl
         var height = (int)decoder.PixelHeight;
         if (width <= 0 || height <= 0)
         {
-            throw new InvalidOperationException("Signature image is empty.");
+            throw new InvalidOperationException(MainWindowRequiredMessages.SignatureImageEmpty);
         }
 
         var fieldW = Math.Max(1, field.Bounds.Width);
@@ -8253,7 +8249,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for form dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.FormDialog);
 
         if (field.Kind == PdfFormFieldKind.PushButton)
         {
@@ -8485,7 +8481,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for flatten dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.FlattenDialog);
 
         var dialog = new ContentDialog
         {
@@ -8540,7 +8536,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for redaction dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.RedactionDialog);
 
         var pending = _redaction.GetPending(_document);
         var hasSelection = !string.IsNullOrWhiteSpace(_selectedText)
@@ -8940,7 +8936,7 @@ public sealed class PdfDocumentView : UserControl
 
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for redaction apply.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.RedactionApply);
 
         var removeAnnotations = new CheckBox
         {
@@ -9048,7 +9044,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for note dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.NoteDialog);
 
         var box = new TextBox
         {
@@ -9142,7 +9138,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for text box dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.TextBoxDialog);
 
         var box = new TextBox
         {
@@ -10149,7 +10145,7 @@ public sealed class PdfDocumentView : UserControl
 
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.SavePicker);
         var baseName = _document.Path is null
             ? "Glyph"
             : System.IO.Path.GetFileNameWithoutExtension(_document.Path);
@@ -10250,7 +10246,7 @@ public sealed class PdfDocumentView : UserControl
 
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for alignment dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.AlignmentDialog);
 
         var alignBox = new ComboBox
         {
@@ -10389,7 +10385,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for author dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.AuthorDialog);
 
         var box = new TextBox
         {
@@ -10610,7 +10606,7 @@ public sealed class PdfDocumentView : UserControl
 
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for edit dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.EditDialog);
 
         var box = new TextBox
         {
@@ -10793,7 +10789,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for width dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.WidthDialog);
 
         if (!TryGetSelectedAnnotation(out var item))
         {
@@ -10863,7 +10859,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for opacity dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.OpacityDialog);
 
         var index = _annotationList.SelectedIndex;
         PdfAnnotationInfo? item = index >= 0 && index < _annotationItems.Count
@@ -11120,7 +11116,7 @@ public sealed class PdfDocumentView : UserControl
 
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.SavePicker);
         var picker = new Windows.Storage.Pickers.FileSavePicker();
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
         WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
@@ -11259,9 +11255,7 @@ public sealed class PdfDocumentView : UserControl
             await RunPageEditAsync(() => _pageEditor.CropPagesAsync(_document, indexes, margins));
             CancelCropMode();
             await ReloadAfterPageEditAsync();
-            _status.Text = indexes.Count == 1
-                ? "Cropped 1 page."
-                : $"Cropped {indexes.Count} pages.";
+            _status.Text = PageEditStatus.FormatCropped(indexes.Count);
         }
         catch (Exception ex)
         {
@@ -11272,7 +11266,7 @@ public sealed class PdfDocumentView : UserControl
     private async Task MergePdfsAsync()
     {
         var window = App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for open picker.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.OpenPicker);
         var picker = new Windows.Storage.Pickers.FileOpenPicker();
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
         WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
@@ -11343,7 +11337,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var window = App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for folder picker.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.FolderPicker);
         var picker = new Windows.Storage.Pickers.FolderPicker();
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
         WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
@@ -11394,7 +11388,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var window = App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.SavePicker);
         var picker = new Windows.Storage.Pickers.FileSavePicker();
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
         WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
@@ -11565,9 +11559,7 @@ public sealed class PdfDocumentView : UserControl
             _status.Text = PageEditStatus.Cropping;
             await RunPageEditAsync(() => _pageEditor.CropPagesAsync(_document, indexes, margins));
             await ReloadAfterPageEditAsync();
-            _status.Text = indexes.Count == 1
-                ? "Cropped 1 page."
-                : $"Cropped {indexes.Count} pages.";
+            _status.Text = PageEditStatus.FormatCropped(indexes.Count);
         }
         catch (Exception ex)
         {
@@ -12392,7 +12384,7 @@ public sealed class PdfDocumentView : UserControl
 
             var window = _ownerWindow
                 ?? App.CurrentApp.MainWindowInstance
-                ?? throw new InvalidOperationException("Main window unavailable for print.");
+                ?? throw new InvalidOperationException(MainWindowRequiredMessages.Print);
             using var helper = new DocumentPrintHelper(
                 window,
                 jobName: System.IO.Path.GetFileName(_document.Path) ?? "Glyph PDF",
@@ -12464,7 +12456,7 @@ public sealed class PdfDocumentView : UserControl
 
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for export.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.Export);
 
         var formatBox = new ComboBox
         {
@@ -12644,7 +12636,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for optimize.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.Optimize);
 
         var presetBox = new ComboBox
         {
@@ -12831,7 +12823,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for document info.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.DocumentInfo);
 
         PdfDocumentInfo info;
         try
@@ -12955,7 +12947,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 var window = _ownerWindow
                     ?? App.CurrentApp.MainWindowInstance
-                    ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+                    ?? throw new InvalidOperationException(MainWindowRequiredMessages.SavePicker);
                 var picker = new FileSavePicker();
                 var hwnd = WindowNative.GetWindowHandle(window);
                 InitializeWithWindow.Initialize(picker, hwnd);
@@ -12989,7 +12981,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for document info edit.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.DocumentInfoEdit);
 
         var titleBox = new TextBox { Text = current.Title ?? string.Empty, Width = 320 };
         var authorBox = new TextBox { Text = current.Author ?? string.Empty, Width = 320 };
@@ -13170,7 +13162,7 @@ public sealed class PdfDocumentView : UserControl
         var item = _attachmentItems[_attachmentList.SelectedIndex];
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for attachment save.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.AttachmentSave);
 
         try
         {
