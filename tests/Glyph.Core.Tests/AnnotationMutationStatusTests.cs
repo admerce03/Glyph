@@ -16,6 +16,10 @@ public class AnnotationMutationStatusTests
         AnnotationMutationStatus.FormatAuthorSet("Ada").Should().Contain("Ada");
         AnnotationMutationStatus.FormatErased("Ink").Should().Contain("Erased");
         AnnotationMutationStatus.FormatDuplicated("Note").Should().Contain("Duplicated");
+        AnnotationMutationStatus.FillCleared.Should().Be("Fill cleared.");
+        AnnotationMutationStatus.FormatFlattenedAnnotations(1).Should().Contain("1 page");
+        AnnotationMutationStatus.FormatDeletedAnnotation("Note").Should().StartWith("Deleted");
+        AnnotationMutationStatus.FormatChromeStatus(1, 10, 100, "Continuous", "").Should().Contain("Zoom 100%");
         PageEditStatus.CropCancelled.Should().Contain("Crop");
         PageEditStatus.MergeCancelled.Should().Contain("Merge");
         WebcamCaptureUi.CameraUiUnavailable.Should().Contain("unavailable");

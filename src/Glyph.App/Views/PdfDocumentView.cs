@@ -3170,8 +3170,8 @@ public sealed class PdfDocumentView : UserControl
             }
 
             _status.Text = string.IsNullOrEmpty(_selectedText)
-                ? "Region selected — right-click to copy as image."
-                : $"Selected “{TrimForStatus(_selectedText)}”";
+                ? AnnotationMutationStatus.RegionSelectedCopyHint
+                : AnnotationMutationStatus.FormatSelectedText(TrimForStatus(_selectedText));
             return;
         }
 
@@ -3202,8 +3202,8 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _status.Text = string.IsNullOrEmpty(_selectedText)
-            ? $"Page {pageIndex + 1}"
-            : $"Selected “{TrimForStatus(_selectedText)}”";
+            ? AnnotationMutationStatus.FormatPageIndex(pageIndex + 1)
+            : AnnotationMutationStatus.FormatSelectedText(TrimForStatus(_selectedText));
 
         if (_highlightMode && !string.IsNullOrEmpty(_selectedText))
         {
@@ -4863,8 +4863,8 @@ public sealed class PdfDocumentView : UserControl
         if (_selectionPageIndex < 0 || _selectionQuads.Count == 0 || string.IsNullOrEmpty(_selectedText))
         {
             _status.Text = _highlightMode && kind == PdfTextMarkupKind.Highlight
-                ? "Highlight mode on — select text to highlight."
-                : "Select text first, then apply markup.";
+                ? AnnotationToolModeStatus.HighlightOnShort
+                : AnnotationToolModeStatus.SelectTextThenMarkup;
             return;
         }
 
@@ -4902,9 +4902,9 @@ public sealed class PdfDocumentView : UserControl
         {
             _status.Text = kind switch
             {
-                PdfTextMarkupKind.Highlight => "Highlighting…",
-                PdfTextMarkupKind.Underline => "Underlining…",
-                _ => "Striking through…",
+                PdfTextMarkupKind.Highlight => AnnotationToolModeStatus.Highlighting,
+                PdfTextMarkupKind.Underline => AnnotationToolModeStatus.Underlining,
+                _ => AnnotationToolModeStatus.StrikingThrough,
             };
 
             var created = await _annotations.AddTextMarkupAsync(
@@ -4925,10 +4925,10 @@ public sealed class PdfDocumentView : UserControl
             _status.Text = kind switch
             {
                 PdfTextMarkupKind.Highlight => _highlightMode
-                    ? "Highlight added — select more text, or Esc to exit mode."
-                    : "Highlight added.",
-                PdfTextMarkupKind.Underline => "Underline added.",
-                _ => "Strikethrough added.",
+                    ? AnnotationToolModeStatus.HighlightAddedContinue
+                    : AnnotationToolModeStatus.HighlightAdded,
+                PdfTextMarkupKind.Underline => AnnotationToolModeStatus.UnderlineAdded,
+                _ => AnnotationToolModeStatus.StrikethroughAdded,
             };
         }
         catch (Exception ex)
@@ -5093,7 +5093,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = fill is null ? "Fill cleared." : "Fill color updated.";
+            _status.Text = fill is null ? AnnotationMutationStatus.FillCleared : AnnotationMutationStatus.FillColorUpdated;
         }
         catch (Exception ex)
         {
@@ -5744,9 +5744,7 @@ public sealed class PdfDocumentView : UserControl
         _polygonPageIndex = pageIndex;
         _polygonVertices.Add(pdf);
         RedrawPolygonPreview();
-        _status.Text = _polygonVertices.Count < 3
-            ? $"Polygon vertex {_polygonVertices.Count} — need at least 3."
-            : $"Polygon vertex {_polygonVertices.Count} — Enter to close, or click near first vertex.";
+        _status.Text = AnnotationToolModeStatus.FormatPolygonVertex(_polygonVertices.Count);
     }
 
     private void RedrawPolygonPreview()
@@ -5907,15 +5905,15 @@ public sealed class PdfDocumentView : UserControl
         RefreshToolButtonChrome();
         _status.Text = kind switch
         {
-            PdfShapeKind.Rectangle => "Rectangle mode — drag on the page.",
-            PdfShapeKind.RoundedRectangle => "Rounded rectangle mode — drag on the page.",
-            PdfShapeKind.HighlightRectangle => "Area highlight mode — drag a translucent rectangle.",
-            PdfShapeKind.Ellipse => "Ellipse mode — drag on the page.",
-            PdfShapeKind.Arrow => "Arrow mode — drag from tail to tip.",
-            PdfShapeKind.Star => "Star mode — drag a bounding box for a 5-point star.",
-            PdfShapeKind.SpeechBubble => "Bubble mode — drag a speech-bubble outline.",
-            PdfShapeKind.Loupe => "Loupe mode — drag a circle; select it to see a magnified crop.",
-            _ => "Line mode — drag on the page.",
+            PdfShapeKind.Rectangle => AnnotationToolModeStatus.RectangleMode,
+            PdfShapeKind.RoundedRectangle => AnnotationToolModeStatus.RoundedRectangleMode,
+            PdfShapeKind.HighlightRectangle => AnnotationToolModeStatus.AreaHighlightMode,
+            PdfShapeKind.Ellipse => AnnotationToolModeStatus.EllipseMode,
+            PdfShapeKind.Arrow => AnnotationToolModeStatus.ArrowMode,
+            PdfShapeKind.Star => AnnotationToolModeStatus.StarMode,
+            PdfShapeKind.SpeechBubble => AnnotationToolModeStatus.BubbleMode,
+            PdfShapeKind.Loupe => AnnotationToolModeStatus.LoupeMode,
+            _ => AnnotationToolModeStatus.LineMode,
         };
     }
 
@@ -6335,15 +6333,15 @@ public sealed class PdfDocumentView : UserControl
             await RefreshAnnotationSidebarAsync();
             _status.Text = kind switch
             {
-                PdfShapeKind.Rectangle => "Rectangle added.",
-                PdfShapeKind.RoundedRectangle => "Rounded rectangle added.",
-                PdfShapeKind.HighlightRectangle => "Area highlight added.",
-                PdfShapeKind.Ellipse => "Ellipse added.",
-                PdfShapeKind.Arrow => "Arrow added.",
-                PdfShapeKind.Star => "Star added.",
-                PdfShapeKind.SpeechBubble => "Speech bubble added.",
-                PdfShapeKind.Loupe => "Loupe added — select it to see magnification.",
-                _ => "Line added.",
+                PdfShapeKind.Rectangle => AnnotationToolModeStatus.RectangleAdded,
+                PdfShapeKind.RoundedRectangle => AnnotationToolModeStatus.RoundedRectangleAdded,
+                PdfShapeKind.HighlightRectangle => AnnotationToolModeStatus.AreaHighlightAdded,
+                PdfShapeKind.Ellipse => AnnotationToolModeStatus.EllipseAdded,
+                PdfShapeKind.Arrow => AnnotationToolModeStatus.ArrowAdded,
+                PdfShapeKind.Star => AnnotationToolModeStatus.StarAdded,
+                PdfShapeKind.SpeechBubble => AnnotationToolModeStatus.SpeechBubbleAdded,
+                PdfShapeKind.Loupe => AnnotationToolModeStatus.LoupeAdded,
+                _ => AnnotationToolModeStatus.LineAdded,
             };
         }
         catch (Exception ex)
@@ -6559,7 +6557,7 @@ public sealed class PdfDocumentView : UserControl
 
         if ((_freeformMode && points.Count < 3) || (!_freeformMode && points.Count < 2) || pageIndex < 0)
         {
-            _status.Text = _freeformMode ? "Freeform needs at least three points." : "Ink stroke too short.";
+            _status.Text = _freeformMode ? AnnotationToolModeStatus.FreeformNeedsPoints : AnnotationToolModeStatus.InkStrokeTooShort;
             return;
         }
 
@@ -7634,8 +7632,8 @@ public sealed class PdfDocumentView : UserControl
             phoneBox.Text?.Trim() ?? string.Empty);
         await _formProfile.SaveAsync(profile);
         _status.Text = profile.HasAnyValue
-            ? "AutoFill profile saved."
-            : "AutoFill profile cleared.";
+            ? AnnotationMutationStatus.AutoFillProfileSaved
+            : AnnotationMutationStatus.AutoFillProfileCleared;
     }
 
     private async Task AutoFillFromProfileAsync()
@@ -7700,8 +7698,8 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _status.Text = filled == 0
-            ? "AutoFill found no empty matching fields."
-            : $"AutoFill updated {filled} field(s).";
+            ? AnnotationMutationStatus.AutoFillNoEmptyFields
+            : AnnotationMutationStatus.FormatAutoFillUpdated(filled);
     }
 
     private async Task BeginFormOverlayModeAsync()
@@ -8507,7 +8505,7 @@ public sealed class PdfDocumentView : UserControl
             if (outcome.PagesFailed > 0)
             {
                 _status.Text =
-                    $"Flattened {outcome.PagesChanged} page(s); {outcome.PagesFailed} failed.";
+                    AnnotationMutationStatus.FormatFlattenedWithFailures(outcome.PagesChanged, outcome.PagesFailed);
             }
             else if (outcome.PagesChanged == 0)
             {
@@ -8515,9 +8513,7 @@ public sealed class PdfDocumentView : UserControl
             }
             else
             {
-                _status.Text = outcome.PagesChanged == 1
-                    ? "Flattened annotations on 1 page."
-                    : $"Flattened annotations on {outcome.PagesChanged} pages.";
+                _status.Text = AnnotationMutationStatus.FormatFlattenedAnnotations(outcome.PagesChanged);
             }
         }
         catch (Exception ex)
@@ -9362,7 +9358,7 @@ public sealed class PdfDocumentView : UserControl
             }
 
             _status.Text = _selectedAnnots.Count == 1
-                ? $"Selected {PdfAnnotationListLabel.Format(_selectedAnnot)}."
+                ? AnnotationMutationStatus.FormatSelectedAnnotation(PdfAnnotationListLabel.Format(_selectedAnnot))
                 : AnnotationMultiSelectPolicy.StatusAfterToggle(_selectedAnnots.Count);
         }
         else
@@ -9428,8 +9424,8 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _status.Text = _selectedAnnots.Count > 1
-            ? $"Selected {_selectedAnnots.Count} annotations. Drag to move together."
-            : $"Selected {PdfAnnotationListLabel.Format(hit)}. Drag to move; handles resize.";
+            ? AnnotationMutationStatus.FormatSelectedAnnotationsMoveTogether(_selectedAnnots.Count)
+            : AnnotationMutationStatus.FormatSelectedAnnotationDrag(PdfAnnotationListLabel.Format(hit));
     }
 
     private async Task GroupSelectedAnnotationsAsync()
@@ -9542,8 +9538,8 @@ public sealed class PdfDocumentView : UserControl
         SyncSidebarSelectionMulti();
         DrawAnnotSelection(hit);
         _status.Text = PdfAnnotationResize.IsEndpointHandle(handle)
-            ? $"Adjusting {PdfAnnotationListLabel.Format(hit)} endpoint…"
-            : $"Resizing {PdfAnnotationListLabel.Format(hit)}…";
+            ? AnnotationMutationStatus.FormatAdjustingEndpoint(PdfAnnotationListLabel.Format(hit))
+            : AnnotationMutationStatus.FormatResizing(PdfAnnotationListLabel.Format(hit));
     }
 
     private void ContinueAnnotDrag(Border border, PointerRoutedEventArgs e)
@@ -9668,8 +9664,8 @@ public sealed class PdfDocumentView : UserControl
             await RefreshAnnotationSidebarAsync();
             RestoreSelectionAfterRefresh(_selectedAnnot.PageIndex, _selectedAnnot.AnnotIndex, moved);
             _status.Text = _selectedAnnots.Count > 1
-                ? $"Moved {_selectedAnnots.Count} annotations."
-                : "Annotation moved.";
+                ? AnnotationMutationStatus.FormatMovedAnnotations(_selectedAnnots.Count)
+                : AnnotationMutationStatus.AnnotationMoved;
         }
         catch (Exception ex)
         {
@@ -10222,7 +10218,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = updated.IsUnderlined ? "Underline on." : "Underline off.";
+            _status.Text = updated.IsUnderlined ? AnnotationMutationStatus.UnderlineOn : AnnotationMutationStatus.UnderlineOff;
         }
         catch (Exception ex)
         {
@@ -10945,8 +10941,8 @@ public sealed class PdfDocumentView : UserControl
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
             _status.Text = toRemove.Count == 1
-                ? $"Deleted {PdfAnnotationListLabel.Format(toRemove[0])}."
-                : $"Deleted {toRemove.Count} annotations.";
+                ? AnnotationMutationStatus.FormatDeletedAnnotation(PdfAnnotationListLabel.Format(toRemove[0]))
+                : AnnotationMutationStatus.FormatDeletedAnnotations(toRemove.Count);
         }
         catch (Exception ex)
         {
@@ -12223,8 +12219,12 @@ public sealed class PdfDocumentView : UserControl
     {
         _gotoBox.Text = (CurrentPageIndex + 1).ToString();
         var encrypted = PdfDocumentPermissions.StatusBarEncryptedSuffix(_document.IsEncrypted);
-        _status.Text =
-            $"Page {CurrentPageIndex + 1} / {_document.PageCount}    Zoom {(int)Math.Round(_scale * 100)}%    {_layoutMode}{encrypted}";
+        _status.Text = AnnotationMutationStatus.FormatChromeStatus(
+            CurrentPageIndex + 1,
+            _document.PageCount,
+            (int)Math.Round(_scale * 100),
+            _layoutMode.ToString(),
+            encrypted);
     }
 
     private async Task PrintDocumentAsync()
@@ -12898,7 +12898,7 @@ public sealed class PdfDocumentView : UserControl
 
         _status.Text = info.IsEncrypted
             ? PdfDocumentPermissions.EncryptedAdvisoryStatus
-            : "Document info.";
+            : AnnotationMutationStatus.DocumentInfo;
     }
 
     /// <summary>File → Properties entry point (F48).</summary>
@@ -12926,7 +12926,7 @@ public sealed class PdfDocumentView : UserControl
         _toolbar.Visibility = _toolbar.Visibility == Visibility.Visible
             ? Visibility.Collapsed
             : Visibility.Visible;
-        _status.Text = _toolbar.Visibility == Visibility.Visible ? "Toolbar shown." : "Toolbar hidden.";
+        _status.Text = _toolbar.Visibility == Visibility.Visible ? AnnotationMutationStatus.ToolbarShown : AnnotationMutationStatus.ToolbarHidden;
     }
 
     public bool IsToolbarVisible => _toolbar?.Visibility != Visibility.Collapsed;

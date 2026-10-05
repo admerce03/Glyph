@@ -54,4 +54,45 @@ public static class AnnotationToolModeStatus
         "Crop mode — drag handles, Enter to apply, Esc to cancel.";
 
     public const string ExitedPresentation = "Exited presentation mode.";
+
+    public const string HighlightOnShort = "Highlight mode on — select text to highlight.";
+    public const string SelectTextThenMarkup = "Select text first, then apply markup.";
+    public const string Highlighting = "Highlighting…";
+    public const string Underlining = "Underlining…";
+    public const string StrikingThrough = "Striking through…";
+    public const string HighlightAddedContinue =
+        "Highlight added — select more text, or Esc to exit mode.";
+    public const string HighlightAdded = "Highlight added.";
+    public const string UnderlineAdded = "Underline added.";
+    public const string StrikethroughAdded = "Strikethrough added.";
+
+    public const string RectangleMode = "Rectangle mode — drag on the page.";
+    public const string RoundedRectangleMode = "Rounded rectangle mode — drag on the page.";
+    public const string AreaHighlightMode =
+        "Area highlight mode — drag a translucent rectangle.";
+    public const string EllipseMode = "Ellipse mode — drag on the page.";
+    public const string ArrowMode = "Arrow mode — drag from tail to tip.";
+    public const string StarMode = "Star mode — drag a bounding box for a 5-point star.";
+    public const string BubbleMode = "Bubble mode — drag a speech-bubble outline.";
+    public const string LoupeMode =
+        "Loupe mode — drag a circle; select it to see a magnified crop.";
+    public const string LineMode = "Line mode — drag on the page.";
+
+    public const string RectangleAdded = "Rectangle added.";
+    public const string RoundedRectangleAdded = "Rounded rectangle added.";
+    public const string AreaHighlightAdded = "Area highlight added.";
+    public const string EllipseAdded = "Ellipse added.";
+    public const string ArrowAdded = "Arrow added.";
+    public const string StarAdded = "Star added.";
+    public const string SpeechBubbleAdded = "Speech bubble added.";
+    public const string LoupeAdded = "Loupe added — select it to see magnification.";
+    public const string LineAdded = "Line added.";
+
+    public const string FreeformNeedsPoints = "Freeform needs at least three points.";
+    public const string InkStrokeTooShort = "Ink stroke too short.";
+
+    public static string FormatPolygonVertex(int count) =>
+        count < 3
+            ? $"Polygon vertex {count} — need at least 3."
+            : $"Polygon vertex {count} — Enter to close, or click near first vertex.";
 }

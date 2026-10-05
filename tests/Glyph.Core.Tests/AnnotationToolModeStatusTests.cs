@@ -28,5 +28,9 @@ public class AnnotationToolModeStatusTests
         AnnotationToolModeStatus.MagnifierOn.Should().Contain("Esc");
         AnnotationToolModeStatus.CropOn.Should().Contain("Enter");
         AnnotationToolModeStatus.ExitedPresentation.Should().Contain("presentation");
+        AnnotationToolModeStatus.RectangleMode.Should().Contain("Rectangle");
+        AnnotationToolModeStatus.HighlightAdded.Should().Be("Highlight added.");
+        AnnotationToolModeStatus.FormatPolygonVertex(1).Should().Contain("need at least 3");
+        AnnotationToolModeStatus.FormatPolygonVertex(4).Should().Contain("Enter to close");
     }
 }
