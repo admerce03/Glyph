@@ -432,6 +432,46 @@ public sealed class MagickImageProcessor : IImageProcessor
         image.Clut(clut);
     }
 
+    public Task FlattenMarkupAsync(
+        IImageDocument document,
+        IReadOnlyList<ImageMarkupStroke> strokes,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(strokes);
+        var magick = RequireMagick(document);
+        if (strokes.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                foreach (var stroke in strokes)
+                {
+                    if (stroke.Points.Count < 2)
+                    {
+                        continue;
+                    }
+
+                    var color = MagickColor.FromRgba(stroke.R, stroke.G, stroke.B, stroke.A);
+                    var coords = stroke.Points
+                        .Select(p => new PointD(p.X, p.Y))
+                        .ToArray();
+                    new Drawables()
+                        .StrokeColor(color)
+                        .StrokeWidth(stroke.WidthPixels)
+                        .StrokeLineCap(LineCap.Round)
+                        .StrokeLineJoin(LineJoin.Round)
+                        .FillColor(MagickColors.Transparent)
+                        .Polyline(coords)
+                        .Draw(magick.Native);
+                }
+            },
+            cancellationToken);
+    }
+
     private static MagickImageDocument RequireMagick(IImageDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);

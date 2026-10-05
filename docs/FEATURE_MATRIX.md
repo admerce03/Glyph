@@ -527,17 +527,17 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F33-14 | Image color adjustments | Reset all | M5 | Implemented | Adjust dialog Reset |
 | F33-15 | Image color adjustments | live preview | M5 | Not Started |  |
 | F33-16 | Image color adjustments | histogram | M5 | Not Started |  |
-| F34-01 | Image markup | mouse drawing | M5 | Not Started |  |
+| F34-01 | Image markup | mouse drawing | M5 | Tested | Draw toolbar → non-destructive overlay; Flatten / Save bakes via `FlattenMarkupAsync` |
 | F34-02 | Image markup | shapes | M5 | Not Started |  |
 | F34-03 | Image markup | arrows | M5 | Not Started |  |
 | F34-04 | Image markup | text | M5 | Not Started |  |
 | F34-05 | Image markup | callouts | M5 | Not Started |  |
 | F34-06 | Image markup | signatures | M5 | Not Started |  |
-| F34-07 | Image markup | selection | M5 | Not Started |  |
-| F34-08 | Image markup | crop | M5 | Not Started |  |
-| F34-09 | Image markup | rotate | M5 | Not Started |  |
-| F34-10 | Image markup | Save/export to a flat image format, or | M5 | Not Started |  |
-| F34-11 | Image markup | user explicitly flattens. | M5 | Not Started |  |
+| F34-07 | Image markup | selection | M5 | Implemented | Reuses Select / F28 tools while drawing remains overlay |
+| F34-08 | Image markup | crop | M5 | Implemented | Reuses Crop… / Crop sel |
+| F34-09 | Image markup | rotate | M5 | Implemented | Reuses rotate L/R/180 toolbar |
+| F34-10 | Image markup | Save/export to a flat image format, or | M5 | Implemented | Save/Export prompts to flatten pending strokes |
+| F34-11 | Image markup | user explicitly flattens. | M5 | Tested | Flatten toolbar → `FlattenMarkupAsync` |
 | F35-01 | Image format conversion | PNG | M5 | Tested | MagickImageEncoder → PNG |
 | F35-02 | Image format conversion | JPEG | M5 | Tested | →JPEG toolbar + SaveAsAsync |
 | F35-03 | Image format conversion | WebP | M5 | Tested | Convert dialog → WebP |

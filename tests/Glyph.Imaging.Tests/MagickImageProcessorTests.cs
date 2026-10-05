@@ -132,6 +132,37 @@ public class MagickImageProcessorTests
     }
 
     [Fact]
+    public async Task Flatten_markup_stroke_keeps_dimensions()
+    {
+        var path = CreateSolidPng(40, 30);
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            await using var document = await decoder.OpenAsync(path);
+
+            var stroke = new ImageMarkupStroke(
+                [
+                    new ImageMarkupPoint(2, 2),
+                    new ImageMarkupPoint(20, 10),
+                    new ImageMarkupPoint(35, 25),
+                ],
+                a: 255,
+                r: 255,
+                g: 0,
+                b: 0,
+                widthPixels: 2);
+            await processor.FlattenMarkupAsync(document, [stroke]);
+            document.PixelWidth.Should().Be(40);
+            document.PixelHeight.Should().Be(30);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Ellipse_extract_clears_corners_to_transparent()
     {
         var path = CreateSolidPng(40, 30);

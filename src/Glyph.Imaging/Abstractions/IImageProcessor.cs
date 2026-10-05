@@ -71,6 +71,14 @@ public interface IImageProcessor
         int destinationY,
         ImageSelectionKind kind = ImageSelectionKind.Rectangle,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Bakes freehand markup strokes into pixel data (document pixel space).
+    /// </summary>
+    Task FlattenMarkupAsync(
+        IImageDocument document,
+        IReadOnlyList<ImageMarkupStroke> strokes,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

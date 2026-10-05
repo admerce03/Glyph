@@ -26,6 +26,7 @@ public sealed class ImageDocumentView : UserControl
     private readonly Grid _imageSurface;
     private readonly Image _image;
     private readonly Canvas _cropOverlay;
+    private readonly Canvas _markupOverlay;
     private readonly Rectangle _cropRect;
     private readonly Ellipse _selectionEllipse;
     private readonly ComboBox _selectionKindBox;
@@ -48,18 +49,23 @@ public sealed class ImageDocumentView : UserControl
     private readonly Button _pasteSelButton;
     private readonly Button _deleteSelButton;
     private readonly Button _cropSelButton;
+    private readonly Button _drawButton;
+    private readonly Button _flattenMarkupButton;
     private ImageSelectionKind _selectionKind = ImageSelectionKind.Rectangle;
     private IReadOnlyList<string> _siblings = Array.Empty<string>();
     private DispatcherTimer? _slideshowTimer;
     private readonly List<IImageEditCheckpoint> _editUndoStack = [];
+    private readonly List<ImageMarkupStroke> _markupStrokes = [];
     private const int MaxEditUndo = 12;
     private double _zoom = 1.0;
     private bool _loaded;
     private bool _syncingList;
     private bool _cropMode;
     private bool _selectionMode;
+    private bool _drawMode;
     private bool _cropDragging;
     private bool _selectionMoving;
+    private bool _drawDragging;
     private Windows.Foundation.Point _cropStart;
     private Windows.Foundation.Point _moveStart;
     private double _moveOriginLeft;
@@ -69,6 +75,10 @@ public sealed class ImageDocumentView : UserControl
     private Windows.Foundation.Point _navStart;
     private ImageRect? _pixelSelection;
     private ImagePixelBuffer? _selectionClipboard;
+    private readonly List<Windows.Foundation.Point> _drawPoints = [];
+    private Polyline? _activeDrawPolyline;
+    private Windows.UI.Color _drawColor = Windows.UI.Color.FromArgb(255, 220, 20, 60);
+    private double _drawWidthPixels = 3;
     private int _displayWidth;
     private int _displayHeight;
 
@@ -116,8 +126,13 @@ public sealed class ImageDocumentView : UserControl
         };
         _cropOverlay.Children.Add(_cropRect);
         _cropOverlay.Children.Add(_selectionEllipse);
+        _markupOverlay = new Canvas
+        {
+            IsHitTestVisible = false,
+        };
         _imageSurface = new Grid();
         _imageSurface.Children.Add(_image);
+        _imageSurface.Children.Add(_markupOverlay);
         _imageSurface.Children.Add(_cropOverlay);
         _scrollViewer = new ScrollViewer
         {
@@ -182,6 +197,8 @@ public sealed class ImageDocumentView : UserControl
         _pasteSelButton = new Button { Content = "Paste", Visibility = Visibility.Collapsed };
         _deleteSelButton = new Button { Content = "Del sel", Visibility = Visibility.Collapsed };
         _cropSelButton = new Button { Content = "Crop sel", Visibility = Visibility.Collapsed };
+        _drawButton = new Button { Content = "Draw" };
+        _flattenMarkupButton = new Button { Content = "Flatten", Visibility = Visibility.Collapsed };
         ToolTipService.SetToolTip(_selectButton, "Pixel selection (drag on image; drag inside to move; arrow keys nudge)");
         ToolTipService.SetToolTip(_selectionKindBox, "Selection shape: rectangle or ellipse");
         ToolTipService.SetToolTip(_selectAllButton, "Select entire image");
@@ -191,6 +208,8 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(_pasteSelButton, "Paste at selection top-left (or 0,0)");
         ToolTipService.SetToolTip(_deleteSelButton, "Clear selection to transparent");
         ToolTipService.SetToolTip(_cropSelButton, "Crop image to selection");
+        ToolTipService.SetToolTip(_drawButton, "Freehand markup (non-destructive overlay until Flatten/Save)");
+        ToolTipService.SetToolTip(_flattenMarkupButton, "Bake markup strokes into pixels");
         var resize = new Button { Content = "Resize" };
         var adjust = new Button { Content = "Adjust" };
         var meta = new Button { Content = "Meta" };
@@ -256,6 +275,8 @@ public sealed class ImageDocumentView : UserControl
         _pasteSelButton.Click += async (_, _) => await PasteSelectionAsync();
         _deleteSelButton.Click += async (_, _) => await DeleteSelectionAsync();
         _cropSelButton.Click += async (_, _) => await CropToSelectionAsync();
+        _drawButton.Click += async (_, _) => await ToggleDrawModeAsync();
+        _flattenMarkupButton.Click += async (_, _) => await FlattenMarkupAsync();
         resize.Click += async (_, _) => await ResizeAsync();
         adjust.Click += async (_, _) => await AdjustAsync();
         meta.Click += async (_, _) => await ShowMetadataAsync();
@@ -282,7 +303,12 @@ public sealed class ImageDocumentView : UserControl
         {
             _cropDragging = false;
             _selectionMoving = false;
+            _drawDragging = false;
         };
+        _markupOverlay.PointerPressed += MarkupOverlay_PointerPressed;
+        _markupOverlay.PointerMoved += MarkupOverlay_PointerMoved;
+        _markupOverlay.PointerReleased += MarkupOverlay_PointerReleased;
+        _markupOverlay.PointerCaptureLost += (_, _) => _drawDragging = false;
 
         var toolbar = new StackPanel
         {
@@ -294,6 +320,7 @@ public sealed class ImageDocumentView : UserControl
                 _prevButton, _nextButton, _slideshowButton, _undoButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
                 _cropBox, crop, _interactiveCropButton, _cropAspectBox, _applyCropButton, _cancelCropButton,
                 _selectButton, _selectionKindBox, _selectAllButton, _deselectButton, _copySelButton, _cutSelButton, _pasteSelButton, _deleteSelButton, _cropSelButton,
+                _drawButton, _flattenMarkupButton,
                 resize, adjust, meta, ocrButton, save, exportPng, exportJpeg, convert, _status,
             },
         };
@@ -441,7 +468,7 @@ public sealed class ImageDocumentView : UserControl
 
     private void ImageSurface_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        if (_cropMode || _selectionMode || e.GetCurrentPoint(_scrollViewer).Properties.IsRightButtonPressed)
+        if (_cropMode || _selectionMode || _drawMode || e.GetCurrentPoint(_scrollViewer).Properties.IsRightButtonPressed)
         {
             return;
         }
@@ -588,6 +615,14 @@ public sealed class ImageDocumentView : UserControl
     {
         if (e.Key == Windows.System.VirtualKey.Escape)
         {
+            if (_drawMode)
+            {
+                ExitDrawMode();
+                _status.Text = "Draw mode off.";
+                e.Handled = true;
+                return;
+            }
+
             if (_selectionMode)
             {
                 ExitSelectionMode(keepSelection: false);
@@ -609,7 +644,15 @@ public sealed class ImageDocumentView : UserControl
             .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
         if (ctrl && e.Key == Windows.System.VirtualKey.Z)
         {
-            _ = UndoEditAsync();
+            if (_markupStrokes.Count > 0)
+            {
+                UndoMarkupStroke();
+            }
+            else
+            {
+                _ = UndoEditAsync();
+            }
+
             e.Handled = true;
             return;
         }
@@ -878,9 +921,12 @@ public sealed class ImageDocumentView : UserControl
         _displayHeight = buffer.Height;
         _cropOverlay.Width = buffer.Width;
         _cropOverlay.Height = buffer.Height;
+        _markupOverlay.Width = buffer.Width;
+        _markupOverlay.Height = buffer.Height;
         _imageSurface.Width = buffer.Width;
         _imageSurface.Height = buffer.Height;
         _viewState.Zoom = _zoom;
+        RebuildMarkupOverlay();
         if (_cropMode)
         {
             ClearCropSelection();
@@ -922,6 +968,11 @@ public sealed class ImageDocumentView : UserControl
 
     private void EnterCropMode()
     {
+        if (_drawMode)
+        {
+            ExitDrawMode();
+        }
+
         if (_selectionMode)
         {
             ExitSelectionMode(keepSelection: true);
@@ -968,6 +1019,11 @@ public sealed class ImageDocumentView : UserControl
         if (_cropMode)
         {
             ExitCropMode();
+        }
+
+        if (_drawMode)
+        {
+            ExitDrawMode();
         }
 
         _selectionMode = true;
@@ -1968,6 +2024,11 @@ public sealed class ImageDocumentView : UserControl
     {
         try
         {
+            if (!await EnsureMarkupFlattenedAsync())
+            {
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(_document.Path))
             {
                 await ExportAsync(ImageEncodeFormat.Png, ".png");
@@ -1987,6 +2048,11 @@ public sealed class ImageDocumentView : UserControl
     {
         try
         {
+            if (!await EnsureMarkupFlattenedAsync())
+            {
+                return;
+            }
+
             var window = App.CurrentApp.MainWindowInstance
                 ?? throw new InvalidOperationException("Main window unavailable for save picker.");
             var picker = new Windows.Storage.Pickers.FileSavePicker();
@@ -2011,6 +2077,263 @@ public sealed class ImageDocumentView : UserControl
         }
     }
 
+    private async Task<bool> EnsureMarkupFlattenedAsync()
+    {
+        if (_markupStrokes.Count == 0)
+        {
+            return true;
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = "Flatten markup?",
+            Content = $"{_markupStrokes.Count} markup stroke(s) will be baked into pixels before saving.",
+            PrimaryButtonText = "Flatten & continue",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            _status.Text = "Save cancelled — markup still on overlay.";
+            return false;
+        }
+
+        await FlattenMarkupAsync();
+        return true;
+    }
+
+    private async Task ToggleDrawModeAsync()
+    {
+        if (_drawMode)
+        {
+            ExitDrawMode();
+            _status.Text = "Draw mode off.";
+            return;
+        }
+
+        if (_cropMode)
+        {
+            ExitCropMode();
+        }
+
+        if (_selectionMode)
+        {
+            ExitSelectionMode(keepSelection: false);
+        }
+
+        var widthSlider = new Slider
+        {
+            Header = "Stroke width (px)",
+            Minimum = 1,
+            Maximum = 32,
+            Value = _drawWidthPixels,
+            StepFrequency = 1,
+            Width = 240,
+        };
+        var colorBox = new ComboBox
+        {
+            Header = "Color",
+            Width = 200,
+            ItemsSource = new[] { "Red", "Black", "White", "Yellow", "Blue", "Green" },
+            SelectedIndex = 0,
+        };
+        var panel = new StackPanel { Spacing = 8, Children = { colorBox, widthSlider } };
+        var dialog = new ContentDialog
+        {
+            Title = "Draw markup",
+            Content = panel,
+            PrimaryButtonText = "Start drawing",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        _drawColor = (colorBox.SelectedItem as string) switch
+        {
+            "Black" => Windows.UI.Color.FromArgb(255, 0, 0, 0),
+            "White" => Windows.UI.Color.FromArgb(255, 255, 255, 255),
+            "Yellow" => Windows.UI.Color.FromArgb(255, 255, 215, 0),
+            "Blue" => Windows.UI.Color.FromArgb(255, 30, 144, 255),
+            "Green" => Windows.UI.Color.FromArgb(255, 34, 139, 34),
+            _ => Windows.UI.Color.FromArgb(255, 220, 20, 60),
+        };
+        _drawWidthPixels = widthSlider.Value;
+        _drawMode = true;
+        _markupOverlay.IsHitTestVisible = true;
+        _drawButton.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(60, 220, 20, 60));
+        UpdateFlattenButtonVisibility();
+        _status.Text = "Draw mode — drag to ink (Esc exits; Ctrl+Z undoes stroke).";
+    }
+
+    private void ExitDrawMode()
+    {
+        _drawMode = false;
+        _drawDragging = false;
+        _drawPoints.Clear();
+        if (_activeDrawPolyline is not null)
+        {
+            _markupOverlay.Children.Remove(_activeDrawPolyline);
+            _activeDrawPolyline = null;
+        }
+
+        _markupOverlay.IsHitTestVisible = false;
+        _drawButton.Background = null;
+        UpdateFlattenButtonVisibility();
+    }
+
+    private void UpdateFlattenButtonVisibility() =>
+        _flattenMarkupButton.Visibility = _markupStrokes.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+    private async Task FlattenMarkupAsync()
+    {
+        if (_markupStrokes.Count == 0)
+        {
+            _status.Text = "No markup strokes to flatten.";
+            return;
+        }
+
+        var snapshot = _markupStrokes.ToList();
+        await MutateAsync(
+            () => _processor.FlattenMarkupAsync(_document, snapshot),
+            $"Flattened {snapshot.Count} markup stroke(s).");
+        _markupStrokes.Clear();
+        RebuildMarkupOverlay();
+        UpdateFlattenButtonVisibility();
+        if (_drawMode)
+        {
+            // Stay in draw mode with empty overlay.
+        }
+    }
+
+    private void UndoMarkupStroke()
+    {
+        if (_markupStrokes.Count == 0)
+        {
+            return;
+        }
+
+        _markupStrokes.RemoveAt(_markupStrokes.Count - 1);
+        RebuildMarkupOverlay();
+        UpdateFlattenButtonVisibility();
+        _status.Text = _markupStrokes.Count == 0
+            ? "Markup stroke undone."
+            : $"Markup stroke undone ({_markupStrokes.Count} left).";
+    }
+
+    private void RebuildMarkupOverlay()
+    {
+        _markupOverlay.Children.Clear();
+        _activeDrawPolyline = null;
+        if (_displayWidth <= 0 || _document.PixelWidth <= 0)
+        {
+            return;
+        }
+
+        var scaleX = _displayWidth / (double)_document.PixelWidth;
+        var scaleY = _displayHeight / (double)_document.PixelHeight;
+        foreach (var stroke in _markupStrokes)
+        {
+            var poly = new Polyline
+            {
+                Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(stroke.A, stroke.R, stroke.G, stroke.B)),
+                StrokeThickness = Math.Max(1, stroke.WidthPixels * ((scaleX + scaleY) / 2.0)),
+                Fill = null,
+                IsHitTestVisible = false,
+            };
+            foreach (var p in stroke.Points)
+            {
+                poly.Points.Add(new Windows.Foundation.Point(p.X * scaleX, p.Y * scaleY));
+            }
+
+            _markupOverlay.Children.Add(poly);
+        }
+    }
+
+    private void MarkupOverlay_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_drawMode)
+        {
+            return;
+        }
+
+        _drawDragging = true;
+        _drawPoints.Clear();
+        var point = e.GetCurrentPoint(_markupOverlay).Position;
+        _drawPoints.Add(point);
+        var scale = _displayWidth > 0 && _document.PixelWidth > 0
+            ? (_displayWidth / (double)_document.PixelWidth)
+            : 1.0;
+        _activeDrawPolyline = new Polyline
+        {
+            Stroke = new SolidColorBrush(_drawColor),
+            StrokeThickness = Math.Max(1, _drawWidthPixels * scale),
+            Fill = null,
+            IsHitTestVisible = false,
+        };
+        _activeDrawPolyline.Points.Add(point);
+        _markupOverlay.Children.Add(_activeDrawPolyline);
+        _markupOverlay.CapturePointer(e.Pointer);
+        e.Handled = true;
+    }
+
+    private void MarkupOverlay_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_drawDragging || _activeDrawPolyline is null)
+        {
+            return;
+        }
+
+        var point = e.GetCurrentPoint(_markupOverlay).Position;
+        _drawPoints.Add(point);
+        _activeDrawPolyline.Points.Add(point);
+        e.Handled = true;
+    }
+
+    private void MarkupOverlay_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_drawDragging)
+        {
+            return;
+        }
+
+        _drawDragging = false;
+        try { _markupOverlay.ReleasePointerCapture(e.Pointer); } catch { /* ignore */ }
+        if (_drawPoints.Count >= 2
+            && _displayWidth > 0
+            && _displayHeight > 0
+            && _document.PixelWidth > 0
+            && _document.PixelHeight > 0)
+        {
+            var scaleX = _document.PixelWidth / (double)_displayWidth;
+            var scaleY = _document.PixelHeight / (double)_displayHeight;
+            var docPoints = _drawPoints
+                .Select(p => new ImageMarkupPoint(p.X * scaleX, p.Y * scaleY))
+                .ToList();
+            _markupStrokes.Add(new ImageMarkupStroke(
+                docPoints,
+                _drawColor.A,
+                _drawColor.R,
+                _drawColor.G,
+                _drawColor.B,
+                _drawWidthPixels));
+            UpdateFlattenButtonVisibility();
+            _status.Text = $"Markup stroke added ({_markupStrokes.Count} total).";
+        }
+        else if (_activeDrawPolyline is not null)
+        {
+            _markupOverlay.Children.Remove(_activeDrawPolyline);
+        }
+
+        _activeDrawPolyline = null;
+        _drawPoints.Clear();
+        e.Handled = true;
+    }
+
     private void UpdateStatus()
     {
         var baseStatus =
@@ -2022,6 +2345,11 @@ public sealed class ImageDocumentView : UserControl
             {
                 baseStatus += $" · {index + 1}/{_siblings.Count}";
             }
+        }
+
+        if (_markupStrokes.Count > 0)
+        {
+            baseStatus += $" · {_markupStrokes.Count} markup";
         }
 
         _status.Text = baseStatus;
