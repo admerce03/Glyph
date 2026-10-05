@@ -168,6 +168,8 @@ public sealed class PdfDocumentView : UserControl
     private readonly List<(PdfAnnotationInfo Info, PdfRect OriginBounds)> _multiDragOrigins = [];
     private bool _annotDragging;
     private PdfRect _annotDragOriginBounds;
+    private PdfPagePoint _annotDragOriginEndpointA;
+    private PdfPagePoint _annotDragOriginEndpointB;
     private Windows.Foundation.Point _annotDragOriginUi;
     private string? _annotResizeHandle;
     private Microsoft.UI.Xaml.Shapes.Rectangle? _annotSelectionRect;
@@ -7931,12 +7933,16 @@ public sealed class PdfDocumentView : UserControl
         _annotDragging = true;
         _annotResizeHandle = handle;
         _annotDragOriginBounds = hit.Bounds;
+        _annotDragOriginEndpointA = hit.EndpointA ?? new PdfPagePoint(hit.Bounds.Left, hit.Bounds.Bottom);
+        _annotDragOriginEndpointB = hit.EndpointB ?? new PdfPagePoint(hit.Bounds.Right, hit.Bounds.Top);
         _annotDragOriginUi = uiPoint;
         _multiDragOrigins.Clear();
         border.CapturePointer(e.Pointer);
         SyncSidebarSelectionMulti();
         DrawAnnotSelection(hit);
-        _status.Text = $"Resizing {FormatAnnotationLabel(hit)}…";
+        _status.Text = PdfAnnotationResize.IsEndpointHandle(handle)
+            ? $"Adjusting {FormatAnnotationLabel(hit)} endpoint…"
+            : $"Resizing {FormatAnnotationLabel(hit)}…";
     }
 
     private void ContinueAnnotDrag(Border border, PointerRoutedEventArgs e)
@@ -7973,6 +7979,29 @@ public sealed class PdfDocumentView : UserControl
         var current = e.GetCurrentPoint(border).Position;
         var dx = (current.X - _annotDragOriginUi.X) / _scale;
         var dy = (_annotDragOriginUi.Y - current.Y) / _scale;
+        if (PdfAnnotationResize.IsEndpointHandle(_annotResizeHandle)
+            && _selectedAnnot.UsesEndpointHandles)
+        {
+            var (a, b) = PdfAnnotationResize.ComputeEndpoints(
+                _annotDragOriginEndpointA,
+                _annotDragOriginEndpointB,
+                _annotResizeHandle,
+                dx,
+                dy);
+            var previewBounds = new PdfRect(
+                Math.Min(a.X, b.X),
+                Math.Min(a.Y, b.Y),
+                Math.Max(a.X, b.X),
+                Math.Max(a.Y, b.Y));
+            DrawAnnotSelection(_selectedAnnot with
+            {
+                Bounds = previewBounds,
+                EndpointA = a,
+                EndpointB = b,
+            });
+            return;
+        }
+
         var resized = PdfAnnotationResize.ComputeBounds(_annotDragOriginBounds, _annotResizeHandle, dx, dy);
         DrawAnnotSelection(_selectedAnnot with { Bounds = resized });
     }
@@ -8070,6 +8099,40 @@ public sealed class PdfDocumentView : UserControl
 
         var dx = dxUi / _scale;
         var dy = -dyUi / _scale;
+        if (PdfAnnotationResize.IsEndpointHandle(handle) && _selectedAnnot.UsesEndpointHandles)
+        {
+            var (a, b) = PdfAnnotationResize.ComputeEndpoints(
+                _annotDragOriginEndpointA,
+                _annotDragOriginEndpointB,
+                handle,
+                dx,
+                dy);
+            try
+            {
+                _status.Text = "Updating line endpoints…";
+                var updated = await _annotations.SetLineEndpointsAsync(
+                    _document,
+                    _selectedAnnot.PageIndex,
+                    _selectedAnnot.AnnotIndex,
+                    a,
+                    b);
+                _cache.ClearDocument(_documentKey);
+                _cache.ClearDocument(_thumbnailKey);
+                await RenderVisibleAsync();
+                await RenderThumbnailsAsync();
+                await RefreshAnnotationSidebarAsync();
+                RestoreSelectionAfterRefresh(updated.PageIndex, updated.AnnotIndex, updated.Bounds);
+                _status.Text = "Line endpoints updated.";
+            }
+            catch (Exception ex)
+            {
+                DrawAnnotSelection(_selectedAnnot);
+                _status.Text = "Endpoint adjust failed: " + ex.Message;
+            }
+
+            return;
+        }
+
         var resized = PdfAnnotationResize.ComputeBounds(_annotDragOriginBounds, handle, dx, dy);
 
         try
@@ -8116,6 +8179,15 @@ public sealed class PdfDocumentView : UserControl
         PdfAnnotationInfo info,
         IPdfPage page)
     {
+        if (info.UsesEndpointHandles
+            && info.EndpointA is { } a
+            && info.EndpointB is { } b)
+        {
+            yield return ("p0", a.X * _scale, (page.HeightPoints - a.Y) * _scale);
+            yield return ("p1", b.X * _scale, (page.HeightPoints - b.Y) * _scale);
+            yield break;
+        }
+
         var left = info.Bounds.Left * _scale;
         var top = (page.HeightPoints - info.Bounds.Top) * _scale;
         var right = info.Bounds.Right * _scale;

@@ -2061,6 +2061,14 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                             "1",
                             StringComparison.Ordinal);
 
+                    PdfPagePoint? endpointA = null;
+                    PdfPagePoint? endpointB = null;
+                    if (TryParseLineEndpoints(PdfiumAnnotStrings.GetString(annot, GlyphLineEndsKey), out var ea, out var eb))
+                    {
+                        endpointA = ea;
+                        endpointB = eb;
+                    }
+
                     results.Add(new PdfAnnotationInfo(
                         pageIndex,
                         i,
@@ -2076,7 +2084,9 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                         isCallout,
                         author,
                         groupId,
-                        isUnderlined));
+                        isUnderlined,
+                        endpointA,
+                        endpointB));
                 }
                 finally
                 {
@@ -2199,7 +2209,14 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             borderWidthPoints,
             contents,
             cancellationToken);
-        return created with { ShapeKind = PdfShapeKind.Line, IsInk = true };
+        await PersistLineEndpointsAsync(document, pageIndex, created.AnnotIndex, start, end, cancellationToken);
+        return created with
+        {
+            ShapeKind = PdfShapeKind.Line,
+            IsInk = true,
+            EndpointA = start,
+            EndpointB = end,
+        };
     }
 
     private async Task<PdfAnnotationInfo> AddStarAsInkAsync(
@@ -2272,7 +2289,14 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             borderWidthPoints,
             contents,
             cancellationToken);
-        return created with { ShapeKind = PdfShapeKind.Arrow, IsInk = true };
+        await PersistLineEndpointsAsync(document, pageIndex, created.AnnotIndex, start, end, cancellationToken);
+        return created with
+        {
+            ShapeKind = PdfShapeKind.Arrow,
+            IsInk = true,
+            EndpointA = start,
+            EndpointB = end,
+        };
     }
 
     private static string FormatArrowContents(PdfArrowheadStyle head, PdfInkLineStyle line)
@@ -2528,17 +2552,172 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             _ => null,
         };
 
-    private static PdfShapeKind? FromInkShapeContents(string? contents) =>
-        contents switch
+    private static PdfShapeKind? FromInkShapeContents(string? contents)
+    {
+        if (string.IsNullOrEmpty(contents))
         {
-            "Line" => PdfShapeKind.Line,
-            "Arrow" => PdfShapeKind.Arrow,
+            return null;
+        }
+
+        if (contents.Equals("Line", StringComparison.Ordinal)
+            || contents.StartsWith("Line|", StringComparison.Ordinal))
+        {
+            return PdfShapeKind.Line;
+        }
+
+        if (contents.Equals("Arrow", StringComparison.Ordinal)
+            || contents.StartsWith("Arrow|", StringComparison.Ordinal))
+        {
+            return PdfShapeKind.Arrow;
+        }
+
+        return contents switch
+        {
             "Freeform" => PdfShapeKind.Freeform,
             "Star" => PdfShapeKind.Star,
             "Polygon" => PdfShapeKind.Polygon,
             "SpeechBubble" => PdfShapeKind.SpeechBubble,
             _ => null,
         };
+    }
+
+    private const string GlyphLineEndsKey = "GlyphLineEnds";
+
+    private static string FormatLineEndpoints(PdfPagePoint start, PdfPagePoint end) =>
+        string.Create(
+            System.Globalization.CultureInfo.InvariantCulture,
+            $"{start.X:0.###},{start.Y:0.###},{end.X:0.###},{end.Y:0.###}");
+
+    private static bool TryParseLineEndpoints(string? raw, out PdfPagePoint start, out PdfPagePoint end)
+    {
+        start = default;
+        end = default;
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return false;
+        }
+
+        var parts = raw.Split(',');
+        if (parts.Length != 4)
+        {
+            return false;
+        }
+
+        if (!double.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var x1)
+            || !double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var y1)
+            || !double.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var x2)
+            || !double.TryParse(parts[3], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var y2))
+        {
+            return false;
+        }
+
+        start = new PdfPagePoint(x1, y1);
+        end = new PdfPagePoint(x2, y2);
+        return true;
+    }
+
+    private Task PersistLineEndpointsAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        PdfPagePoint start,
+        PdfPagePoint end,
+        CancellationToken cancellationToken) =>
+        MutateAnnotAsync(
+            document,
+            pageIndex,
+            annotIndex,
+            cancellationToken,
+            annot =>
+            {
+                if (!PdfiumAnnotStrings.SetString(annot, GlyphLineEndsKey, FormatLineEndpoints(start, end)))
+                {
+                    throw new InvalidOperationException("Failed to set GlyphLineEnds.");
+                }
+            });
+
+    private static void ParseLineOrArrowStyle(
+        string? contents,
+        out PdfShapeKind kind,
+        out PdfInkLineStyle lineStyle,
+        out PdfArrowheadStyle arrowhead)
+    {
+        kind = PdfShapeKind.Line;
+        lineStyle = PdfInkLineStyle.Solid;
+        arrowhead = PdfArrowheadStyle.Open;
+        if (string.IsNullOrEmpty(contents))
+        {
+            return;
+        }
+
+        if (contents.Equals("Arrow", StringComparison.Ordinal)
+            || contents.StartsWith("Arrow|", StringComparison.Ordinal))
+        {
+            kind = PdfShapeKind.Arrow;
+            var parts = contents.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (var part in parts.Skip(1))
+            {
+                if (Enum.TryParse<PdfArrowheadStyle>(part, ignoreCase: true, out var head))
+                {
+                    arrowhead = head;
+                }
+                else if (Enum.TryParse<PdfInkLineStyle>(part, ignoreCase: true, out var line))
+                {
+                    lineStyle = line;
+                }
+            }
+
+            return;
+        }
+
+        if (contents.Equals("Line", StringComparison.Ordinal)
+            || contents.StartsWith("Line|", StringComparison.Ordinal))
+        {
+            kind = PdfShapeKind.Line;
+            var parts = contents.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (parts.Length > 1 && Enum.TryParse<PdfInkLineStyle>(parts[1], ignoreCase: true, out var line))
+            {
+                lineStyle = line;
+            }
+        }
+    }
+
+    public async Task<PdfAnnotationInfo> SetLineEndpointsAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        PdfPagePoint start,
+        PdfPagePoint end,
+        CancellationToken cancellationToken = default)
+    {
+        var listed = await ListAsync(document, pageIndex, cancellationToken).ConfigureAwait(false);
+        var existing = listed.FirstOrDefault(a => a.AnnotIndex == annotIndex)
+            ?? throw new ArgumentOutOfRangeException(nameof(annotIndex), "Annotation not found.");
+        if (existing.ShapeKind is not (PdfShapeKind.Line or PdfShapeKind.Arrow))
+        {
+            throw new NotSupportedException("SetLineEndpointsAsync requires a line or arrow shape.");
+        }
+
+        ParseLineOrArrowStyle(existing.Contents, out var kind, out var lineStyle, out var arrowhead);
+        var color = existing.Color ?? new PdfAnnotationColor(40, 40, 40);
+        var width = await GetBorderWidthAsync(document, pageIndex, annotIndex, cancellationToken).ConfigureAwait(false)
+            ?? 1.5f;
+
+        await RemoveAsync(document, pageIndex, annotIndex, cancellationToken).ConfigureAwait(false);
+
+        var bounds = new PdfRect(start.X, start.Y, end.X, end.Y);
+        return await AddShapeAsync(
+            document,
+            pageIndex,
+            kind,
+            bounds,
+            color,
+            fillColor: null,
+            borderWidthPoints: width,
+            inkLineStyle: lineStyle,
+            arrowheadStyle: arrowhead,
+            cancellationToken).ConfigureAwait(false);
+    }
 
     private static string FormatPdfDate(DateTimeOffset value) =>
         "D:" + value.ToString("yyyyMMddHHmmss");

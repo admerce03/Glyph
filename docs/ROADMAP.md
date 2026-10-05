@@ -192,7 +192,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Annotation sidebar lists text markup; click jumps to page; Delete removes selected markup.
 - Sticky notes: `AddStickyNoteAsync` + Note toolbar dialog (text + color presets); Contents/color/move APIs; Sidebar Edit → `SetContentsAsync`; notes appear in sidebar; Expand/Collapse popup overlay; Export notes → printable text listing (`PdfNotesExport`).
 - Freehand ink: `AddInkAsync` + Ink draw mode on page surface (stroke color + width picker); listed in annotation sidebar; Ctrl+Z undoes last ink/freeform/polygon stroke; smart drawing (`PdfStrokeShapeRecognizer`) offers cleaned line/rect/ellipse/triangle after ink/freeform.
-- Shapes: `AddShapeAsync` for rectangle/ellipse (Square/Circle), line, arrow, star, and speech bubble (ink strokes; arrow adds head wings; star is a closed 5-point path; bubble is body+pointer outline); Rect/Ellipse/Line/Arrow/Star/Bubble draw modes with border/fill color and width picker.
+- Shapes: `AddShapeAsync` for rectangle/ellipse (Square/Circle), line, arrow, star, and speech bubble (ink strokes; arrow adds head wings; star is a closed 5-point path; bubble is body+pointer outline); Rect/Ellipse/Line/Arrow/Star/Bubble draw modes with border/fill color and width picker; line/arrow selection uses endpoint handles (`SetLineEndpointsAsync`).
 - Freeform: `AddFreeformAsync` closed ink path; Freeform draw mode.
 - Polygon: `AddPolygonAsync` click-to-place vertices (Enter / near-first closes); Polygon toolbar mode.
 - Text boxes: `AddTextBoxAsync` FreeText with Contents + DA + optional fill/border; TextBox toolbar dialog (font family/size/bold/italic/underline, text/fill/border color); listed in sidebar.

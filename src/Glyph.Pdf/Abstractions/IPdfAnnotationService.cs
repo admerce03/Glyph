@@ -202,6 +202,17 @@ public interface IPdfAnnotationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Replaces a line/arrow ink shape with new endpoints, preserving stroke style metadata.
+    /// </summary>
+    Task<PdfAnnotationInfo> SetLineEndpointsAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        PdfPagePoint start,
+        PdfPagePoint end,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Duplicate an annotation on the same page, offset slightly from the original.
     /// Stamp annotations are not supported yet (pixel payload is not retained in the list model).
     /// </summary>

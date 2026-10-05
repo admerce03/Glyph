@@ -36,4 +36,32 @@ public class PdfAnnotationResizeTests
         next.Width.Should().Be(PdfAnnotationResize.DefaultMinSizePoints);
         next.Left.Should().Be(0);
     }
+
+    [Fact]
+    public void Endpoint_p1_moves_end_only()
+    {
+        var a = new PdfPagePoint(10, 20);
+        var b = new PdfPagePoint(100, 80);
+        var (na, nb) = PdfAnnotationResize.ComputeEndpoints(a, b, "p1", deltaXPoints: 5, deltaYPoints: -10);
+        na.Should().Be(a);
+        nb.X.Should().Be(105);
+        nb.Y.Should().Be(70);
+    }
+
+    [Fact]
+    public void Endpoint_collapse_is_rejected()
+    {
+        var a = new PdfPagePoint(0, 0);
+        var b = new PdfPagePoint(1, 0);
+        var (na, nb) = PdfAnnotationResize.ComputeEndpoints(a, b, "p1", deltaXPoints: -1, deltaYPoints: 0);
+        na.Should().Be(a);
+        nb.Should().Be(b);
+    }
+
+    [Fact]
+    public void IsEndpointHandle_recognizes_p0_p1()
+    {
+        PdfAnnotationResize.IsEndpointHandle("p0").Should().BeTrue();
+        PdfAnnotationResize.IsEndpointHandle("e").Should().BeFalse();
+    }
 }

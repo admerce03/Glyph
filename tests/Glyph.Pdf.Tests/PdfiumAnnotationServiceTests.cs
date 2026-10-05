@@ -575,6 +575,9 @@ public class PdfiumAnnotationServiceTests
                     borderWidthPoints: 2f);
                 line.ShapeKind.Should().Be(PdfShapeKind.Line);
                 line.IsInk.Should().BeTrue();
+                line.UsesEndpointHandles.Should().BeTrue();
+                line.EndpointA.Should().Be(new PdfPagePoint(80, 500));
+                line.EndpointB.Should().Be(new PdfPagePoint(180, 560));
 
                 (await annots.GetBorderWidthAsync(document, 0, line.AnnotIndex)).Should().BeApproximately(2f, 0.01f);
                 await annots.SetBorderWidthAsync(document, 0, line.AnnotIndex, 5f);
@@ -809,6 +812,48 @@ public class PdfiumAnnotationServiceTests
             {
                 File.Delete(outPath);
             }
+        }
+    }
+
+    [Fact]
+    public async Task Set_line_endpoints_recreates_line_preserving_style()
+    {
+        var path = CreateTextPdf("Line endpoints host");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+
+            await using var document = await factory.OpenAsync(path);
+            var line = await annots.AddShapeAsync(
+                document,
+                0,
+                PdfShapeKind.Line,
+                new PdfRect(50, 100, 150, 200),
+                new PdfAnnotationColor(0, 100, 0),
+                borderWidthPoints: 3f,
+                inkLineStyle: PdfInkLineStyle.Dashed);
+            line.UsesEndpointHandles.Should().BeTrue();
+            line.Contents.Should().Be("Line|Dashed");
+
+            var updated = await annots.SetLineEndpointsAsync(
+                document,
+                0,
+                line.AnnotIndex,
+                new PdfPagePoint(60, 110),
+                new PdfPagePoint(260, 180));
+            updated.ShapeKind.Should().Be(PdfShapeKind.Line);
+            updated.EndpointA.Should().Be(new PdfPagePoint(60, 110));
+            updated.EndpointB.Should().Be(new PdfPagePoint(260, 180));
+            updated.Contents.Should().Be("Line|Dashed");
+            (await annots.GetBorderWidthAsync(document, 0, updated.AnnotIndex)).Should().BeApproximately(3f, 0.01f);
+
+            var listed = await annots.ListAsync(document, 0);
+            listed.Should().ContainSingle(a => a.ShapeKind == PdfShapeKind.Line && a.UsesEndpointHandles);
+        }
+        finally
+        {
+            File.Delete(path);
         }
     }
 

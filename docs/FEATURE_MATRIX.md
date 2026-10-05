@@ -321,7 +321,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F17-18 | Shapes | line style | M4 | Tested | Shape stroke dialog: Solid/Dashed/Dotted for Line/Arrow |
 | F17-19 | Shapes | fill color | M4 | Implemented | Semi-transparent fill from stroke hue |
 | F17-20 | Shapes | opacity | M4 | Implemented | Sidebar Opacity → `SetOpacityAsync` |
-| F17-21 | Shapes | shape-specific adjustment handles | M4 | Not Started |  |
+| F17-21 | Shapes | shape-specific adjustment handles | M4 | Tested | Line/Arrow show endpoint handles (`p0`/`p1`); `SetLineEndpointsAsync` + `GlyphLineEnds` |
 | F18-01 | Freehand drawing | Mouse drawing. | M4 | Tested | Ink draw mode |
 | F18-02 | Freehand drawing | Stroke color. | M4 | Implemented | Stroke picker when entering Ink mode |
 | F18-03 | Freehand drawing | Stroke width. | M4 | Implemented | Width picker (1–8 pt) with color dialog |
