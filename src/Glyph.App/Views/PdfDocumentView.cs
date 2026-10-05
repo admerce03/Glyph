@@ -5071,6 +5071,13 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        var library = (await _signatures.ListAsync()).ToList();
+        if (library.Count > 0)
+        {
+            await ShowSignatureLibraryDialogAsync(window, library);
+            return;
+        }
+
         var dialog = new ContentDialog
         {
             Title = "Signature",
@@ -5096,6 +5103,215 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _status.Text = "Signature cancelled.";
+    }
+
+    private async Task ShowSignatureLibraryDialogAsync(Window window, List<SignatureEntry> library)
+    {
+        var list = new ListView
+        {
+            Height = 200,
+            SelectionMode = ListViewSelectionMode.Single,
+            ItemsSource = library.Select(e => e.Name).ToList(),
+            SelectedIndex = 0,
+        };
+        var up = new Button { Content = "↑", Padding = new Thickness(10, 4, 10, 4) };
+        var down = new Button { Content = "↓", Padding = new Thickness(10, 4, 10, 4) };
+        var del = new Button { Content = "Delete", Padding = new Thickness(10, 4, 10, 4) };
+        ToolTipService.SetToolTip(up, "Move selected signature earlier in the library");
+        ToolTipService.SetToolTip(down, "Move selected signature later in the library");
+        ToolTipService.SetToolTip(del, "Delete selected signature from the library");
+
+        void RefreshList(int selectIndex)
+        {
+            list.ItemsSource = library.Select(e => e.Name).ToList();
+            list.SelectedIndex = library.Count == 0
+                ? -1
+                : Math.Clamp(selectIndex, 0, library.Count - 1);
+        }
+
+        up.Click += async (_, _) =>
+        {
+            var i = list.SelectedIndex;
+            if (i <= 0 || i >= library.Count)
+            {
+                return;
+            }
+
+            (library[i - 1], library[i]) = (library[i], library[i - 1]);
+            try
+            {
+                await _signatures.ReorderAsync(library.Select(e => e.Id).ToList());
+                RefreshList(i - 1);
+                _status.Text = "Signature order updated.";
+            }
+            catch (Exception ex)
+            {
+                _status.Text = "Reorder failed: " + ex.Message;
+            }
+        };
+        down.Click += async (_, _) =>
+        {
+            var i = list.SelectedIndex;
+            if (i < 0 || i >= library.Count - 1)
+            {
+                return;
+            }
+
+            (library[i + 1], library[i]) = (library[i], library[i + 1]);
+            try
+            {
+                await _signatures.ReorderAsync(library.Select(e => e.Id).ToList());
+                RefreshList(i + 1);
+                _status.Text = "Signature order updated.";
+            }
+            catch (Exception ex)
+            {
+                _status.Text = "Reorder failed: " + ex.Message;
+            }
+        };
+        del.Click += async (_, _) =>
+        {
+            var i = list.SelectedIndex;
+            if (i < 0 || i >= library.Count)
+            {
+                return;
+            }
+
+            var entry = library[i];
+            try
+            {
+                await _signatures.DeleteAsync(entry.Id);
+                library.RemoveAt(i);
+                RefreshList(i);
+                _status.Text = $"Deleted signature '{entry.Name}'.";
+            }
+            catch (Exception ex)
+            {
+                _status.Text = "Delete failed: " + ex.Message;
+            }
+        };
+
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock { Text = "Saved signatures — Insert places the selection on the current page." },
+                list,
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 8,
+                    Children = { up, down, del },
+                },
+            },
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = "Signatures",
+            Content = panel,
+            PrimaryButtonText = "Insert",
+            SecondaryButtonText = "Draw new",
+            CloseButtonText = "Import…",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        // WinUI CloseButtonText is dismiss; use a fourth path via Secondary for Draw and Close for Import.
+        // Re-map: Primary=Insert, Secondary=Draw, Close=Cancel — add Import as another dialog after.
+        dialog.CloseButtonText = "Cancel";
+        // Extra Import button in panel
+        var importBtn = new Button { Content = "Import image…", HorizontalAlignment = HorizontalAlignment.Left };
+        var importRequested = false;
+        importBtn.Click += (_, _) =>
+        {
+            importRequested = true;
+            dialog.Hide();
+        };
+        panel.Children.Add(importBtn);
+
+        var result = await dialog.ShowAsync();
+        if (importRequested)
+        {
+            await ImportSignatureImageAsync(window);
+            return;
+        }
+
+        if (result == ContentDialogResult.Primary)
+        {
+            if (library.Count == 0 || list.SelectedIndex < 0 || list.SelectedIndex >= library.Count)
+            {
+                _status.Text = "Select a signature to insert.";
+                return;
+            }
+
+            await InsertLibrarySignatureAsync(library[list.SelectedIndex]);
+            return;
+        }
+
+        if (result == ContentDialogResult.Secondary)
+        {
+            StartSignatureDrawMode();
+            return;
+        }
+
+        _status.Text = "Signature cancelled.";
+    }
+
+    private async Task InsertLibrarySignatureAsync(SignatureEntry entry)
+    {
+        try
+        {
+            _status.Text = "Inserting signature…";
+            await using var stream = await _signatures.OpenImageAsync(entry.Id);
+            using var mem = new MemoryStream();
+            await stream.CopyToAsync(mem);
+            mem.Position = 0;
+            using var rasStream = mem.AsRandomAccessStream();
+            var decoder = await BitmapDecoder.CreateAsync(rasStream);
+            var pixelData = await decoder.GetPixelDataAsync(
+                BitmapPixelFormat.Bgra8,
+                BitmapAlphaMode.Straight,
+                new BitmapTransform(),
+                ExifOrientationMode.IgnoreExifOrientation,
+                ColorManagementMode.DoNotColorManage);
+            var pixels = pixelData.DetachPixelData();
+            var width = (int)decoder.PixelWidth;
+            var height = (int)decoder.PixelHeight;
+            if (width <= 0 || height <= 0)
+            {
+                _status.Text = "Signature image is empty.";
+                return;
+            }
+
+            var page = _document.GetPage(CurrentPageIndex);
+            var targetWidth = Math.Min(180, page.WidthPoints * 0.35);
+            var aspect = height / (double)width;
+            var targetHeight = Math.Clamp(targetWidth * aspect, 24, page.HeightPoints * 0.25);
+            var left = Math.Max(36, page.WidthPoints - targetWidth - 48);
+            var bottom = Math.Max(36, 48.0);
+            var bounds = new PdfRect(left, bottom, left + targetWidth, bottom + targetHeight);
+
+            await _annotations.AddStampAsync(
+                _document,
+                CurrentPageIndex,
+                bounds,
+                pixels,
+                width,
+                height);
+
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = $"Inserted signature '{entry.Name}'.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Insert signature failed: " + ex.Message;
+        }
     }
 
     private void StartSignatureDrawMode()

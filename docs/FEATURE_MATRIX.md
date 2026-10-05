@@ -338,7 +338,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F19-04 | PDF signatures | save signature | M4 | Tested | `FileSignatureLibrary.SaveAsync` |
 | F19-05 | PDF signatures | name signature | M4 | Tested | Named on save |
 | F19-06 | PDF signatures | delete signature | M4 | Tested | `DeleteAsync` |
-| F19-07 | PDF signatures | reorder signatures | M4 | Not Started |  |
+| F19-07 | PDF signatures | reorder signatures | M4 | Implemented | Library dialog ↑/↓ → `ISignatureLibrary.ReorderAsync` |
 | F19-08 | PDF signatures | local storage | M4 | Tested | `%LocalAppData%\Glyph\signatures` |
 | F19-09 | PDF signatures | optional application-specific cloud sync later | M4 | Deferred | Explicitly later |
 | F19-10 | PDF signatures | insert | M4 | Implemented | Sign toolbar |

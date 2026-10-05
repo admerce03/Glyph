@@ -38,4 +38,41 @@ public class FileSignatureLibraryTests
             }
         }
     }
+
+    [Fact]
+    public async Task Reorder_persists_new_order()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "glyph-sigs-reorder-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var library = new FileSignatureLibrary(dir);
+            string idA, idB, idC;
+            await using (var png = new MemoryStream(new byte[] { 0x89, 0x50, 0x4E, 0x47 }))
+            {
+                idA = (await library.SaveAsync("A", png)).Id;
+            }
+
+            await using (var png = new MemoryStream(new byte[] { 0x89, 0x50, 0x4E, 0x47 }))
+            {
+                idB = (await library.SaveAsync("B", png)).Id;
+            }
+
+            await using (var png = new MemoryStream(new byte[] { 0x89, 0x50, 0x4E, 0x47 }))
+            {
+                idC = (await library.SaveAsync("C", png)).Id;
+            }
+
+            await library.ReorderAsync([idC, idA, idB]);
+            var listed = await library.ListAsync();
+            listed.Select(e => e.Id).Should().Equal(idC, idA, idB);
+            listed.Select(e => e.Name).Should().Equal("C", "A", "B");
+        }
+        finally
+        {
+            if (Directory.Exists(dir))
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
+    }
 }

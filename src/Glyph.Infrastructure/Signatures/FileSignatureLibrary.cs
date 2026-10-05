@@ -117,6 +117,50 @@ public sealed class FileSignatureLibrary : ISignatureLibrary
         }
     }
 
+    public async Task ReorderAsync(IReadOnlyList<string> orderedIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(orderedIds);
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var current = await ReadIndexAsync(cancellationToken);
+            if (current.Count == 0)
+            {
+                if (orderedIds.Count != 0)
+                {
+                    throw new ArgumentException("Cannot reorder an empty signature library.", nameof(orderedIds));
+                }
+
+                return;
+            }
+
+            if (orderedIds.Count != current.Count || orderedIds.Distinct(StringComparer.Ordinal).Count() != orderedIds.Count)
+            {
+                throw new ArgumentException(
+                    "orderedIds must be a permutation of the current signature ids.",
+                    nameof(orderedIds));
+            }
+
+            var byId = current.ToDictionary(e => e.Id, StringComparer.Ordinal);
+            var reordered = new List<SignatureEntry>(orderedIds.Count);
+            foreach (var id in orderedIds)
+            {
+                if (!byId.TryGetValue(id, out var entry))
+                {
+                    throw new ArgumentException($"Unknown signature id '{id}'.", nameof(orderedIds));
+                }
+
+                reordered.Add(entry);
+            }
+
+            await WriteIndexAsync(reordered, cancellationToken);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     private async Task<IReadOnlyList<SignatureEntry>> ReadIndexAsync(CancellationToken cancellationToken)
     {
         if (!File.Exists(_indexPath))

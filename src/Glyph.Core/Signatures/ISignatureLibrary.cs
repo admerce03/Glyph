@@ -12,4 +12,9 @@ public interface ISignatureLibrary
     Task<Stream> OpenImageAsync(string id, CancellationToken cancellationToken = default);
 
     Task DeleteAsync(string id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Rewrite library order to match <paramref name="orderedIds"/> (must be a permutation of current ids).
+    /// </summary>
+    Task ReorderAsync(IReadOnlyList<string> orderedIds, CancellationToken cancellationToken = default);
 }
