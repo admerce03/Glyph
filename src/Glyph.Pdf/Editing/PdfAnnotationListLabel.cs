@@ -78,7 +78,7 @@ public static class PdfAnnotationListLabel
         return $"{group}{kind} · p.{info.PageIndex + 1}";
     }
 
-    internal static string TrimPreview(string text)
+    public static string TrimPreview(string text)
     {
         var flat = text.Replace('\n', ' ').Replace('\r', ' ').Trim();
         return flat.Length <= 42 ? flat : flat[..42] + "…";

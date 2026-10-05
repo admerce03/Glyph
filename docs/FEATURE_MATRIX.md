@@ -76,7 +76,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-15 | Sidebar modes | Keyboard navigation. | M2-M5 | Tested | `PageSelection.ApplyKeyboardMove` unit tests |
 | F03-16 | Sidebar modes | Drag selected items. | M2-M5 | Tested | `PageDragPayload` format/parse unit tests; thumbnail multi-select drag |
 | F03-17 | Sidebar modes | Context menus. | M2-M5 | Implemented | Thumbnail / annotations / bookmarks / search right-click menus |
-| F03-18 | Sidebar modes | Sidebar selection controls the scope of many editing commands. | M2-M5 | Implemented | Rotate/delete/dup/extract/crop/move use `_pageSelection` |
+| F03-18 | Sidebar modes | Sidebar selection controls the scope of many editing commands. | M2-M5 | Tested | Rotate/delete/dup/extract/crop/move use `_pageSelection`; `SelectedOrFallback`/`ResolveTargets` unit-tested |
 | F04-01 | PDF viewing | Open standard PDF files quickly. | M2 | Tested | PDFium open+render wired in shell |
 | F04-02 | PDF viewing | Render vector content accurately. | M2 | Implemented | PDFium vector render path |
 | F04-03 | PDF viewing | Render embedded images. | M2 | Implemented | Via PDFium rasterization |
@@ -280,10 +280,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F15-07 | Notes | Edit. | M4 | Implemented | Sidebar Edit → `SetContentsAsync` (notes/text boxes/callouts) |
 | F15-08 | Notes | Delete. | M4 | Implemented | Sidebar Delete |
 | F15-09 | Notes | Show note author. | M4 | Implemented | Sidebar label includes `/T` author when set |
-| F15-10 | Notes | Configurable annotation author name. | M4 | Implemented | Author button + sticky-note dialog; written to `/T` |
+| F15-10 | Notes | Configurable annotation author name. | M4 | Tested | Author button + sticky `/T`; prefs `AnnotationAuthor` round-trip (F55-10) |
 | F15-11 | Notes | Optional date/time metadata. | M4 | Implemented | Sticky notes set `/CreationDate` and `/M` on create |
 | F15-12 | Notes | Show all notes in sidebar. | M4 | Implemented | Annotations list includes notes |
-| F15-13 | Notes | Print notes optionally. | M4 | Implemented | Annotations → Export notes → printable `.txt` via `PdfNotesExport` |
+| F15-13 | Notes | Print notes optionally. | M4 | Tested | Annotations → Export notes → printable `.txt`; `PdfNotesExportTests` |
 | F16-01 | Text boxes and callouts | Add text box anywhere. | M4 | Tested | `AddTextBoxAsync` + TextBox toolbar |
 | F16-02 | Text boxes and callouts | Type arbitrary text over PDF. | M4 | Implemented | Contents via dialog |
 | F16-03 | Text boxes and callouts | Move it. | M4 | Tested | `MoveAsync` API |

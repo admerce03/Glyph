@@ -3284,11 +3284,7 @@ public sealed class PdfDocumentView : UserControl
         overlay.Children.Add(rect);
     }
 
-    private static string TrimForStatus(string text)
-    {
-        var flat = text.Replace('\n', ' ').Replace('\r', ' ').Trim();
-        return flat.Length <= 42 ? flat : flat[..42] + "…";
-    }
+    private static string TrimForStatus(string text) => PdfAnnotationListLabel.TrimPreview(text);
 
     private sealed record OutlineItem(string Title, int? PageIndex)
     {
