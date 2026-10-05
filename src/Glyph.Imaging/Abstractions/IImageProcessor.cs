@@ -55,6 +55,18 @@ public interface IImageProcessor
         int destinationX,
         int destinationY,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Moves pixels from <paramref name="source"/> to a new top-left
+    /// (<paramref name="destinationX"/>, <paramref name="destinationY"/>), clearing the source
+    /// rectangle to transparent. No-ops when the destination equals the source origin.
+    /// </summary>
+    Task MoveRectAsync(
+        IImageDocument document,
+        ImageRect source,
+        int destinationX,
+        int destinationY,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -85,4 +97,6 @@ public sealed record ImageAdjustments(
     double Sharpness = 0,
     bool Sepia = false,
     double Temperature = 0,
-    double Tint = 0);
+    double Tint = 0,
+    double Highlights = 0,
+    double Shadows = 0);

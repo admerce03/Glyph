@@ -56,7 +56,12 @@ public sealed class ImageDocumentView : UserControl
     private bool _cropMode;
     private bool _selectionMode;
     private bool _cropDragging;
+    private bool _selectionMoving;
     private Windows.Foundation.Point _cropStart;
+    private Windows.Foundation.Point _moveStart;
+    private double _moveOriginLeft;
+    private double _moveOriginTop;
+    private ImageRect? _moveSourcePixels;
     private bool _navDragging;
     private Windows.Foundation.Point _navStart;
     private ImageRect? _pixelSelection;
@@ -113,7 +118,11 @@ public sealed class ImageDocumentView : UserControl
         _scrollViewer.PointerPressed += ImageSurface_PointerPressed;
         _scrollViewer.PointerMoved += ImageSurface_PointerMoved;
         _scrollViewer.PointerReleased += ImageSurface_PointerReleased;
-        _scrollViewer.PointerCaptureLost += (_, _) => _navDragging = false;
+        _scrollViewer.PointerCaptureLost += (_, _) =>
+        {
+            _navDragging = false;
+            _selectionMoving = false;
+        };
         _status = new TextBlock { Opacity = 0.75, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
         _cropBox = new TextBox
         {
@@ -155,7 +164,7 @@ public sealed class ImageDocumentView : UserControl
         _pasteSelButton = new Button { Content = "Paste", Visibility = Visibility.Collapsed };
         _deleteSelButton = new Button { Content = "Del sel", Visibility = Visibility.Collapsed };
         _cropSelButton = new Button { Content = "Crop sel", Visibility = Visibility.Collapsed };
-        ToolTipService.SetToolTip(_selectButton, "Rectangular selection (drag on image)");
+        ToolTipService.SetToolTip(_selectButton, "Rectangular selection (drag on image; drag inside selection to move pixels)");
         ToolTipService.SetToolTip(_selectAllButton, "Select entire image");
         ToolTipService.SetToolTip(_deselectButton, "Clear selection");
         ToolTipService.SetToolTip(_copySelButton, "Copy selection to clipboard as PNG");
@@ -243,7 +252,11 @@ public sealed class ImageDocumentView : UserControl
         _cropOverlay.PointerPressed += CropOverlay_PointerPressed;
         _cropOverlay.PointerMoved += CropOverlay_PointerMoved;
         _cropOverlay.PointerReleased += CropOverlay_PointerReleased;
-        _cropOverlay.PointerCaptureLost += (_, _) => _cropDragging = false;
+        _cropOverlay.PointerCaptureLost += (_, _) =>
+        {
+            _cropDragging = false;
+            _selectionMoving = false;
+        };
 
         var toolbar = new StackPanel
         {
@@ -600,7 +613,44 @@ public sealed class ImageDocumentView : UserControl
         {
             SelectAllPixels();
             e.Handled = true;
+            return;
         }
+
+        if (_selectionMode && _pixelSelection is { } sel && !ctrl)
+        {
+            var dx = e.Key switch
+            {
+                Windows.System.VirtualKey.Left => -1,
+                Windows.System.VirtualKey.Right => 1,
+                _ => 0,
+            };
+            var dy = e.Key switch
+            {
+                Windows.System.VirtualKey.Up => -1,
+                Windows.System.VirtualKey.Down => 1,
+                _ => 0,
+            };
+            if (dx != 0 || dy != 0)
+            {
+                _ = NudgeSelectionAsync(sel, dx, dy);
+                e.Handled = true;
+            }
+        }
+    }
+
+    private async Task NudgeSelectionAsync(ImageRect sel, int dx, int dy)
+    {
+        var destX = Math.Clamp(sel.X + dx, 0, Math.Max(0, _document.PixelWidth - sel.Width));
+        var destY = Math.Clamp(sel.Y + dy, 0, Math.Max(0, _document.PixelHeight - sel.Height));
+        if (destX == sel.X && destY == sel.Y)
+        {
+            return;
+        }
+
+        await MutateAsync(
+            () => _processor.MoveRectAsync(_document, sel, destX, destY),
+            $"Moved selection to ({destX},{destY}).");
+        SetPixelSelection(new ImageRect(destX, destY, sel.Width, sel.Height));
     }
 
     private async Task CopySelectionAsync()
@@ -908,13 +958,15 @@ public sealed class ImageDocumentView : UserControl
         _cropRect.Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 30, 144, 255));
         ClearCropSelection();
         _pixelSelection = null;
-        _status.Text = "Selection mode — drag a rectangle (Esc exits).";
+        _status.Text = "Selection mode — drag a rectangle; drag inside to move pixels (arrow keys nudge; Esc exits).";
     }
 
     private void ExitSelectionMode(bool keepSelection)
     {
         _selectionMode = false;
         _cropDragging = false;
+        _selectionMoving = false;
+        _moveSourcePixels = null;
         if (!_cropMode)
         {
             _cropOverlay.IsHitTestVisible = false;
@@ -941,27 +993,52 @@ public sealed class ImageDocumentView : UserControl
             ToggleSelectionMode();
         }
 
-        _pixelSelection = new ImageRect(0, 0, _document.PixelWidth, _document.PixelHeight);
-        if (_displayWidth > 0 && _displayHeight > 0)
+        SetPixelSelection(new ImageRect(0, 0, _document.PixelWidth, _document.PixelHeight));
+        _status.Text = $"Selected all {_document.PixelWidth}×{_document.PixelHeight}.";
+    }
+
+    private void SetPixelSelection(ImageRect pixels)
+    {
+        _pixelSelection = pixels;
+        if (_displayWidth <= 0 || _displayHeight <= 0 || _document.PixelWidth <= 0 || _document.PixelHeight <= 0)
         {
-            Canvas.SetLeft(_cropRect, 0);
-            Canvas.SetTop(_cropRect, 0);
-            _cropRect.Width = _displayWidth;
-            _cropRect.Height = _displayHeight;
-            _cropRect.Visibility = Visibility.Visible;
+            return;
         }
 
-        _status.Text = $"Selected all {_document.PixelWidth}×{_document.PixelHeight}.";
+        var scaleX = _displayWidth / (double)_document.PixelWidth;
+        var scaleY = _displayHeight / (double)_document.PixelHeight;
+        Canvas.SetLeft(_cropRect, pixels.X * scaleX);
+        Canvas.SetTop(_cropRect, pixels.Y * scaleY);
+        _cropRect.Width = Math.Max(1, pixels.Width * scaleX);
+        _cropRect.Height = Math.Max(1, pixels.Height * scaleY);
+        _cropRect.Visibility = Visibility.Visible;
     }
 
     private void ClearPixelSelection()
     {
         _pixelSelection = null;
+        _selectionMoving = false;
+        _moveSourcePixels = null;
         ClearCropSelection();
         if (_selectionMode)
         {
             _status.Text = "Selection cleared.";
         }
+    }
+
+    private bool IsPointInSelectionOverlay(Windows.Foundation.Point point)
+    {
+        if (_pixelSelection is null || _cropRect.Visibility != Visibility.Visible)
+        {
+            return false;
+        }
+
+        var left = Canvas.GetLeft(_cropRect);
+        var top = Canvas.GetTop(_cropRect);
+        return point.X >= left
+            && point.Y >= top
+            && point.X <= left + _cropRect.Width
+            && point.Y <= top + _cropRect.Height;
     }
 
     private void ClearCropSelection()
@@ -980,8 +1057,25 @@ public sealed class ImageDocumentView : UserControl
             return;
         }
 
+        var point = e.GetCurrentPoint(_cropOverlay).Position;
+        if (_selectionMode && IsPointInSelectionOverlay(point))
+        {
+            _selectionMoving = true;
+            _cropDragging = false;
+            _moveStart = point;
+            _moveOriginLeft = Canvas.GetLeft(_cropRect);
+            _moveOriginTop = Canvas.GetTop(_cropRect);
+            _moveSourcePixels = _pixelSelection;
+            _cropOverlay.CapturePointer(e.Pointer);
+            _status.Text = "Moving selection…";
+            e.Handled = true;
+            return;
+        }
+
+        _selectionMoving = false;
+        _moveSourcePixels = null;
         _cropDragging = true;
-        _cropStart = e.GetCurrentPoint(_cropOverlay).Position;
+        _cropStart = point;
         _cropOverlay.CapturePointer(e.Pointer);
         UpdateCropRect(_cropStart, _cropStart);
         e.Handled = true;
@@ -989,6 +1083,19 @@ public sealed class ImageDocumentView : UserControl
 
     private void CropOverlay_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
+        if (_selectionMoving)
+        {
+            var point = e.GetCurrentPoint(_cropOverlay).Position;
+            var dx = point.X - _moveStart.X;
+            var dy = point.Y - _moveStart.Y;
+            var maxLeft = Math.Max(0, _displayWidth - _cropRect.Width);
+            var maxTop = Math.Max(0, _displayHeight - _cropRect.Height);
+            Canvas.SetLeft(_cropRect, Math.Clamp(_moveOriginLeft + dx, 0, maxLeft));
+            Canvas.SetTop(_cropRect, Math.Clamp(_moveOriginTop + dy, 0, maxTop));
+            e.Handled = true;
+            return;
+        }
+
         if (!_cropDragging)
         {
             return;
@@ -1000,6 +1107,38 @@ public sealed class ImageDocumentView : UserControl
 
     private void CropOverlay_PointerReleased(object sender, PointerRoutedEventArgs e)
     {
+        if (_selectionMoving)
+        {
+            _selectionMoving = false;
+            _cropOverlay.ReleasePointerCapture(e.Pointer);
+            var source = _moveSourcePixels;
+            _moveSourcePixels = null;
+            if (source is { } sel && _displayWidth > 0 && _displayHeight > 0)
+            {
+                var dest = ImageCropMapper.ToDocumentPixels(
+                    Canvas.GetLeft(_cropRect),
+                    Canvas.GetTop(_cropRect),
+                    _cropRect.Width,
+                    _cropRect.Height,
+                    _displayWidth,
+                    _displayHeight,
+                    _document.PixelWidth,
+                    _document.PixelHeight);
+                if (dest.X != sel.X || dest.Y != sel.Y)
+                {
+                    _ = CommitSelectionMoveAsync(sel, dest.X, dest.Y);
+                }
+                else
+                {
+                    SetPixelSelection(sel);
+                    _status.Text = $"Selected {sel.Width}×{sel.Height} px";
+                }
+            }
+
+            e.Handled = true;
+            return;
+        }
+
         if (!_cropDragging)
         {
             return;
@@ -1023,6 +1162,18 @@ public sealed class ImageDocumentView : UserControl
         }
 
         e.Handled = true;
+    }
+
+    private async Task CommitSelectionMoveAsync(ImageRect source, int destX, int destY)
+    {
+        var w = source.Width;
+        var h = source.Height;
+        destX = Math.Clamp(destX, 0, Math.Max(0, _document.PixelWidth - w));
+        destY = Math.Clamp(destY, 0, Math.Max(0, _document.PixelHeight - h));
+        await MutateAsync(
+            () => _processor.MoveRectAsync(_document, source, destX, destY),
+            $"Moved selection to ({destX},{destY}).");
+        SetPixelSelection(new ImageRect(destX, destY, w, h));
     }
 
     private void UpdateCropRect(Windows.Foundation.Point a, Windows.Foundation.Point b)
@@ -1349,6 +1500,8 @@ public sealed class ImageDocumentView : UserControl
         var brightness = MakeSlider("Brightness (−100…100)", -100, 100, 0);
         var contrast = MakeSlider("Contrast (−100…100)", -100, 100, 0);
         var saturation = MakeSlider("Saturation (−100…100)", -100, 100, 0);
+        var highlights = MakeSlider("Highlights (−100 recover…100)", -100, 100, 0);
+        var shadows = MakeSlider("Shadows (−100 crush…100 lift)", -100, 100, 0);
         var temperature = MakeSlider("Temperature (−100 cold…100 warm)", -100, 100, 0);
         var tint = MakeSlider("Tint (−100 green…100 magenta)", -100, 100, 0);
         var sharpness = MakeSlider("Sharpness (0…100)", 0, 100, 0);
@@ -1360,6 +1513,8 @@ public sealed class ImageDocumentView : UserControl
             brightness.Value = 0;
             contrast.Value = 0;
             saturation.Value = 0;
+            highlights.Value = 0;
+            shadows.Value = 0;
             temperature.Value = 0;
             tint.Value = 0;
             sharpness.Value = 0;
@@ -1381,6 +1536,8 @@ public sealed class ImageDocumentView : UserControl
                 autoLevels,
                 brightness,
                 contrast,
+                highlights,
+                shadows,
                 saturation,
                 temperature,
                 tint,
@@ -1412,6 +1569,8 @@ public sealed class ImageDocumentView : UserControl
             && Math.Abs(brightness.Value) < 0.0001
             && Math.Abs(contrast.Value) < 0.0001
             && Math.Abs(saturation.Value) < 0.0001
+            && Math.Abs(highlights.Value) < 0.0001
+            && Math.Abs(shadows.Value) < 0.0001
             && Math.Abs(temperature.Value) < 0.0001
             && Math.Abs(tint.Value) < 0.0001
             && Math.Abs(sharpness.Value) < 0.0001)
@@ -1428,7 +1587,9 @@ public sealed class ImageDocumentView : UserControl
             Sharpness: sharpness.Value,
             Sepia: useSepia,
             Temperature: temperature.Value,
-            Tint: tint.Value);
+            Tint: tint.Value,
+            Highlights: highlights.Value,
+            Shadows: shadows.Value);
         await MutateAsync(
             () => _processor.AdjustAsync(_document, adjustments),
             "Color adjustments applied.");

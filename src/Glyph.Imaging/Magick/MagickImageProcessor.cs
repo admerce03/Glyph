@@ -154,6 +154,14 @@ public sealed class MagickImageProcessor : IImageProcessor
                         0, 0, 0, 0, 1));
                 }
 
+                if (Math.Abs(adjustments.Shadows) > 0.0001 || Math.Abs(adjustments.Highlights) > 0.0001)
+                {
+                    ApplyShadowsHighlights(
+                        magick.Native,
+                        Math.Clamp(adjustments.Shadows, -100, 100),
+                        Math.Clamp(adjustments.Highlights, -100, 100));
+                }
+
                 if (adjustments.Sharpness > 0.0001)
                 {
                     // Radius/sigma scaled from a 0–100 UI slider.
@@ -232,20 +240,7 @@ public sealed class MagickImageProcessor : IImageProcessor
             () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var x = Math.Clamp(pixels.X, 0, Math.Max(0, (int)magick.Native.Width - 1));
-                var y = Math.Clamp(pixels.Y, 0, Math.Max(0, (int)magick.Native.Height - 1));
-                var right = Math.Clamp(pixels.X + pixels.Width, x + 1, (int)magick.Native.Width);
-                var bottom = Math.Clamp(pixels.Y + pixels.Height, y + 1, (int)magick.Native.Height);
-                if (transparent)
-                {
-                    magick.Native.Alpha(AlphaOption.Set);
-                }
-
-                var fill = transparent ? MagickColors.Transparent : MagickColors.White;
-                new Drawables()
-                    .FillColor(fill)
-                    .Rectangle(x, y, right - 1, bottom - 1)
-                    .Draw(magick.Native);
+                ClearRectCore(magick.Native, pixels, transparent);
             },
             cancellationToken);
     }
@@ -294,14 +289,105 @@ public sealed class MagickImageProcessor : IImageProcessor
             () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var settings = new PixelReadSettings((uint)source.Width, (uint)source.Height, StorageType.Char, "BGRA");
-                using var overlay = new MagickImage();
-                overlay.ReadPixels(source.BgraPixels, settings);
-                var x = Math.Clamp(destinationX, 0, Math.Max(0, (int)magick.Native.Width - 1));
-                var y = Math.Clamp(destinationY, 0, Math.Max(0, (int)magick.Native.Height - 1));
-                magick.Native.Composite(overlay, x, y, CompositeOperator.Over);
+                PasteRectCore(magick.Native, source, destinationX, destinationY);
             },
             cancellationToken);
+    }
+
+    public Task MoveRectAsync(
+        IImageDocument document,
+        ImageRect source,
+        int destinationX,
+        int destinationY,
+        CancellationToken cancellationToken = default)
+    {
+        var magick = RequireMagick(document);
+        if (source.Width <= 0 || source.Height <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(source));
+        }
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (destinationX == source.X && destinationY == source.Y)
+                {
+                    return;
+                }
+
+                using var clone = magick.Native.Clone();
+                clone.Crop(new MagickGeometry(source.X, source.Y, (uint)source.Width, (uint)source.Height));
+                clone.ResetPage();
+                clone.Depth = 8;
+                clone.ColorType = ColorType.TrueColorAlpha;
+                var bgra = clone.ToByteArray(MagickFormat.Bgra);
+                var buffer = new ImagePixelBuffer(checked((int)clone.Width), checked((int)clone.Height), bgra);
+
+                ClearRectCore(magick.Native, source, transparent: true);
+                PasteRectCore(magick.Native, buffer, destinationX, destinationY);
+            },
+            cancellationToken);
+    }
+
+    private static void ClearRectCore(MagickImage image, ImageRect pixels, bool transparent)
+    {
+        var x = Math.Clamp(pixels.X, 0, Math.Max(0, (int)image.Width - 1));
+        var y = Math.Clamp(pixels.Y, 0, Math.Max(0, (int)image.Height - 1));
+        var right = Math.Clamp(pixels.X + pixels.Width, x + 1, (int)image.Width);
+        var bottom = Math.Clamp(pixels.Y + pixels.Height, y + 1, (int)image.Height);
+        if (transparent)
+        {
+            image.Alpha(AlphaOption.Set);
+        }
+
+        var fill = transparent ? MagickColors.Transparent : MagickColors.White;
+        new Drawables()
+            .FillColor(fill)
+            .Rectangle(x, y, right - 1, bottom - 1)
+            .Draw(image);
+    }
+
+    private static void PasteRectCore(
+        MagickImage image,
+        ImagePixelBuffer source,
+        int destinationX,
+        int destinationY)
+    {
+        var settings = new PixelReadSettings((uint)source.Width, (uint)source.Height, StorageType.Char, "BGRA");
+        using var overlay = new MagickImage();
+        overlay.ReadPixels(source.BgraPixels, settings);
+        var x = Math.Clamp(destinationX, 0, Math.Max(0, (int)image.Width - 1));
+        var y = Math.Clamp(destinationY, 0, Math.Max(0, (int)image.Height - 1));
+        image.Composite(overlay, x, y, CompositeOperator.Over);
+    }
+
+    /// <summary>
+    /// Tone-curve CLUT: +Shadows lifts darks, −Highlights recovers / darkens brights (and vice versa).
+    /// </summary>
+    private static void ApplyShadowsHighlights(MagickImage image, double shadows, double highlights)
+    {
+        using var clut = new MagickImage(MagickColors.Black, 256, 1);
+        clut.Depth = 8;
+        clut.ColorType = ColorType.TrueColor;
+        var pixels = new byte[256 * 4];
+        for (var i = 0; i < 256; i++)
+        {
+            var t = i / 255.0;
+            var shadowWeight = (1.0 - t) * (1.0 - t);
+            var highlightWeight = t * t;
+            var delta = (shadows / 100.0) * 48.0 * shadowWeight
+                + (highlights / 100.0) * 48.0 * highlightWeight;
+            var outByte = (byte)Math.Clamp((int)Math.Round(i + delta), 0, 255);
+            var o = i * 4;
+            pixels[o] = outByte;
+            pixels[o + 1] = outByte;
+            pixels[o + 2] = outByte;
+            pixels[o + 3] = 255;
+        }
+
+        clut.ReadPixels(pixels, new PixelReadSettings(256, 1, StorageType.Char, "BGRA"));
+        image.Clut(clut);
     }
 
     private static MagickImageDocument RequireMagick(IImageDocument document)
