@@ -595,8 +595,6 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F38-03 | GPS metadata | Open in default/browser mapping service. | M5/M8 | Implemented | Open map → OpenStreetMap |
 | F38-04 | GPS metadata | Remove GPS metadata. | M5/M8 | Tested | RemoveGpsMetadataAsync |
 | F38-05 | GPS metadata | Optional embedded map later. | M5/M8 | Deferred | Open map uses OSM/browser (F38-03); in-app WebView map post-M8 |
-| F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Deferred | Search is on-demand; full-doc index not required yet (same as F57-05) |
-| F59-03 | Multi-document workflow | drag tabs between windows | M1/M3 | Implemented | `CanDragTabs` + `AllowDropTabs`; drop outside → new window |
 | F39-01 | Color management | Detect embedded ICC profile. | M8 | Tested | `HasIccProfile` via Magick `GetColorProfile`; Meta shows ICC |
 | F39-02 | Color management | Honor embedded profile while displaying. | M8 | Tested | GetPixelsAsync transforms ICC → sRGB for display (toggle in Meta) |
 | F39-03 | Color management | Assign ICC profile. | M8 | Tested | Meta → Assign sRGB; `AssignColorProfileAsync` |
@@ -822,12 +820,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F58-03 | Large-document handling | Progressive rendering. | M2+/M9 | Implemented | Image viewer: low-res preview then refine for large rasters |
 | F58-04 | Large-document handling | Avoid loading entire PDF rasterized into memory. | M2+/M9 | Implemented | Visible-window render only + LRU page cache |
 | F58-05 | Large-document handling | Efficient page cache. | M2+/M9 | Tested | `PageRenderCache` LRU (capacity 32) |
-| F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Not Started |  |
+| F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Deferred | Search is on-demand; full-doc index not required yet (same as F57-05) |
 | F58-07 | Large-document handling | Partial OCR. | M2+/M9 | Implemented | OCR selected/current pages only (F08-06/07); not whole-doc by default |
 | F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | In Progress | PDF search cancel + PDF/image OCR Cancel OCR |
 | F59-01 | Multi-document workflow | multiple tabs | M1/M3 | Implemented | Tab strip + per-tab document hosts |
 | F59-02 | Multi-document workflow | multiple windows | M1/M3 | Implemented | File → New Window; per-window `WorkspaceState` |
-| F59-03 | Multi-document workflow | drag tabs between windows | M1/M3 | Not Started |  |
+| F59-03 | Multi-document workflow | drag tabs between windows | M1/M3 | Implemented | `CanDragTabs` + `AllowDropTabs` cross-window; drop outside → new window |
 | F59-04 | Multi-document workflow | drag PDF pages between documents | M1/M3 | Implemented | Cross-tab/window insert via `PdfPageDragRegistry` |
 | F59-05 | Multi-document workflow | drag images between compatible contexts | M1/M3 | Deferred | Needs M5 image editor |
 | F59-06 | Multi-document workflow | copy/paste between documents | M1/M3 | Implemented | Ctrl+C/V pages via `PdfPageClipboard` |
