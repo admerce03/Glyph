@@ -243,7 +243,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-17 | PDF annotations | Freeform shapes | M4 | Not Started |  |
 | F13-18 | PDF annotations | Annotation selection tool | M4 | Tested | Click annot on page / sidebar; drag moves |
 | F13-19 | PDF annotations | move | M4 | Tested | `MoveAsync` API + drag on page |
-| F13-20 | PDF annotations | resize | M4 | Not Started |  |
+| F13-20 | PDF annotations | resize | M4 | Tested | Selection handles → `MoveAsync` new bounds |
 | F13-21 | PDF annotations | rotate where appropriate | M4 | Not Started |  |
 | F13-22 | PDF annotations | duplicate | M4 | Not Started |  |
 | F13-23 | PDF annotations | delete | M4 | Tested | `RemoveAsync` by page/annot index |

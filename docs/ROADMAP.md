@@ -197,7 +197,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Flatten: `FlattenAsync` via `FPDFPage_Flatten` + Flatten toolbar (confirm dialog); editable annots removed after bake.
 - Signatures: `AddStampAsync` (BGRA stamp image) + local `FileSignatureLibrary`; Sign toolbar Draw (mouse stroke → PNG/library/stamp) or Import image.
 - AcroForm: `IPdfFormStore` / `PdfiumFormStore` lists widgets, sets text/combo `/V`, toggles checkboxes (`/V`+`/AS`), selects radios (mutual exclusion by field name), tab-adjacent focus; Form toolbar dialog; Pdf.Tests sample AcroForm.
-- Annotation selection: click annot on page (or sidebar) to select; drag moves via `MoveAsync`; selection chrome on overlay.
+- Annotation selection: click annot on page (or sidebar) to select; drag moves via `MoveAsync`; corner/edge handles resize; selection chrome on overlay.
 
 ---
 
