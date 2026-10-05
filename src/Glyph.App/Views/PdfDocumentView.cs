@@ -5023,7 +5023,7 @@ public sealed class PdfDocumentView : UserControl
 
         var page = _document.GetPage(pageIndex);
         var pt = e.GetCurrentPoint(border).Position;
-        var tip = new PdfPagePoint(pt.X / _scale, page.HeightPoints - (pt.Y / _scale));
+        var tip = PdfPageCoordinates.FromDisplayPoint(pt.X, pt.Y, page.HeightPoints, _scale);
 
         try
         {
@@ -5342,15 +5342,12 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var page = _document.GetPage(pageIndex);
-        double ToPdfX(double x) => x / _scale;
-        double ToPdfY(double y) => page.HeightPoints - (y / _scale);
-        var tip = new PdfPagePoint(ToPdfX(start.X), ToPdfY(start.Y));
-        var boxCenterX = ToPdfX(end.X);
-        var boxCenterY = ToPdfY(end.Y);
+        var tip = PdfPageCoordinates.FromDisplayPoint(start.X, start.Y, page.HeightPoints, _scale);
+        var boxCenter = PdfPageCoordinates.FromDisplayPoint(end.X, end.Y, page.HeightPoints, _scale);
         var boxWidth = Math.Min(180, page.WidthPoints * 0.4);
         var boxHeight = 56;
-        var left = Math.Clamp(boxCenterX - (boxWidth / 2), 8, Math.Max(8, page.WidthPoints - boxWidth - 8));
-        var bottom = Math.Clamp(boxCenterY - (boxHeight / 2), 8, Math.Max(8, page.HeightPoints - boxHeight - 8));
+        var left = Math.Clamp(boxCenter.X - (boxWidth / 2), 8, Math.Max(8, page.WidthPoints - boxWidth - 8));
+        var bottom = Math.Clamp(boxCenter.Y - (boxHeight / 2), 8, Math.Max(8, page.HeightPoints - boxHeight - 8));
         var textBounds = new PdfRect(left, bottom, left + boxWidth, bottom + boxHeight);
 
         var window = _ownerWindow
@@ -5744,7 +5741,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var page = _document.GetPage(pageIndex);
         var ui = e.GetCurrentPoint(border).Position;
-        var pdf = new PdfPagePoint(ui.X / _scale, page.HeightPoints - (ui.Y / _scale));
+        var pdf = PdfPageCoordinates.FromDisplayPoint(ui.X, ui.Y, page.HeightPoints, _scale);
 
         if (_polygonPageIndex >= 0 && _polygonPageIndex != pageIndex)
         {
@@ -6302,17 +6299,14 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var page = _document.GetPage(pageIndex);
-        double ToPdfX(double x) => x / _scale;
-        double ToPdfY(double y) => page.HeightPoints - (y / _scale);
 
         PdfRect bounds;
         if (kind is PdfShapeKind.Line or PdfShapeKind.Arrow)
         {
-            bounds = new PdfRect(
-                ToPdfX(start.X),
-                ToPdfY(start.Y),
-                ToPdfX(end.X),
-                ToPdfY(end.Y));
+            var startPdf = PdfPageCoordinates.FromDisplayPoint(start.X, start.Y, page.HeightPoints, _scale);
+            var endPdf = PdfPageCoordinates.FromDisplayPoint(end.X, end.Y, page.HeightPoints, _scale);
+            // Line/Arrow store endpoints in the rect corners (not necessarily normalized).
+            bounds = new PdfRect(startPdf.X, startPdf.Y, endPdf.X, endPdf.Y);
         }
         else
         {
@@ -6329,15 +6323,13 @@ public sealed class PdfDocumentView : UserControl
                 uiTop = end.Y >= start.Y ? start.Y : start.Y - diameter;
             }
 
-            var left = ToPdfX(uiLeft);
-            var right = ToPdfX(uiLeft + uiWidth);
-            var top = ToPdfY(uiTop);
-            var bottom = ToPdfY(uiTop + uiHeight);
-            bounds = new PdfRect(
-                Math.Min(left, right),
-                Math.Min(bottom, top),
-                Math.Max(left, right),
-                Math.Max(bottom, top));
+            bounds = PdfPageCoordinates.FromDisplayRectXywh(
+                uiLeft,
+                uiTop,
+                uiWidth,
+                uiHeight,
+                page.HeightPoints,
+                _scale);
         }
 
         try
@@ -6560,9 +6552,8 @@ public sealed class PdfDocumentView : UserControl
     private void AppendInkPoint(Border border, int pageIndex, Windows.Foundation.Point uiPoint)
     {
         var page = _document.GetPage(pageIndex);
-        var pdfX = uiPoint.X / _scale;
-        var pdfY = page.HeightPoints - (uiPoint.Y / _scale);
-        _inkPoints.Add(new PdfPagePoint(pdfX, pdfY));
+        var pdf = PdfPageCoordinates.FromDisplayPoint(uiPoint.X, uiPoint.Y, page.HeightPoints, _scale);
+        _inkPoints.Add(pdf);
 
         if (!_pageOverlays.TryGetValue(pageIndex, out var overlay))
         {
@@ -8790,13 +8781,13 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var page = _document.GetPage(pageIndex);
-        double ToPdfX(double x) => x / _scale;
-        double ToPdfY(double y) => page.HeightPoints - (y / _scale);
-        var left = Math.Min(ToPdfX(start.X), ToPdfX(end.X));
-        var right = Math.Max(ToPdfX(start.X), ToPdfX(end.X));
-        var bottom = Math.Min(ToPdfY(start.Y), ToPdfY(end.Y));
-        var top = Math.Max(ToPdfY(start.Y), ToPdfY(end.Y));
-        var bounds = new PdfRect(left, bottom, right, top);
+        var bounds = PdfPageCoordinates.FromDisplayRect(
+            start.X,
+            start.Y,
+            end.X,
+            end.Y,
+            page.HeightPoints,
+            _scale);
 
         try
         {
