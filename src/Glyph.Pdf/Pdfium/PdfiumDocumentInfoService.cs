@@ -28,52 +28,91 @@ public sealed class PdfiumDocumentInfoService : IPdfDocumentInfoService
         lock (PdfiumSync.Gate)
         {
             pdfium.ThrowIfDisposed();
-            var handle = pdfium.Handle;
-            var flags = unchecked((uint)fpdfview.FPDF_GetDocPermissions(handle));
-            var revision = fpdfview.FPDF_GetSecurityHandlerRevision(handle);
-            long? fileSize = null;
-            string? pdfVersion = null;
-            if (!string.IsNullOrWhiteSpace(pdfium.Path) && File.Exists(pdfium.Path))
-            {
-                var info = new FileInfo(pdfium.Path);
-                fileSize = info.Length;
-                pdfVersion = ReadPdfVersion(pdfium.Path);
-            }
-
-            double? pageWidth = null;
-            double? pageHeight = null;
-            if (pdfium.PageCount > 0)
-            {
-                var page = pdfium.GetPage(0);
-                pageWidth = page.WidthPoints;
-                pageHeight = page.HeightPoints;
-            }
-
-            var fonts = CollectFontNames(handle, pdfium.PageCount);
-            var attachmentCount = Math.Max(0, fpdf_attachment.FPDFDocGetAttachmentCount(handle));
-
-            return new PdfDocumentInfo(
-                Title: ReadMeta(handle, "Title"),
-                Author: ReadMeta(handle, "Author"),
-                Subject: ReadMeta(handle, "Subject"),
-                Keywords: ReadMeta(handle, "Keywords"),
-                Creator: ReadMeta(handle, "Creator"),
-                Producer: ReadMeta(handle, "Producer"),
-                CreationDate: ReadMeta(handle, "CreationDate"),
-                ModificationDate: ReadMeta(handle, "ModDate"),
-                PageCount: pdfium.PageCount,
-                FilePath: pdfium.Path,
-                FileSizeBytes: fileSize,
-                PdfVersion: pdfVersion,
-                PageWidthPoints: pageWidth,
-                PageHeightPoints: pageHeight,
-                Fonts: fonts,
-                EmbeddedAttachmentCount: attachmentCount,
-                IsEncrypted: pdfium.IsEncrypted,
-                SecurityHandlerRevision: revision,
-                PermissionFlags: flags,
-                Permissions: DecodePermissions(flags));
+            return GetInfoUnlocked(pdfium);
         }
+    }
+
+    public void SetInfo(IPdfDocument document, PdfDocumentInfoUpdate update)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(update);
+        if (document is not PdfiumDocument pdfium)
+        {
+            throw new ArgumentException("Document must be a PDFium-backed instance.", nameof(document));
+        }
+
+        PdfiumLibrary.EnsureInitialized();
+        lock (PdfiumSync.Gate)
+        {
+            pdfium.ThrowIfDisposed();
+            var current = GetInfoUnlocked(pdfium);
+            var fields = update.ClearAll
+                ? new PdfInfoFields(
+                    Title: string.Empty,
+                    Author: string.Empty,
+                    Subject: string.Empty,
+                    Keywords: string.Empty,
+                    Creator: string.Empty,
+                    Producer: string.Empty)
+                : new PdfInfoFields(
+                    Title: update.Title ?? current.Title ?? string.Empty,
+                    Author: update.Author ?? current.Author ?? string.Empty,
+                    Subject: update.Subject ?? current.Subject ?? string.Empty,
+                    Keywords: update.Keywords ?? current.Keywords ?? string.Empty,
+                    Creator: current.Creator,
+                    Producer: current.Producer);
+
+            // Full rewrite first so trailer/startxref parsing is stable, then append Info update.
+            var baseBytes = PdfiumDocumentSaver.SaveToBytes(pdfium.Handle, flags: 2);
+            var patched = PdfInfoDictionaryPatcher.Apply(baseBytes, fields);
+            pdfium.ReplaceFromBytes(patched);
+        }
+    }
+
+    private PdfDocumentInfo GetInfoUnlocked(PdfiumDocument pdfium)
+    {
+        var handle = pdfium.Handle;
+        var flags = unchecked((uint)fpdfview.FPDF_GetDocPermissions(handle));
+        var revision = fpdfview.FPDF_GetSecurityHandlerRevision(handle);
+        long? fileSize = null;
+        string? pdfVersion = null;
+        if (!string.IsNullOrWhiteSpace(pdfium.Path) && File.Exists(pdfium.Path))
+        {
+            var info = new FileInfo(pdfium.Path);
+            fileSize = info.Length;
+            pdfVersion = ReadPdfVersion(pdfium.Path);
+        }
+
+        double? pageWidth = null;
+        double? pageHeight = null;
+        if (pdfium.PageCount > 0)
+        {
+            var page = pdfium.GetPage(0);
+            pageWidth = page.WidthPoints;
+            pageHeight = page.HeightPoints;
+        }
+
+        return new PdfDocumentInfo(
+            Title: ReadMeta(handle, "Title"),
+            Author: ReadMeta(handle, "Author"),
+            Subject: ReadMeta(handle, "Subject"),
+            Keywords: ReadMeta(handle, "Keywords"),
+            Creator: ReadMeta(handle, "Creator"),
+            Producer: ReadMeta(handle, "Producer"),
+            CreationDate: ReadMeta(handle, "CreationDate"),
+            ModificationDate: ReadMeta(handle, "ModDate"),
+            PageCount: pdfium.PageCount,
+            FilePath: pdfium.Path,
+            FileSizeBytes: fileSize,
+            PdfVersion: pdfVersion,
+            PageWidthPoints: pageWidth,
+            PageHeightPoints: pageHeight,
+            Fonts: CollectFontNames(handle, pdfium.PageCount),
+            EmbeddedAttachmentCount: Math.Max(0, fpdf_attachment.FPDFDocGetAttachmentCount(handle)),
+            IsEncrypted: pdfium.IsEncrypted,
+            SecurityHandlerRevision: revision,
+            PermissionFlags: flags,
+            Permissions: DecodePermissions(flags));
     }
 
     private static IReadOnlyList<string> CollectFontNames(FpdfDocumentT handle, int pageCount)

@@ -7273,6 +7273,7 @@ public sealed class PdfDocumentView : UserControl
         var targetDpiBox = new TextBox { Width = 80, Text = "150", IsEnabled = false };
         var stripAttachments = new CheckBox { Content = "Remove embedded files", IsEnabled = false };
         var preserveMono = new CheckBox { Content = "Preserve monochrome images", IsChecked = true, IsEnabled = false };
+        var stripMetadata = new CheckBox { Content = "Remove metadata", IsEnabled = false };
 
         void SyncCustomEnabled()
         {
@@ -7281,6 +7282,7 @@ public sealed class PdfDocumentView : UserControl
             targetDpiBox.IsEnabled = custom;
             stripAttachments.IsEnabled = custom;
             preserveMono.IsEnabled = custom;
+            stripMetadata.IsEnabled = custom;
             if (!custom)
             {
                 var preset = SelectedPreset();
@@ -7289,6 +7291,7 @@ public sealed class PdfDocumentView : UserControl
                 targetDpiBox.Text = opts.TargetDpi.ToString("0");
                 stripAttachments.IsChecked = opts.RemoveEmbeddedAttachments;
                 preserveMono.IsChecked = opts.PreserveMonochrome;
+                stripMetadata.IsChecked = opts.RemoveMetadata;
             }
         }
 
@@ -7338,7 +7341,8 @@ public sealed class PdfDocumentView : UserControl
                 TargetDpi: target,
                 JpegQuality: 75,
                 PreserveMonochrome: preserveMono.IsChecked == true,
-                RemoveEmbeddedAttachments: stripAttachments.IsChecked == true);
+                RemoveEmbeddedAttachments: stripAttachments.IsChecked == true,
+                RemoveMetadata: stripMetadata.IsChecked == true);
         }
 
         var estimateButton = new Button { Content = "Estimate", Margin = new Thickness(0, 8, 8, 0) };
@@ -7381,6 +7385,7 @@ public sealed class PdfDocumentView : UserControl
                 customRow,
                 stripAttachments,
                 preserveMono,
+                stripMetadata,
                 estimateButton,
                 estimateText,
             },
@@ -7501,14 +7506,85 @@ public sealed class PdfDocumentView : UserControl
                 MaxHeight = 420,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             },
+            PrimaryButtonText = "Edit…",
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = window.Content.XamlRoot,
         };
 
-        await dialog.ShowAsync();
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            await EditDocumentInfoAsync(info);
+            return;
+        }
+
         _status.Text = info.IsEncrypted
             ? "Document is encrypted — permissions shown are advisory."
             : "Document info.";
+    }
+
+    private async Task EditDocumentInfoAsync(PdfDocumentInfo current)
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for document info edit.");
+
+        var titleBox = new TextBox { Text = current.Title ?? string.Empty, Width = 320 };
+        var authorBox = new TextBox { Text = current.Author ?? string.Empty, Width = 320 };
+        var subjectBox = new TextBox { Text = current.Subject ?? string.Empty, Width = 320 };
+        var keywordsBox = new TextBox { Text = current.Keywords ?? string.Empty, Width = 320 };
+
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock { Text = "Title" },
+                titleBox,
+                new TextBlock { Text = "Author" },
+                authorBox,
+                new TextBlock { Text = "Subject" },
+                subjectBox,
+                new TextBlock { Text = "Keywords" },
+                keywordsBox,
+            },
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = "Edit document info",
+            Content = panel,
+            PrimaryButtonText = "Save",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            _status.Text = "Info edit cancelled.";
+            return;
+        }
+
+        try
+        {
+            _documentInfo.SetInfo(
+                _document,
+                new PdfDocumentInfoUpdate(
+                    Title: titleBox.Text,
+                    Author: authorBox.Text,
+                    Subject: subjectBox.Text,
+                    Keywords: keywordsBox.Text));
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            _status.Text = "Document info updated. Save the PDF to keep changes on disk.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Info edit failed: " + ex.Message;
+        }
     }
 }

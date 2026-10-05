@@ -402,7 +402,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F24-12 | PDF optimization and compression | remove unused objects | M7 | Not Started |  |
 | F24-13 | PDF optimization and compression | optimize object structure | M7 | Not Started |  |
 | F24-14 | PDF optimization and compression | linearize / Fast Web View | M7 | Not Started |  |
-| F24-15 | PDF optimization and compression | remove metadata optionally | M7 | Blocked | No PDFium SetMetaText (same gap as ADR-015 / F25 edit) |
+| F24-15 | PDF optimization and compression | remove metadata optionally | M7 | Tested | Custom Optimize → Remove metadata via Info dict patcher |
 | F24-16 | PDF optimization and compression | estimate output size before saving where feasible | M7 | Tested | Optimize → Estimate via SaveToBytes + eligible image heuristic |
 | F25-01 | PDF metadata | title | M7 | Implemented | Info dialog Title from `FPDF_GetMetaText`||
 | F25-02 | PDF metadata | author | M7 | Implemented | Info dialog Author||
@@ -419,10 +419,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F25-13 | PDF metadata | encryption status | M7 | Implemented | Info dialog + status encryption flag||
 | F25-14 | PDF metadata | permissions | M7 | Implemented | Info dialog decoded permission flags||
 | F25-15 | PDF metadata | embedded fonts, optionally | M7 | Tested | Info dialog lists fonts from page text objects (first 32 pages) |
-| F25-16 | PDF metadata | title | M7 | Not Started |  |
-| F25-17 | PDF metadata | author | M7 | Not Started |  |
-| F25-18 | PDF metadata | subject | M7 | Not Started |  |
-| F25-19 | PDF metadata | keywords | M7 | Not Started |  |
+| F25-16 | PDF metadata | title | M7 | Tested | Info → Edit… writes `/Title` via incremental Info patch |
+| F25-17 | PDF metadata | author | M7 | Tested | Info → Edit… `/Author` |
+| F25-18 | PDF metadata | subject | M7 | Tested | Info → Edit… `/Subject` |
+| F25-19 | PDF metadata | keywords | M7 | Tested | Info → Edit… `/Keywords` |
 | F26-01 | Image viewing | JPEG/JPG | M5 | Implemented | Magick.NET decoder |
 | F26-02 | Image viewing | PNG | M5 | Implemented | Magick.NET decoder |
 | F26-03 | Image viewing | GIF | M5 | Implemented | Magick.NET decoder (first frame) |

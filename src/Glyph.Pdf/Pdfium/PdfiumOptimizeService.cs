@@ -69,7 +69,21 @@ public sealed class PdfiumOptimizeService : IPdfOptimizeService
                         }
                     }
 
-                    // RemoveMetadata is deferred — PDFium exposes GetMetaText only (see ADR-015 / F25 edit).
+                    // RemoveMetadata clears Info dictionary fields via incremental patch.
+                    if (opts.RemoveMetadata)
+                    {
+                        var cleared = PdfInfoDictionaryPatcher.Apply(
+                            PdfiumDocumentSaver.SaveToBytes(pdfium.Handle, SaveNoIncremental),
+                            new PdfInfoFields(
+                                Title: string.Empty,
+                                Author: string.Empty,
+                                Subject: string.Empty,
+                                Keywords: string.Empty,
+                                Creator: string.Empty,
+                                Producer: string.Empty));
+                        pdfium.ReplaceFromBytes(cleared);
+                    }
+
                     var after = PdfiumDocumentSaver.SaveToBytes(pdfium.Handle, SaveNoIncremental).LongLength;
                     if (downsampled > 0)
                     {

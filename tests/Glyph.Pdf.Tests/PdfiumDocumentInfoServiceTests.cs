@@ -61,6 +61,59 @@ public class PdfiumDocumentInfoServiceTests
         info.PageCount.Should().Be(1);
     }
 
+    [Fact]
+    public async Task SetInfo_updates_title_author_subject_keywords()
+    {
+        var path = CreateInfoPdf();
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var infoService = new PdfiumDocumentInfoService();
+            await using var document = await factory.OpenAsync(path);
+
+            infoService.SetInfo(
+                document,
+                new PdfDocumentInfoUpdate(
+                    Title: "New Title",
+                    Author: "New Author",
+                    Subject: "New Subject",
+                    Keywords: "alpha, beta"));
+
+            var info = infoService.GetInfo(document);
+            info.Title.Should().Be("New Title");
+            info.Author.Should().Be("New Author");
+            info.Subject.Should().Be("New Subject");
+            info.Keywords.Should().Be("alpha, beta");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task SetInfo_clear_all_removes_info_fields()
+    {
+        var path = CreateInfoPdf();
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var infoService = new PdfiumDocumentInfoService();
+            await using var document = await factory.OpenAsync(path);
+
+            infoService.SetInfo(document, new PdfDocumentInfoUpdate(ClearAll: true));
+            var info = infoService.GetInfo(document);
+            info.Title.Should().BeNullOrEmpty();
+            info.Author.Should().BeNullOrEmpty();
+            info.Subject.Should().BeNullOrEmpty();
+            info.Keywords.Should().BeNullOrEmpty();
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static string CreateInfoPdf()
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-info-" + Guid.NewGuid().ToString("N") + ".pdf");
