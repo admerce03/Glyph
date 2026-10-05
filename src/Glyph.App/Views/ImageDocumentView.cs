@@ -749,7 +749,7 @@ public sealed class ImageDocumentView : UserControl
         {
             Header = "Format",
             Width = 200,
-            ItemsSource = new[] { "WebP", "TIFF", "BMP", "GIF" },
+            ItemsSource = new[] { "WebP", "TIFF", "BMP", "GIF", "AVIF", "JPEG 2000" },
             SelectedIndex = 0,
         };
         var quality = new Slider
@@ -764,8 +764,12 @@ public sealed class ImageDocumentView : UserControl
         var lossless = new CheckBox { Content = "Lossless WebP", IsChecked = false };
         void SyncWebpOptions()
         {
-            var isWebp = formatBox.SelectedItem as string == "WebP";
-            quality.Visibility = isWebp && lossless.IsChecked != true ? Visibility.Visible : Visibility.Collapsed;
+            var selected = formatBox.SelectedItem as string;
+            var isWebp = selected == "WebP";
+            var needsQuality = selected is "WebP" or "AVIF";
+            quality.Visibility = needsQuality && !(isWebp && lossless.IsChecked == true)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
             lossless.Visibility = isWebp ? Visibility.Visible : Visibility.Collapsed;
         }
 
@@ -796,6 +800,8 @@ public sealed class ImageDocumentView : UserControl
             "TIFF" => (ImageEncodeFormat.Tiff, ".tif"),
             "BMP" => (ImageEncodeFormat.Bmp, ".bmp"),
             "GIF" => (ImageEncodeFormat.Gif, ".gif"),
+            "AVIF" => (ImageEncodeFormat.Avif, ".avif"),
+            "JPEG 2000" => (ImageEncodeFormat.Jpeg2000, ".jp2"),
             _ => (ImageEncodeFormat.Webp, ".webp"),
         };
 
@@ -805,6 +811,10 @@ public sealed class ImageDocumentView : UserControl
             options = lossless.IsChecked == true
                 ? new ImageEncodeOptions(Lossless: true)
                 : new ImageEncodeOptions(Quality: (int)quality.Value);
+        }
+        else if (format == ImageEncodeFormat.Avif)
+        {
+            options = new ImageEncodeOptions(Quality: (int)quality.Value);
         }
 
         await ExportAsync(format, extension, options);

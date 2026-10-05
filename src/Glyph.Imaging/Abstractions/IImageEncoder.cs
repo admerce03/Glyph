@@ -32,6 +32,8 @@ public enum ImageEncodeFormat
     Bmp,
     Tiff,
     Gif,
+    Avif,
+    Jpeg2000,
 }
 
 /// <summary>

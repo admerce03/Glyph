@@ -41,6 +41,8 @@ public sealed class MagickImageEncoder : IImageEncoder
                     ImageEncodeFormat.Bmp => MagickFormat.Bmp,
                     ImageEncodeFormat.Tiff => MagickFormat.Tiff,
                     ImageEncodeFormat.Gif => MagickFormat.Gif,
+                    ImageEncodeFormat.Avif => MagickFormat.Avif,
+                    ImageEncodeFormat.Jpeg2000 => MagickFormat.Jp2,
                     _ => MagickFormat.Png,
                 };
 
@@ -87,10 +89,12 @@ public sealed class MagickImageEncoder : IImageEncoder
                     ImageEncodeFormat.Bmp => MagickFormat.Bmp,
                     ImageEncodeFormat.Tiff => MagickFormat.Tiff,
                     ImageEncodeFormat.Gif => MagickFormat.Gif,
+                    ImageEncodeFormat.Avif => MagickFormat.Avif,
+                    ImageEncodeFormat.Jpeg2000 => MagickFormat.Jp2,
                     _ => MagickFormat.Png,
                 };
 
-                if (format is ImageEncodeFormat.Jpeg)
+                if (format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Jpeg2000)
                 {
                     image.Alpha(AlphaOption.Remove);
                 }
@@ -115,7 +119,7 @@ public sealed class MagickImageEncoder : IImageEncoder
                 throw new ArgumentOutOfRangeException(nameof(options), "Quality must be between 1 and 100.");
             }
 
-            if (format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Webp)
+            if (format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Webp or ImageEncodeFormat.Avif)
             {
                 image.Quality = (uint)quality;
             }

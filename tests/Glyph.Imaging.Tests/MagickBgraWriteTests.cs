@@ -13,6 +13,9 @@ public class MagickBgraWriteTests
     [InlineData(ImageEncodeFormat.Webp, ".webp")]
     [InlineData(ImageEncodeFormat.Bmp, ".bmp")]
     [InlineData(ImageEncodeFormat.Tiff, ".tif")]
+    [InlineData(ImageEncodeFormat.Gif, ".gif")]
+    [InlineData(ImageEncodeFormat.Avif, ".avif")]
+    [InlineData(ImageEncodeFormat.Jpeg2000, ".jp2")]
     public async Task WriteBgra_round_trips_dimensions(ImageEncodeFormat format, string extension)
     {
         var width = 48;
@@ -36,7 +39,7 @@ public class MagickBgraWriteTests
                 height,
                 path,
                 format,
-                format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Webp
+                format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Webp or ImageEncodeFormat.Avif
                     ? new ImageEncodeOptions(Quality: 80)
                     : null);
 

@@ -398,10 +398,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F24-08 | PDF optimization and compression | JPEG quality | M7 | Blocked | `IPdfImageJpegEncoder`/Magick wired; `LoadJpegFileInline` FILEACCESS crashes under PDFiumCore — SetBitmap fallback |
 | F24-09 | PDF optimization and compression | preserve monochrome content | M7 | Implemented | Skip 1-bpp images when PreserveMonochrome |
 | F24-10 | PDF optimization and compression | compress streams | M7 | Implemented | Optimize measures/saves with `FPDF_NO_INCREMENTAL` full rewrite |
-| F24-11 | PDF optimization and compression | subset fonts where appropriate | M7 | Not Started |  |
-| F24-12 | PDF optimization and compression | remove unused objects | M7 | Not Started |  |
-| F24-13 | PDF optimization and compression | optimize object structure | M7 | Not Started |  |
-| F24-14 | PDF optimization and compression | linearize / Fast Web View | M7 | Not Started |  |
+| F24-11 | PDF optimization and compression | subset fonts where appropriate | M7 | Deferred | ADR-016 — no PDFium font-subset API |
+| F24-12 | PDF optimization and compression | remove unused objects | M7 | Implemented | Best-effort via `FPDF_NO_INCREMENTAL` full rewrite after edits (ADR-016) |
+| F24-13 | PDF optimization and compression | optimize object structure | M7 | Implemented | Same full-rewrite path as F24-12 (ADR-016) |
+| F24-14 | PDF optimization and compression | linearize / Fast Web View | M7 | Deferred | ADR-016 — no PDFium linearize flag |
 | F24-15 | PDF optimization and compression | remove metadata optionally | M7 | Tested | Custom Optimize → Remove metadata via Info dict patcher |
 | F24-16 | PDF optimization and compression | estimate output size before saving where feasible | M7 | Tested | Optimize → Estimate via SaveToBytes + eligible image heuristic |
 | F25-01 | PDF metadata | title | M7 | Implemented | Info dialog Title from `FPDF_GetMetaText`||
@@ -853,10 +853,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F62-04 | Supported output formats | WebP | M5/M7 | Tested | Image Convert + PDF page Export |
 | F62-05 | Supported output formats | TIFF | M5/M7 | Tested | Image Convert + PDF page Export |
 | F62-06 | Supported output formats | BMP | M5/M7 | Tested | Image Convert + PDF page Export |
-| F62-07 | Supported output formats | HEIF/HEIC | M5/M7 | Not Started |  |
-| F62-08 | Supported output formats | AVIF | M5/M7 | Not Started |  |
-| F62-09 | Supported output formats | GIF | M5/M7 | Not Started |  |
-| F62-10 | Supported output formats | JPEG 2000 | M5/M7 | Not Started |  |
+| F62-07 | Supported output formats | HEIF/HEIC | M5/M7 | Deferred | Magick build lacks HEIF encode delegate in CI/dev snapshots |
+| F62-08 | Supported output formats | AVIF | M5/M7 | Tested | Image Convert + PDF page Export |
+| F62-09 | Supported output formats | GIF | M5/M7 | Tested | Image Convert + PDF page Export |
+| F62-10 | Supported output formats | JPEG 2000 | M5/M7 | Tested | Image Convert + PDF page Export |
 | F63-01 | Explicit exclusions | all touchscreen-specific interaction | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
 | F63-02 | Explicit exclusions | all stylus/pen interaction | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
 | F63-03 | Explicit exclusions | Windows Ink | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |

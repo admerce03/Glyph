@@ -5,6 +5,27 @@ When a decision needs product/licensing/privacy approval, it is marked **Needs a
 
 ---
 
+## ADR-016 — Defer PDF font subsetting and Fast Web View linearization
+
+**Status:** Accepted (Milestone 7)  
+**Date:** 2026-10-05
+
+### Context
+
+M7 §24 asks for font subsetting and linearize / Fast Web View. PDFiumCore exposes neither a font-subset writer nor a linearization save flag (only `FPDF_SaveAsCopy` / `SaveWithVersion` with incremental / no-incremental / remove-security). Hand-rolling either feature is a large PDF-structure project outside Preview scope.
+
+### Decision
+
+1. Defer F24-11 (subset fonts) and F24-14 (linearize / Fast Web View) until a dedicated optimizer engine or approved second write stack lands.
+2. Treat F24-12/13 (remove unused objects / optimize structure) as **best-effort** via `FPDF_NO_INCREMENTAL` full rewrite after attachment unlink and image downsample — not a full unused-object GC.
+
+### Consequences
+
+- Matrix rows F24-11/F24-14 marked Deferred with this ADR.
+- Optimize presets remain useful for DPI downsample, attachment strip, metadata clear, and full rewrite.
+
+---
+
 ## ADR-015 — PDF password-protect write path (no PDFium encrypt API)
 
 **Status:** Needs approval (Milestone 7)  

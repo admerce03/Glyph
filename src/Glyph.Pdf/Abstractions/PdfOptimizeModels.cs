@@ -51,7 +51,8 @@ public sealed record PdfOptimizeOptions(
                 DownsampleAboveDpi: 150,
                 TargetDpi: 96,
                 JpegQuality: 55,
-                RemoveEmbeddedAttachments: true),
+                RemoveEmbeddedAttachments: true,
+                RemoveMetadata: true),
             _ => new(Preset: PdfOptimizePreset.Custom),
         };
 }

@@ -450,7 +450,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(redact, "Mark areas/text for redaction; apply permanently removes content");
         ToolTipService.SetToolTip(info, "Document metadata, encryption, and permissions");
         ToolTipService.SetToolTip(optimize, "Downsample images / shrink PDF (presets)");
-        ToolTipService.SetToolTip(export, "Export selected/current page(s) as PNG, JPEG, WebP, TIFF, or BMP");
+        ToolTipService.SetToolTip(export, "Export selected/current page(s) as PNG, JPEG, WebP, TIFF, BMP, GIF, AVIF, or JPEG 2000");
         ToolTipService.SetToolTip(sign, "Signature: draw with mouse or import PNG/JPEG (saved to library)");
         ToolTipService.SetToolTip(formFill, "Form fill: overlay mode or field list (Tab order)");
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
@@ -7272,7 +7272,7 @@ public sealed class PdfDocumentView : UserControl
         {
             Width = 180,
             SelectedIndex = 0,
-            Items = { "PNG", "JPEG", "WebP", "TIFF", "BMP" },
+            Items = { "PNG", "JPEG", "WebP", "TIFF", "BMP", "GIF", "AVIF", "JPEG 2000" },
         };
         var dpiBox = new TextBox { Width = 80, Text = "144" };
         var qualityBox = new Slider
@@ -7281,7 +7281,7 @@ public sealed class PdfDocumentView : UserControl
             Maximum = 100,
             Value = 85,
             Width = 180,
-            Header = "JPEG/WebP quality",
+            Header = "JPEG/WebP/AVIF quality",
         };
 
         var panel = new StackPanel
@@ -7321,6 +7321,9 @@ public sealed class PdfDocumentView : UserControl
             "WebP" => (ImageEncodeFormat.Webp, ".webp"),
             "TIFF" => (ImageEncodeFormat.Tiff, ".tif"),
             "BMP" => (ImageEncodeFormat.Bmp, ".bmp"),
+            "GIF" => (ImageEncodeFormat.Gif, ".gif"),
+            "AVIF" => (ImageEncodeFormat.Avif, ".avif"),
+            "JPEG 2000" => (ImageEncodeFormat.Jpeg2000, ".jp2"),
             _ => (ImageEncodeFormat.Png, ".png"),
         };
 
@@ -7330,7 +7333,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var scale = dpi / 72.0;
-        ImageEncodeOptions? options = format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Webp
+        ImageEncodeOptions? options = format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Webp or ImageEncodeFormat.Avif
             ? new ImageEncodeOptions(Quality: (int)qualityBox.Value)
             : null;
 
@@ -7426,7 +7429,7 @@ public sealed class PdfDocumentView : UserControl
                 "Lossless (full rewrite)",
                 "High quality (200 DPI)",
                 "Balanced (150 DPI)",
-                "Small file (96 DPI + strip attachments)",
+                "Small file (96 DPI + strip attachments/metadata)",
                 "Custom",
             },
         };
