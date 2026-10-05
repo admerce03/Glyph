@@ -263,7 +263,11 @@ public class PdfiumAnnotationServiceTests
                     "Hello text box",
                     new PdfAnnotationColor(20, 20, 20),
                     borderColor: new PdfAnnotationColor(40, 40, 40),
-                    fillColor: new PdfAnnotationColor(255, 250, 180));
+                    fillColor: new PdfAnnotationColor(255, 250, 180),
+                    fontSizePoints: 18f,
+                    fontResourceName: PdfFreeTextFont.ResolveResourceName(
+                        PdfFreeTextFontFamily.Times,
+                        bold: true));
                 created.IsTextBox.Should().BeTrue();
                 created.Contents.Should().Be("Hello text box");
 
@@ -274,6 +278,35 @@ public class PdfiumAnnotationServiceTests
             {
                 var listed = await annots.ListAsync(reopened, 0);
                 listed.Should().Contain(a => a.IsTextBox && a.Contents == "Hello text box");
+
+                // Confirm FreeText /DA kept the bold Times face + 18 pt size.
+                var pdfium = (PdfiumDocument)reopened;
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    var page = PDFiumCore.fpdfview.FPDF_LoadPage(pdfium.Handle, 0);
+                    page.Should().NotBeNull();
+                    try
+                    {
+                        var textBox = listed.First(a => a.IsTextBox);
+                        var annot = PDFiumCore.fpdf_annot.FPDFPageGetAnnot(page, textBox.AnnotIndex);
+                        annot.Should().NotBeNull();
+                        try
+                        {
+                            var da = PdfiumAnnotStrings.GetString(annot!, "DA");
+                            da.Should().Contain("/TiBo");
+                            da.Should().Contain("18");
+                        }
+                        finally
+                        {
+                            PDFiumCore.fpdf_annot.FPDFPageCloseAnnot(annot);
+                        }
+                    }
+                    finally
+                    {
+                        PDFiumCore.fpdfview.FPDF_ClosePage(page);
+                    }
+                }
             }
         }
         finally

@@ -61,6 +61,7 @@ public interface IPdfAnnotationService
         PdfAnnotationColor? borderColor = null,
         PdfAnnotationColor? fillColor = null,
         float fontSizePoints = 12f,
+        string fontResourceName = "Helv",
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -76,6 +77,7 @@ public interface IPdfAnnotationService
         PdfAnnotationColor? borderColor = null,
         PdfAnnotationColor? fillColor = null,
         float fontSizePoints = 12f,
+        string fontResourceName = "Helv",
         float pointerWidthPoints = 1.5f,
         CancellationToken cancellationToken = default);
 

@@ -582,6 +582,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         PdfAnnotationColor? borderColor = null,
         PdfAnnotationColor? fillColor = null,
         float fontSizePoints = 12f,
+        string fontResourceName = "Helv",
         CancellationToken cancellationToken = default)
     {
         var pdfium = RequirePdfium(document);
@@ -598,6 +599,9 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             throw new ArgumentOutOfRangeException(nameof(fontSizePoints));
         }
 
+        fontResourceName = string.IsNullOrWhiteSpace(fontResourceName)
+            ? "Helv"
+            : fontResourceName.Trim().TrimStart('/');
         borderColor ??= new PdfAnnotationColor(40, 40, 40);
 
         return Task.Run(
@@ -674,11 +678,11 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                                 throw new InvalidOperationException("Failed to set text box Contents.");
                             }
 
-                            // Default appearance: Helvetica at fontSize in RGB text color.
+                            // Default appearance: standard font at fontSize in RGB text color.
                             var r = textColor.R / 255.0;
                             var g = textColor.G / 255.0;
                             var b = textColor.B / 255.0;
-                            var da = $"/Helv {fontSizePoints:0.##} Tf {r:0.###} {g:0.###} {b:0.###} rg";
+                            var da = $"/{fontResourceName} {fontSizePoints:0.##} Tf {r:0.###} {g:0.###} {b:0.###} rg";
                             if (!PdfiumAnnotStrings.SetString(annot, "DA", da))
                             {
                                 throw new InvalidOperationException("Failed to set text box DA.");
@@ -727,6 +731,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         PdfAnnotationColor? borderColor = null,
         PdfAnnotationColor? fillColor = null,
         float fontSizePoints = 12f,
+        string fontResourceName = "Helv",
         float pointerWidthPoints = 1.5f,
         CancellationToken cancellationToken = default)
     {
@@ -756,6 +761,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             borderColor,
             fillColor,
             fontSizePoints,
+            fontResourceName,
             cancellationToken);
 
         // Mark as callout via Subj so list/reload can recognize it.

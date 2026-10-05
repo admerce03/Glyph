@@ -258,7 +258,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-32 | PDF annotations | change line thickness | M4 | Tested | `borderWidthPoints` on ink/shape create |
 | F13-33 | PDF annotations | change line style | M4 | Not Started |  |
 | F13-34 | PDF annotations | change arrowheads | M4 | Not Started |  |
-| F13-35 | PDF annotations | change font | M4 | Not Started |  |
+| F13-35 | PDF annotations | change font | M4 | Implemented | TextBox/Callout Font combo → DA resource (Helv/TiRo/Cour + bold/italic) |
 | F13-36 | PDF annotations | change font size | M4 | Implemented | TextBox/Callout dialog NumberBox → `fontSizePoints` |
 | F13-37 | PDF annotations | change text color | M4 | Implemented | TextBox/Callout dialog StrokePresets → `textColor` / DA |
 | F13-38 | PDF annotations | change text alignment | M4 | Not Started |  |
@@ -289,10 +289,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F16-03 | Text boxes and callouts | Move it. | M4 | Tested | `MoveAsync` API |
 | F16-04 | Text boxes and callouts | Resize it. | M4 | Tested | `MoveAsync` with new bounds |
 | F16-05 | Text boxes and callouts | Rotate where appropriate. | M4 | Not Started |  |
-| F16-06 | Text boxes and callouts | Font family. | M4 | Implemented | Helvetica via DA |
+| F16-06 | Text boxes and callouts | Font family. | M4 | Implemented | Helvetica/Times/Courier via DA (`PdfFreeTextFont`) |
 | F16-07 | Text boxes and callouts | Font size. | M4 | Implemented | `fontSizePoints` + TextBox/Callout dialog NumberBox |
-| F16-08 | Text boxes and callouts | Bold. | M4 | Not Started |  |
-| F16-09 | Text boxes and callouts | Italic. | M4 | Not Started |  |
+| F16-08 | Text boxes and callouts | Bold. | M4 | Implemented | Dialog Bold → HeBo/TiBo/CoBo in DA |
+| F16-09 | Text boxes and callouts | Italic. | M4 | Implemented | Dialog Italic → HeOb/TiIt/CoOb in DA |
 | F16-10 | Text boxes and callouts | Underline. | M4 | Not Started |  |
 | F16-11 | Text boxes and callouts | Text color. | M4 | Implemented | DA RGB from `textColor` + TextBox/Callout picker |
 | F16-12 | Text boxes and callouts | Background/fill color. | M4 | Implemented | `fillColor` → InteriorColor; TextBox dialog picker |

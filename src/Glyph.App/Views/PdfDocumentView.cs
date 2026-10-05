@@ -3809,6 +3809,15 @@ public sealed class PdfDocumentView : UserControl
             LargeChange = 2,
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
         };
+        var fontFamilyBox = new ComboBox
+        {
+            Header = "Font",
+            ItemsSource = new[] { "Helvetica", "Times", "Courier" },
+            SelectedIndex = 0,
+            Width = 220,
+        };
+        var boldCheck = new CheckBox { Content = "Bold", IsChecked = false };
+        var italicCheck = new CheckBox { Content = "Italic", IsChecked = false };
         var textColorList = new ListView
         {
             Height = 100,
@@ -3823,6 +3832,13 @@ public sealed class PdfDocumentView : UserControl
             {
                 box,
                 fontSizeBox,
+                fontFamilyBox,
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 12,
+                    Children = { boldCheck, italicCheck },
+                },
                 new TextBlock { Text = "Text color", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                 textColorList,
             },
@@ -3845,6 +3861,10 @@ public sealed class PdfDocumentView : UserControl
         var textColor = PdfAnnotationColor.StrokePresets[
             Math.Clamp(textColorList.SelectedIndex, 0, PdfAnnotationColor.StrokePresets.Count - 1)].Color;
         var fontSize = (float)(double.IsNaN(fontSizeBox.Value) ? 12 : Math.Clamp(fontSizeBox.Value, 6, 72));
+        var fontResource = PdfFreeTextFont.ResolveResourceName(
+            (PdfFreeTextFontFamily)Math.Clamp(fontFamilyBox.SelectedIndex, 0, 2),
+            boldCheck.IsChecked == true,
+            italicCheck.IsChecked == true);
 
         try
         {
@@ -3859,6 +3879,7 @@ public sealed class PdfDocumentView : UserControl
                 borderColor: _drawStrokeColor,
                 fillColor: new PdfAnnotationColor(255, 255, 230),
                 fontSizePoints: fontSize,
+                fontResourceName: fontResource,
                 pointerWidthPoints: _drawStrokeWidth);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
@@ -6109,6 +6130,15 @@ public sealed class PdfDocumentView : UserControl
             LargeChange = 2,
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
         };
+        var fontFamilyBox = new ComboBox
+        {
+            Header = "Font",
+            ItemsSource = new[] { "Helvetica", "Times", "Courier" },
+            SelectedIndex = 0,
+            Width = 220,
+        };
+        var boldCheck = new CheckBox { Content = "Bold", IsChecked = false };
+        var italicCheck = new CheckBox { Content = "Italic", IsChecked = false };
         var textColorList = new ListView
         {
             Height = 100,
@@ -6137,6 +6167,13 @@ public sealed class PdfDocumentView : UserControl
             {
                 box,
                 fontSizeBox,
+                fontFamilyBox,
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 12,
+                    Children = { boldCheck, italicCheck },
+                },
                 new TextBlock { Text = "Text color", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                 textColorList,
                 new TextBlock { Text = "Fill", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
@@ -6175,6 +6212,10 @@ public sealed class PdfDocumentView : UserControl
         var textColor = PdfAnnotationColor.StrokePresets[
             Math.Clamp(textColorList.SelectedIndex, 0, PdfAnnotationColor.StrokePresets.Count - 1)].Color;
         var fontSize = (float)(double.IsNaN(fontSizeBox.Value) ? 12 : Math.Clamp(fontSizeBox.Value, 6, 72));
+        var fontResource = PdfFreeTextFont.ResolveResourceName(
+            (PdfFreeTextFontFamily)Math.Clamp(fontFamilyBox.SelectedIndex, 0, 2),
+            boldCheck.IsChecked == true,
+            italicCheck.IsChecked == true);
 
         var page = _document.GetPage(CurrentPageIndex);
         var width = Math.Min(240, page.WidthPoints * 0.45);
@@ -6194,7 +6235,8 @@ public sealed class PdfDocumentView : UserControl
                 textColor,
                 borderColor: border,
                 fillColor: fill,
-                fontSizePoints: fontSize);
+                fontSizePoints: fontSize,
+                fontResourceName: fontResource);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
