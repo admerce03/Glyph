@@ -16,5 +16,8 @@ public class PreferencesDialogUiTests
         PreferencesDialogUi.Zoom100Index("Print").Should().Be(1);
         PreferencesDialogUi.Zoom100Setting(0).Should().Be("Pixels");
         PreferencesDialogUi.RestoreTabs.Should().Contain("startup");
+        PreferencesDialogUi.LocalOcrNote.Should().Contain("Windows OCR");
+        PreferencesDialogUi.ClearSavedSignatures.Should().Contain("signatures");
+        PreferencesDialogUi.PrivacyHeader.Should().Be("Privacy");
     }
 }

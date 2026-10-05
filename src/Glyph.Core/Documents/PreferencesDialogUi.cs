@@ -40,6 +40,19 @@ public static class PreferencesDialogUi
     public const string DefaultInterpolationHeader = "Default resize interpolation";
     public const string ColorManagedDisplay =
         "Color-managed image display by default";
+    public const string LocalOcrNote =
+        "OCR runs locally via Windows OCR (never uploaded).";
+    public const string OcrLanguageHeader =
+        "OCR language tag (empty = Windows profile languages)";
+    public const string OcrLanguagePlaceholder = "e.g. en-US, de-DE, ja";
+    public const string ClearRecentFiles = "Clear recent files";
+    public const string ClearSavedSignatures = "Clear saved signatures";
+    public const string ClearSignaturesTitle = "Clear saved signatures?";
+    public const string ClearSignaturesBody =
+        "This permanently deletes all signatures in the local library.";
+    public const string ClearButton = "Clear";
+    public const string PrivacyHeader = "Privacy";
+    public const string CancelButton = "Cancel";
 
     public static IReadOnlyList<string> PdfLayoutLabels { get; } =
     [

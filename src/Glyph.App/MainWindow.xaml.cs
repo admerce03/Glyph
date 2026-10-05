@@ -328,7 +328,7 @@ public sealed partial class MainWindow : Window
             Title = "Find in all open PDFs",
             Content = box,
             PrimaryButtonText = "Search",
-            CloseButtonText = "Cancel",
+            CloseButtonText = PreferencesDialogUi.CancelButton,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = Content.XamlRoot,
         };
@@ -1870,7 +1870,7 @@ public sealed partial class MainWindow : Window
                 },
             },
             PrimaryButtonText = PdfPasswordPromptUi.PrimaryButton,
-            CloseButtonText = "Cancel",
+            CloseButtonText = PreferencesDialogUi.CancelButton,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = RootGrid.XamlRoot,
         };
@@ -2708,25 +2708,25 @@ public sealed partial class MainWindow : Window
         };
         var localOcrNote = new TextBlock
         {
-            Text = "OCR runs locally via Windows OCR (never uploaded).",
+            Text = PreferencesDialogUi.LocalOcrNote,
             Opacity = 0.75,
             TextWrapping = TextWrapping.WrapWholeWords,
             MaxWidth = 360,
         };
         var ocrLanguageBox = new TextBox
         {
-            Header = "OCR language tag (empty = Windows profile languages)",
+            Header = PreferencesDialogUi.OcrLanguageHeader,
             Text = settings.OcrLanguageTag,
-            PlaceholderText = "e.g. en-US, de-DE, ja",
+            PlaceholderText = PreferencesDialogUi.OcrLanguagePlaceholder,
             Width = 280,
         };
 
         var clearRecentButton = new Button
         {
-            Content = "Clear recent files",
+            Content = PreferencesDialogUi.ClearRecentFiles,
             HorizontalAlignment = HorizontalAlignment.Left,
         };
-        AutomationProperties.SetName(clearRecentButton, "Clear recent files");
+        AutomationProperties.SetName(clearRecentButton, PreferencesDialogUi.ClearRecentFiles);
         clearRecentButton.Click += async (_, _) =>
         {
             await _recentFiles.ClearAsync();
@@ -2736,18 +2736,18 @@ public sealed partial class MainWindow : Window
 
         var clearSignaturesButton = new Button
         {
-            Content = "Clear saved signatures",
+            Content = PreferencesDialogUi.ClearSavedSignatures,
             HorizontalAlignment = HorizontalAlignment.Left,
         };
-        AutomationProperties.SetName(clearSignaturesButton, "Clear saved signatures");
+        AutomationProperties.SetName(clearSignaturesButton, PreferencesDialogUi.ClearSavedSignatures);
         clearSignaturesButton.Click += async (_, _) =>
         {
             var confirm = new ContentDialog
             {
-                Title = "Clear saved signatures?",
-                Content = "This permanently deletes all signatures in the local library.",
-                PrimaryButtonText = "Clear",
-                CloseButtonText = "Cancel",
+                Title = PreferencesDialogUi.ClearSignaturesTitle,
+                Content = PreferencesDialogUi.ClearSignaturesBody,
+                PrimaryButtonText = PreferencesDialogUi.ClearButton,
+                CloseButtonText = PreferencesDialogUi.CancelButton,
                 DefaultButton = ContentDialogButton.Close,
                 XamlRoot = RootGrid.XamlRoot,
             };
@@ -2762,7 +2762,7 @@ public sealed partial class MainWindow : Window
 
         var privacyHeader = new TextBlock
         {
-            Text = "Privacy",
+            Text = PreferencesDialogUi.PrivacyHeader,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             Margin = new Thickness(0, 8, 0, 0),
         };
@@ -2790,7 +2790,7 @@ public sealed partial class MainWindow : Window
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             },
             PrimaryButtonText = PreferencesDialogUi.SaveButton,
-            CloseButtonText = "Cancel",
+            CloseButtonText = PreferencesDialogUi.CancelButton,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = RootGrid.XamlRoot,
         };
