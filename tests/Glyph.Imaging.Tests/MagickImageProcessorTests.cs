@@ -221,6 +221,33 @@ public class MagickImageProcessorTests
         }
     }
 
+    [Fact]
+    public async Task Open_ico_reports_dimensions()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-ico-" + Guid.NewGuid().ToString("N") + ".ico");
+        try
+        {
+            using (var image = new MagickImage(MagickColors.DodgerBlue, 32, 32))
+            {
+                image.Format = MagickFormat.Ico;
+                image.Write(path);
+            }
+
+            var decoder = new MagickImageDecoder();
+            await using var document = await decoder.OpenAsync(path);
+            document.PixelWidth.Should().Be(32);
+            document.PixelHeight.Should().Be(32);
+            document.FormatName.Should().NotBeNullOrWhiteSpace();
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
     private static string CreateSolidPng(int width, int height)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-src-" + Guid.NewGuid().ToString("N") + ".png");

@@ -116,6 +116,7 @@ public sealed class ImageDocumentView : UserControl
         var meta = new Button { Content = "Meta" };
         var rotate180 = new Button { Content = "180°" };
         var orient = new Button { Content = "Orient" };
+        var fullscreen = new Button { Content = "Fullscreen" };
         var save = new Button { Content = "Save" };
         var exportPng = new Button { Content = "→PNG" };
         var exportJpeg = new Button { Content = "→JPEG" };
@@ -130,6 +131,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(meta, "Image metadata, EXIF, and GPS");
         ToolTipService.SetToolTip(rotate180, "Rotate 180°");
         ToolTipService.SetToolTip(orient, "Apply EXIF orientation into pixels");
+        ToolTipService.SetToolTip(fullscreen, "Toggle window fullscreen");
         ToolTipService.SetToolTip(exportPng, "Export as PNG");
         ToolTipService.SetToolTip(exportJpeg, "Export as JPEG");
         ToolTipService.SetToolTip(convert, "Export as WebP, TIFF, BMP, or GIF");
@@ -144,6 +146,7 @@ public sealed class ImageDocumentView : UserControl
         rotateRight.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 90), "Rotated right.");
         rotate180.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 180), "Rotated 180°.");
         orient.Click += async (_, _) => await MutateAsync(() => _processor.NormalizeOrientationAsync(_document), "Orientation normalized.");
+        fullscreen.Click += (_, _) => ToggleFullscreen();
         flipH.Click += async (_, _) => await MutateAsync(() => _processor.FlipHorizontalAsync(_document), "Flipped horizontally.");
         flipV.Click += async (_, _) => await MutateAsync(() => _processor.FlipVerticalAsync(_document), "Flipped vertically.");
         crop.Click += async (_, _) => await CropAsync();
@@ -172,7 +175,7 @@ public sealed class ImageDocumentView : UserControl
             Padding = new Thickness(8),
             Children =
             {
-                _prevButton, _nextButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, flipH, flipV,
+                _prevButton, _nextButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
                 _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, save, exportPng, exportJpeg, convert, _status,
             },
         };
@@ -312,6 +315,17 @@ public sealed class ImageDocumentView : UserControl
         }
 
         await _openSibling(target);
+    }
+
+    private void ToggleFullscreen()
+    {
+        if (App.CurrentApp.MainWindowInstance is MainWindow window)
+        {
+            window.ToggleFullscreen();
+            return;
+        }
+
+        _status.Text = "Fullscreen unavailable.";
     }
 
     private async Task RefreshAsync()
