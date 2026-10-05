@@ -619,10 +619,12 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        if (e.DataView.Contains(StandardDataFormats.StorageItems))
+        if (ExplorerFileDropPolicy.ShouldOpenDroppedFiles(
+                e.DataView.Contains(StandardDataFormats.StorageItems),
+                textLooksLikePageDrag: false))
         {
             e.AcceptedOperation = DataPackageOperation.Copy;
-            e.DragUIOverride.Caption = "Open in Glyph";
+            e.DragUIOverride.Caption = ExplorerFileDropPolicy.DragCaption;
         }
     }
 
@@ -634,6 +636,7 @@ public sealed partial class MainWindow : Window
         }
 
         // In-app page drags carry Glyph text payloads; those belong to thumbnail drop targets.
+        var pageDragText = false;
         if (e.DataView.Contains(StandardDataFormats.Text))
         {
             try
@@ -641,7 +644,7 @@ public sealed partial class MainWindow : Window
                 var text = await e.DataView.GetTextAsync();
                 if (PageDragPayload.TryParse(text, out _))
                 {
-                    return;
+                    pageDragText = true;
                 }
             }
             catch
@@ -650,15 +653,19 @@ public sealed partial class MainWindow : Window
             }
         }
 
-        if (!e.DataView.Contains(StandardDataFormats.StorageItems))
+        if (!ExplorerFileDropPolicy.ShouldOpenDroppedFiles(
+                e.DataView.Contains(StandardDataFormats.StorageItems),
+                pageDragText))
         {
             return;
         }
 
         var items = await e.DataView.GetStorageItemsAsync();
-        foreach (var item in items.OfType<StorageFile>())
+        var paths = FileFormatDetector.FilterSupportedPaths(
+            items.OfType<StorageFile>().Select(f => f.Path));
+        foreach (var path in paths)
         {
-            await OpenPathAsync(item.Path);
+            await OpenPathAsync(path);
         }
     }
 
@@ -1153,12 +1160,12 @@ public sealed partial class MainWindow : Window
 
         if (!saveAs
             && !string.IsNullOrWhiteSpace(active.Path)
-            && (active.IsReadOnly || IsPathReadOnly(active.Path)))
+            && ReadOnlySavePolicy.RequiresSaveAs(active.IsReadOnly, PathUtilities.IsPathReadOnly(active.Path)))
         {
             var warn = new ContentDialog
             {
-                Title = "Read-only file",
-                Content = "This file is read-only. Use Save As… to write a writable copy, or remove the read-only attribute in Explorer.",
+                Title = ReadOnlySavePolicy.DialogTitle,
+                Content = ReadOnlySavePolicy.DialogMessage,
                 PrimaryButtonText = "Save As…",
                 CloseButtonText = "Cancel",
                 DefaultButton = ContentDialogButton.Primary,
@@ -1166,7 +1173,7 @@ public sealed partial class MainWindow : Window
             };
             if (await warn.ShowAsync() != ContentDialogResult.Primary)
             {
-                StatusText.Text = "Save cancelled — file is read-only.";
+                StatusText.Text = ReadOnlySavePolicy.CancelledStatus;
                 return;
             }
 
@@ -1200,7 +1207,7 @@ public sealed partial class MainWindow : Window
         var previousPath = active.Path;
         active.Path = path;
         active.DisplayName = System.IO.Path.GetFileName(path);
-        active.IsReadOnly = IsPathReadOnly(path);
+        active.IsReadOnly = PathUtilities.IsPathReadOnly(path);
         active.MarkClean();
         if (DocumentTabs.SelectedItem is TabViewItem tab)
         {
@@ -1426,7 +1433,7 @@ public sealed partial class MainWindow : Window
                     return;
                 }
 
-                if (IsPathReadOnly(dest))
+                if (PathUtilities.IsPathReadOnly(dest))
                 {
                     StatusText.Text = "Destination file is read-only.";
                     return;
@@ -1458,7 +1465,7 @@ public sealed partial class MainWindow : Window
 
         active.Path = newPath;
         active.DisplayName = System.IO.Path.GetFileName(newPath);
-        active.IsReadOnly = IsPathReadOnly(newPath);
+        active.IsReadOnly = PathUtilities.IsPathReadOnly(newPath);
         if (_openEngines.TryGetValue(active.Id, out var engine))
         {
             switch (engine)
@@ -1479,23 +1486,6 @@ public sealed partial class MainWindow : Window
 
         _ = _recentFiles.AddAsync(newPath);
         RefreshRecentList();
-    }
-
-    private static bool IsPathReadOnly(string path)
-    {
-        try
-        {
-            if (!File.Exists(path))
-            {
-                return false;
-            }
-
-            return File.GetAttributes(path).HasFlag(FileAttributes.ReadOnly);
-        }
-        catch
-        {
-            return false;
-        }
     }
 
     private void CopyActivePath()
@@ -1634,7 +1624,7 @@ public sealed partial class MainWindow : Window
             var displayName = System.IO.Path.GetFileName(path);
             var existing = _workspace.FindByPath(path);
             var session = _workspace.Open(kind, displayName, path);
-            session.IsReadOnly = IsPathReadOnly(path);
+            session.IsReadOnly = PathUtilities.IsPathReadOnly(path);
 
             if (existing is null)
             {
@@ -2473,7 +2463,7 @@ public sealed partial class MainWindow : Window
                 continue;
             }
 
-            if (autoSave && !session.IsReadOnly && !IsPathReadOnly(session.Path))
+            if (autoSave && !session.IsReadOnly && !PathUtilities.IsPathReadOnly(session.Path))
             {
                 if (ReferenceEquals(DocumentTabs.SelectedItem, tab))
                 {

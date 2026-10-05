@@ -47,4 +47,33 @@ public class PathUtilitiesTests
         var prefixed = @"\\?\C:\very\long\path\file.pdf";
         PathUtilities.NormalizeOpenPath(prefixed).Should().Be(prefixed);
     }
+
+    [Fact]
+    public void IsPathReadOnly_detects_attribute()
+    {
+        var file = Path.Combine(Path.GetTempPath(), "glyph-ro-" + Guid.NewGuid().ToString("N") + ".tmp");
+        File.WriteAllText(file, "x");
+        try
+        {
+            PathUtilities.IsPathReadOnly(file).Should().BeFalse();
+            File.SetAttributes(file, FileAttributes.ReadOnly);
+            PathUtilities.IsPathReadOnly(file).Should().BeTrue();
+            File.SetAttributes(file, FileAttributes.Normal);
+            PathUtilities.IsPathReadOnly("missing-" + Guid.NewGuid().ToString("N") + ".tmp").Should().BeFalse();
+            PathUtilities.IsPathReadOnly("").Should().BeFalse();
+        }
+        finally
+        {
+            try
+            {
+                File.SetAttributes(file, FileAttributes.Normal);
+            }
+            catch
+            {
+                // best-effort cleanup
+            }
+
+            File.Delete(file);
+        }
+    }
 }

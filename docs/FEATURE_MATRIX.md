@@ -15,12 +15,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-05 | Application and file handling | Restore previously open tabs/windows after restart, optionally. | M1/M9 | Tested | `JsonSessionStore` save/load/clear unit tests + Preferences toggle |
 | F01-06 | Application and file handling | Native Windows file associations. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
 | F01-07 | Application and file handling | Configurable default associations for supported formats. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
-| F01-08 | Application and file handling | Drag files from Explorer into an existing application window. | M1/M9 | Implemented | Explorer → window drop opens documents |
+| F01-08 | Application and file handling | Drag files from Explorer into an existing application window. | M1/M9 | Tested | Explorer → window drop; `ExplorerFileDropPolicy` + `FilterSupportedPaths` unit tests |
 | F01-09 | Application and file handling | Drag files from the application into Explorer where meaningful. | M1/M9 | Tested | Thumbnail drag deferred StorageItems + `PageExtractFileNames` unit tests |
 | F01-10 | Application and file handling | Open files from: | M1/M9 | Tested | Local/UNC/OneDrive/removable via `PathUtilities.NormalizeOpenPath` unit tests |
 | F01-11 | Application and file handling | Normal Windows long-path and Unicode filename support. | M1/M9 | Tested | Unicode + `\\?\` long-path prefix unit tests |
 | F01-12 | Application and file handling | Read-only file detection. | M1/M9 | Tested | Sets session.IsReadOnly; Execute blocked (DocumentSession unit test) |
-| F01-13 | Application and file handling | Warn when attempting to overwrite a read-only file. | M1/M9 | Implemented | Save prompts Save As when target is read-only |
+| F01-13 | Application and file handling | Warn when attempting to overwrite a read-only file. | M1/M9 | Tested | Save → Save As prompt; `ReadOnlySavePolicy` + `PathUtilities.IsPathReadOnly` unit tests |
 | F01-14 | Application and file handling | File → New from Clipboard. | M1/M9 | Implemented | Menu + Ctrl+Shift+N; clipboard → temp PNG image tab |
 | F01-15 | Application and file handling | File → Duplicate. | M1/M9 | Implemented | File → Duplicate / Ctrl+Shift+D copies on disk and opens |
 | F01-16 | Application and file handling | File → Save. | M1/M9 | Implemented | File → Save / Ctrl+S (PDF + image) |

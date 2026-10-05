@@ -61,4 +61,24 @@ public static class PathUtilities
             return false;
         }
     }
+
+    /// <summary>
+    /// True when the file exists and has the Windows/NTFS read-only attribute (F01-12/13).
+    /// </summary>
+    public static bool IsPathReadOnly(string path)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            {
+                return false;
+            }
+
+            return File.GetAttributes(path).HasFlag(FileAttributes.ReadOnly);
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }
