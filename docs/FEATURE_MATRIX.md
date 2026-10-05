@@ -13,8 +13,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-03 | Application and file handling | Open multiple files: | M1/M9 | Tested | Tabs by default; `OpenFilesInSeparateWindows` prefs round-trip |
 | F01-04 | Application and file handling | Reopen recently used files. | M1/M9 | Tested | JsonRecentFilesStore covered by unit tests |
 | F01-05 | Application and file handling | Restore previously open tabs/windows after restart, optionally. | M1/M9 | Tested | `JsonSessionStore` save/load/clear unit tests + Preferences toggle |
-| F01-06 | Application and file handling | Native Windows file associations. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
-| F01-07 | Application and file handling | Configurable default associations for supported formats. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
+| F01-06 | Application and file handling | Native Windows file associations. | M1/M9 | Deferred | ADR-012; `PackagingDeferredPolicy` |
+| F01-07 | Application and file handling | Configurable default associations for supported formats. | M1/M9 | Deferred | ADR-012; `PackagingDeferredPolicy` |
 | F01-08 | Application and file handling | Drag files from Explorer into an existing application window. | M1/M9 | Tested | Explorer → window drop; `ExplorerFileDropPolicy` + `FilterSupportedPaths` unit tests |
 | F01-09 | Application and file handling | Drag files from the application into Explorer where meaningful. | M1/M9 | Tested | Thumbnail drag deferred StorageItems + `PageExtractFileNames` unit tests |
 | F01-10 | Application and file handling | Open files from: | M1/M9 | Tested | Local/UNC/OneDrive/removable via `PathUtilities.NormalizeOpenPath` unit tests |
@@ -340,7 +340,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F19-06 | PDF signatures | delete signature | M4 | Tested | `DeleteAsync` |
 | F19-07 | PDF signatures | reorder signatures | M4 | Tested | Library dialog ↑/↓ → `ReorderAsync`; Infra.Tests `Reorder_persists_new_order` |
 | F19-08 | PDF signatures | local storage | M4 | Tested | `%LocalAppData%\Glyph\signatures` |
-| F19-09 | PDF signatures | optional application-specific cloud sync later | M4 | Deferred | Explicitly later |
+| F19-09 | PDF signatures | optional application-specific cloud sync later | M4 | Deferred | Explicitly later; `SignatureCloudSyncDeferred` |
 | F19-10 | PDF signatures | insert | M4 | Tested | Sign toolbar → `AddStampAsync`; PdfiumAnnotationServiceTests stamp round-trip |
 | F19-11 | PDF signatures | resize | M4 | Tested | Bounds on insert / `MoveAsync` |
 | F19-12 | PDF signatures | move | M4 | Tested | `MoveAsync` |
@@ -380,12 +380,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F22-05 | PDF annotation flattening | text boxes | M4 | Tested | Same flatten path |
 | F22-06 | PDF annotation flattening | drawings | M4 | Tested | Ink strokes included in flatten |
 | F23-01 | PDF security | Open encrypted PDFs. | M7 | Tested | Open with password prompt via `OpenPdfWithPasswordAsync` / fixture test||
-| F23-02 | PDF security | Create password-protected PDFs. | M7 | Blocked | Needs ADR-015 (PDFium has no write-encrypt API) |
-| F23-03 | PDF security | Set document-open password. | M7 | Blocked | Needs ADR-015 |
-| F23-04 | PDF security | Set permissions/owner password where PDF standard permits. | M7 | Blocked | Needs ADR-015 |
-| F23-05 | PDF security | Restrict: printing/editing/copying/annotation/page extraction | M7 | Blocked | Needs ADR-015 (permission write) |
-| F23-06 | PDF security | Change existing permissions where credentials permit. | M7 | Blocked | Needs ADR-015 |
-| F23-07 | PDF security | Remove protection when authorized. | M7 | Blocked | Needs ADR-015 |
+| F23-02 | PDF security | Create password-protected PDFs. | M7 | Blocked | ADR-015; `PdfPasswordWriteBlockedPolicy` |
+| F23-03 | PDF security | Set document-open password. | M7 | Blocked | ADR-015; `PdfPasswordWriteBlockedPolicy` |
+| F23-04 | PDF security | Set permissions/owner password where PDF standard permits. | M7 | Blocked | ADR-015; `PdfPasswordWriteBlockedPolicy` |
+| F23-05 | PDF security | Restrict: printing/editing/copying/annotation/page extraction | M7 | Blocked | ADR-015; `PdfPasswordWriteBlockedPolicy` |
+| F23-06 | PDF security | Change existing permissions where credentials permit. | M7 | Blocked | ADR-015; `PdfPasswordWriteBlockedPolicy` |
+| F23-07 | PDF security | Remove protection when authorized. | M7 | Blocked | ADR-015; `PdfPasswordWriteBlockedPolicy` |
 | F23-08 | PDF security | Display encryption information. | M7 | Tested | Info dialog + status "Encrypted"; `GetInfo_reports_encryption_for_password_pdf` |
 | F23-09 | PDF security | Warn about limitations of PDF permission enforcement. | M7 | Tested | `PdfDocumentPermissions.AdvisoryNotice` / `EncryptedAdvisoryStatus` + Info dialog |
 | F24-01 | PDF optimization and compression | Lossless | M7 | Tested | `Lossless_full_rewrite_succeeds` + FromPreset disables downsample |
@@ -398,10 +398,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F24-08 | PDF optimization and compression | JPEG quality | M7 | Tested | Magick encoder + zeroed FILEACCESS `LoadJpegFileInline`; Custom dialog NumberBox; SetBitmap fallback |
 | F24-09 | PDF optimization and compression | preserve monochrome content | M7 | Tested | Skip 1-bpp when PreserveMonochrome; color path covered with flag false |
 | F24-10 | PDF optimization and compression | compress streams | M7 | Tested | Optimize measures/saves with `FPDF_NO_INCREMENTAL` full rewrite (Lossless/Balanced tests) |
-| F24-11 | PDF optimization and compression | subset fonts where appropriate | M7 | Deferred | ADR-016 — no PDFium font-subset API |
+| F24-11 | PDF optimization and compression | subset fonts where appropriate | M7 | Deferred | ADR-016; `PdfOptimizeDeferredPolicy` |
 | F24-12 | PDF optimization and compression | remove unused objects | M7 | Tested | Best-effort via `FPDF_NO_INCREMENTAL` full rewrite (Lossless unit test; ADR-016) |
 | F24-13 | PDF optimization and compression | optimize object structure | M7 | Tested | Same full-rewrite path as F24-12 (Lossless unit test; ADR-016) |
-| F24-14 | PDF optimization and compression | linearize / Fast Web View | M7 | Deferred | ADR-016 — no PDFium linearize flag |
+| F24-14 | PDF optimization and compression | linearize / Fast Web View | M7 | Deferred | ADR-016; `PdfOptimizeDeferredPolicy` |
 | F24-15 | PDF optimization and compression | remove metadata optionally | M7 | Tested | Custom Optimize → Remove metadata via Info dict patcher |
 | F24-16 | PDF optimization and compression | estimate output size before saving where feasible | M7 | Tested | Optimize → Estimate via SaveToBytes + eligible image heuristic |
 | F25-01 | PDF metadata | title | M7 | Tested | Info dialog + GetInfo/SetInfo unit tests |
@@ -446,7 +446,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-21 | Image viewing | drag-and-drop navigation | M5 | Tested | Shell drop + horizontal swipe; `ImageSwipeNavigation` unit tests |
 | F26-22 | Image viewing | high-resolution image support | M5 | Tested | Progressive maxEdge decode up to 8192; `DecodeTargetEdge` unit tests |
 | F26-23 | Image viewing | alpha transparency | M5 | Tested | BGRA32 decode via Magick → WriteableBitmap; MagickBgraWriteTests |
-| F26-24 | Image viewing | HDR display where Windows/display stack supports it | M5 | Deferred | Needs WinUI HDR display pipeline; revisit with F39 |
+| F26-24 | Image viewing | HDR display where Windows/display stack supports it | M5 | Deferred | `ImageAdvancedDeferredPolicy.HdrReason` |
 | F26-25 | Image viewing | color-managed display | M5 | Tested | Via F39-02: GetPixelsAsync ICC→sRGB; MagickColorManagedDisplayTests |
 | F27-01 | Animated images | play | M8 | Tested | Play uses frame delays + `NextPlaybackFrame` advance |
 | F27-02 | Animated images | pause | M8 | Tested | Pause + Esc; `AnimationFrameNav.Paused` unit tests |
@@ -475,7 +475,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F29-02 | Smart object/background selection | Edge-aware selection. | M8 | Tested | Sobel edge map via `ImageSmartLassoEdges.ComputeSobel` |
 | F29-03 | Smart object/background selection | Background removal. | M8 | Tested | BG dialog → corner flood-fill + fuzz |
 | F29-04 | Smart object/background selection | Subject extraction. | M8 | Tested | BG → Extract subject; `ImageBackgroundSubjectPolicy` |
-| F29-05 | Smart object/background selection | Automatic subject detection. | M8 | Deferred | Needs on-device ML model; flood-fill covers solid BG |
+| F29-05 | Smart object/background selection | Automatic subject detection. | M8 | Deferred | `ImageAdvancedDeferredPolicy.SubjectDetectionReason` |
 | F29-06 | Smart object/background selection | Remove background. | M8 | Tested | Alias of F29-03 |
 | F29-07 | Smart object/background selection | Preserve transparent background. | M8 | Tested | Remove keeps alpha; `FormatSupportsAlpha` |
 | F29-08 | Smart object/background selection | Offer conversion to transparency-capable format if source format cannot support alpha. | M8 | Tested | Status hint via `ImageBackgroundSubjectPolicy.TransparencyHint` |
@@ -594,7 +594,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F38-02 | GPS metadata | Copy coordinates. | M5/M8 | Tested | Copy GPS; `ImageGpsActions` unit tests |
 | F38-03 | GPS metadata | Open in default/browser mapping service. | M5/M8 | Tested | Open map → OSM; `ImageGpsActions.OpenStreetMapUri` |
 | F38-04 | GPS metadata | Remove GPS metadata. | M5/M8 | Tested | RemoveGpsMetadataAsync |
-| F38-05 | GPS metadata | Optional embedded map later. | M5/M8 | Deferred | Open map uses OSM/browser (F38-03); in-app WebView map post-M8 |
+| F38-05 | GPS metadata | Optional embedded map later. | M5/M8 | Deferred | `ImageAdvancedDeferredPolicy.EmbeddedMapReason` |
 | F39-01 | Color management | Detect embedded ICC profile. | M8 | Tested | `HasIccProfile` via Magick `GetColorProfile`; Meta shows ICC |
 | F39-02 | Color management | Honor embedded profile while displaying. | M8 | Tested | GetPixelsAsync transforms ICC → sRGB for display (toggle in Meta) |
 | F39-03 | Color management | Assign ICC profile. | M8 | Tested | Meta → Assign sRGB; `AssignColorProfileAsync` |
@@ -667,7 +667,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F45-06 | Exporting | metadata preservation | M5-M9 | Tested | PDF Info Title/Author → image Title/Artist on page export |
 | F45-07 | Exporting | color profile | M5-M9 | Tested | PDF page Export embeds sRGB ICC (`EmbedSrgbProfile`; PNG `preserve-iCCP`); JP2 may drop profile |
 | F45-08 | Exporting | transparency | M5-M9 | Tested | `DocumentExportFormats.FlattensTransparency` (JPEG/JP2/BMP/GIF) |
-| F45-09 | Exporting | PDF security | M5-M9 | Blocked | Needs ADR-015 password-write |
+| F45-09 | Exporting | PDF security | M5-M9 | Blocked | ADR-015; `PdfPasswordWriteBlockedPolicy` |
 | F45-10 | Exporting | annotation flattening | M5-M9 | Tested | Raster export; `DocumentExportFormats.AnnotationsFlattenedInRasterExport` |
 | F46-01 | Sharing and Windows integration | Windows Share UI where available | M9 | Tested | File → Share…; `DocumentShareStatus` + DataTransferManagerInterop |
 | F46-02 | Sharing and Windows integration | Open containing folder | M9 | Tested | File → Show in Explorer; `DocumentShareStatus` |
@@ -769,7 +769,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-01 | Preferences | theme | M1/M9 | Tested | Theme setting persisted; `JsonSettingsStoreTests` round-trip |
 | F55-02 | Preferences | restore previous session | M1/M9 | Tested | Preferences toggle; `JsonSettingsStore` + `JsonSessionStore` unit tests |
 | F55-03 | Preferences | recent file count | M1/M9 | Tested | Preferences NumberBox; settings round-trip unit test |
-| F55-04 | Preferences | check for updates | M1/M9 | Deferred | Needs installer/update channel (ADR-012 MSIX) |
+| F55-04 | Preferences | check for updates | M1/M9 | Deferred | ADR-012; `PackagingDeferredPolicy` |
 | F55-05 | Preferences | default page layout | M1/M9 | Tested | Preferences combo; `Save_and_load_round_trips_pdf_open_defaults` |
 | F55-06 | Preferences | default zoom | M1/M9 | Tested | Preferences NumberBox; `Save_and_load_round_trips_pdf_open_defaults` |
 | F55-07 | Preferences | remember last page | M1/M9 | Tested | `JsonDocumentViewStateStore` page index round-trip |
@@ -854,7 +854,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F62-04 | Supported output formats | WebP | M5/M7 | Tested | Image Convert + PDF page Export |
 | F62-05 | Supported output formats | TIFF | M5/M7 | Tested | Image Convert + PDF page Export |
 | F62-06 | Supported output formats | BMP | M5/M7 | Tested | Image Convert + PDF page Export |
-| F62-07 | Supported output formats | HEIF/HEIC | M5/M7 | Deferred | Magick build lacks HEIF encode delegate in CI/dev snapshots |
+| F62-07 | Supported output formats | HEIF/HEIC | M5/M7 | Deferred | `ImageAdvancedDeferredPolicy.HeifEncodeReason` |
 | F62-08 | Supported output formats | AVIF | M5/M7 | Tested | Image Convert + PDF page Export |
 | F62-09 | Supported output formats | GIF | M5/M7 | Tested | Image Convert + PDF page Export |
 | F62-10 | Supported output formats | JPEG 2000 | M5/M7 | Tested | Image Convert + PDF page Export |
