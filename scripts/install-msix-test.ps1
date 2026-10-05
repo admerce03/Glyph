@@ -8,8 +8,10 @@
   Imports Glyph.CI.TestSign.cer into CurrentUser\TrustedPeople, then
   Add-AppxPackage the Glyph.App_*.msix. After install, probes the installed
   package manifest for declared file-type associations (same set as
-  PackageFileAssociationDeclaration). Explorer Open With / default-app
-  assignment remains a manual ADR-012 check.
+  PackageFileAssociationDeclaration). Optionally reports HKCU UserChoice
+  ProgIds (-ProbeUserDefaults) and opens Default apps Settings
+  (-OpenDefaultApps). Explorer Open With / default-app assignment remains a
+  manual ADR-012 check until those UserChoice entries point at Glyph.
 
 .NOTES
   Requires Windows + Developer Mode (or an equivalent sideloading policy).
@@ -28,7 +30,13 @@ param(
     [switch]$Force,
 
     # Only run association probe against an already-installed Glyph.Desktop
-    [switch]$VerifyOnly
+    [switch]$VerifyOnly,
+
+    # Print HKCU FileExts UserChoice ProgId for each expected extension
+    [switch]$ProbeUserDefaults,
+
+    # Launch Settings → Default apps (ms-settings:defaultapps)
+    [switch]$OpenDefaultApps
 )
 
 $ErrorActionPreference = 'Stop'
@@ -73,6 +81,31 @@ function Test-GlyphPackageAssociations {
 
     Write-Host ("Association probe OK: " + ($expectedExtensions -join ', '))
     Write-Host 'Still manual: Explorer Open With / default app for .pdf/.png (ADR-012).'
+    Write-Host 'Proof folder: docs/proof/ (see docs/INTERACTIVE_VERIFY.md).'
+}
+
+function Show-GlyphUserDefaultProbe {
+    Write-Host 'HKCU UserChoice ProgIds (informational — set Defaults in Settings if empty):'
+    foreach ($ext in $expectedExtensions) {
+        $path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\$ext\UserChoice"
+        if (-not (Test-Path -LiteralPath $path)) {
+            Write-Host ("  {0,-6}  (no UserChoice)" -f $ext)
+            continue
+        }
+
+        $progId = (Get-ItemProperty -LiteralPath $path -ErrorAction SilentlyContinue).ProgId
+        if ([string]::IsNullOrWhiteSpace($progId)) {
+            Write-Host ("  {0,-6}  (empty ProgId)" -f $ext)
+        }
+        else {
+            Write-Host ("  {0,-6}  {1}" -f $ext, $progId)
+        }
+    }
+}
+
+function Open-DefaultAppsSettings {
+    Write-Host 'Opening ms-settings:defaultapps …'
+    Start-Process 'ms-settings:defaultapps'
 }
 
 if (-not $IsWindows -and $env:OS -ne 'Windows_NT') {
@@ -85,6 +118,12 @@ if ($VerifyOnly) {
         throw 'Glyph.Desktop is not installed. Run without -VerifyOnly first.'
     }
     Test-GlyphPackageAssociations -Package $installed
+    if ($ProbeUserDefaults) {
+        Show-GlyphUserDefaultProbe
+    }
+    if ($OpenDefaultApps) {
+        Open-DefaultAppsSettings
+    }
     return
 }
 
@@ -94,6 +133,19 @@ if ([System.IO.Path]::IsPathRooted($PackageDir)) {
 }
 else {
     $dir = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $PackageDir))
+}
+
+# Allow defaults probe without a package directory present.
+if (($ProbeUserDefaults -or $OpenDefaultApps) -and -not (Test-Path -LiteralPath $dir)) {
+    if ($ProbeUserDefaults) {
+        Show-GlyphUserDefaultProbe
+    }
+    if ($OpenDefaultApps) {
+        Open-DefaultAppsSettings
+    }
+    if (-not $CertOnly) {
+        return
+    }
 }
 
 if (-not (Test-Path -LiteralPath $dir)) {
@@ -115,6 +167,12 @@ Import-Certificate -FilePath $cerPath -CertStoreLocation 'Cert:\CurrentUser\Trus
 
 if ($CertOnly) {
     Write-Host 'Cert imported (-CertOnly). Skipping Add-AppxPackage.'
+    if ($ProbeUserDefaults) {
+        Show-GlyphUserDefaultProbe
+    }
+    if ($OpenDefaultApps) {
+        Open-DefaultAppsSettings
+    }
     return
 }
 
@@ -144,3 +202,9 @@ if ($null -eq $installed) {
 
 Write-Host "Installed: $($installed.PackageFullName)"
 Test-GlyphPackageAssociations -Package $installed
+if ($ProbeUserDefaults) {
+    Show-GlyphUserDefaultProbe
+}
+if ($OpenDefaultApps) {
+    Open-DefaultAppsSettings
+}
