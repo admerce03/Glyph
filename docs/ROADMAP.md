@@ -325,6 +325,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - DocumentExportFormats + ChromeAutomationNames; F01-18 / F02-24 / F56-01 Tested
 - ShellMenuCatalog + PdfOutlineTree + WheelInputPolicy; F02-02 / F03-02/03 / F04-20 / F05-02/05 Tested
 - ThumbnailContextMenu + PdfLinkAction/OutlineNavigation; F02-14 / F03-17 / F05-04/08 Tested
+- PdfTextSelectAllPolicy + PdfSearchHitOrder + OutlineExpandPolicy + PdfPageSizeSet; F07-05 / F06-12 / F05-03 / F04-07 Tested
+- PdfTextInteractionUi context/copy labels; F07-02/06/07/08/11 Tested
 
 ---
 

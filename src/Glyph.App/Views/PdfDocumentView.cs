@@ -2355,7 +2355,7 @@ public sealed class PdfDocumentView : UserControl
         var tree = new TreeViewNode
         {
             Content = new OutlineItem(node.Title, node.DestinationPageIndex),
-            IsExpanded = true,
+            IsExpanded = OutlineExpandPolicy.DefaultIsExpanded,
         };
         foreach (var child in node.Children)
         {
@@ -2409,12 +2409,15 @@ public sealed class PdfDocumentView : UserControl
     private async Task SelectAllTextOrPagesAsync()
     {
         // Second Ctrl+A after a full-page text selection expands to the whole document (copy buffer).
-        if (_selectionPageIndex == CurrentPageIndex
-            && !string.IsNullOrEmpty(_selectedText)
-            && _pageChars.TryGetValue(CurrentPageIndex, out var currentChars)
-            && currentChars.Count > 0
-            && string.Equals(_selectedText, PdfTextSelection.CopyAll(currentChars), StringComparison.Ordinal)
-            && _document.PageCount > 1)
+        var fullPageText = _pageChars.TryGetValue(CurrentPageIndex, out var currentChars) && currentChars.Count > 0
+            ? PdfTextSelection.CopyAll(currentChars)
+            : null;
+        if (PdfTextSelectAllPolicy.ShouldExpandToDocument(
+                _selectionPageIndex,
+                CurrentPageIndex,
+                _selectedText,
+                fullPageText,
+                _document.PageCount))
         {
             await SelectAllTextInDocumentAsync();
             return;
@@ -2451,12 +2454,12 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        _selectedText = string.Join("\n\n", parts);
+        _selectedText = PdfTextSelectAllPolicy.JoinDocumentParts(parts);
         // Keep a visual selection on the current page when it has glyphs.
         _ = await TrySelectAllTextOnPageAsync(CurrentPageIndex);
         // Restore the document-wide clipboard buffer after page select overwrote it.
-        _selectedText = string.Join("\n\n", parts);
-        _status.Text = $"Selected all text in document ({parts.Count} page(s), {_selectedText.Length} characters).";
+        _selectedText = PdfTextSelectAllPolicy.JoinDocumentParts(parts);
+        _status.Text = PdfTextSelectAllPolicy.DocumentStatus(parts.Count, _selectedText.Length);
     }
 
     private async Task<bool> TrySelectAllTextOnPageAsync(int pageIndex)
@@ -2496,7 +2499,7 @@ public sealed class PdfDocumentView : UserControl
 
         await RefreshSearchHighlightsAsync();
         DrawSelectionOverlayFromRange(pageIndex, chars, 0, chars.Count - 1);
-        _status.Text = $"Selected all text on page {pageIndex + 1} ({_selectedText.Length} characters).";
+        _status.Text = PdfTextSelectAllPolicy.PageStatus(pageIndex, _selectedText.Length);
         return true;
     }
 
@@ -2516,7 +2519,7 @@ public sealed class PdfDocumentView : UserControl
         var package = new DataPackage();
         package.SetText(_selectedText);
         Clipboard.SetContent(package);
-        _status.Text = $"Copied {_selectedText.Length} characters.";
+        _status.Text = PdfTextInteractionUi.CopiedCharacters(_selectedText.Length);
     }
 
     private async Task CopySelectedPagesAsync()
@@ -2755,18 +2758,18 @@ public sealed class PdfDocumentView : UserControl
             : CurrentPageIndex;
 
         var flyout = new MenuFlyout();
-        var selectAllItem = new MenuFlyoutItem { Text = "Select all text" };
+        var selectAllItem = new MenuFlyoutItem { Text = PdfTextInteractionUi.SelectAllText };
         selectAllItem.Click += async (_, _) =>
         {
             if (!await TrySelectAllTextOnPageAsync(pageIndex))
             {
-                _status.Text = "No extractable text on this page.";
+                _status.Text = PdfTextInteractionUi.NoExtractableText;
             }
         };
         flyout.Items.Add(selectAllItem);
         if (_document.PageCount > 1)
         {
-            var selectDocItem = new MenuFlyoutItem { Text = "Select all text in document" };
+            var selectDocItem = new MenuFlyoutItem { Text = PdfTextInteractionUi.SelectAllTextInDocument };
             selectDocItem.Click += async (_, _) => await SelectAllTextInDocumentAsync();
             flyout.Items.Add(selectDocItem);
         }
@@ -2781,7 +2784,7 @@ public sealed class PdfDocumentView : UserControl
         if (hasText)
         {
             flyout.Items.Add(new MenuFlyoutSeparator());
-            var copyItem = new MenuFlyoutItem { Text = "Copy" };
+            var copyItem = new MenuFlyoutItem { Text = PdfTextInteractionUi.Copy };
             copyItem.Click += async (_, _) => await CopyTextAsync();
             var highlightItem = new MenuFlyoutItem { Text = "Highlight" };
             highlightItem.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.Highlight);
@@ -2789,9 +2792,9 @@ public sealed class PdfDocumentView : UserControl
             underlineItem.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.Underline);
             var strikeItem = new MenuFlyoutItem { Text = "Strikethrough" };
             strikeItem.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.StrikeOut);
-            var findItem = new MenuFlyoutItem { Text = "Find selection" };
+            var findItem = new MenuFlyoutItem { Text = PdfTextInteractionUi.FindSelection };
             findItem.Click += async (_, _) => await SearchSelectedTextAsync();
-            var webItem = new MenuFlyoutItem { Text = "Search web" };
+            var webItem = new MenuFlyoutItem { Text = PdfTextInteractionUi.SearchWeb };
             webItem.Click += async (_, _) => await SearchWebAsync(_selectedText);
             var redactTextItem = new MenuFlyoutItem { Text = "Mark for redaction" };
             redactTextItem.Click += (_, _) => MarkSelectionForRedaction();
@@ -2832,7 +2835,7 @@ public sealed class PdfDocumentView : UserControl
                 flyout.Items.Add(new MenuFlyoutSeparator());
             }
 
-            var imageItem = new MenuFlyoutItem { Text = "Copy region as image" };
+            var imageItem = new MenuFlyoutItem { Text = PdfTextInteractionUi.CopyRegionAsImage };
             imageItem.Click += async (_, _) => await CopyRegionAsBitmapAsync();
             var redactRegionItem = new MenuFlyoutItem { Text = "Mark region for redaction" };
             redactRegionItem.Click += (_, _) => MarkRegionForRedaction();

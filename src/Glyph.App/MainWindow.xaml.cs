@@ -373,6 +373,15 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        // F06-12: page order within each document; documents keep workspace tab order.
+        var docOrder = _workspace.Documents
+            .Select((d, i) => (d.Id, i))
+            .ToDictionary(t => t.Id, t => t.i);
+        hits = PdfSearchHitOrder.ByPageThenOccurrence(
+            hits,
+            h => docOrder.GetValueOrDefault(h.Doc.Id, int.MaxValue),
+            h => h.Hit.PageIndex).ToList();
+
         var list = new ListView
         {
             SelectionMode = ListViewSelectionMode.Single,

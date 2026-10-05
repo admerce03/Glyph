@@ -83,7 +83,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-04 | PDF viewing | Render embedded fonts. | M2 | Implemented | Via PDFium rasterization |
 | F04-05 | PDF viewing | Support transparency. | M2 | Implemented | Via PDFium rasterization |
 | F04-06 | PDF viewing | Support rotated pages. | M2 | Tested | `FPDFPageGetRotation` + size swap; Pdf.Tests cover /Rotate 90 |
-| F04-07 | PDF viewing | Support PDFs containing different page sizes. | M2 | Implemented | Per-page size from PDFium |
+| F04-07 | PDF viewing | Support PDFs containing different page sizes. | M2 | Tested | Per-page size from PDFium; `PdfPageSizeSet.HasMixedSizes` unit tests |
 | F04-08 | PDF viewing | Password-protected PDF opening. | M2 | Tested | `PdfPasswordRequiredException` + ContentDialog prompt |
 | F04-09 | PDF viewing | Continuous scrolling. | M2 | Tested | Continuous scroll + `ContinuousPageWindow` virtualization unit tests |
 | F04-10 | PDF viewing | Single-page mode. | M2 | Tested | Layout combo → SinglePage; `PageLayoutCombo` unit tests |
@@ -112,7 +112,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-33 | PDF viewing | Remember zoom/layout per document, optionally. | M2 | Tested | Persists zoom + layout with page index |
 | F05-01 | PDF table of contents and navigation | Read embedded PDF outlines/bookmarks. | M2 | Tested | `IPdfOutlineService` / PDFium bookmarks |
 | F05-02 | PDF table of contents and navigation | Hierarchical table of contents. | M2 | Tested | Nested `PdfOutlineNode`; `PdfOutlineTree` flatten/count unit tests |
-| F05-03 | PDF table of contents and navigation | Expand/collapse outline nodes. | M2 | Implemented | TreeView expand/collapse |
+| F05-03 | PDF table of contents and navigation | Expand/collapse outline nodes. | M2 | Tested | TreeView expand/collapse; `OutlineExpandPolicy` default expanded unit tests |
 | F05-04 | PDF table of contents and navigation | Click outline entry to navigate. | M2 | Tested | Outline invoke → GoToPage; `OutlineNavigation` unit tests |
 | F05-05 | PDF table of contents and navigation | Keyboard navigation. | M2 | Tested | Page Up/Down/Home/End via `PageLayoutCalculator`; outline Enter/Space |
 | F05-06 | PDF table of contents and navigation | Preserve embedded outline while editing when possible. | M2 | Tested | Rotate/page edits keep PDFium bookmarks (`Outline_survives_page_rotate_edit`) |
@@ -130,23 +130,23 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F06-09 | PDF search | Highlight matches on pages. | M2/M6 | Tested | Gold overlays; `PdfSearchHighlightStyle` ARGB unit tests |
 | F06-10 | PDF search | Results sidebar. | M2/M6 | Tested | Results list; `PdfSearchSnippet` pads match context with ellipsis |
 | F06-11 | PDF search | Show contextual snippets around matches. | M2/M6 | Tested | Snippet around match |
-| F06-12 | PDF search | Sort results by: | M2/M6 | Implemented | Page order (document scan order); relevance sort deferred |
+| F06-12 | PDF search | Sort results by: | M2/M6 | Tested | Page order via `PdfSearchHitOrder`; relevance sort deferred |
 | F06-13 | PDF search | Next match. | M2/M6 | Tested | Toolbar next; `PdfSearchHitNav.WrapIndex` unit tests |
 | F06-14 | PDF search | Previous match. | M2/M6 | Tested | Toolbar previous; same wrap helper |
 | F06-15 | PDF search | Clear search. | M2/M6 | Tested | Clear + Escape; `PdfSearchHighlightStyle.ClearedStatus` unit tests |
 | F06-16 | PDF search | Click result to jump to it. | M2/M6 | Tested | Selection jumps to hit page index |
 | F06-17 | PDF search | Search OCR text where OCR has been generated. | M2/M6 | Tested | `PdfPageTextSearch.Find` + `Merge` unit tests; session OCR cache |
 | F07-01 | PDF text interaction | Text selection. | M2/M6 | Tested | Click word-ish via `PdfTextSelection.TryExpandWordAt` + unit tests |
-| F07-02 | PDF text interaction | Copy text. | M2/M6 | Implemented | Copy button / Ctrl+C |
+| F07-02 | PDF text interaction | Copy text. | M2/M6 | Tested | Copy button / Ctrl+C; `PdfTextInteractionUi.CopiedCharacters` unit tests |
 | F07-03 | PDF text interaction | Select across lines. | M2/M6 | Tested | Stream selection + `PdfTextReadingOrder` line/word gap unit tests |
 | F07-04 | PDF text interaction | Select columns where practical. | M2/M6 | Tested | Alt-drag / wide region; `PreferColumnMode` + `PdfPageCoordinates` Y-flip fix |
-| F07-05 | PDF text interaction | Select all text on page/document. | M2/M6 | Implemented | Ctrl+A page text (2nd expands to document); Ctrl+Shift+A pages; context menu |
-| F07-06 | PDF text interaction | Right-click selected text. | M2/M6 | Implemented | Context menu: Copy / Find selection / Search web / Copy region as image |
-| F07-07 | PDF text interaction | Copy. | M2/M6 | Implemented | Clipboard text package |
-| F07-08 | PDF text interaction | Search selected text. | M2/M6 | Implemented | Find sel toolbar uses current text selection as query |
+| F07-05 | PDF text interaction | Select all text on page/document. | M2/M6 | Tested | Ctrl+A page→document escalate; `PdfTextSelectAllPolicy` unit tests |
+| F07-06 | PDF text interaction | Right-click selected text. | M2/M6 | Tested | Context menu; `PdfTextInteractionUi` labels unit tests |
+| F07-07 | PDF text interaction | Copy. | M2/M6 | Tested | Clipboard text package; `PdfTextInteractionUi.CopiedCharacters` |
+| F07-08 | PDF text interaction | Search selected text. | M2/M6 | Tested | Find selection; `PdfTextInteractionUi.FindSelection` |
 | F07-09 | PDF text interaction | OCR fallback on scanned PDFs. | M2/M6 | Implemented | Find on image-only PDF offers OCR current page then re-searches |
 | F07-10 | PDF text interaction | Preserve reasonable reading order during copy. | M2/M6 | Tested | `PdfTextSelection` top-to-bottom/LTR; `PdfTextSelectionReadingOrderTests` |
-| F07-11 | PDF text interaction | Rectangular selection for copying a region as an image. | M2/M6 | Implemented | Drag region + right-click Copy region as image |
+| F07-11 | PDF text interaction | Rectangular selection for copying a region as an image. | M2/M6 | Tested | Drag region + `PdfTextInteractionUi.CopyRegionAsImage` |
 | F07-12 | PDF text interaction | Copy selected PDF region to clipboard as bitmap. | M2/M6 | Implemented | Renders page crop to PNG bitmap on clipboard |
 | F07-13 | PDF text interaction | Drag selected text where supported. | M2/M6 | Implemented | Page CanDrag exports selected text via DragStarting |
 | F08-01 | OCR / Live Text equivalent | Detect text automatically or on demand. | M6 | Implemented | Image + PDF page OCR toolbar → Windows.Media.Ocr |
