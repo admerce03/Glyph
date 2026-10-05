@@ -26,7 +26,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M6 | OCR and scanned-document capabilities | **Tested** (PRs #62–#66 merged; offline OCR/Live Text/entities) | M2, M5 |
 | M7 | Redaction, PDF security, optimization, metadata | **Tested** (#67; password-write → ADR-015) | M2–M4 |
 | M8 | Batch ops, scanner, color management, advanced | **Tested** (hardware validation TBD; ML subject deferred) | M5–M7 |
-| M9 | Performance, polish, a11y, installer, audit | **In Progress** (packaging+shortcuts+updates+bg Find index; Explorer verify + ADR-015 TBD) | M1–M8 core paths |
+| M9 | Performance, polish, a11y, installer, audit | **In Progress** (packaging+shortcuts+updates+bg Find+toolbar reorder+notices; Explorer verify + ADR-015 TBD) | M1–M8 core paths |
 
 M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behind separate interfaces. M3 remains the highest-priority Preview-differentiator after viewing works.
 
@@ -394,8 +394,9 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Progress notes
 
-- Prefs, toolbar customization, shortcut customization (F52-23), check-for-updates (F55-04), session restore, crash recovery, version snapshots, a11y Names, cold-start timing, background Find index (F57-05/F58-06) shipped in matrix
+- Prefs, toolbar hide+↑↓ reorder (F54), shortcut customization (F52-23), check-for-updates (F55-04), session restore, crash recovery, version snapshots, a11y Names, cold-start timing, background Find index (F57-05/F58-06), image Live Text overlay restore shipped in matrix
 - Third-party notices: `THIRD_PARTY_NOTICES.md` shipped with the app (About) and MSIX publish output (AGENTS.md / ADR-003)
+- CI: push + PR for the same branch share a concurrency group (`head_ref || ref_name`) so Windows runners are not double-queued
 - MSIX: Windows CI produces test-signed `Glyph.App_*.msix` + `Glyph.CI.TestSign.cer` via `scripts/publish-msix.ps1 -TestSign` (`GenerateAppxPackageOnBuild`, artifact `glyph-msix-layout`). `scripts/install-msix-test.ps1` trusts the cert, sideloads, and probes installed `uap:FileType` associations (`-VerifyOnly` supported). Operator guide: [`PACKAGING.md`](PACKAGING.md). F01-06/07 remain Deferred until Explorer default-app verification (ADR-012). **Blocked:** ADR-015 password-write (Needs approval, prefer Option A PdfSharp).
 - Matrix audit (2026-10-05): 881 rows — 862 Tested / 12 Deferred / 7 Blocked (all Blocked = ADR-015 password-write); zero Not Started / In Progress / Implemented
 - Interactive proof debt: M1 shell screenshot, M2 viewer screenshots, M3 §11 cross-doc DnD recording (Windows interactive environment required)
