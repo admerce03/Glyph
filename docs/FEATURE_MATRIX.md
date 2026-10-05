@@ -439,8 +439,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-14 | Image viewing | fit image | M5 | Implemented | Fit toolbar |
 | F26-15 | Image viewing | actual size | M5 | Implemented | 100% toolbar |
 | F26-16 | Image viewing | fullscreen | M5 | Not Started |  |
-| F26-17 | Image viewing | next/previous image | M5 | Not Started |  |
-| F26-18 | Image viewing | image list sidebar | M5 | Not Started |  |
+| F26-17 | Image viewing | next/previous image | M5 | Implemented | ◀/▶ + ImageFolderNavigator |
+| F26-18 | Image viewing | image list sidebar | M5 | Implemented | Folder ListView in ImageDocumentView |
 | F26-19 | Image viewing | open group of images together | M5 | Not Started |  |
 | F26-20 | Image viewing | slideshow | M5 | Not Started |  |
 | F26-21 | Image viewing | drag-and-drop navigation | M5 | Not Started |  |

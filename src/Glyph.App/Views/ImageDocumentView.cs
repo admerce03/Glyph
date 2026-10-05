@@ -8,7 +8,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 namespace Glyph.App.Views;
 
 /// <summary>
-/// Image viewer/editor: zoom/pan, fit, rotate/flip/crop, and format conversion.
+/// Image viewer/editor: zoom/pan, fit, rotate/flip/crop, folder navigation, and format conversion.
 /// </summary>
 public sealed class ImageDocumentView : UserControl
 {
@@ -16,23 +16,31 @@ public sealed class ImageDocumentView : UserControl
     private readonly IImageProcessor _processor;
     private readonly IImageEncoder _encoder;
     private readonly DocumentViewState _viewState;
+    private readonly Func<string, Task>? _openSibling;
     private readonly ScrollViewer _scrollViewer;
     private readonly Image _image;
     private readonly TextBlock _status;
     private readonly TextBox _cropBox;
+    private readonly ListView _siblingList;
+    private readonly Button _prevButton;
+    private readonly Button _nextButton;
+    private IReadOnlyList<string> _siblings = Array.Empty<string>();
     private double _zoom = 1.0;
     private bool _loaded;
+    private bool _syncingList;
 
     public ImageDocumentView(
         IImageDocument document,
         IImageProcessor processor,
         IImageEncoder encoder,
-        DocumentViewState? viewState = null)
+        DocumentViewState? viewState = null,
+        Func<string, Task>? openSibling = null)
     {
         _document = document;
         _processor = processor;
         _encoder = encoder;
         _viewState = viewState ?? new DocumentViewState();
+        _openSibling = openSibling;
         _zoom = _viewState.Zoom <= 0 ? 1.0 : _viewState.Zoom;
 
         _image = new Image
@@ -54,6 +62,12 @@ public sealed class ImageDocumentView : UserControl
             PlaceholderText = "Crop x,y,w,h",
             Width = 140,
         };
+        _siblingList = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            Width = 180,
+        };
+        _siblingList.SelectionChanged += SiblingList_SelectionChanged;
 
         var zoomOut = new Button { Content = "−", Width = 36 };
         var zoomIn = new Button { Content = "+", Width = 36 };
@@ -72,6 +86,8 @@ public sealed class ImageDocumentView : UserControl
         var exportPng = new Button { Content = "→PNG" };
         var exportJpeg = new Button { Content = "→JPEG" };
         var convert = new Button { Content = "Convert" };
+        _prevButton = new Button { Content = "◀", Width = 36 };
+        _nextButton = new Button { Content = "▶", Width = 36 };
 
         ToolTipService.SetToolTip(crop, "Crop using x,y,w,h pixels (origin top-left)");
         ToolTipService.SetToolTip(resize, "Resize width/height with optional aspect lock");
@@ -81,6 +97,8 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(exportPng, "Export as PNG");
         ToolTipService.SetToolTip(exportJpeg, "Export as JPEG");
         ToolTipService.SetToolTip(convert, "Export as WebP, TIFF, BMP, or GIF");
+        ToolTipService.SetToolTip(_prevButton, "Previous image in folder");
+        ToolTipService.SetToolTip(_nextButton, "Next image in folder");
 
         zoomOut.Click += async (_, _) => await SetZoomAsync(_zoom / 1.25);
         zoomIn.Click += async (_, _) => await SetZoomAsync(_zoom * 1.25);
@@ -99,6 +117,8 @@ public sealed class ImageDocumentView : UserControl
         exportPng.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Png, ".png");
         exportJpeg.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Jpeg, ".jpg");
         convert.Click += async (_, _) => await ConvertAsync();
+        _prevButton.Click += async (_, _) => await NavigateSiblingAsync(-1);
+        _nextButton.Click += async (_, _) => await NavigateSiblingAsync(1);
 
         var toolbar = new StackPanel
         {
@@ -107,10 +127,40 @@ public sealed class ImageDocumentView : UserControl
             Padding = new Thickness(8),
             Children =
             {
-                zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, flipH, flipV,
+                _prevButton, _nextButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, flipH, flipV,
                 _cropBox, crop, resize, adjust, meta, save, exportPng, exportJpeg, convert, _status,
             },
         };
+
+        var body = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition { Width = new GridLength(180) },
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+            },
+        };
+        var sidebar = new Grid
+        {
+            RowDefinitions =
+            {
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
+            },
+            Padding = new Thickness(4),
+        };
+        sidebar.Children.Add(new TextBlock
+        {
+            Text = "Folder",
+            FontSize = 12,
+            Opacity = 0.75,
+            Margin = new Thickness(4, 0, 4, 4),
+        });
+        Grid.SetRow(_siblingList, 1);
+        sidebar.Children.Add(_siblingList);
+        body.Children.Add(sidebar);
+        Grid.SetColumn(_scrollViewer, 1);
+        body.Children.Add(_scrollViewer);
 
         var root = new Grid
         {
@@ -121,8 +171,8 @@ public sealed class ImageDocumentView : UserControl
             },
         };
         root.Children.Add(toolbar);
-        Grid.SetRow(_scrollViewer, 1);
-        root.Children.Add(_scrollViewer);
+        Grid.SetRow(body, 1);
+        root.Children.Add(body);
         Content = root;
 
         Loaded += ImageDocumentView_Loaded;
@@ -136,8 +186,87 @@ public sealed class ImageDocumentView : UserControl
         }
 
         _loaded = true;
+        RefreshSiblingList();
         await RefreshAsync();
         UpdateStatus();
+    }
+
+    private void RefreshSiblingList()
+    {
+        var path = _document.Path;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            _siblings = Array.Empty<string>();
+            _siblingList.ItemsSource = null;
+            _prevButton.IsEnabled = false;
+            _nextButton.IsEnabled = false;
+            return;
+        }
+
+        _siblings = ImageFolderNavigator.ListSiblings(path);
+        var names = _siblings.Select(System.IO.Path.GetFileName).ToList();
+        _syncingList = true;
+        try
+        {
+            _siblingList.ItemsSource = names;
+            var index = ImageFolderNavigator.IndexOf(_siblings, path);
+            if (index >= 0)
+            {
+                _siblingList.SelectedIndex = index;
+            }
+        }
+        finally
+        {
+            _syncingList = false;
+        }
+
+        _prevButton.IsEnabled = ImageFolderNavigator.Previous(_siblings, path) is not null;
+        _nextButton.IsEnabled = ImageFolderNavigator.Next(_siblings, path) is not null;
+    }
+
+    private async void SiblingList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_syncingList || _openSibling is null || string.IsNullOrWhiteSpace(_document.Path))
+        {
+            return;
+        }
+
+        var index = _siblingList.SelectedIndex;
+        if (index < 0 || index >= _siblings.Count)
+        {
+            return;
+        }
+
+        var target = _siblings[index];
+        if (string.Equals(
+                System.IO.Path.GetFullPath(target),
+                System.IO.Path.GetFullPath(_document.Path),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        await _openSibling(target);
+    }
+
+    private async Task NavigateSiblingAsync(int delta)
+    {
+        if (_openSibling is null || string.IsNullOrWhiteSpace(_document.Path))
+        {
+            _status.Text = "Folder navigation unavailable.";
+            return;
+        }
+
+        var target = delta < 0
+            ? ImageFolderNavigator.Previous(_siblings, _document.Path)
+            : ImageFolderNavigator.Next(_siblings, _document.Path);
+        if (target is null)
+        {
+            _status.Text = delta < 0 ? "Already at first image." : "Already at last image.";
+            return;
+        }
+
+        await _openSibling(target);
     }
 
     private async Task RefreshAsync()
@@ -598,7 +727,17 @@ public sealed class ImageDocumentView : UserControl
 
     private void UpdateStatus()
     {
-        _status.Text =
+        var baseStatus =
             $"{_document.FormatName} {_document.PixelWidth}×{_document.PixelHeight} · {(_zoom * 100):0}%";
+        if (!string.IsNullOrWhiteSpace(_document.Path) && _siblings.Count > 0)
+        {
+            var index = ImageFolderNavigator.IndexOf(_siblings, _document.Path);
+            if (index >= 0)
+            {
+                baseStatus += $" · {index + 1}/{_siblings.Count}";
+            }
+        }
+
+        _status.Text = baseStatus;
     }
 }
