@@ -225,6 +225,9 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(_caseSensitiveBox, "Match case");
         var searchButton = new Button { Content = "Find" };
         searchButton.Click += async (_, _) => await RunSearchAsync();
+        var findSelection = new Button { Content = "Find sel" };
+        findSelection.Click += async (_, _) => await SearchSelectedTextAsync();
+        ToolTipService.SetToolTip(findSelection, "Search for the currently selected text");
         var ocrPage = new Button { Content = "OCR" };
         ocrPage.Click += async (_, _) => await OnOcrButtonClickAsync();
         ToolTipService.SetToolTip(ocrPage, "Run offline OCR on selected pages or the entire PDF");
@@ -477,7 +480,7 @@ public sealed class PdfDocumentView : UserControl
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
                 highlight, underline, strikeout, stickyNote, textBox, callout, flatten, sign, formFill, ink, freeform, rect, ellipse, line, arrow,
-                _searchBox, _caseSensitiveBox, searchButton, ocrPage, _ocrCancelButton, clearSearch, prevMatch, nextMatch, _status,
+                _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
 
@@ -2038,6 +2041,24 @@ public sealed class PdfDocumentView : UserControl
         {
             EndOcrJob();
         }
+    }
+
+    private async Task SearchSelectedTextAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_selectedText))
+        {
+            _status.Text = "Select text on the page first.";
+            return;
+        }
+
+        var query = _selectedText.Trim();
+        if (query.Length > 200)
+        {
+            query = query[..200].Trim();
+        }
+
+        _searchBox.Text = query;
+        await RunSearchAsync();
     }
 
     private async Task RunSearchAsync()
