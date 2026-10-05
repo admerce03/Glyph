@@ -22,6 +22,16 @@ internal static class PdfiumAnnotSubtypes
     public const int Caret = 14;
     public const int Ink = 15;
     public const int Popup = 16;
+    public const int FileAttachment = 17;
+    public const int Sound = 18;
+    public const int Movie = 19;
+    public const int Widget = 20;
+    public const int Screen = 21;
+    public const int PrinterMark = 22;
+    public const int TrapNet = 23;
+    public const int Watermark = 24;
+    public const int ThreeD = 25;
+    public const int RichMedia = 26;
 }
 
 /// <summary>
