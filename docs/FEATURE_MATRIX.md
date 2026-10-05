@@ -157,7 +157,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F08-06 | OCR / Live Text equivalent | OCR current page. | M6 | Tested | OCR chooser Primary = current/selected; `OcrPageRangeChooser` unit tests |
 | F08-07 | OCR / Live Text equivalent | OCR selected pages. | M6 | Tested | Multi-select thumbnails → OCR; `OcrPageRangeChooser.SelectedLabel` / PrimaryButton |
 | F08-08 | OCR / Live Text equivalent | OCR entire PDF. | M6 | Tested | Chooser Secondary = entire doc; `OcrPageRangeChooser.EntireDocumentPages` |
-| F08-09 | OCR / Live Text equivalent | OCR multiple images. | M6 | Implemented | Image OCR → Folder (N) runs siblings via batch progress dialog |
+| F08-09 | OCR / Live Text equivalent | OCR multiple images. | M6 | Tested | Image OCR → Folder (N); `ImageOcrFolderChooser` unit tests |
 | F08-10 | OCR / Live Text equivalent | Optionally embed OCR text layer into PDF. | M6 | Tested | OCR→PDF export via `OcrSearchablePdfWriter`; Ocr.Tests |
 | F08-11 | OCR / Live Text equivalent | Preserve image underneath the OCR layer. | M6 | Tested | Full-bleed underlay; `OcrLayerPolicy.PreserveImageUnderOverlay` |
 | F08-12 | OCR / Live Text equivalent | URLs | M6 | Tested | `OcrEntityDetector` + Entities dialog Open; Ocr.Tests |
@@ -494,13 +494,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F31-02 | Image resizing | Adjust height. | M5 | Tested | Resize dialog height; `ImageResizeDialogMath.WidthForHeight` |
 | F31-03 | Image resizing | Lock aspect ratio. | M5 | Tested | Resize dialog lock; aspect helpers unit-tested |
 | F31-04 | Image resizing | Percentage scaling. | M5 | Tested | Resize dialog %; `ImageResizeDialogMath.ScaleByPercent` |
-| F31-05 | Image resizing | Pixel units. | M5 | Implemented | Width/height in pixels |
+| F31-05 | Image resizing | Pixel units. | M5 | Tested | Width/height in pixels; resize dialog math unit-tested |
 | F31-06 | Image resizing | Physical units. | M5 | Tested | Resize dialog Units: Pixels / Inches / Centimeters |
 | F31-07 | Image resizing | DPI/PPI. | M5 | Tested | Resize dialog DPI + `ImageResizeOptions.DensityDpi` |
 | F31-08 | Image resizing | Resampling toggle. | M5 | Tested | Resize dialog Resampling combo (Auto/Nearest/Bilinear/Bicubic) |
 | F31-09 | Image resizing | Resampling algorithm options, possibly: | M5 | Tested | Nearest / Bilinear / Bicubic via Magick FilterType |
-| F31-10 | Image resizing | Preserve aspect ratio. | M5 | Implemented | Same as lock aspect |
-| F31-11 | Image resizing | Estimated resulting dimensions. | M5 | Implemented | Live result preview in dialog |
+| F31-10 | Image resizing | Preserve aspect ratio. | M5 | Tested | Same as lock aspect; `ImageResizeDialogMath` |
+| F31-11 | Image resizing | Estimated resulting dimensions. | M5 | Tested | Live result preview; dialog math unit-tested |
 | F31-12 | Image resizing | Estimated file size. | M5 | Tested | Preview ~raw BGRA MB; `ImageResizeDialogMath.EstimateRawBgraMegabytes` |
 | F31-13 | Image resizing | Batch resize selected images. | M5 | Implemented | Resize dialog → Also resize all N images in folder (scale %) |
 | F32-01 | Image orientation | Rotate left 90°. | M5 | Tested | MagickImageProcessor.RotateAsync |
@@ -562,7 +562,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F36-05 | Batch image operations | export | M8 | Tested | Same Convert/export path; batch convert unit test |
 | F36-06 | Batch image operations | strip metadata | M8 | Tested | Batch Strip; `Batch_convert_and_strip_metadata` + SaveAs strip test |
 | F36-07 | Batch image operations | change color profile | M8 | Implemented | Batch… → Color profile assign/convert sRGB/Adobe RGB |
-| F36-08 | Batch image operations | rename, optionally | M8 | Implemented | Batch… → Rename pattern `{name}-{n:000}` |
+| F36-08 | Batch image operations | rename, optionally | M8 | Tested | Batch rename `{name}-{n:000}`; `BatchRenamePattern` unit tests |
 | F36-09 | Batch image operations | Show batch progress. | M8 | Implemented | Progress dialog + Cancel for folder Batch ops |
 | F37-01 | Image metadata | dimensions | M5 | Tested | GetMetadataAsync PixelWidth/Height |
 | F37-02 | Image metadata | pixel count | M5 | Tested | Derived from PixelWidth×Height; GetMetadata dimensions tests |
@@ -591,8 +591,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F37-25 | Image metadata | copyright | M5 | Tested | IPTC CopyrightNotice / XMP rights / EXIF Copyright; Meta → Edit… |
 | F37-26 | Image metadata | rating, optionally | M5 | Tested | XMP Rating; `ImageDescriptiveMetadataSummary` Rating format unit test |
 | F38-01 | GPS metadata | display latitude/longitude. | M5/M8 | Tested | Meta dialog GPS rows |
-| F38-02 | GPS metadata | Copy coordinates. | M5/M8 | Implemented | Copy GPS button |
-| F38-03 | GPS metadata | Open in default/browser mapping service. | M5/M8 | Implemented | Open map → OpenStreetMap |
+| F38-02 | GPS metadata | Copy coordinates. | M5/M8 | Tested | Copy GPS; `ImageGpsActions` unit tests |
+| F38-03 | GPS metadata | Open in default/browser mapping service. | M5/M8 | Tested | Open map → OSM; `ImageGpsActions.OpenStreetMapUri` |
 | F38-04 | GPS metadata | Remove GPS metadata. | M5/M8 | Tested | RemoveGpsMetadataAsync |
 | F38-05 | GPS metadata | Optional embedded map later. | M5/M8 | Deferred | Open map uses OSM/browser (F38-03); in-app WebView map post-M8 |
 | F39-01 | Color management | Detect embedded ICC profile. | M8 | Tested | `HasIccProfile` via Magick `GetColorProfile`; Meta shows ICC |

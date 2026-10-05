@@ -2,6 +2,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.App.Printing;
 using Glyph.Core.Documents;
 using Glyph.Core.IO;
+using Glyph.Core.Ocr;
 using Glyph.Core.Signatures;
 using Glyph.Imaging.Abstractions;
 using Glyph.Infrastructure.Settings;
@@ -2913,7 +2914,7 @@ public sealed class ImageDocumentView : UserControl
         var renamePattern = new TextBox
         {
             Header = "Rename pattern ({n}=1-based index, {name}=base name)",
-            Text = "{name}-{n:000}",
+            Text = BatchRenamePattern.DefaultPattern,
             Width = 260,
             Visibility = Visibility.Collapsed,
         };
@@ -3015,7 +3016,7 @@ public sealed class ImageDocumentView : UserControl
 
         if (categoryBox.SelectedIndex == 3)
         {
-            var renamed = await BatchRenameFolderAsync(renamePattern.Text ?? "{name}-{n:000}");
+            var renamed = await BatchRenameFolderAsync(renamePattern.Text ?? BatchRenamePattern.DefaultPattern);
             _status.Text = $"Batch rename: renamed {renamed} file(s).";
             RefreshSiblingList();
             return;
@@ -3302,16 +3303,7 @@ public sealed class ImageDocumentView : UserControl
                 var baseName = System.IO.Path.GetFileNameWithoutExtension(sibling);
                 var ext = System.IO.Path.GetExtension(sibling);
                 var n = index + 1;
-                var stem = pattern
-                    .Replace("{name}", baseName, StringComparison.OrdinalIgnoreCase)
-                    .Replace("{n:000}", n.ToString("000"), StringComparison.OrdinalIgnoreCase)
-                    .Replace("{n:00}", n.ToString("00"), StringComparison.OrdinalIgnoreCase)
-                    .Replace("{n}", n.ToString(), StringComparison.OrdinalIgnoreCase);
-                foreach (var c in System.IO.Path.GetInvalidFileNameChars())
-                {
-                    stem = stem.Replace(c, '_');
-                }
-
+                var stem = BatchRenamePattern.Expand(pattern, baseName, n);
                 if (string.IsNullOrWhiteSpace(stem))
                 {
                     return false;
@@ -4406,33 +4398,26 @@ public sealed class ImageDocumentView : UserControl
             };
             if (info.GpsLatitude is double lat && info.GpsLongitude is double lon)
             {
-                var coords = $"{lat:0.######}, {lon:0.######}";
-                var copy = new Button { Content = "Copy GPS" };
+                var coords = ImageGpsActions.FormatCoords(lat, lon);
+                var copy = new Button { Content = ImageGpsActions.CopyButton };
                 copy.Click += async (_, _) =>
                 {
                     var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
                     package.SetText(coords);
                     Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
-                    _status.Text = "Copied GPS " + coords;
+                    _status.Text = ImageGpsActions.CopiedStatus(coords);
                 };
-                var maps = new Button { Content = "Open map" };
+                var maps = new Button { Content = ImageGpsActions.OpenMapButton };
                 maps.Click += async (_, _) =>
                 {
-                    var uri = new Uri(
-                        "https://www.openstreetmap.org/?mlat="
-                        + Uri.EscapeDataString(lat.ToString(System.Globalization.CultureInfo.InvariantCulture))
-                        + "&mlon="
-                        + Uri.EscapeDataString(lon.ToString(System.Globalization.CultureInfo.InvariantCulture))
-                        + "#map=15/"
-                        + Uri.EscapeDataString(lat.ToString(System.Globalization.CultureInfo.InvariantCulture))
-                        + "/"
-                        + Uri.EscapeDataString(lon.ToString(System.Globalization.CultureInfo.InvariantCulture)));
-                    await Windows.System.Launcher.LaunchUriAsync(uri);
+                    await Windows.System.Launcher.LaunchUriAsync(new Uri(ImageGpsActions.OpenStreetMapUri(lat, lon)));
                 };
-                var strip = new Button { Content = "Remove GPS" };
+                var strip = new Button { Content = ImageGpsActions.RemoveButton };
                 strip.Click += async (_, _) =>
                 {
-                    await MutateAsync(() => _processor.RemoveGpsMetadataAsync(_document), "GPS metadata removed.");
+                    await MutateAsync(
+                        () => _processor.RemoveGpsMetadataAsync(_document),
+                        ImageGpsActions.RemovedStatus);
                 };
                 actions.Children.Add(copy);
                 actions.Children.Add(maps);
@@ -4612,14 +4597,14 @@ public sealed class ImageDocumentView : UserControl
         }
 
         var ocrFolder = false;
-        if (_siblings.Count > 1 && _decoder is not null)
+        if (ImageOcrFolderChooser.ShouldOfferFolder(_siblings.Count) && _decoder is not null)
         {
             var chooser = new ContentDialog
             {
-                Title = "OCR",
-                Content = $"OCR this image, or all {_siblings.Count} images in the folder?",
-                PrimaryButtonText = "This image",
-                SecondaryButtonText = $"Folder ({_siblings.Count})",
+                Title = ImageOcrFolderChooser.Title,
+                Content = ImageOcrFolderChooser.Prompt(_siblings.Count),
+                PrimaryButtonText = ImageOcrFolderChooser.PrimaryButton,
+                SecondaryButtonText = ImageOcrFolderChooser.SecondaryButton(_siblings.Count),
                 CloseButtonText = "Cancel",
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = XamlRoot,
@@ -4627,7 +4612,7 @@ public sealed class ImageDocumentView : UserControl
             var choice = await chooser.ShowAsync();
             if (choice == ContentDialogResult.None)
             {
-                _status.Text = "OCR cancelled.";
+                _status.Text = ImageOcrFolderChooser.Cancelled;
                 return;
             }
 
