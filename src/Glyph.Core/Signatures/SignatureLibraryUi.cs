@@ -23,6 +23,11 @@ public static class SignatureLibraryUi
     public const string StrokeTooShort = "Signature stroke too short.";
     public const string Saving = "Saving signature…";
     public const string Inserted = "Signature inserted.";
+    public const string WebcamInserted = "Webcam signature inserted.";
+    public const string WebcamPaperSignature = "Webcam paper signature";
+    public const string PhotographSignatureTitle = "Photograph signature";
+    public const string PhotographSignatureHint =
+        "Point the camera at a signature on paper, then Capture. Near-white paper is keyed out.";
     public const string Loading = "Loading signature…";
     public const string WebcamCancelled = "Webcam signature cancelled.";
     public const string DrawThenChooseFormField =
@@ -34,4 +39,10 @@ public static class SignatureLibraryUi
 
     public static string FormatInserted(string name) =>
         $"Inserted signature '{name}'.";
+
+    public static string FormatImageContents(string fileName) =>
+        $"Signature image {fileName}";
+
+    public static string FormatWebcamName(DateTime when) =>
+        $"Webcam {when:yyyy-MM-dd HH:mm}";
 }

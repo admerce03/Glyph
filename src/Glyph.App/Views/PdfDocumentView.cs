@@ -7377,7 +7377,7 @@ public sealed class PdfDocumentView : UserControl
                 await _signatures.SaveAsync(
                     System.IO.Path.GetFileNameWithoutExtension(file.Name),
                     copy,
-                    description: $"Signature image {file.Name}");
+                    description: SignatureLibraryUi.FormatImageContents(file.Name));
             }
             catch
             {
@@ -7388,8 +7388,8 @@ public sealed class PdfDocumentView : UserControl
                 pixels,
                 width,
                 height,
-                statusOnSuccess: "Signature inserted.",
-                contents: $"Signature image {file.Name}");
+                statusOnSuccess: SignatureLibraryUi.Inserted,
+                contents: SignatureLibraryUi.FormatImageContents(file.Name));
         }
         catch (Exception ex)
         {
@@ -7434,8 +7434,8 @@ public sealed class PdfDocumentView : UserControl
             _status.Text = WebcamCaptureUi.StartingWebcam;
             var captured = await WebcamCaptureHelper.CaptureAsync(
                 window.Content.XamlRoot,
-                title: "Photograph signature",
-                hint: "Point the camera at a signature on paper, then Capture. Near-white paper is keyed out.");
+                title: SignatureLibraryUi.PhotographSignatureTitle,
+                hint: SignatureLibraryUi.PhotographSignatureHint);
             if (captured is null)
             {
                 var fallback = new ContentDialog
@@ -7469,9 +7469,9 @@ public sealed class PdfDocumentView : UserControl
                 var png = SignaturePngEncoder.EncodeBgra(pixels, width, height);
                 await using var pngStream = new MemoryStream(png);
                 await _signatures.SaveAsync(
-                    $"Webcam {DateTime.Now:yyyy-MM-dd HH:mm}",
+                    SignatureLibraryUi.FormatWebcamName(DateTime.Now),
                     pngStream,
-                    description: "Webcam paper signature");
+                    description: SignatureLibraryUi.WebcamPaperSignature);
             }
             catch
             {
@@ -7482,8 +7482,8 @@ public sealed class PdfDocumentView : UserControl
                 pixels,
                 width,
                 height,
-                statusOnSuccess: "Webcam signature inserted.",
-                contents: "Webcam paper signature");
+                statusOnSuccess: SignatureLibraryUi.WebcamInserted,
+                contents: SignatureLibraryUi.WebcamPaperSignature);
         }
         catch (Exception ex)
         {

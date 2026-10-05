@@ -28,5 +28,8 @@ public class SignatureLibraryUiTests
         SignatureLibraryUi.FormatDeleted("A").Should().Contain("A");
         SignatureLibraryUi.FormatInserted("B").Should().Contain("B");
         SignatureLibraryUi.SigningFormField.Should().Contain("Signing");
+        SignatureLibraryUi.WebcamInserted.Should().Contain("Webcam");
+        SignatureLibraryUi.FormatImageContents("a.png").Should().Contain("a.png");
+        SignatureLibraryUi.PhotographSignatureTitle.Should().Contain("Photograph");
     }
 }
