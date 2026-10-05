@@ -36,7 +36,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-26 | Application and file handling | Undo/redo history. | M1/M9 | Tested | Per-doc stacks: `PdfPageEditHistory`, AnnotationUndoStack, Magick checkpoints (unified app-wide later) |
 | F01-27 | Application and file handling | Do not silently overwrite originals by default. | M1/M9 | Tested | Autosave-to-original opt-in off by default (prefs default unit test) |
 | F02-01 | Main window and interface | Standard Windows title bar. | M1/M9 | Tested | WinUI AppWindow system title bar; `SystemTitleBarPolicy` unit tests |
-| F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | Tested | MenuBar File/Edit/View/Window; `ShellMenuCatalog` unit tests |
+| F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | Tested | MenuBar File/Edit/View/Window/Help; full `ShellMenuCatalog` command lists vs XAML |
 | F02-03 | Main window and interface | Customizable toolbar. | M1/M9 | Tested | ToolbarCommands catalog + hide/reorder prefs + live apply (`ToolbarOrderPolicy`) |
 | F02-04 | Main window and interface | Optional compact toolbar. | M1/M9 | Tested | `CompactToolbar` prefs; live-applied with F54 |
 | F02-05 | Main window and interface | Hide/show toolbar. | M1/M9 | Tested | View → Hide/Show Toolbar; `ToolbarVisible` prefs; Ctrl+Shift+U (`Toggle Toolbar`) |

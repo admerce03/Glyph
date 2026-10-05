@@ -12,16 +12,13 @@ public class ShellMenuCatalogTests
         var root = FindRepoRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src/Glyph.App/MainWindow.xaml"));
         ShellMenuCatalog.DeclaresMenus(xaml).Should().BeTrue();
-        ShellMenuCatalog.TopLevelMenus.Should().Contain("Help");
-        foreach (var command in ShellMenuCatalog.FileCommands)
-        {
-            xaml.Should().Contain($"Text=\"{command}\"", because: command);
-        }
-
-        foreach (var command in ShellMenuCatalog.HelpCommands)
-        {
-            xaml.Should().Contain($"Text=\"{command}\"", because: command);
-        }
+        ShellMenuCatalog.TopLevelMenus.Should().Equal("File", "Edit", "View", "Window", "Help");
+        ShellMenuCatalog.FileCommands.Should().HaveCount(23);
+        ShellMenuCatalog.DeclaresCommandTexts(xaml, ShellMenuCatalog.FileCommands).Should().BeTrue();
+        ShellMenuCatalog.DeclaresCommandTexts(xaml, ShellMenuCatalog.EditCommands).Should().BeTrue();
+        ShellMenuCatalog.DeclaresCommandTexts(xaml, ShellMenuCatalog.ViewCommands).Should().BeTrue();
+        ShellMenuCatalog.DeclaresCommandTexts(xaml, ShellMenuCatalog.WindowCommands).Should().BeTrue();
+        ShellMenuCatalog.DeclaresCommandTexts(xaml, ShellMenuCatalog.HelpCommands).Should().BeTrue();
     }
 
     private static string FindRepoRoot()
