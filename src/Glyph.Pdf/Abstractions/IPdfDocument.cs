@@ -6,7 +6,7 @@ namespace Glyph.Pdf.Abstractions;
 /// </summary>
 public interface IPdfDocument : IAsyncDisposable, IDisposable
 {
-    string? Path { get; }
+    string? Path { get; set; }
 
     int PageCount { get; }
 

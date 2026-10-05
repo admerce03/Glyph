@@ -121,6 +121,56 @@ public class PdfPigTextSearchServiceTests
     }
 
     [Fact]
+    public async Task Search_any_word_matches_each_token()
+    {
+        await using var pdf = await SamplePdf.CreateAsync(b =>
+        {
+            b.Page("the quick brown fox");
+        });
+
+        var anyWord = await _search.SearchAsync(
+            pdf.Path,
+            "quick fox",
+            new PdfSearchOptions(ExactPhrase: false));
+        anyWord.Status.Should().Be(PdfSearchStatus.Success);
+        anyWord.Hits.Should().HaveCount(2);
+        anyWord.Hits.Select(h => h.Snippet).Should().Contain(s => s.Contains("quick", StringComparison.OrdinalIgnoreCase));
+        anyWord.Hits.Select(h => h.Snippet).Should().Contain(s => s.Contains("fox", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task Search_any_word_finds_tokens_when_exact_phrase_fails()
+    {
+        await using var pdf = await SamplePdf.CreateAsync(b =>
+        {
+            b.Page("alpha elsewhere bravo");
+        });
+
+        var exact = await _search.SearchAsync(
+            pdf.Path,
+            "alpha bravo",
+            new PdfSearchOptions(ExactPhrase: true));
+        exact.Status.Should().Be(PdfSearchStatus.NoMatches);
+
+        var anyWord = await _search.SearchAsync(
+            pdf.Path,
+            "alpha bravo",
+            new PdfSearchOptions(ExactPhrase: false));
+        anyWord.Hits.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task Search_any_word_ignores_empty_tokens_after_normalize()
+    {
+        await using var pdf = await SamplePdf.CreateAsync(b => b.Page("hello world"));
+        var result = await _search.SearchAsync(
+            pdf.Path,
+            "  hello   ",
+            new PdfSearchOptions(ExactPhrase: false));
+        result.Hits.Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task Search_handles_punctuation_in_query_and_document()
     {
         await using var pdf = await SamplePdf.CreateAsync(b =>

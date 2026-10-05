@@ -4,4 +4,5 @@ public sealed record SignatureEntry(
     string Id,
     string Name,
     string FileName,
-    DateTimeOffset CreatedUtc);
+    DateTimeOffset CreatedUtc,
+    string Description = "");

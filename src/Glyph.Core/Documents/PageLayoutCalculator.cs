@@ -65,6 +65,12 @@ public static class PageLayoutCalculator
         return Math.Max(0, currentPageIndex - step);
     }
 
+    public static int FirstPageIndex(PageLayoutMode mode, int pageCount) =>
+        pageCount <= 0 ? 0 : NormalizePageIndex(mode, 0, pageCount);
+
+    public static int LastPageIndex(PageLayoutMode mode, int pageCount) =>
+        pageCount <= 0 ? 0 : NormalizePageIndex(mode, pageCount - 1, pageCount);
+
     private static bool IsFacingMode(PageLayoutMode mode) =>
         mode is PageLayoutMode.TwoPage or PageLayoutMode.TwoPageWithCover;
 

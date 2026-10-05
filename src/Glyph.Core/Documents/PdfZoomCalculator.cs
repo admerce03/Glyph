@@ -59,4 +59,33 @@ public static class PdfZoomCalculator
 
         return wheelDelta > 0 ? ZoomIn(current) : ZoomOut(current);
     }
+
+    /// <summary>
+    /// Precision-touchpad / direct pinch ManipulationDelta.Scale factor (F02-22).
+    /// </summary>
+    public static double ApplyManipulationScale(double current, double deltaScale) =>
+        Clamp(current * deltaScale);
+
+    /// <summary>
+    /// Scale factor so a display-space selection (at <paramref name="currentScale"/>)
+    /// fills the viewport as much as possible without exceeding min/max zoom.
+    /// </summary>
+    public static double ZoomToArea(
+        double currentScale,
+        double selectionWidthDip,
+        double selectionHeightDip,
+        double viewportWidthDip,
+        double viewportHeightDip,
+        double padding = 16)
+    {
+        if (selectionWidthDip < 4 || selectionHeightDip < 4)
+        {
+            return Clamp(currentScale);
+        }
+
+        var usableWidth = Math.Max(1, viewportWidthDip - padding);
+        var usableHeight = Math.Max(1, viewportHeightDip - padding);
+        var factor = Math.Min(usableWidth / selectionWidthDip, usableHeight / selectionHeightDip);
+        return Clamp(currentScale * factor);
+    }
 }

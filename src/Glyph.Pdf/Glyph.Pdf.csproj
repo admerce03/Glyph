@@ -9,6 +9,9 @@
     <ProjectReference Include="..\Glyph.Core\Glyph.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Glyph.Pdf.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="PDFiumCore" />
     <PackageReference Include="PdfPig" />
   </ItemGroup>

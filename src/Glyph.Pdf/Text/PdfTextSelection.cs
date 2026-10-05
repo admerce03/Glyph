@@ -31,6 +31,12 @@ public static class PdfTextSelection
         => JoinInReadingOrder(CharsInRect(chars, selection));
 
     /// <summary>
+    /// Select / copy every character on a page in visual reading order.
+    /// </summary>
+    public static string CopyAll(IReadOnlyList<PdfTextChar> chars)
+        => JoinInReadingOrder(chars);
+
+    /// <summary>
     /// Stream-style selection from the character nearest <paramref name="start"/> to the
     /// character nearest <paramref name="end"/> (inclusive), spanning multiple lines.
     /// </summary>
@@ -53,7 +59,7 @@ public static class PdfTextSelection
 
     public static IEnumerable<PdfTextChar> OrderForReading(IEnumerable<PdfTextChar> chars)
         => chars
-            .OrderByDescending(c => MidY(c.Bounds))
+            .OrderByDescending(c => PdfTextReadingOrder.MidY(c.Bounds))
             .ThenBy(c => c.Bounds.Left)
             .ThenBy(c => c.Index);
 
@@ -71,11 +77,11 @@ public static class PdfTextSelection
         {
             if (prev is not null)
             {
-                if (IsNewLine(prev.Bounds, current.Bounds))
+                if (PdfTextReadingOrder.IsNewLine(prev.Bounds, current.Bounds))
                 {
                     sb.Append('\n');
                 }
-                else if (NeedsSpace(prev, current))
+                else if (PdfTextReadingOrder.NeedsSpaceBetween(prev, current))
                 {
                     sb.Append(' ');
                 }
@@ -88,6 +94,12 @@ public static class PdfTextSelection
         return sb.ToString();
     }
 
+    /// <summary>
+    /// Column/region selection when Alt is held, or the drag is wide and short.
+    /// </summary>
+    public static bool PreferColumnMode(bool altHeld, double rectWidth, double rectHeight) =>
+        altHeld || (rectWidth > Math.Max(40, rectHeight * 1.75) && rectHeight > 18);
+
     public static int NearestCharIndex(IReadOnlyList<PdfTextChar> chars, double x, double y)
     {
         var best = 0;
@@ -96,7 +108,7 @@ public static class PdfTextSelection
         {
             var b = chars[i].Bounds;
             var cx = (b.Left + b.Right) / 2;
-            var cy = MidY(b);
+            var cy = PdfTextReadingOrder.MidY(b);
             var dist = Math.Abs(cx - x) + Math.Abs(cy - y);
             if (dist < bestDist)
             {
@@ -108,32 +120,59 @@ public static class PdfTextSelection
         return best;
     }
 
-    private static double MidY(PdfRect bounds) => (bounds.Top + bounds.Bottom) / 2;
-
-    private static bool IsNewLine(PdfRect previous, PdfRect current)
+    /// <summary>
+    /// Click word-ish selection: pick the glyph nearest <paramref name="x"/>/<paramref name="y"/>
+    /// using Left/Bottom Manhattan distance, then expand over contiguous non-whitespace runs.
+    /// </summary>
+    public static bool TryExpandWordAt(
+        IReadOnlyList<PdfTextChar> chars,
+        double x,
+        double y,
+        out int startIndex,
+        out int endIndexInclusive)
     {
-        var prevMid = MidY(previous);
-        var currMid = MidY(current);
-        var lineHeight = Math.Max(previous.Height, current.Height);
-        var threshold = Math.Max(2.0, lineHeight * 0.45);
-        return Math.Abs(prevMid - currMid) > threshold;
-    }
-
-    private static bool NeedsSpace(PdfTextChar previous, PdfTextChar current)
-    {
-        if (string.IsNullOrWhiteSpace(previous.Value) || string.IsNullOrWhiteSpace(current.Value))
+        startIndex = 0;
+        endIndexInclusive = -1;
+        if (chars.Count == 0)
         {
             return false;
         }
 
-        if (char.IsWhiteSpace(previous.Value[^1]) || char.IsWhiteSpace(current.Value[0]))
+        var best = 0;
+        var bestDist = double.MaxValue;
+        for (var i = 0; i < chars.Count; i++)
         {
-            return false;
+            var b = chars[i].Bounds;
+            var dist = Math.Abs(b.Left - x) + Math.Abs(b.Bottom - y);
+            if (dist < bestDist)
+            {
+                bestDist = dist;
+                best = i;
+            }
         }
 
-        // Large horizontal gap on the same line usually means a word break.
-        var gap = current.Bounds.Left - previous.Bounds.Right;
-        var typical = Math.Max(previous.Bounds.Width, current.Bounds.Width);
-        return gap > Math.Max(2.0, typical * 0.2);
+        var start = best;
+        var end = best;
+        if (char.IsWhiteSpace(chars[best].Value.FirstOrDefault()))
+        {
+            startIndex = start;
+            endIndexInclusive = end;
+            return true;
+        }
+
+        while (start > 0 && !char.IsWhiteSpace(chars[start - 1].Value.FirstOrDefault()))
+        {
+            start--;
+        }
+
+        while (end + 1 < chars.Count && !char.IsWhiteSpace(chars[end + 1].Value.FirstOrDefault()))
+        {
+            end++;
+        }
+
+        startIndex = start;
+        endIndexInclusive = end;
+        return true;
     }
+
 }

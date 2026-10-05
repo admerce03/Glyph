@@ -3,6 +3,7 @@ using PDFiumCore;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.AcroForms;
 using UglyToad.PdfPig.AcroForms.Fields;
+using UglyToad.PdfPig.Tokens;
 
 namespace Glyph.Pdf.Pdfium;
 
@@ -87,7 +88,18 @@ public sealed class PdfiumFormStore : IPdfFormStore
                                             value = "Off";
                                         }
                                     }
+                                    else if (kind == PdfFormFieldKind.PushButton)
+                                    {
+                                        // Prefer tooltip / alternate name as the visible caption.
+                                        var tip = PdfiumAnnotStrings.GetString(annot, "TU");
+                                        if (!string.IsNullOrWhiteSpace(tip))
+                                        {
+                                            value = tip;
+                                        }
+                                    }
+
                                     var bounds = ReadRect(annot);
+                                    var da = PdfiumAnnotStrings.GetString(annot, "DA");
                                     fields.Add(new PdfFormFieldInfo(
                                         pageIndex,
                                         annotIndex,
@@ -95,7 +107,8 @@ public sealed class PdfiumFormStore : IPdfFormStore
                                         kind,
                                         value,
                                         bounds,
-                                        tab));
+                                        tab,
+                                        DefaultAppearance: string.IsNullOrEmpty(da) ? null : da));
                                     tab++;
                                 }
                                 finally
@@ -110,7 +123,7 @@ public sealed class PdfiumFormStore : IPdfFormStore
                         }
                     }
 
-                    EnrichChoiceOptions(pdfium.Path, fields);
+                    EnrichFromPdfPig(pdfium.Path, fields);
                     return (IReadOnlyList<PdfFormFieldInfo>)fields;
                 }
             },
@@ -122,7 +135,8 @@ public sealed class PdfiumFormStore : IPdfFormStore
         int pageIndex,
         int annotIndex,
         string value,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool autoFontSize = true)
     {
         var pdfium = RequirePdfium(document);
         ArgumentOutOfRangeException.ThrowIfNegative(pageIndex);
@@ -172,6 +186,18 @@ public sealed class PdfiumFormStore : IPdfFormStore
                             if (!PdfiumAnnotStrings.SetString(annot, "V", value))
                             {
                                 throw new InvalidOperationException("Failed to set form field /V value.");
+                            }
+
+                            // F20-12: text fields get /DA with 0 Tf so viewers auto-fit the value.
+                            if (autoFontSize && kind == PdfFormFieldKind.TextField)
+                            {
+                                var da = PdfiumAnnotStrings.GetString(annot, "DA");
+                                var autoDa = PdfFormDefaultAppearance.WithAutoFontSize(da);
+                                if (!PdfiumAnnotStrings.SetString(annot, "DA", autoDa))
+                                {
+                                    throw new InvalidOperationException(
+                                        "Failed to set form field /DA for automatic font sizing.");
+                                }
                             }
 
                             pdfium.NotifyAnnotationsChanged();
@@ -512,7 +538,7 @@ public sealed class PdfiumFormStore : IPdfFormStore
         return "Yes";
     }
 
-    private static void EnrichChoiceOptions(string? path, List<PdfFormFieldInfo> fields)
+    private static void EnrichFromPdfPig(string? path, List<PdfFormFieldInfo> fields)
     {
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path) || fields.Count == 0)
         {
@@ -528,19 +554,9 @@ public sealed class PdfiumFormStore : IPdfFormStore
             }
 
             var optionsByName = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+            var buttonByName = new Dictionary<string, PdfFormButtonAction>(StringComparer.Ordinal);
             foreach (var field in form.GetFields())
             {
-                IReadOnlyList<AcroChoiceOption>? options = field switch
-                {
-                    AcroComboBoxField combo => combo.Options,
-                    AcroListBoxField list => list.Options,
-                    _ => null,
-                };
-                if (options is null || options.Count == 0)
-                {
-                    continue;
-                }
-
                 var name = field.Information.PartialName
                     ?? field.Information.AlternateName
                     ?? field.Information.MappingName
@@ -550,40 +566,128 @@ public sealed class PdfiumFormStore : IPdfFormStore
                     continue;
                 }
 
-                optionsByName[name] = options
-                    .Select(o => !string.IsNullOrEmpty(o.Name) ? o.Name : o.ExportValue)
-                    .Where(s => !string.IsNullOrWhiteSpace(s))
-                    .Cast<string>()
-                    .Distinct(StringComparer.Ordinal)
-                    .ToList();
-            }
+                IReadOnlyList<AcroChoiceOption>? options = field switch
+                {
+                    AcroComboBoxField combo => combo.Options,
+                    AcroListBoxField list => list.Options,
+                    _ => null,
+                };
+                if (options is { Count: > 0 })
+                {
+                    optionsByName[name] = options
+                        .Select(o => !string.IsNullOrEmpty(o.Name) ? o.Name : o.ExportValue)
+                        .Where(s => !string.IsNullOrWhiteSpace(s))
+                        .Cast<string>()
+                        .Distinct(StringComparer.Ordinal)
+                        .ToList();
+                }
 
-            if (optionsByName.Count == 0)
-            {
-                return;
+                if (field is AcroPushButtonField push)
+                {
+                    buttonByName[name] = ResolvePushButtonAction(push);
+                }
             }
 
             for (var i = 0; i < fields.Count; i++)
             {
                 var f = fields[i];
-                if (f.Kind is not (PdfFormFieldKind.ComboBox or PdfFormFieldKind.ListBox))
+                if (f.Kind is PdfFormFieldKind.ComboBox or PdfFormFieldKind.ListBox
+                    && optionsByName.TryGetValue(f.Name, out var opts)
+                    && opts.Count > 0)
                 {
-                    continue;
+                    fields[i] = f with { Options = opts };
+                    f = fields[i];
                 }
 
-                if (!optionsByName.TryGetValue(f.Name, out var opts) || opts.Count == 0)
+                if (f.Kind == PdfFormFieldKind.PushButton
+                    && buttonByName.TryGetValue(f.Name, out var action))
                 {
-                    continue;
-                }
+                    var value = f.Value;
+                    if (string.IsNullOrWhiteSpace(value) && !string.IsNullOrWhiteSpace(action.Caption))
+                    {
+                        value = action.Caption;
+                    }
 
-                fields[i] = f with { Options = opts };
+                    fields[i] = f with { ButtonAction = action, Value = value };
+                }
             }
         }
         catch
         {
-            // Options are enrichment only; listing must still succeed without PdfPig form parse.
+            // Enrichment only; listing must still succeed without PdfPig form parse.
         }
     }
+
+    private static PdfFormButtonAction ResolvePushButtonAction(AcroPushButtonField push)
+    {
+        var caption = push.Information.AlternateName
+            ?? push.Information.MappingName
+            ?? push.Information.PartialName;
+
+        // Caption from /MK /CA when present.
+        if (push.Dictionary.TryGet(NameToken.Create("MK"), out DictionaryToken mk)
+            && mk.TryGet(NameToken.Create("CA"), out IToken caToken))
+        {
+            var ca = TokenToString(caToken);
+            if (!string.IsNullOrWhiteSpace(ca))
+            {
+                caption = ca;
+            }
+        }
+
+        if (!push.Dictionary.TryGet(NameToken.Create("A"), out DictionaryToken actionDict))
+        {
+            return new PdfFormButtonAction(PdfFormButtonActionKind.None, Caption: caption);
+        }
+
+        if (!actionDict.TryGet(NameToken.Create("S"), out NameToken subtype))
+        {
+            return new PdfFormButtonAction(PdfFormButtonActionKind.Other, Caption: caption);
+        }
+
+        if (string.Equals(subtype.Data, "URI", StringComparison.OrdinalIgnoreCase))
+        {
+            string? uri = null;
+            if (actionDict.TryGet(NameToken.Create("URI"), out IToken uriToken))
+            {
+                uri = TokenToString(uriToken);
+            }
+
+            return new PdfFormButtonAction(
+                string.IsNullOrWhiteSpace(uri) ? PdfFormButtonActionKind.Other : PdfFormButtonActionKind.Uri,
+                Uri: uri,
+                Caption: caption);
+        }
+
+        if (string.Equals(subtype.Data, "GoTo", StringComparison.OrdinalIgnoreCase))
+        {
+            int? pageIndex = null;
+            if (actionDict.TryGet(NameToken.Create("D"), out ArrayToken destArray)
+                && destArray.Length > 0
+                && destArray[0] is NumericToken pageNum
+                && pageNum.Int >= 0)
+            {
+                // Rare: destination page given as a direct page index number.
+                pageIndex = pageNum.Int;
+            }
+
+            return new PdfFormButtonAction(
+                PdfFormButtonActionKind.GoTo,
+                DestPageIndex: pageIndex,
+                Caption: caption);
+        }
+
+        return new PdfFormButtonAction(PdfFormButtonActionKind.Other, Caption: caption);
+    }
+
+    private static string? TokenToString(IToken token) =>
+        token switch
+        {
+            StringToken s => s.Data,
+            HexToken h => h.Data,
+            NameToken n => n.Data,
+            _ => token.ToString(),
+        };
 
     private static PdfRect ReadRect(FpdfAnnotationT annot)
     {

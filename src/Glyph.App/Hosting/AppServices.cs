@@ -1,11 +1,14 @@
 using Glyph.App.Ocr;
+using Glyph.App.Pdf;
 using Glyph.Core.Signatures;
 using Glyph.Core.Workspace;
 using Glyph.Imaging.Abstractions;
 using Glyph.Imaging.Magick;
 using Glyph.Infrastructure.Documents;
+using Glyph.Infrastructure.Forms;
 using Glyph.Infrastructure.Paths;
 using Glyph.Infrastructure.RecentFiles;
+using Glyph.Infrastructure.Session;
 using Glyph.Infrastructure.Settings;
 using Glyph.Infrastructure.Signatures;
 using Glyph.Ocr.Abstractions;
@@ -40,14 +43,33 @@ internal static class AppServices
         });
         services.AddSingleton<IDocumentViewStateStore>(_ =>
             new JsonDocumentViewStateStore(GlyphPaths.DocumentViewStateFile));
+        services.AddSingleton<ISessionStore>(_ => new JsonSessionStore(GlyphPaths.SessionFile));
+        services.AddSingleton<ICrashRecoveryStore>(_ =>
+            new FileCrashRecoveryStore(GlyphPaths.RecoveryDirectory));
+        services.AddSingleton<IVersionSnapshotStore>(sp =>
+        {
+            var settings = sp.GetRequiredService<ISettingsStore>().Current;
+            return new FileVersionSnapshotStore(
+                GlyphPaths.SnapshotsDirectory,
+                settings.VersionSnapshotCapacity);
+        });
         services.AddSingleton<ISignatureLibrary>(_ => new FileSignatureLibrary(GlyphPaths.SignaturesDirectory));
+        services.AddSingleton<IFormValueHistory>(_ => new JsonFormValueHistory(GlyphPaths.FormValueHistoryFile));
+        services.AddSingleton<IFormAutofillProfileStore>(_ =>
+            new JsonFormAutofillProfileStore(GlyphPaths.FormAutofillProfileFile));
         services.AddSingleton<IPdfDocumentFactory, PdfiumDocumentFactory>();
         services.AddSingleton<IPdfRenderer, PdfiumRenderer>();
         services.AddSingleton<IPdfTextExtractor, PdfiumTextExtractor>();
         services.AddSingleton<IPdfOutlineService, PdfiumOutlineService>();
+        services.AddSingleton<IPdfOutlineExportService, PdfiumOutlineExportService>();
         services.AddSingleton<IPdfLinkService, PdfiumLinkService>();
         services.AddSingleton<IPdfPageEditor, PdfiumPageEditor>();
         services.AddSingleton<IPdfAnnotationService, PdfiumAnnotationService>();
+        services.AddSingleton<IPdfRedactionService, PdfiumRedactionService>();
+        services.AddSingleton<IPdfDocumentInfoService, PdfiumDocumentInfoService>();
+        services.AddSingleton<IPdfImageJpegEncoder, MagickPdfImageJpegEncoder>();
+        services.AddSingleton<IPdfOptimizeService>(sp =>
+            new PdfiumOptimizeService(sp.GetRequiredService<IPdfImageJpegEncoder>()));
         services.AddSingleton<IPdfFormStore, PdfiumFormStore>();
         services.AddSingleton<IPdfTextSearchService, PdfPigTextSearchService>();
         services.AddSingleton<IImageDecoder, MagickImageDecoder>();

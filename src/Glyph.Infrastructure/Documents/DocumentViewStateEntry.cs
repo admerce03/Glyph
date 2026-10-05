@@ -12,5 +12,7 @@ public sealed class DocumentViewStateEntry
 
     public int CurrentPageIndex { get; set; }
 
+    public List<UserBookmark> Bookmarks { get; set; } = [];
+
     public DateTimeOffset UpdatedAtUtc { get; set; }
 }

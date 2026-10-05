@@ -1,5 +1,7 @@
+using System.Runtime.InteropServices;
 using Glyph.Pdf.Abstractions;
 using PDFiumCore;
+using static Glyph.Pdf.Abstractions.PdfAnnotationContentsCodec;
 
 namespace Glyph.Pdf.Pdfium;
 
@@ -126,6 +128,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         double yPoints,
         string contents,
         PdfAnnotationColor color,
+        string? author = null,
         CancellationToken cancellationToken = default)
     {
         var pdfium = RequirePdfium(document);
@@ -191,6 +194,17 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                                 throw new InvalidOperationException("Failed to set sticky note Contents.");
                             }
 
+                            var resolvedAuthor = string.IsNullOrWhiteSpace(author) ? null : author.Trim();
+                            if (resolvedAuthor is not null &&
+                                !PdfiumAnnotStrings.SetString(annot, "T", resolvedAuthor))
+                            {
+                                throw new InvalidOperationException("Failed to set sticky note author (/T).");
+                            }
+
+                            var now = PdfDateFormat.Format(DateTimeOffset.Now);
+                            _ = PdfiumAnnotStrings.SetString(annot, "CreationDate", now);
+                            _ = PdfiumAnnotStrings.SetString(annot, "M", now);
+
                             var index = fpdf_annot.FPDFPageGetAnnotIndex(page, annot);
                             if (index < 0)
                             {
@@ -205,7 +219,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                                 bounds,
                                 color,
                                 contents,
-                                IsStickyNote: true);
+                                IsStickyNote: true,
+                                Author: resolvedAuthor);
                         }
                         finally
                         {
@@ -376,6 +391,39 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         return created with { ShapeKind = PdfShapeKind.Freeform, IsInk = true };
     }
 
+    public async Task<PdfAnnotationInfo> AddPolygonAsync(
+        IPdfDocument document,
+        int pageIndex,
+        IReadOnlyList<PdfPagePoint> vertices,
+        PdfAnnotationColor color,
+        float borderWidthPoints = 2f,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(vertices);
+        if (vertices.Count < 3)
+        {
+            throw new ArgumentException("Polygon requires at least three vertices.", nameof(vertices));
+        }
+
+        var closed = vertices.ToList();
+        var first = closed[0];
+        var last = closed[^1];
+        if (Math.Abs(first.X - last.X) > 0.5 || Math.Abs(first.Y - last.Y) > 0.5)
+        {
+            closed.Add(first);
+        }
+
+        var created = await AddLabeledInkAsync(
+            document,
+            pageIndex,
+            [closed],
+            color,
+            borderWidthPoints,
+            contents: "Polygon",
+            cancellationToken);
+        return created with { ShapeKind = PdfShapeKind.Polygon, IsInk = true };
+    }
+
     public Task<PdfAnnotationInfo> AddShapeAsync(
         IPdfDocument document,
         int pageIndex,
@@ -384,6 +432,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         PdfAnnotationColor borderColor,
         PdfAnnotationColor? fillColor = null,
         float borderWidthPoints = 1.5f,
+        PdfInkLineStyle inkLineStyle = PdfInkLineStyle.Solid,
+        PdfArrowheadStyle arrowheadStyle = PdfArrowheadStyle.Open,
         CancellationToken cancellationToken = default)
     {
         var pdfium = RequirePdfium(document);
@@ -394,7 +444,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             throw new ArgumentOutOfRangeException(nameof(borderWidthPoints));
         }
 
-        // PDFium exposes GetLine but not SetLine; straight lines/arrows are ink strokes.
+        // PDFium exposes GetLine but not SetLine; straight lines/arrows/stars are ink strokes.
         if (kind is PdfShapeKind.Line or PdfShapeKind.Arrow)
         {
             var dx = Math.Abs(bounds.Right - bounds.Left);
@@ -405,8 +455,28 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             }
 
             return kind == PdfShapeKind.Arrow
-                ? AddArrowAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, cancellationToken)
-                : AddLineAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, cancellationToken);
+                ? AddArrowAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, inkLineStyle, arrowheadStyle, cancellationToken)
+                : AddLineAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, inkLineStyle, cancellationToken);
+        }
+
+        if (kind == PdfShapeKind.Star)
+        {
+            if (bounds.Width < 1 || bounds.Height < 1)
+            {
+                throw new ArgumentException("Star bounds must have positive width and height.", nameof(bounds));
+            }
+
+            return AddStarAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, cancellationToken);
+        }
+
+        if (kind == PdfShapeKind.SpeechBubble)
+        {
+            if (bounds.Width < 1 || bounds.Height < 1)
+            {
+                throw new ArgumentException("Speech bubble bounds must have positive width and height.", nameof(bounds));
+            }
+
+            return AddSpeechBubbleAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, cancellationToken);
         }
 
         if (bounds.Width < 1 || bounds.Height < 1)
@@ -416,10 +486,31 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
 
         var subtype = kind switch
         {
-            PdfShapeKind.Rectangle => PdfiumAnnotSubtypes.Square,
-            PdfShapeKind.Ellipse => PdfiumAnnotSubtypes.Circle,
+            PdfShapeKind.Rectangle or PdfShapeKind.RoundedRectangle or PdfShapeKind.HighlightRectangle
+                => PdfiumAnnotSubtypes.Square,
+            PdfShapeKind.Ellipse or PdfShapeKind.Loupe => PdfiumAnnotSubtypes.Circle,
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
+
+        // Highlight rectangles always get a translucent yellow-style fill when none provided.
+        if (kind == PdfShapeKind.HighlightRectangle && fillColor is null)
+        {
+            fillColor = new PdfAnnotationColor(
+                borderColor.R,
+                borderColor.G,
+                borderColor.B,
+                A: 70);
+        }
+
+        // Loupe markers use a light lens-style fill so the page shows through.
+        if (kind == PdfShapeKind.Loupe && fillColor is null)
+        {
+            fillColor = new PdfAnnotationColor(
+                borderColor.R,
+                borderColor.G,
+                borderColor.B,
+                A: 28);
+        }
 
         return Task.Run(
             () =>
@@ -460,13 +551,18 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                                 throw new InvalidOperationException("FPDFAnnot_SetRect failed for shape.");
                             }
 
+                            // Highlight areas use a nearly transparent border so the fill dominates.
+                            var stroke = kind == PdfShapeKind.HighlightRectangle
+                                ? new PdfAnnotationColor(borderColor.R, borderColor.G, borderColor.B, A: 40)
+                                : borderColor;
+
                             if (fpdf_annot.FPDFAnnotSetColor(
                                     annot,
                                     FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_Color,
-                                    borderColor.R,
-                                    borderColor.G,
-                                    borderColor.B,
-                                    borderColor.A) == 0)
+                                    stroke.R,
+                                    stroke.G,
+                                    stroke.B,
+                                    stroke.A) == 0)
                             {
                                 throw new InvalidOperationException("FPDFAnnot_SetColor failed for shape border.");
                             }
@@ -485,7 +581,33 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                                 }
                             }
 
-                            if (PdfiumNative.AnnotSetBorder(annot.__Instance, 0, 0, borderWidthPoints) == 0)
+                            var radius = 0f;
+                            string? contentsLabel = null;
+                            if (kind == PdfShapeKind.RoundedRectangle)
+                            {
+                                radius = (float)Math.Clamp(
+                                    Math.Min(bounds.Width, bounds.Height) * 0.2,
+                                    4.0,
+                                    36.0);
+                                contentsLabel = "RoundedRect";
+                            }
+                            else if (kind == PdfShapeKind.HighlightRectangle)
+                            {
+                                contentsLabel = "HighlightRect";
+                            }
+                            else if (kind == PdfShapeKind.Loupe)
+                            {
+                                contentsLabel = "Loupe";
+                            }
+
+                            if (contentsLabel is not null &&
+                                !PdfiumAnnotStrings.SetString(annot, "Contents", contentsLabel))
+                            {
+                                throw new InvalidOperationException($"Failed to label {kind} shape.");
+                            }
+
+                            var width = kind == PdfShapeKind.HighlightRectangle ? 0.5f : borderWidthPoints;
+                            if (PdfiumNative.AnnotSetBorder(annot.__Instance, radius, radius, width) == 0)
                             {
                                 throw new InvalidOperationException("FPDFAnnot_SetBorder failed for shape.");
                             }
@@ -503,7 +625,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                                 TextMarkupKind: null,
                                 bounds,
                                 borderColor,
-                                Contents: null,
+                                Contents: contentsLabel,
                                 IsStickyNote: false,
                                 IsInk: false,
                                 ShapeKind: kind);
@@ -522,7 +644,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             cancellationToken);
     }
 
-    public Task<PdfAnnotationInfo> AddTextBoxAsync(
+    public async Task<PdfAnnotationInfo> AddTextBoxAsync(
         IPdfDocument document,
         int pageIndex,
         PdfRect bounds,
@@ -531,6 +653,9 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         PdfAnnotationColor? borderColor = null,
         PdfAnnotationColor? fillColor = null,
         float fontSizePoints = 12f,
+        string fontResourceName = "Helv",
+        bool underline = false,
+        PdfTextQuadding quadding = PdfTextQuadding.Left,
         CancellationToken cancellationToken = default)
     {
         var pdfium = RequirePdfium(document);
@@ -547,9 +672,12 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             throw new ArgumentOutOfRangeException(nameof(fontSizePoints));
         }
 
+        fontResourceName = string.IsNullOrWhiteSpace(fontResourceName)
+            ? "Helv"
+            : fontResourceName.Trim().TrimStart('/');
         borderColor ??= new PdfAnnotationColor(40, 40, 40);
 
-        return Task.Run(
+        var created = await Task.Run(
             () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -623,11 +751,11 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                                 throw new InvalidOperationException("Failed to set text box Contents.");
                             }
 
-                            // Default appearance: Helvetica at fontSize in RGB text color.
+                            // Default appearance: standard font at fontSize in RGB text color.
                             var r = textColor.R / 255.0;
                             var g = textColor.G / 255.0;
                             var b = textColor.B / 255.0;
-                            var da = $"/Helv {fontSizePoints:0.##} Tf {r:0.###} {g:0.###} {b:0.###} rg";
+                            var da = $"/{fontResourceName} {fontSizePoints:0.##} Tf {r:0.###} {g:0.###} {b:0.###} rg";
                             if (!PdfiumAnnotStrings.SetString(annot, "DA", da))
                             {
                                 throw new InvalidOperationException("Failed to set text box DA.");
@@ -650,7 +778,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                                 IsStickyNote: false,
                                 IsInk: false,
                                 ShapeKind: null,
-                                IsTextBox: true);
+                                IsTextBox: true,
+                                TextQuadding: PdfTextQuadding.Left);
                         }
                         finally
                         {
@@ -663,7 +792,35 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                     }
                 }
             },
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
+
+        if (!underline && quadding == PdfTextQuadding.Left)
+        {
+            return created;
+        }
+
+        var result = created;
+        if (underline)
+        {
+            result = await SetUnderlineAsync(
+                document,
+                pageIndex,
+                result.AnnotIndex,
+                underline: true,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        if (quadding != PdfTextQuadding.Left)
+        {
+            result = await SetTextQuaddingAsync(
+                document,
+                pageIndex,
+                result.AnnotIndex,
+                quadding,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        return result;
     }
 
     public async Task<PdfAnnotationInfo> AddCalloutAsync(
@@ -676,7 +833,10 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         PdfAnnotationColor? borderColor = null,
         PdfAnnotationColor? fillColor = null,
         float fontSizePoints = 12f,
+        string fontResourceName = "Helv",
         float pointerWidthPoints = 1.5f,
+        bool underline = false,
+        PdfTextQuadding quadding = PdfTextQuadding.Left,
         CancellationToken cancellationToken = default)
     {
         borderColor ??= new PdfAnnotationColor(40, 40, 40);
@@ -705,6 +865,9 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             borderColor,
             fillColor,
             fontSizePoints,
+            fontResourceName,
+            underline,
+            quadding,
             cancellationToken);
 
         // Mark as callout via Subj so list/reload can recognize it.
@@ -727,10 +890,212 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             [[tip, anchor]],
             borderColor.Value,
             pointerWidthPoints,
-            contents: "CalloutPointer",
+            contents: FormatCalloutPointerContents(box.AnnotIndex),
             cancellationToken);
 
         return box with { IsCallout = true, IsTextBox = true };
+    }
+
+    public async Task<PdfAnnotationInfo> SetTextQuaddingAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        PdfTextQuadding quadding,
+        CancellationToken cancellationToken = default)
+    {
+        if (quadding is < PdfTextQuadding.Left or > PdfTextQuadding.Right)
+        {
+            throw new ArgumentOutOfRangeException(nameof(quadding));
+        }
+
+        var listed = await ListAsync(document, pageIndex, cancellationToken).ConfigureAwait(false);
+        _ = listed.FirstOrDefault(a => a.AnnotIndex == annotIndex && a.IsTextBox)
+            ?? throw new InvalidOperationException("Target annotation is not a FreeText text box.");
+
+        var marker = "GlyphQ" + Guid.NewGuid().ToString("N");
+        await MutateAnnotAsync(
+            document,
+            pageIndex,
+            annotIndex,
+            cancellationToken,
+            annot =>
+            {
+                if (!PdfiumAnnotStrings.SetString(annot, "NM", marker))
+                {
+                    throw new InvalidOperationException("Failed to set FreeText NM marker for quadding.");
+                }
+            }).ConfigureAwait(false);
+
+        var pdfium = RequirePdfium(document);
+        await Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    var bytes = PdfiumDocumentSaver.SaveToBytes(pdfium.Handle, flags: 0);
+                    var patched = PdfFreeTextQuaddingPatcher.Apply(bytes, marker, (int)quadding);
+                    pdfium.ReplaceFromBytes(patched);
+                    pdfium.NotifyAnnotationsChanged();
+                }
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        listed = await ListAsync(document, pageIndex, cancellationToken).ConfigureAwait(false);
+        return FindByNameMarker(document, pageIndex, marker, listed)
+            ?? throw new InvalidOperationException("FreeText missing after quadding patch.");
+    }
+
+    private PdfAnnotationInfo? FindByNameMarker(
+        IPdfDocument document,
+        int pageIndex,
+        string marker,
+        IReadOnlyList<PdfAnnotationInfo> listed)
+    {
+        var pdfium = RequirePdfium(document);
+        PdfiumLibrary.EnsureInitialized();
+        lock (PdfiumSync.Gate)
+        {
+            pdfium.ThrowIfDisposed();
+            var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
+            if (page is null)
+            {
+                return null;
+            }
+
+            try
+            {
+                foreach (var info in listed.Where(a => a.IsTextBox))
+                {
+                    var annot = fpdf_annot.FPDFPageGetAnnot(page, info.AnnotIndex);
+                    if (annot is null)
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        var nm = PdfiumAnnotStrings.GetString(annot, "NM");
+                        if (string.Equals(nm, marker, StringComparison.Ordinal))
+                        {
+                            return info with { TextQuadding = ReadQuadding(annot) };
+                        }
+                    }
+                    finally
+                    {
+                        fpdf_annot.FPDFPageCloseAnnot(annot);
+                    }
+                }
+            }
+            finally
+            {
+                fpdfview.FPDF_ClosePage(page);
+            }
+        }
+
+        return null;
+    }
+
+    private static PdfTextQuadding? ReadQuadding(FpdfAnnotationT annot)
+    {
+        if (fpdf_annot.FPDFAnnotHasKey(annot, "Q") == 0)
+        {
+            return PdfTextQuadding.Left;
+        }
+
+        float value = 0;
+        if (fpdf_annot.FPDFAnnotGetNumberValue(annot, "Q", ref value) == 0)
+        {
+            return null;
+        }
+
+        var q = (int)Math.Round(value);
+        return q switch
+        {
+            0 => PdfTextQuadding.Left,
+            1 => PdfTextQuadding.Center,
+            2 => PdfTextQuadding.Right,
+            _ => null,
+        };
+    }
+
+    public async Task<PdfAnnotationInfo> SetUnderlineAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        bool underline,
+        CancellationToken cancellationToken = default)
+    {
+        var listed = await ListAsync(document, pageIndex, cancellationToken).ConfigureAwait(false);
+        var box = listed.FirstOrDefault(a => a.AnnotIndex == annotIndex && a.IsTextBox)
+            ?? throw new InvalidOperationException("Target annotation is not a FreeText text box.");
+
+        // Remove existing underline ink companions for this FreeText.
+        var companions = listed
+            .Where(a => a.IsInk && IsTextUnderlineContents(a.Contents))
+            .Where(a =>
+            {
+                var owned = TryParseTextUnderlineOwner(a.Contents, out var owner)
+                    && owner == annotIndex;
+                return owned || a.Contents == "GlyphTextUnderline";
+            })
+            .OrderByDescending(a => a.AnnotIndex)
+            .ToList();
+
+        foreach (var companion in companions)
+        {
+            var companionIndex = companion.AnnotIndex;
+            await RemoveAsync(document, pageIndex, companionIndex, cancellationToken).ConfigureAwait(false);
+            if (companionIndex < annotIndex)
+            {
+                annotIndex--;
+            }
+        }
+
+        await MutateAnnotAsync(
+            document,
+            pageIndex,
+            annotIndex,
+            cancellationToken,
+            annot =>
+            {
+                if (!PdfiumAnnotStrings.SetString(annot, GlyphUnderlineKey, underline ? "1" : string.Empty))
+                {
+                    throw new InvalidOperationException("Failed to set GlyphUnderline.");
+                }
+            }).ConfigureAwait(false);
+
+        if (underline)
+        {
+            listed = await ListAsync(document, pageIndex, cancellationToken).ConfigureAwait(false);
+            box = listed.FirstOrDefault(a => a.AnnotIndex == annotIndex && a.IsTextBox)
+                ?? throw new InvalidOperationException("FreeText missing after underline update.");
+
+            var y = box.Bounds.Bottom + Math.Min(4, Math.Max(1, box.Bounds.Height * 0.12));
+            var inset = Math.Min(4, box.Bounds.Width * 0.05);
+            var left = box.Bounds.Left + inset;
+            var right = box.Bounds.Right - inset;
+            if (right - left < 2)
+            {
+                left = box.Bounds.Left;
+                right = box.Bounds.Right;
+            }
+
+            var color = box.Color ?? new PdfAnnotationColor(40, 40, 40);
+            await AddLabeledInkAsync(
+                document,
+                pageIndex,
+                [[new PdfPagePoint(left, y), new PdfPagePoint(right, y)]],
+                color,
+                borderWidthPoints: 1f,
+                contents: FormatTextUnderlineContents(annotIndex),
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        listed = await ListAsync(document, pageIndex, cancellationToken).ConfigureAwait(false);
+        return listed.First(a => a.AnnotIndex == annotIndex && a.IsTextBox);
     }
 
     public Task<PdfAnnotationInfo> AddStampAsync(
@@ -993,6 +1358,256 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             });
     }
 
+    public Task<float?> GetBorderWidthAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
+                    if (page is null)
+                    {
+                        throw new InvalidOperationException($"Failed to load page {pageIndex}.");
+                    }
+
+                    try
+                    {
+                        var annot = fpdf_annot.FPDFPageGetAnnot(page, annotIndex);
+                        if (annot is null)
+                        {
+                            throw new InvalidOperationException($"Annotation {annotIndex} not found.");
+                        }
+
+                        try
+                        {
+                            var subtype = fpdf_annot.FPDFAnnotGetSubtype(annot);
+                            if (!SupportsBorderWidth(subtype))
+                            {
+                                return (float?)null;
+                            }
+
+                            if (PdfiumNative.AnnotGetBorder(
+                                    annot.__Instance,
+                                    out _,
+                                    out _,
+                                    out var width) == 0)
+                            {
+                                return null;
+                            }
+
+                            return width;
+                        }
+                        finally
+                        {
+                            fpdf_annot.FPDFPageCloseAnnot(annot);
+                        }
+                    }
+                    finally
+                    {
+                        fpdfview.FPDF_ClosePage(page);
+                    }
+                }
+            },
+            cancellationToken);
+    }
+
+    public Task SetBorderWidthAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        float borderWidthPoints,
+        CancellationToken cancellationToken = default)
+    {
+        if (borderWidthPoints <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(borderWidthPoints));
+        }
+
+        return MutateAnnotAsync(
+            document,
+            pageIndex,
+            annotIndex,
+            cancellationToken,
+            annot =>
+            {
+                var subtype = fpdf_annot.FPDFAnnotGetSubtype(annot);
+                if (!SupportsBorderWidth(subtype))
+                {
+                    throw new NotSupportedException(
+                        "Border width can only be changed on ink, rectangle, ellipse, and text box annotations.");
+                }
+
+                var hr = 0f;
+                var vr = 0f;
+                var existing = 0f;
+                if (PdfiumNative.AnnotGetBorder(annot.__Instance, out hr, out vr, out existing) == 0)
+                {
+                    hr = 0f;
+                    vr = 0f;
+                }
+
+                if (PdfiumNative.AnnotSetBorder(annot.__Instance, hr, vr, borderWidthPoints) == 0)
+                {
+                    throw new InvalidOperationException("Failed to set annotation border width.");
+                }
+            });
+    }
+
+    private static bool SupportsBorderWidth(int subtype) =>
+        subtype is PdfiumAnnotSubtypes.Ink
+            or PdfiumAnnotSubtypes.Square
+            or PdfiumAnnotSubtypes.Circle
+            or PdfiumAnnotSubtypes.FreeText;
+
+    private static bool SupportsFillColor(int subtype) =>
+        subtype is PdfiumAnnotSubtypes.Square
+            or PdfiumAnnotSubtypes.Circle
+            or PdfiumAnnotSubtypes.FreeText;
+
+    public Task SetFillColorAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        PdfAnnotationColor? fillColor,
+        CancellationToken cancellationToken = default)
+    {
+        return MutateAnnotAsync(
+            document,
+            pageIndex,
+            annotIndex,
+            cancellationToken,
+            annot =>
+            {
+                var subtype = fpdf_annot.FPDFAnnotGetSubtype(annot);
+                if (!SupportsFillColor(subtype))
+                {
+                    throw new NotSupportedException(
+                        "Fill color can only be changed on rectangle, ellipse, and text box annotations.");
+                }
+
+                var color = fillColor ?? new PdfAnnotationColor(255, 255, 255, A: 0);
+                if (fpdf_annot.FPDFAnnotSetColor(
+                        annot,
+                        FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_InteriorColor,
+                        color.R,
+                        color.G,
+                        color.B,
+                        color.A) == 0)
+                {
+                    throw new InvalidOperationException("Failed to set annotation fill color.");
+                }
+            });
+    }
+
+    public async Task SetCalloutTipAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int calloutAnnotIndex,
+        PdfPagePoint tip,
+        float pointerWidthPoints = 1.5f,
+        CancellationToken cancellationToken = default)
+    {
+        if (pointerWidthPoints <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(pointerWidthPoints));
+        }
+
+        var listed = await ListAsync(document, pageIndex, cancellationToken);
+        var callout = listed.FirstOrDefault(a => a.AnnotIndex == calloutAnnotIndex && a.IsCallout)
+            ?? throw new InvalidOperationException("Selected annotation is not a callout.");
+
+        var pointer = listed
+            .Where(a => a.IsInk && IsCalloutPointerContents(a.Contents))
+            .Select(a =>
+            {
+                var owned = TryParseCalloutPointerOwner(a.Contents, out var owner)
+                    && owner == calloutAnnotIndex;
+                var cx = (callout.Bounds.Left + callout.Bounds.Right) / 2;
+                var cy = (callout.Bounds.Bottom + callout.Bounds.Top) / 2;
+                var dx = ((a.Bounds.Left + a.Bounds.Right) / 2) - cx;
+                var dy = ((a.Bounds.Bottom + a.Bounds.Top) / 2) - cy;
+                var dist = (dx * dx) + (dy * dy);
+                return (Info: a, Owned: owned, Dist: dist);
+            })
+            .OrderByDescending(x => x.Owned)
+            .ThenBy(x => x.Dist)
+            .Select(x => x.Info)
+            .FirstOrDefault();
+
+        var borderColor = callout.Color ?? new PdfAnnotationColor(40, 40, 40);
+        var bounds = callout.Bounds;
+        var boxCx = (bounds.Left + bounds.Right) / 2;
+        var boxCy = (bounds.Bottom + bounds.Top) / 2;
+        var candidates = new[]
+        {
+            new PdfPagePoint(boxCx, bounds.Bottom),
+            new PdfPagePoint(boxCx, bounds.Top),
+            new PdfPagePoint(bounds.Left, boxCy),
+            new PdfPagePoint(bounds.Right, boxCy),
+        };
+        var anchor = candidates
+            .OrderBy(p => ((p.X - tip.X) * (p.X - tip.X)) + ((p.Y - tip.Y) * (p.Y - tip.Y)))
+            .First();
+
+        if (pointer is not null)
+        {
+            var pointerIndex = pointer.AnnotIndex;
+            await RemoveAsync(document, pageIndex, pointerIndex, cancellationToken);
+            if (pointerIndex < calloutAnnotIndex)
+            {
+                calloutAnnotIndex--;
+            }
+        }
+
+        await AddLabeledInkAsync(
+            document,
+            pageIndex,
+            [[tip, anchor]],
+            borderColor,
+            pointerWidthPoints,
+            contents: FormatCalloutPointerContents(calloutAnnotIndex),
+            cancellationToken);
+    }
+
+    public async Task SetGroupAsync(
+        IPdfDocument document,
+        IReadOnlyList<(int PageIndex, int AnnotIndex)> annots,
+        string? groupId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(annots);
+        if (annots.Count == 0)
+        {
+            return;
+        }
+
+        var value = string.IsNullOrWhiteSpace(groupId) ? string.Empty : groupId.Trim();
+        foreach (var (pageIndex, annotIndex) in annots)
+        {
+            await MutateAnnotAsync(
+                document,
+                pageIndex,
+                annotIndex,
+                cancellationToken,
+                annot =>
+                {
+                    if (!PdfiumAnnotStrings.SetString(annot, "GlyphGroup", value))
+                    {
+                        throw new InvalidOperationException("Failed to set annotation GlyphGroup.");
+                    }
+                });
+        }
+    }
+
     public Task MoveAsync(
         IPdfDocument document,
         int pageIndex,
@@ -1037,11 +1652,15 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         int subtype;
         PdfRect bounds;
         PdfAnnotationColor color = new(0, 0, 0);
-        string contents;
-        PdfTextMarkupKind? markupKind;
-        PdfShapeKind? shapeKind;
+        string contents = string.Empty;
+        string? author = null;
+        PdfTextMarkupKind? markupKind = null;
+        PdfShapeKind? shapeKind = null;
         List<PdfQuad> quads = [];
         List<List<PdfPagePoint>> inkStrokes = [];
+        byte[]? stampPixels = null;
+        var stampPixelWidth = 0;
+        var stampPixelHeight = 0;
 
         lock (PdfiumSync.Gate)
         {
@@ -1063,11 +1682,6 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                 try
                 {
                     subtype = fpdf_annot.FPDFAnnotGetSubtype(annot);
-                    if (subtype == PdfiumAnnotSubtypes.Stamp)
-                    {
-                        throw new NotSupportedException(
-                            "Duplicating stamp/signature annotations is not supported yet.");
-                    }
 
                     using var rect = new FS_RECTF_();
                     if (fpdf_annot.FPDFAnnotGetRect(annot, rect) == 0)
@@ -1081,95 +1695,137 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                         rect.Right + offset,
                         rect.Top - offset);
 
-                    uint r = 0, g = 0, b = 0, a = 255;
-                    if (fpdf_annot.FPDFAnnotGetColor(
-                            annot,
-                            FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_Color,
-                            ref r,
-                            ref g,
-                            ref b,
-                            ref a) != 0)
+                    if (subtype == PdfiumAnnotSubtypes.Stamp)
                     {
-                        color = new PdfAnnotationColor((byte)r, (byte)g, (byte)b, (byte)a);
-                    }
-
-                    contents = PdfiumAnnotStrings.GetString(annot, "Contents");
-                    markupKind = FromSubtype(subtype);
-                    shapeKind = FromShapeSubtype(subtype);
-                    if (shapeKind is null && subtype == PdfiumAnnotSubtypes.Ink)
-                    {
-                        shapeKind = FromInkShapeContents(contents);
-                    }
-
-                    if (markupKind is not null)
-                    {
-                        var count = fpdf_annot.FPDFAnnotCountAttachmentPoints(annot);
-                        for (ulong i = 0; i < count; i++)
+                        stampPixels = TryExtractStampBgra(annot, out stampPixelWidth, out stampPixelHeight);
+                        if (stampPixels is null || stampPixelWidth <= 0 || stampPixelHeight <= 0)
                         {
-                            using var quad = new FS_QUADPOINTSF();
-                            if (fpdf_annot.FPDFAnnotGetAttachmentPoints(annot, i, quad) == 0)
-                            {
-                                continue;
-                            }
-
-                            quads.Add(new PdfQuad(
-                                quad.X1 + offset,
-                                quad.Y1 - offset,
-                                quad.X2 + offset,
-                                quad.Y2 - offset,
-                                quad.X3 + offset,
-                                quad.Y3 - offset,
-                                quad.X4 + offset,
-                                quad.Y4 - offset));
+                            throw new InvalidOperationException(
+                                "Failed to extract stamp image pixels for duplicate.");
                         }
                     }
-
-                    if (subtype == PdfiumAnnotSubtypes.Ink)
+                    else
                     {
-                        var strokeCount = (uint)PdfiumNative.AnnotGetInkListCount(annot.__Instance);
-                        for (uint s = 0; s < strokeCount; s++)
+                        uint r = 0, g = 0, b = 0, a = 255;
+                        if (fpdf_annot.FPDFAnnotGetColor(
+                                annot,
+                                FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_Color,
+                                ref r,
+                                ref g,
+                                ref b,
+                                ref a) != 0)
                         {
-                            var needed = PdfiumNative.AnnotGetInkListPath(annot.__Instance, s, IntPtr.Zero, 0);
-                            if (needed == 0)
-                            {
-                                continue;
-                            }
+                            color = new PdfAnnotationColor((byte)r, (byte)g, (byte)b, (byte)a);
+                        }
 
-                            var buffer = new PdfiumNative.FsPointF[needed];
-                            var handle = System.Runtime.InteropServices.GCHandle.Alloc(
-                                buffer,
-                                System.Runtime.InteropServices.GCHandleType.Pinned);
-                            try
+                        contents = PdfiumAnnotStrings.GetString(annot, "Contents");
+                        author = PdfiumAnnotStrings.GetString(annot, "T");
+                        if (string.IsNullOrWhiteSpace(author))
+                        {
+                            author = null;
+                        }
+
+                        markupKind = FromSubtype(subtype);
+                        shapeKind = FromShapeSubtype(subtype);
+                        if (shapeKind == PdfShapeKind.Rectangle)
+                        {
+                            if (string.Equals(contents, "HighlightRect", StringComparison.Ordinal))
                             {
-                                var written = PdfiumNative.AnnotGetInkListPath(
-                                    annot.__Instance,
-                                    s,
-                                    handle.AddrOfPinnedObject(),
-                                    needed);
-                                if (written == 0)
+                                shapeKind = PdfShapeKind.HighlightRectangle;
+                            }
+                            else if (string.Equals(contents, "RoundedRect", StringComparison.Ordinal)
+                                     || (PdfiumNative.AnnotGetBorder(
+                                             annot.__Instance,
+                                             out var hr,
+                                             out var vr,
+                                             out _) != 0
+                                         && (hr > 0.5f || vr > 0.5f)))
+                            {
+                                shapeKind = PdfShapeKind.RoundedRectangle;
+                            }
+                        }
+
+                        if (shapeKind == PdfShapeKind.Ellipse
+                            && string.Equals(contents, "Loupe", StringComparison.Ordinal))
+                        {
+                            shapeKind = PdfShapeKind.Loupe;
+                        }
+
+                        if (shapeKind is null && subtype == PdfiumAnnotSubtypes.Ink)
+                        {
+                            shapeKind = FromInkShapeContents(contents);
+                        }
+
+                        if (markupKind is not null)
+                        {
+                            var count = fpdf_annot.FPDFAnnotCountAttachmentPoints(annot);
+                            for (ulong i = 0; i < count; i++)
+                            {
+                                using var quad = new FS_QUADPOINTSF();
+                                if (fpdf_annot.FPDFAnnotGetAttachmentPoints(annot, i, quad) == 0)
                                 {
                                     continue;
                                 }
 
-                                var stroke = new List<PdfPagePoint>((int)written);
-                                for (var i = 0; i < (int)written; i++)
-                                {
-                                    stroke.Add(new PdfPagePoint(
-                                        buffer[i].X + offset,
-                                        buffer[i].Y - offset));
-                                }
-
-                                if (stroke.Count >= 2)
-                                {
-                                    inkStrokes.Add(stroke);
-                                }
-                            }
-                            finally
-                            {
-                                handle.Free();
+                                quads.Add(new PdfQuad(
+                                    quad.X1 + offset,
+                                    quad.Y1 - offset,
+                                    quad.X2 + offset,
+                                    quad.Y2 - offset,
+                                    quad.X3 + offset,
+                                    quad.Y3 - offset,
+                                    quad.X4 + offset,
+                                    quad.Y4 - offset));
                             }
                         }
-                    }
+
+                        if (subtype == PdfiumAnnotSubtypes.Ink)
+                        {
+                            var strokeCount = (uint)PdfiumNative.AnnotGetInkListCount(annot.__Instance);
+                            for (uint s = 0; s < strokeCount; s++)
+                            {
+                                var needed = PdfiumNative.AnnotGetInkListPath(annot.__Instance, s, IntPtr.Zero, 0);
+                                if (needed == 0)
+                                {
+                                    continue;
+                                }
+
+                                var buffer = new PdfiumNative.FsPointF[needed];
+                                var handle = System.Runtime.InteropServices.GCHandle.Alloc(
+                                    buffer,
+                                    System.Runtime.InteropServices.GCHandleType.Pinned);
+                                try
+                                {
+                                    var written = PdfiumNative.AnnotGetInkListPath(
+                                        annot.__Instance,
+                                        s,
+                                        handle.AddrOfPinnedObject(),
+                                        needed);
+                                    if (written == 0)
+                                    {
+                                        continue;
+                                    }
+
+                                    var stroke = new List<PdfPagePoint>((int)written);
+                                    for (var i = 0; i < (int)written; i++)
+                                    {
+                                        stroke.Add(new PdfPagePoint(
+                                            buffer[i].X + offset,
+                                            buffer[i].Y - offset));
+                                    }
+
+                                    if (stroke.Count >= 2)
+                                    {
+                                        inkStrokes.Add(stroke);
+                                    }
+                                }
+                                finally
+                                {
+                                    handle.Free();
+                                }
+                            }
+                        }
+                    } // end non-stamp clone extract
                 }
                 finally
                 {
@@ -1180,6 +1836,18 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             {
                 fpdfview.FPDF_ClosePage(page);
             }
+        }
+
+        if (stampPixels is not null)
+        {
+            return await AddStampAsync(
+                document,
+                pageIndex,
+                bounds,
+                stampPixels,
+                stampPixelWidth,
+                stampPixelHeight,
+                cancellationToken);
         }
 
         if (markupKind is { } mk)
@@ -1201,7 +1869,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                 bounds.Bottom,
                 contents,
                 color,
-                cancellationToken);
+                author: author,
+                cancellationToken: cancellationToken);
         }
 
         if (subtype == PdfiumAnnotSubtypes.FreeText)
@@ -1218,9 +1887,10 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
 
         if (subtype is PdfiumAnnotSubtypes.Square or PdfiumAnnotSubtypes.Circle)
         {
-            var kind = subtype == PdfiumAnnotSubtypes.Square
-                ? PdfShapeKind.Rectangle
-                : PdfShapeKind.Ellipse;
+            var kind = shapeKind
+                ?? (subtype == PdfiumAnnotSubtypes.Square
+                    ? PdfShapeKind.Rectangle
+                    : PdfShapeKind.Ellipse);
             return await AddShapeAsync(
                 document,
                 pageIndex,
@@ -1460,9 +2130,42 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                     }
 
                     var contents = PdfiumAnnotStrings.GetString(annot, "Contents");
+                    var author = PdfiumAnnotStrings.GetString(annot, "T");
+                    if (string.IsNullOrWhiteSpace(author))
+                    {
+                        author = null;
+                    }
+
                     var isSticky = subtype == PdfiumAnnotSubtypes.Text;
                     var isInk = subtype == PdfiumAnnotSubtypes.Ink;
                     var shapeKind = FromShapeSubtype(subtype);
+                    if (shapeKind == PdfShapeKind.Rectangle)
+                    {
+                        if (string.Equals(contents, "HighlightRect", StringComparison.Ordinal))
+                        {
+                            shapeKind = PdfShapeKind.HighlightRectangle;
+                        }
+                        else if (string.Equals(contents, "RoundedRect", StringComparison.Ordinal))
+                        {
+                            shapeKind = PdfShapeKind.RoundedRectangle;
+                        }
+                        else if (PdfiumNative.AnnotGetBorder(
+                                     annot.__Instance,
+                                     out var hr,
+                                     out var vr,
+                                     out _) != 0
+                                 && (hr > 0.5f || vr > 0.5f))
+                        {
+                            shapeKind = PdfShapeKind.RoundedRectangle;
+                        }
+                    }
+
+                    if (shapeKind == PdfShapeKind.Ellipse
+                        && string.Equals(contents, "Loupe", StringComparison.Ordinal))
+                    {
+                        shapeKind = PdfShapeKind.Loupe;
+                    }
+
                     if (shapeKind is null && isInk)
                     {
                         shapeKind = FromInkShapeContents(contents);
@@ -1475,6 +2178,28 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                             PdfiumAnnotStrings.GetString(annot, "Subj"),
                             "Callout",
                             StringComparison.Ordinal);
+                    var groupId = PdfiumAnnotStrings.GetString(annot, "GlyphGroup");
+                    if (string.IsNullOrWhiteSpace(groupId))
+                    {
+                        groupId = null;
+                    }
+
+                    var isUnderlined = isTextBox
+                        && string.Equals(
+                            PdfiumAnnotStrings.GetString(annot, GlyphUnderlineKey),
+                            "1",
+                            StringComparison.Ordinal);
+
+                    PdfTextQuadding? textQuadding = isTextBox ? ReadQuadding(annot) : null;
+
+                    PdfPagePoint? endpointA = null;
+                    PdfPagePoint? endpointB = null;
+                    if (TryParseLineEndpoints(PdfiumAnnotStrings.GetString(annot, GlyphLineEndsKey), out var ea, out var eb))
+                    {
+                        endpointA = ea;
+                        endpointB = eb;
+                    }
+
                     results.Add(new PdfAnnotationInfo(
                         pageIndex,
                         i,
@@ -1487,7 +2212,13 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                         shapeKind,
                         isTextBox,
                         isStamp,
-                        isCallout));
+                        isCallout,
+                        author,
+                        groupId,
+                        isUnderlined,
+                        endpointA,
+                        endpointB,
+                        textQuadding));
                 }
                 finally
                 {
@@ -1594,19 +2325,70 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         PdfRect bounds,
         PdfAnnotationColor borderColor,
         float borderWidthPoints,
+        PdfInkLineStyle inkLineStyle,
         CancellationToken cancellationToken)
     {
+        var start = new PdfPagePoint(bounds.Left, bounds.Bottom);
+        var end = new PdfPagePoint(bounds.Right, bounds.Top);
+        var segments = PdfInkLineStyleGeometry.Segment(start, end, inkLineStyle, borderWidthPoints);
+        var strokes = PdfInkLineStyleGeometry.ToInkStrokes(segments);
+        var contents = FormatLineContents(inkLineStyle);
         var created = await AddLabeledInkAsync(
             document,
             pageIndex,
-            [
-                [new PdfPagePoint(bounds.Left, bounds.Bottom), new PdfPagePoint(bounds.Right, bounds.Top)],
-            ],
+            strokes,
             borderColor,
             borderWidthPoints,
-            contents: "Line",
+            contents,
             cancellationToken);
-        return created with { ShapeKind = PdfShapeKind.Line, IsInk = true };
+        await PersistLineEndpointsAsync(document, pageIndex, created.AnnotIndex, start, end, cancellationToken);
+        return created with
+        {
+            ShapeKind = PdfShapeKind.Line,
+            IsInk = true,
+            EndpointA = start,
+            EndpointB = end,
+        };
+    }
+
+    private async Task<PdfAnnotationInfo> AddStarAsInkAsync(
+        IPdfDocument document,
+        int pageIndex,
+        PdfRect bounds,
+        PdfAnnotationColor borderColor,
+        float borderWidthPoints,
+        CancellationToken cancellationToken)
+    {
+        var points = PdfStarGeometry.BuildPoints(bounds);
+        var created = await AddLabeledInkAsync(
+            document,
+            pageIndex,
+            [points],
+            borderColor,
+            borderWidthPoints,
+            contents: "Star",
+            cancellationToken);
+        return created with { ShapeKind = PdfShapeKind.Star, IsInk = true };
+    }
+
+    private async Task<PdfAnnotationInfo> AddSpeechBubbleAsInkAsync(
+        IPdfDocument document,
+        int pageIndex,
+        PdfRect bounds,
+        PdfAnnotationColor borderColor,
+        float borderWidthPoints,
+        CancellationToken cancellationToken)
+    {
+        var points = PdfSpeechBubbleGeometry.BuildPoints(bounds);
+        var created = await AddLabeledInkAsync(
+            document,
+            pageIndex,
+            [points],
+            borderColor,
+            borderWidthPoints,
+            contents: "SpeechBubble",
+            cancellationToken);
+        return created with { ShapeKind = PdfShapeKind.SpeechBubble, IsInk = true };
     }
 
     private async Task<PdfAnnotationInfo> AddArrowAsInkAsync(
@@ -1615,6 +2397,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         PdfRect bounds,
         PdfAnnotationColor borderColor,
         float borderWidthPoints,
+        PdfInkLineStyle inkLineStyle,
+        PdfArrowheadStyle arrowheadStyle,
         CancellationToken cancellationToken)
     {
         var start = new PdfPagePoint(bounds.Left, bounds.Bottom);
@@ -1622,35 +2406,29 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         var dx = end.X - start.X;
         var dy = end.Y - start.Y;
         var length = Math.Sqrt((dx * dx) + (dy * dy));
-        var ux = dx / length;
-        var uy = dy / length;
-        var head = Math.Clamp(length * 0.22, 8.0, 28.0);
-        const double wingRadians = Math.PI / 7; // ~25.7°
-        var cos = Math.Cos(wingRadians);
-        var sin = Math.Sin(wingRadians);
-        // Wing tips: from tip back along shaft, rotated ±wing.
-        var backX = -ux * head;
-        var backY = -uy * head;
-        var wing1 = new PdfPagePoint(
-            end.X + (backX * cos) - (backY * sin),
-            end.Y + (backX * sin) + (backY * cos));
-        var wing2 = new PdfPagePoint(
-            end.X + (backX * cos) + (backY * sin),
-            end.Y + (-backX * sin) + (backY * cos));
+        var headLen = PdfArrowGeometry.ComputeHeadLength(length);
+        var (shaftEnd, headStrokes) = PdfArrowGeometry.Build(start, end, arrowheadStyle, headLen);
+        var shaftSegments = PdfInkLineStyleGeometry.Segment(start, shaftEnd, inkLineStyle, borderWidthPoints);
+        var allStrokes = new List<IReadOnlyList<PdfPagePoint>>(PdfInkLineStyleGeometry.ToInkStrokes(shaftSegments));
+        allStrokes.AddRange(headStrokes);
 
+        var contents = FormatArrowContents(arrowheadStyle, inkLineStyle);
         var created = await AddLabeledInkAsync(
             document,
             pageIndex,
-            [
-                [start, end],
-                [end, wing1],
-                [end, wing2],
-            ],
+            allStrokes,
             borderColor,
             borderWidthPoints,
-            contents: "Arrow",
+            contents,
             cancellationToken);
-        return created with { ShapeKind = PdfShapeKind.Arrow, IsInk = true };
+        await PersistLineEndpointsAsync(document, pageIndex, created.AnnotIndex, start, end, cancellationToken);
+        return created with
+        {
+            ShapeKind = PdfShapeKind.Arrow,
+            IsInk = true,
+            EndpointA = start,
+            EndpointB = end,
+        };
     }
 
     private Task<PdfAnnotationInfo> AddLabeledInkAsync(
@@ -1772,6 +2550,111 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             cancellationToken);
     }
 
+    private const int PageObjImage = 3;
+
+    private static byte[]? TryExtractStampBgra(
+        FpdfAnnotationT annot,
+        out int pixelWidth,
+        out int pixelHeight)
+    {
+        pixelWidth = 0;
+        pixelHeight = 0;
+        var count = fpdf_annot.FPDFAnnotGetObjectCount(annot);
+        for (var i = 0; i < count; i++)
+        {
+            var obj = fpdf_annot.FPDFAnnotGetObject(annot, i);
+            if (obj is null || fpdf_edit.FPDFPageObjGetType(obj) != PageObjImage)
+            {
+                continue;
+            }
+
+            var bmp = fpdf_edit.FPDFImageObjGetBitmap(obj);
+            if (bmp is null)
+            {
+                continue;
+            }
+
+            try
+            {
+                var width = fpdfview.FPDFBitmapGetWidth(bmp);
+                var height = fpdfview.FPDFBitmapGetHeight(bmp);
+                var stride = fpdfview.FPDFBitmapGetStride(bmp);
+                var format = fpdfview.FPDFBitmapGetFormat(bmp);
+                var buffer = fpdfview.FPDFBitmapGetBuffer(bmp);
+                if (buffer == IntPtr.Zero || width <= 0 || height <= 0 || stride <= 0)
+                {
+                    continue;
+                }
+
+                var src = new byte[stride * height];
+                Marshal.Copy(buffer, src, 0, src.Length);
+                pixelWidth = width;
+                pixelHeight = height;
+                return StampBitmapToBgra(src, width, height, stride, format);
+            }
+            finally
+            {
+                fpdfview.FPDFBitmapDestroy(bmp);
+            }
+        }
+
+        return null;
+    }
+
+    private static byte[] StampBitmapToBgra(byte[] src, int width, int height, int stride, int format)
+    {
+        var dst = new byte[width * height * 4];
+        for (var y = 0; y < height; y++)
+        {
+            var srcRow = y * stride;
+            var dstRow = y * width * 4;
+            for (var x = 0; x < width; x++)
+            {
+                var di = dstRow + (x * 4);
+                switch (format)
+                {
+                    case PdfiumBitmapFormats.Bgra:
+                    case PdfiumBitmapFormats.Bgrx:
+                        {
+                            var si = srcRow + (x * 4);
+                            dst[di] = src[si];
+                            dst[di + 1] = src[si + 1];
+                            dst[di + 2] = src[si + 2];
+                            dst[di + 3] = format == PdfiumBitmapFormats.Bgra ? src[si + 3] : (byte)255;
+                            break;
+                        }
+
+                    case PdfiumBitmapFormats.Bgr:
+                        {
+                            var si = srcRow + (x * 3);
+                            dst[di] = src[si];
+                            dst[di + 1] = src[si + 1];
+                            dst[di + 2] = src[si + 2];
+                            dst[di + 3] = 255;
+                            break;
+                        }
+
+                    case PdfiumBitmapFormats.Gray:
+                        {
+                            var g = src[srcRow + x];
+                            dst[di] = g;
+                            dst[di + 1] = g;
+                            dst[di + 2] = g;
+                            dst[di + 3] = 255;
+                            break;
+                        }
+
+                    default:
+                        dst[di] = dst[di + 1] = dst[di + 2] = 0;
+                        dst[di + 3] = 255;
+                        break;
+                }
+            }
+        }
+
+        return dst;
+    }
+
     private static PdfShapeKind? FromShapeSubtype(int subtype) =>
         subtype switch
         {
@@ -1781,14 +2664,311 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             _ => null,
         };
 
-    private static PdfShapeKind? FromInkShapeContents(string? contents) =>
-        contents switch
+    private Task PersistLineEndpointsAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        PdfPagePoint start,
+        PdfPagePoint end,
+        CancellationToken cancellationToken) =>
+        MutateAnnotAsync(
+            document,
+            pageIndex,
+            annotIndex,
+            cancellationToken,
+            annot =>
+            {
+                if (!PdfiumAnnotStrings.SetString(annot, GlyphLineEndsKey, FormatLineEndpoints(start, end)))
+                {
+                    throw new InvalidOperationException("Failed to set GlyphLineEnds.");
+                }
+            });
+
+    public async Task<PdfAnnotationInfo> RotateAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        int degreesClockwise,
+        CancellationToken cancellationToken = default)
+    {
+        _ = PdfAnnotationRotate.NormalizeQuarterTurns(degreesClockwise);
+        var listed = await ListAsync(document, pageIndex, cancellationToken).ConfigureAwait(false);
+        var existing = listed.FirstOrDefault(a => a.AnnotIndex == annotIndex)
+            ?? throw new ArgumentOutOfRangeException(nameof(annotIndex), "Annotation not found.");
+
+        if (existing.IsStickyNote || existing.TextMarkupKind is not null)
         {
-            "Line" => PdfShapeKind.Line,
-            "Arrow" => PdfShapeKind.Arrow,
-            "Freeform" => PdfShapeKind.Freeform,
-            _ => null,
-        };
+            throw new NotSupportedException(
+                "Sticky notes and text markup cannot be rotated (no durable /Rotate write path).");
+        }
+
+        if (existing.IsStamp)
+        {
+            return await RotateStampAsync(document, pageIndex, annotIndex, existing, degreesClockwise, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        if (existing.IsInk || existing.ShapeKind is PdfShapeKind.Line or PdfShapeKind.Arrow
+            or PdfShapeKind.Star or PdfShapeKind.SpeechBubble or PdfShapeKind.Freeform
+            or PdfShapeKind.Polygon)
+        {
+            return await RotateInkAsync(document, pageIndex, annotIndex, existing, degreesClockwise, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        if (existing.IsTextBox
+            || existing.ShapeKind is PdfShapeKind.Rectangle or PdfShapeKind.Ellipse
+                or PdfShapeKind.RoundedRectangle or PdfShapeKind.HighlightRectangle
+                or PdfShapeKind.Loupe)
+        {
+            var rotatedBounds = PdfAnnotationRotate.RotateBounds(existing.Bounds, degreesClockwise);
+            await MoveAsync(document, pageIndex, annotIndex, rotatedBounds, cancellationToken)
+                .ConfigureAwait(false);
+            var after = await ListAsync(document, pageIndex, cancellationToken).ConfigureAwait(false);
+            return after.First(a => a.AnnotIndex == annotIndex);
+        }
+
+        throw new NotSupportedException($"Rotation is not supported for this annotation ({existing.ShapeKind}).");
+    }
+
+    private async Task<PdfAnnotationInfo> RotateStampAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        PdfAnnotationInfo existing,
+        int degreesClockwise,
+        CancellationToken cancellationToken)
+    {
+        var pdfium = RequirePdfium(document);
+        byte[] pixels;
+        int width;
+        int height;
+        lock (PdfiumSync.Gate)
+        {
+            pdfium.ThrowIfDisposed();
+            PdfiumLibrary.EnsureInitialized();
+            var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex)
+                ?? throw new InvalidOperationException($"Failed to load page {pageIndex} for rotate.");
+            try
+            {
+                var annot = fpdf_annot.FPDFPageGetAnnot(page, annotIndex)
+                    ?? throw new ArgumentOutOfRangeException(nameof(annotIndex));
+                try
+                {
+                    var extracted = TryExtractStampBgra(annot, out width, out height);
+                    if (extracted is null || width <= 0 || height <= 0)
+                    {
+                        throw new InvalidOperationException("Failed to extract stamp pixels for rotate.");
+                    }
+
+                    pixels = extracted;
+                }
+                finally
+                {
+                    fpdf_annot.FPDFPageCloseAnnot(annot);
+                }
+            }
+            finally
+            {
+                fpdfview.FPDF_ClosePage(page);
+            }
+        }
+
+        var rotated = PdfAnnotationRotate.RotateBgra(pixels, width, height, degreesClockwise, out var nw, out var nh);
+        var newBounds = PdfAnnotationRotate.RotateBounds(existing.Bounds, degreesClockwise);
+        await RemoveAsync(document, pageIndex, annotIndex, cancellationToken).ConfigureAwait(false);
+        return await AddStampAsync(document, pageIndex, newBounds, rotated, nw, nh, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<PdfAnnotationInfo> RotateInkAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        PdfAnnotationInfo existing,
+        int degreesClockwise,
+        CancellationToken cancellationToken)
+    {
+        var pdfium = RequirePdfium(document);
+        var center = PdfAnnotationRotate.BoundsCenter(existing.Bounds);
+        List<IReadOnlyList<PdfPagePoint>> strokes;
+        float borderWidth;
+        PdfAnnotationColor color;
+        string contents;
+        lock (PdfiumSync.Gate)
+        {
+            pdfium.ThrowIfDisposed();
+            PdfiumLibrary.EnsureInitialized();
+            var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex)
+                ?? throw new InvalidOperationException($"Failed to load page {pageIndex} for rotate.");
+            try
+            {
+                var annot = fpdf_annot.FPDFPageGetAnnot(page, annotIndex)
+                    ?? throw new ArgumentOutOfRangeException(nameof(annotIndex));
+                try
+                {
+                    contents = PdfiumAnnotStrings.GetString(annot, "Contents") ?? string.Empty;
+                    uint r = 40, g = 40, b = 40, a = 255;
+                    _ = fpdf_annot.FPDFAnnotGetColor(
+                        annot,
+                        FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_Color,
+                        ref r,
+                        ref g,
+                        ref b,
+                        ref a);
+                    color = new PdfAnnotationColor((byte)r, (byte)g, (byte)b, (byte)a);
+                    borderWidth = 1.5f;
+                    if (PdfiumNative.AnnotGetBorder(annot.__Instance, out _, out _, out var bw) != 0 && bw > 0)
+                    {
+                        borderWidth = bw;
+                    }
+
+                    strokes = ExtractInkStrokes(annot);
+                }
+                finally
+                {
+                    fpdf_annot.FPDFPageCloseAnnot(annot);
+                }
+            }
+            finally
+            {
+                fpdfview.FPDF_ClosePage(page);
+            }
+        }
+
+        if (strokes.Count == 0)
+        {
+            throw new InvalidOperationException("Ink annotation has no strokes to rotate.");
+        }
+
+        var rotatedStrokes = strokes
+            .Select(stroke => (IReadOnlyList<PdfPagePoint>)stroke
+                .Select(p => PdfAnnotationRotate.RotatePoint(p, center, degreesClockwise))
+                .ToList())
+            .ToList();
+
+        PdfPagePoint? endsA = null;
+        PdfPagePoint? endsB = null;
+        if (existing.EndpointA is { } ea && existing.EndpointB is { } eb)
+        {
+            endsA = PdfAnnotationRotate.RotatePoint(ea, center, degreesClockwise);
+            endsB = PdfAnnotationRotate.RotatePoint(eb, center, degreesClockwise);
+        }
+
+        await RemoveAsync(document, pageIndex, annotIndex, cancellationToken).ConfigureAwait(false);
+        var created = await AddLabeledInkAsync(
+            document,
+            pageIndex,
+            rotatedStrokes,
+            color,
+            borderWidth,
+            contents,
+            cancellationToken).ConfigureAwait(false);
+
+        if (endsA is { } ra && endsB is { } rb)
+        {
+            await PersistLineEndpointsAsync(document, pageIndex, created.AnnotIndex, ra, rb, cancellationToken)
+                .ConfigureAwait(false);
+            created = created with
+            {
+                EndpointA = ra,
+                EndpointB = rb,
+                ShapeKind = existing.ShapeKind,
+                IsInk = true,
+            };
+        }
+        else
+        {
+            created = created with { ShapeKind = existing.ShapeKind, IsInk = true };
+        }
+
+        return created;
+    }
+
+    private static List<IReadOnlyList<PdfPagePoint>> ExtractInkStrokes(FpdfAnnotationT annot)
+    {
+        var inkStrokes = new List<IReadOnlyList<PdfPagePoint>>();
+        var strokeCount = (uint)PdfiumNative.AnnotGetInkListCount(annot.__Instance);
+        for (uint s = 0; s < strokeCount; s++)
+        {
+            var needed = PdfiumNative.AnnotGetInkListPath(annot.__Instance, s, IntPtr.Zero, 0);
+            if (needed == 0)
+            {
+                continue;
+            }
+
+            var buffer = new PdfiumNative.FsPointF[needed];
+            var handle = System.Runtime.InteropServices.GCHandle.Alloc(
+                buffer,
+                System.Runtime.InteropServices.GCHandleType.Pinned);
+            try
+            {
+                var written = PdfiumNative.AnnotGetInkListPath(
+                    annot.__Instance,
+                    s,
+                    handle.AddrOfPinnedObject(),
+                    needed);
+                if (written == 0)
+                {
+                    continue;
+                }
+
+                var stroke = new List<PdfPagePoint>((int)written);
+                for (var i = 0; i < (int)written; i++)
+                {
+                    stroke.Add(new PdfPagePoint(buffer[i].X, buffer[i].Y));
+                }
+
+                if (stroke.Count >= 2)
+                {
+                    inkStrokes.Add(stroke);
+                }
+            }
+            finally
+            {
+                handle.Free();
+            }
+        }
+
+        return inkStrokes;
+    }
+
+    public async Task<PdfAnnotationInfo> SetLineEndpointsAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        PdfPagePoint start,
+        PdfPagePoint end,
+        CancellationToken cancellationToken = default)
+    {
+        var listed = await ListAsync(document, pageIndex, cancellationToken).ConfigureAwait(false);
+        var existing = listed.FirstOrDefault(a => a.AnnotIndex == annotIndex)
+            ?? throw new ArgumentOutOfRangeException(nameof(annotIndex), "Annotation not found.");
+        if (existing.ShapeKind is not (PdfShapeKind.Line or PdfShapeKind.Arrow))
+        {
+            throw new NotSupportedException("SetLineEndpointsAsync requires a line or arrow shape.");
+        }
+
+        ParseLineOrArrowStyle(existing.Contents, out var kind, out var lineStyle, out var arrowhead);
+        var color = existing.Color ?? new PdfAnnotationColor(40, 40, 40);
+        var width = await GetBorderWidthAsync(document, pageIndex, annotIndex, cancellationToken).ConfigureAwait(false)
+            ?? 1.5f;
+
+        await RemoveAsync(document, pageIndex, annotIndex, cancellationToken).ConfigureAwait(false);
+
+        var bounds = new PdfRect(start.X, start.Y, end.X, end.Y);
+        return await AddShapeAsync(
+            document,
+            pageIndex,
+            kind,
+            bounds,
+            color,
+            fillColor: null,
+            borderWidthPoints: width,
+            inkLineStyle: lineStyle,
+            arrowheadStyle: arrowhead,
+            cancellationToken).ConfigureAwait(false);
+    }
 
     private static PdfiumDocument RequirePdfium(IPdfDocument document)
     {

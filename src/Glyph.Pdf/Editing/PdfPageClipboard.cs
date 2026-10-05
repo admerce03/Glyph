@@ -1,12 +1,14 @@
 using Glyph.Pdf.Abstractions;
 
-namespace Glyph.App;
+namespace Glyph.Pdf.Editing;
 
 /// <summary>
-/// Process-wide clipboard for PDF page copy/paste between documents, tabs, and windows.
+/// Process-wide clipboard for PDF page copy/paste between documents, tabs, and windows (F10-24).
 /// </summary>
-internal static class PdfPageClipboard
+public static class PdfPageClipboard
 {
+    public const string TempFilePrefix = "glyph-page-clip-";
+
     private static byte[]? _pdfBytes;
     private static int _pageCount;
 
@@ -48,7 +50,7 @@ internal static class PdfPageClipboard
             return (null, null);
         }
 
-        var path = Path.Combine(Path.GetTempPath(), "glyph-page-clip-" + Guid.NewGuid().ToString("N") + ".pdf");
+        var path = Path.Combine(Path.GetTempPath(), TempFilePrefix + Guid.NewGuid().ToString("N") + ".pdf");
         await File.WriteAllBytesAsync(path, _pdfBytes, cancellationToken);
         try
         {

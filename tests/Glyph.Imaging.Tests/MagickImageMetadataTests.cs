@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Glyph.Imaging.Abstractions;
 using Glyph.Imaging.Magick;
 using ImageMagick;
 
@@ -19,6 +20,10 @@ public class MagickImageMetadataTests
             meta.PixelWidth.Should().Be(40);
             meta.PixelHeight.Should().Be(30);
             meta.FormatName.Should().NotBeNullOrWhiteSpace();
+            meta.BitDepth.Should().NotBeNull();
+            meta.BitDepth!.Value.Should().BeGreaterThan(0);
+            meta.ColorSpace.Should().NotBeNullOrWhiteSpace();
+            meta.Compression.Should().NotBeNullOrWhiteSpace();
             meta.DpiX.Should().BeApproximately(72, 0.1);
             meta.DpiY.Should().BeApproximately(72, 0.1);
             meta.Make.Should().Be("GlyphCam");
@@ -59,6 +64,129 @@ public class MagickImageMetadataTests
         {
             File.Delete(path);
         }
+    }
+
+    [Fact]
+    public async Task GetMetadata_reports_iptc_title_description_keywords()
+    {
+        var path = CreateIptcJpeg();
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            await using var document = await decoder.OpenAsync(path);
+            var meta = await document.GetMetadataAsync();
+
+            meta.HasIptc.Should().BeTrue();
+            meta.Title.Should().Be("Glyph Title");
+            meta.Description.Should().Be("A test caption");
+            meta.Keywords.Should().Contain("alpha");
+            meta.Keywords.Should().Contain("beta");
+            meta.Copyright.Should().Be("© Glyph");
+            meta.Entries.Should().Contain(e => e.Group == "IPTC" && e.Name == "Title");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task Set_descriptive_metadata_writes_iptc_fields()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-iptc-write-" + Guid.NewGuid().ToString("N") + ".png");
+        try
+        {
+            using (var image = new MagickImage(MagickColors.CadetBlue, 24, 18))
+            {
+                image.Format = MagickFormat.Png;
+                await image.WriteAsync(path);
+            }
+
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            await using var document = await decoder.OpenAsync(path);
+            await processor.SetDescriptiveMetadataAsync(
+                document,
+                new ImageDescriptiveMetadata(
+                    Title: "Edited Title",
+                    Description: "Edited caption",
+                    Keywords: "one, two; three",
+                    Copyright: "© Test"));
+
+            var meta = await document.GetMetadataAsync();
+            meta.HasIptc.Should().BeTrue();
+            meta.Title.Should().Be("Edited Title");
+            meta.Description.Should().Be("Edited caption");
+            meta.Copyright.Should().Be("© Test");
+            meta.Keywords.Should().Contain("one");
+            meta.Keywords.Should().Contain("two");
+            meta.Keywords.Should().Contain("three");
+
+            await processor.SetDescriptiveMetadataAsync(
+                document,
+                new ImageDescriptiveMetadata(Title: string.Empty, Description: null, Keywords: "", Copyright: " "));
+            var cleared = await document.GetMetadataAsync();
+            cleared.Title.Should().BeNullOrEmpty();
+            cleared.Description.Should().BeNullOrEmpty();
+            cleared.Keywords.Should().BeNullOrEmpty();
+            cleared.Copyright.Should().BeNullOrEmpty();
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task SaveAs_can_strip_metadata_while_keeping_pixels()
+    {
+        var path = CreateExifJpeg();
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-strip-" + Guid.NewGuid().ToString("N") + ".png");
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var encoder = new MagickImageEncoder();
+            await using var document = await decoder.OpenAsync(path);
+            var before = await document.GetMetadataAsync();
+            before.Make.Should().Be("GlyphCam");
+
+            await encoder.SaveAsAsync(
+                document,
+                outPath,
+                ImageEncodeFormat.Png,
+                new ImageEncodeOptions(PreserveMetadata: false));
+
+            await using var reopened = await decoder.OpenAsync(outPath);
+            var after = await reopened.GetMetadataAsync();
+            after.Make.Should().BeNull();
+            after.GpsLatitude.Should().BeNull();
+            reopened.PixelWidth.Should().Be(40);
+            reopened.PixelHeight.Should().Be(30);
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    private static string CreateIptcJpeg()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-iptc-" + Guid.NewGuid().ToString("N") + ".jpg");
+        using var image = new MagickImage(MagickColors.SteelBlue, 32, 24);
+        image.Format = MagickFormat.Jpeg;
+        var iptc = new IptcProfile();
+        iptc.SetValue(IptcTag.Title, "Glyph Title");
+        iptc.SetValue(IptcTag.Caption, "A test caption");
+        iptc.SetValue(IptcTag.CopyrightNotice, "© Glyph");
+        iptc.SetValue(IptcTag.Keyword, "alpha");
+        iptc.SetValue(IptcTag.Keyword, "beta");
+        image.SetProfile(iptc);
+        image.Write(path);
+        return path;
     }
 
     private static string CreateExifJpeg()

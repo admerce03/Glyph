@@ -163,15 +163,20 @@ public class PdfiumAnnotationServiceTests
                     h);
                 created.IsStamp.Should().BeTrue();
 
+                var copy = await annots.DuplicateAsync(document, 0, created.AnnotIndex);
+                copy.IsStamp.Should().BeTrue();
+                copy.Bounds.Left.Should().BeApproximately(created.Bounds.Left + 12, 0.5);
+                copy.Bounds.Bottom.Should().BeApproximately(created.Bounds.Bottom - 12, 0.5);
+
                 var listed = await annots.ListAsync(document, 0);
-                listed.Should().Contain(a => a.IsStamp);
+                listed.Count(a => a.IsStamp).Should().Be(2);
                 await editor.SaveAsync(document, outPath);
             }
 
             await using (var reopened = await factory.OpenAsync(outPath))
             {
                 var listed = await annots.ListAsync(reopened, 0);
-                listed.Should().Contain(a => a.IsStamp);
+                listed.Count(a => a.IsStamp).Should().Be(2);
             }
         }
         finally
@@ -263,7 +268,11 @@ public class PdfiumAnnotationServiceTests
                     "Hello text box",
                     new PdfAnnotationColor(20, 20, 20),
                     borderColor: new PdfAnnotationColor(40, 40, 40),
-                    fillColor: new PdfAnnotationColor(255, 250, 180));
+                    fillColor: new PdfAnnotationColor(255, 250, 180),
+                    fontSizePoints: 18f,
+                    fontResourceName: PdfFreeTextFont.ResolveResourceName(
+                        PdfFreeTextFontFamily.Times,
+                        bold: true));
                 created.IsTextBox.Should().BeTrue();
                 created.Contents.Should().Be("Hello text box");
 
@@ -274,6 +283,195 @@ public class PdfiumAnnotationServiceTests
             {
                 var listed = await annots.ListAsync(reopened, 0);
                 listed.Should().Contain(a => a.IsTextBox && a.Contents == "Hello text box");
+
+                // Confirm FreeText /DA kept the bold Times face + 18 pt size.
+                var pdfium = (PdfiumDocument)reopened;
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    var page = PDFiumCore.fpdfview.FPDF_LoadPage(pdfium.Handle, 0);
+                    page.Should().NotBeNull();
+                    try
+                    {
+                        var textBox = listed.First(a => a.IsTextBox);
+                        var annot = PDFiumCore.fpdf_annot.FPDFPageGetAnnot(page, textBox.AnnotIndex);
+                        annot.Should().NotBeNull();
+                        try
+                        {
+                            var da = PdfiumAnnotStrings.GetString(annot!, "DA");
+                            da.Should().Contain("/TiBo");
+                            da.Should().Contain("18");
+                        }
+                        finally
+                        {
+                            PDFiumCore.fpdf_annot.FPDFPageCloseAnnot(annot);
+                        }
+                    }
+                    finally
+                    {
+                        PDFiumCore.fpdfview.FPDF_ClosePage(page);
+                    }
+                }
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Text_box_quadding_center_survives_save()
+    {
+        var path = CreateTextPdf("Quadding host page");
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-q-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var created = await annots.AddTextBoxAsync(
+                    document,
+                    0,
+                    new PdfRect(72, 640, 280, 720),
+                    "Centered",
+                    new PdfAnnotationColor(20, 20, 20),
+                    quadding: PdfTextQuadding.Center);
+                created.IsTextBox.Should().BeTrue();
+                created.TextQuadding.Should().Be(PdfTextQuadding.Center);
+
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var listed = await annots.ListAsync(reopened, 0);
+                var box = listed.Should().ContainSingle(a => a.IsTextBox && a.Contents == "Centered").Subject;
+                box.TextQuadding.Should().Be(PdfTextQuadding.Center);
+
+                var pdfium = (PdfiumDocument)reopened;
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    var page = PDFiumCore.fpdfview.FPDF_LoadPage(pdfium.Handle, 0);
+                    page.Should().NotBeNull();
+                    try
+                    {
+                        var annot = PDFiumCore.fpdf_annot.FPDFPageGetAnnot(page, box.AnnotIndex);
+                        annot.Should().NotBeNull();
+                        try
+                        {
+                            PDFiumCore.fpdf_annot.FPDFAnnotHasKey(annot!, "Q").Should().NotBe(0);
+                            float q = -1;
+                            PDFiumCore.fpdf_annot.FPDFAnnotGetNumberValue(annot!, "Q", ref q).Should().NotBe(0);
+                            q.Should().Be(1f);
+                        }
+                        finally
+                        {
+                            PDFiumCore.fpdf_annot.FPDFPageCloseAnnot(annot);
+                        }
+                    }
+                    finally
+                    {
+                        PDFiumCore.fpdfview.FPDF_ClosePage(page);
+                    }
+                }
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Set_text_quadding_updates_existing_box()
+    {
+        var path = CreateTextPdf("Quadding change host");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+
+            await using var document = await factory.OpenAsync(path);
+            var created = await annots.AddTextBoxAsync(
+                document,
+                0,
+                new PdfRect(72, 640, 280, 720),
+                "Align me",
+                new PdfAnnotationColor(20, 20, 20));
+            created.TextQuadding.Should().Be(PdfTextQuadding.Left);
+
+            var updated = await annots.SetTextQuaddingAsync(
+                document,
+                0,
+                created.AnnotIndex,
+                PdfTextQuadding.Right);
+            updated.TextQuadding.Should().Be(PdfTextQuadding.Right);
+
+            var listed = await annots.ListAsync(document, 0);
+            listed.Should().Contain(a => a.IsTextBox && a.Contents == "Align me" && a.TextQuadding == PdfTextQuadding.Right);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task Text_box_underline_persists_and_can_toggle_off()
+    {
+        var path = CreateTextPdf("Underline host page");
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-ul-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var created = await annots.AddTextBoxAsync(
+                    document,
+                    0,
+                    new PdfRect(72, 640, 280, 720),
+                    "Underlined",
+                    new PdfAnnotationColor(20, 20, 20),
+                    underline: true);
+                created.IsUnderlined.Should().BeTrue();
+
+                var listed = await annots.ListAsync(document, 0);
+                listed.Should().Contain(a => a.IsTextBox && a.IsUnderlined && a.Contents == "Underlined");
+                listed.Should().Contain(a =>
+                    a.IsInk && a.Contents != null && a.Contents.StartsWith("GlyphTextUnderline:", StringComparison.Ordinal));
+
+                var cleared = await annots.SetUnderlineAsync(document, 0, created.AnnotIndex, underline: false);
+                cleared.IsUnderlined.Should().BeFalse();
+                listed = await annots.ListAsync(document, 0);
+                listed.Should().NotContain(a =>
+                    a.IsInk && a.Contents != null && a.Contents.StartsWith("GlyphTextUnderline:", StringComparison.Ordinal));
+
+                await annots.SetUnderlineAsync(document, 0, cleared.AnnotIndex, underline: true);
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var listed = await annots.ListAsync(reopened, 0);
+                listed.Should().Contain(a => a.IsTextBox && a.IsUnderlined && a.Contents == "Underlined");
+                listed.Should().Contain(a =>
+                    a.IsInk && a.Contents != null && a.Contents.StartsWith("GlyphTextUnderline:", StringComparison.Ordinal));
             }
         }
         finally
@@ -332,6 +530,52 @@ public class PdfiumAnnotationServiceTests
     }
 
     [Fact]
+    public async Task Add_polygon_survives_save()
+    {
+        var path = CreateTextPdf("Polygon host page");
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-polygon-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var created = await annots.AddPolygonAsync(
+                    document,
+                    0,
+                    [
+                        new PdfPagePoint(100, 100),
+                        new PdfPagePoint(200, 110),
+                        new PdfPagePoint(180, 200),
+                        new PdfPagePoint(90, 180),
+                    ],
+                    new PdfAnnotationColor(40, 160, 60));
+                created.ShapeKind.Should().Be(PdfShapeKind.Polygon);
+                created.IsInk.Should().BeTrue();
+                created.Contents.Should().Be("Polygon");
+
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var listed = await annots.ListAsync(reopened, 0);
+                listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Polygon && a.Contents == "Polygon");
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Add_callout_survives_save_and_lists_as_callout()
     {
         var path = CreateTextPdf("Callout host page");
@@ -355,6 +599,25 @@ public class PdfiumAnnotationServiceTests
                 created.IsTextBox.Should().BeTrue();
                 created.Contents.Should().Be("Look here");
 
+                await annots.SetFillColorAsync(
+                    document,
+                    0,
+                    created.AnnotIndex,
+                    new PdfAnnotationColor(255, 240, 200));
+
+                await annots.SetCalloutTipAsync(
+                    document,
+                    0,
+                    created.AnnotIndex,
+                    tip: new PdfPagePoint(40, 450));
+
+                var afterTip = await annots.ListAsync(document, 0);
+                afterTip.Should().Contain(a => a.IsCallout && a.Contents == "Look here");
+                afterTip.Should().Contain(a =>
+                    a.IsInk
+                    && a.Contents != null
+                    && a.Contents.StartsWith("CalloutPointer:", StringComparison.Ordinal));
+
                 await editor.SaveAsync(document, outPath);
             }
 
@@ -362,7 +625,10 @@ public class PdfiumAnnotationServiceTests
             {
                 var listed = await annots.ListAsync(reopened, 0);
                 listed.Should().Contain(a => a.IsCallout && a.Contents == "Look here");
-                listed.Should().Contain(a => a.IsInk && a.Contents == "CalloutPointer");
+                listed.Should().Contain(a =>
+                    a.IsInk
+                    && a.Contents != null
+                    && a.Contents.StartsWith("CalloutPointer:", StringComparison.Ordinal));
             }
         }
         finally
@@ -410,9 +676,40 @@ public class PdfiumAnnotationServiceTests
                     0,
                     PdfShapeKind.Line,
                     new PdfRect(80, 500, 180, 560),
-                    new PdfAnnotationColor(0, 128, 0));
+                    new PdfAnnotationColor(0, 128, 0),
+                    borderWidthPoints: 2f);
                 line.ShapeKind.Should().Be(PdfShapeKind.Line);
                 line.IsInk.Should().BeTrue();
+                line.UsesEndpointHandles.Should().BeTrue();
+                line.EndpointA.Should().Be(new PdfPagePoint(80, 500));
+                line.EndpointB.Should().Be(new PdfPagePoint(180, 560));
+
+                (await annots.GetBorderWidthAsync(document, 0, line.AnnotIndex)).Should().BeApproximately(2f, 0.01f);
+                await annots.SetBorderWidthAsync(document, 0, line.AnnotIndex, 5f);
+                (await annots.GetBorderWidthAsync(document, 0, line.AnnotIndex)).Should().BeApproximately(5f, 0.01f);
+
+                var dashed = await annots.AddShapeAsync(
+                    document,
+                    0,
+                    PdfShapeKind.Line,
+                    new PdfRect(80, 420, 280, 420),
+                    new PdfAnnotationColor(0, 0, 200),
+                    inkLineStyle: PdfInkLineStyle.Dashed);
+                dashed.Contents.Should().Be("Line|Dashed");
+
+                await annots.SetGroupAsync(
+                    document,
+                    [(0, rect.AnnotIndex), (0, ellipse.AnnotIndex)],
+                    groupId: "test-group-1");
+                var grouped = await annots.ListAsync(document, 0);
+                grouped.Should().Contain(a => a.AnnotIndex == rect.AnnotIndex && a.GroupId == "test-group-1");
+                grouped.Should().Contain(a => a.AnnotIndex == ellipse.AnnotIndex && a.GroupId == "test-group-1");
+                await annots.SetGroupAsync(
+                    document,
+                    [(0, rect.AnnotIndex), (0, ellipse.AnnotIndex)],
+                    groupId: null);
+                grouped = await annots.ListAsync(document, 0);
+                grouped.Should().Contain(a => a.AnnotIndex == rect.AnnotIndex && a.GroupId == null);
 
                 var arrow = await annots.AddShapeAsync(
                     document,
@@ -424,6 +721,63 @@ public class PdfiumAnnotationServiceTests
                 arrow.IsInk.Should().BeTrue();
                 arrow.Contents.Should().Be("Arrow");
 
+                var filledHead = await annots.AddShapeAsync(
+                    document,
+                    0,
+                    PdfShapeKind.Arrow,
+                    new PdfRect(40, 360, 200, 400),
+                    new PdfAnnotationColor(200, 0, 0),
+                    arrowheadStyle: PdfArrowheadStyle.Filled);
+                filledHead.Contents.Should().Be("Arrow|Filled");
+
+                var rounded = await annots.AddShapeAsync(
+                    document,
+                    0,
+                    PdfShapeKind.RoundedRectangle,
+                    new PdfRect(340, 600, 480, 700),
+                    new PdfAnnotationColor(255, 140, 0));
+                rounded.ShapeKind.Should().Be(PdfShapeKind.RoundedRectangle);
+                rounded.Contents.Should().Be("RoundedRect");
+
+                var area = await annots.AddShapeAsync(
+                    document,
+                    0,
+                    PdfShapeKind.HighlightRectangle,
+                    new PdfRect(72, 400, 220, 480),
+                    PdfAnnotationColor.YellowHighlight);
+                area.ShapeKind.Should().Be(PdfShapeKind.HighlightRectangle);
+                area.Contents.Should().Be("HighlightRect");
+
+                var star = await annots.AddShapeAsync(
+                    document,
+                    0,
+                    PdfShapeKind.Star,
+                    new PdfRect(240, 380, 340, 480),
+                    new PdfAnnotationColor(220, 60, 40));
+                star.ShapeKind.Should().Be(PdfShapeKind.Star);
+                star.IsInk.Should().BeTrue();
+                star.Contents.Should().Be("Star");
+
+                var bubble = await annots.AddShapeAsync(
+                    document,
+                    0,
+                    PdfShapeKind.SpeechBubble,
+                    new PdfRect(360, 380, 500, 500),
+                    new PdfAnnotationColor(30, 144, 255));
+                bubble.ShapeKind.Should().Be(PdfShapeKind.SpeechBubble);
+                bubble.IsInk.Should().BeTrue();
+                bubble.Contents.Should().Be("SpeechBubble");
+
+                var loupe = await annots.AddShapeAsync(
+                    document,
+                    0,
+                    PdfShapeKind.Loupe,
+                    new PdfRect(100, 200, 180, 280),
+                    new PdfAnnotationColor(30, 100, 180));
+                loupe.ShapeKind.Should().Be(PdfShapeKind.Loupe);
+                loupe.IsInk.Should().BeFalse();
+                loupe.Contents.Should().Be("Loupe");
+
                 await editor.SaveAsync(document, outPath);
             }
 
@@ -434,6 +788,11 @@ public class PdfiumAnnotationServiceTests
                 listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Ellipse);
                 listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Line && a.IsInk);
                 listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Arrow && a.IsInk);
+                listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.RoundedRectangle);
+                listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.HighlightRectangle);
+                listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Star && a.IsInk && a.Contents == "Star");
+                listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.SpeechBubble && a.IsInk && a.Contents == "SpeechBubble");
+                listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Loupe && a.Contents == "Loupe");
             }
         }
         finally
@@ -513,10 +872,12 @@ public class PdfiumAnnotationServiceTests
                     xPoints: 72,
                     yPoints: 700,
                     contents: "Hello from Glyph",
-                    color: PdfAnnotationColor.StickyNoteYellow);
+                    color: PdfAnnotationColor.StickyNoteYellow,
+                    author: "Glyph Tester");
 
                 created.IsStickyNote.Should().BeTrue();
                 created.Contents.Should().Be("Hello from Glyph");
+                created.Author.Should().Be("Glyph Tester");
 
                 await annots.SetContentsAsync(document, 0, created.AnnotIndex, "Edited note");
                 await annots.SetColorAsync(document, 0, created.AnnotIndex, new PdfAnnotationColor(80, 160, 255));
@@ -525,6 +886,7 @@ public class PdfiumAnnotationServiceTests
                 var listed = await annots.ListAsync(document, 0);
                 var note = listed.Should().ContainSingle(a => a.IsStickyNote).Subject;
                 note.Contents.Should().Be("Edited note");
+                note.Author.Should().Be("Glyph Tester");
                 note.Bounds.Left.Should().BeApproximately(100, 0.5);
 
                 // Resize via MoveAsync (same path as UI resize handles).
@@ -543,6 +905,7 @@ public class PdfiumAnnotationServiceTests
                 var copy = await annots.DuplicateAsync(document, 0, note.AnnotIndex);
                 copy.IsStickyNote.Should().BeTrue();
                 copy.Contents.Should().Be("Edited note");
+                copy.Author.Should().Be("Glyph Tester");
                 copy.Bounds.Left.Should().BeApproximately(note.Bounds.Left + 12, 0.5);
                 copy.Bounds.Bottom.Should().BeApproximately(note.Bounds.Bottom - 12, 0.5);
 
@@ -565,6 +928,102 @@ public class PdfiumAnnotationServiceTests
             {
                 File.Delete(outPath);
             }
+        }
+    }
+
+    [Fact]
+    public async Task Rotate_stamp_and_line_ninety_degrees()
+    {
+        var path = CreateTextPdf("Rotate host");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+
+            await using var document = await factory.OpenAsync(path);
+            var pixels = new byte[]
+            {
+                0, 0, 255, 255, 255, 0, 0, 255,
+                0, 255, 0, 255, 0, 0, 0, 255,
+            };
+            var stamp = await annots.AddStampAsync(
+                document,
+                0,
+                new PdfRect(100, 100, 140, 120),
+                pixels,
+                pixelWidth: 2,
+                pixelHeight: 2);
+            stamp.IsStamp.Should().BeTrue();
+            stamp.Bounds.Width.Should().Be(40);
+            stamp.Bounds.Height.Should().Be(20);
+
+            var rotatedStamp = await annots.RotateAsync(document, 0, stamp.AnnotIndex, 90);
+            rotatedStamp.IsStamp.Should().BeTrue();
+            rotatedStamp.Bounds.Width.Should().BeApproximately(20, 0.01);
+            rotatedStamp.Bounds.Height.Should().BeApproximately(40, 0.01);
+
+            var line = await annots.AddShapeAsync(
+                document,
+                0,
+                PdfShapeKind.Line,
+                new PdfRect(50, 200, 150, 200),
+                new PdfAnnotationColor(0, 0, 0));
+            line.EndpointA.Should().Be(new PdfPagePoint(50, 200));
+            line.EndpointB.Should().Be(new PdfPagePoint(150, 200));
+
+            var rotatedLine = await annots.RotateAsync(document, 0, line.AnnotIndex, 90);
+            rotatedLine.ShapeKind.Should().Be(PdfShapeKind.Line);
+            rotatedLine.EndpointA.Should().NotBeNull();
+            rotatedLine.EndpointB.Should().NotBeNull();
+            // Horizontal line about center (100,200) -> vertical after 90° CW.
+            rotatedLine.EndpointA!.Value.X.Should().BeApproximately(100, 0.5);
+            rotatedLine.EndpointB!.Value.X.Should().BeApproximately(100, 0.5);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task Set_line_endpoints_recreates_line_preserving_style()
+    {
+        var path = CreateTextPdf("Line endpoints host");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+
+            await using var document = await factory.OpenAsync(path);
+            var line = await annots.AddShapeAsync(
+                document,
+                0,
+                PdfShapeKind.Line,
+                new PdfRect(50, 100, 150, 200),
+                new PdfAnnotationColor(0, 100, 0),
+                borderWidthPoints: 3f,
+                inkLineStyle: PdfInkLineStyle.Dashed);
+            line.UsesEndpointHandles.Should().BeTrue();
+            line.Contents.Should().Be("Line|Dashed");
+
+            var updated = await annots.SetLineEndpointsAsync(
+                document,
+                0,
+                line.AnnotIndex,
+                new PdfPagePoint(60, 110),
+                new PdfPagePoint(260, 180));
+            updated.ShapeKind.Should().Be(PdfShapeKind.Line);
+            updated.EndpointA.Should().Be(new PdfPagePoint(60, 110));
+            updated.EndpointB.Should().Be(new PdfPagePoint(260, 180));
+            updated.Contents.Should().Be("Line|Dashed");
+            (await annots.GetBorderWidthAsync(document, 0, updated.AnnotIndex)).Should().BeApproximately(3f, 0.01f);
+
+            var listed = await annots.ListAsync(document, 0);
+            listed.Should().ContainSingle(a => a.ShapeKind == PdfShapeKind.Line && a.UsesEndpointHandles);
+        }
+        finally
+        {
+            File.Delete(path);
         }
     }
 

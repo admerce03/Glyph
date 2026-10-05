@@ -17,6 +17,15 @@ public class JsonSettingsStoreTests
                 Theme = ThemePreference.Dark,
                 RecentFileCapacity = 12,
                 SidebarVisible = false,
+                RestorePreviousSession = true,
+                AutoSaveToOriginal = true,
+                CrashRecoveryIntervalSeconds = 90,
+                DefaultHighlightColor = "Green",
+                DefaultStrokeColor = "Black",
+                DefaultStickyNoteColor = "Blue",
+                DefaultStrokeWidthPoints = 3.5,
+                AnimationAutoplay = true,
+                StripMetadataByDefault = true,
             });
 
             var reloaded = new JsonSettingsStore(path);
@@ -25,7 +34,63 @@ public class JsonSettingsStoreTests
             settings.Theme.Should().Be(ThemePreference.Dark);
             settings.RecentFileCapacity.Should().Be(12);
             settings.SidebarVisible.Should().BeFalse();
+            settings.RestorePreviousSession.Should().BeTrue();
+            settings.AutoSaveToOriginal.Should().BeTrue();
+            settings.CrashRecoveryIntervalSeconds.Should().Be(90);
+            settings.DefaultHighlightColor.Should().Be("Green");
+            settings.DefaultStrokeColor.Should().Be("Black");
+            settings.DefaultStickyNoteColor.Should().Be("Blue");
+            settings.DefaultStrokeWidthPoints.Should().Be(3.5);
+            settings.AnimationAutoplay.Should().BeTrue();
+            settings.StripMetadataByDefault.Should().BeTrue();
             reloaded.Current.Theme.Should().Be(ThemePreference.Dark);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Save_and_load_round_trips_ocr_language()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-ocr-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings { OcrLanguageTag = "de-DE" });
+            var settings = await new JsonSettingsStore(path).LoadAsync();
+            settings.OcrLanguageTag.Should().Be("de-DE");
+            settings.LocalOnlyOcr.Should().BeTrue();
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Save_and_load_round_trips_pdf_open_defaults()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-pdf-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings
+            {
+                DefaultPageLayout = "TwoPageWithCover",
+                DefaultZoom = 1.5,
+            });
+
+            var settings = await new JsonSettingsStore(path).LoadAsync();
+            settings.DefaultPageLayout.Should().Be("TwoPageWithCover");
+            settings.DefaultZoom.Should().Be(1.5);
         }
         finally
         {
@@ -44,5 +109,251 @@ public class JsonSettingsStoreTests
         var settings = await store.LoadAsync();
         settings.Theme.Should().Be(ThemePreference.System);
         settings.SidebarVisible.Should().BeTrue();
+        settings.AutoSaveToOriginal.Should().BeFalse();
+        settings.VersionSnapshotsEnabled.Should().BeFalse();
+        settings.ToolbarHiddenCommands.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Save_clamps_crash_recovery_interval()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-clamp-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings { CrashRecoveryIntervalSeconds = -5 });
+            (await new JsonSettingsStore(path).LoadAsync()).CrashRecoveryIntervalSeconds.Should().Be(0);
+
+            await store.SaveAsync(new AppSettings { CrashRecoveryIntervalSeconds = 99999 });
+            (await new JsonSettingsStore(path).LoadAsync()).CrashRecoveryIntervalSeconds.Should().Be(3600);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Save_and_load_round_trips_version_snapshot_prefs()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-snap-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings
+            {
+                VersionSnapshotsEnabled = true,
+                VersionSnapshotCapacity = 12,
+            });
+
+            var settings = await new JsonSettingsStore(path).LoadAsync();
+            settings.VersionSnapshotsEnabled.Should().BeTrue();
+            settings.VersionSnapshotCapacity.Should().Be(12);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Save_clamps_version_snapshot_capacity()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-snap-clamp-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings { VersionSnapshotCapacity = 0 });
+            (await new JsonSettingsStore(path).LoadAsync()).VersionSnapshotCapacity.Should().Be(1);
+
+            await store.SaveAsync(new AppSettings { VersionSnapshotCapacity = 999 });
+            (await new JsonSettingsStore(path).LoadAsync()).VersionSnapshotCapacity.Should().Be(50);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Save_and_load_round_trips_toolbar_hidden_commands()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-toolbar-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings
+            {
+                CompactToolbar = true,
+                ToolbarHiddenCommands =
+                [
+                    ToolbarCommands.Share,
+                    ToolbarCommands.Ocr,
+                    "UNKNOWN-COMMAND",
+                    "  Print  ",
+                ],
+            });
+
+            var settings = await new JsonSettingsStore(path).LoadAsync();
+            settings.CompactToolbar.Should().BeTrue();
+            settings.ToolbarHiddenCommands.Should().BeEquivalentTo(
+                [ToolbarCommands.Share, ToolbarCommands.Ocr, ToolbarCommands.Print]);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Save_empty_toolbar_hidden_means_default_all_visible()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-toolbar-reset-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings
+            {
+                ToolbarHiddenCommands = [ToolbarCommands.Zoom],
+            });
+            (await new JsonSettingsStore(path).LoadAsync()).ToolbarHiddenCommands.Should().ContainSingle()
+                .Which.Should().Be(ToolbarCommands.Zoom);
+
+            // Reset toolbar to default = clear hidden list (F54-19).
+            await store.SaveAsync(new AppSettings { ToolbarHiddenCommands = [] });
+            (await new JsonSettingsStore(path).LoadAsync()).ToolbarHiddenCommands.Should().BeEmpty();
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Save_and_load_round_trips_sidebar_and_thumbnail_widths()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-widths-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings
+            {
+                SidebarVisible = false,
+                SidebarWidth = 240,
+                ThumbnailWidth = 120,
+            });
+
+            var settings = await new JsonSettingsStore(path).LoadAsync();
+            settings.SidebarVisible.Should().BeFalse();
+            settings.SidebarWidth.Should().Be(240);
+            settings.ThumbnailWidth.Should().Be(120);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Save_clamps_default_stroke_width()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-stroke-clamp-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings { DefaultStrokeWidthPoints = 0.1 });
+            (await new JsonSettingsStore(path).LoadAsync()).DefaultStrokeWidthPoints.Should().Be(0.5);
+
+            await store.SaveAsync(new AppSettings { DefaultStrokeWidthPoints = 99 });
+            (await new JsonSettingsStore(path).LoadAsync()).DefaultStrokeWidthPoints.Should().Be(12);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Save_and_load_round_trips_open_in_separate_windows_and_author()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-shell-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings
+            {
+                OpenFilesInSeparateWindows = true,
+                AnnotationAuthor = "  Ada Lovelace  ",
+            });
+
+            var settings = await new JsonSettingsStore(path).LoadAsync();
+            settings.OpenFilesInSeparateWindows.Should().BeTrue();
+            settings.AnnotationAuthor.Should().Be("Ada Lovelace");
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Save_normalizes_zoom100_and_interpolation_prefs()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-zoom-interp-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings
+            {
+                Zoom100Meaning = "print",
+                DefaultInterpolation = "Nearest-neighbor",
+                ColorManagedDisplayDefault = true,
+            });
+
+            var settings = await new JsonSettingsStore(path).LoadAsync();
+            settings.Zoom100Meaning.Should().Be("Print");
+            settings.DefaultInterpolation.Should().Be("NearestNeighbor");
+            settings.ColorManagedDisplayDefault.Should().BeTrue();
+
+            await store.SaveAsync(new AppSettings
+            {
+                Zoom100Meaning = "nonsense",
+                DefaultInterpolation = "weird",
+            });
+            var fallback = await new JsonSettingsStore(path).LoadAsync();
+            fallback.Zoom100Meaning.Should().Be("Pixels");
+            fallback.DefaultInterpolation.Should().Be("Auto");
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
     }
 }

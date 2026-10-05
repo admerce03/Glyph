@@ -37,4 +37,27 @@ public class PdfPageTextSearchTests
         PdfPageTextSearch.Find(new Dictionary<int, string> { [0] = "abc" }, "  ").Should().BeEmpty();
         PdfPageTextSearch.Find(new Dictionary<int, string>(), "abc").Should().BeEmpty();
     }
+
+    [Fact]
+    public void Merge_orders_and_dedupes_native_and_ocr_hits()
+    {
+        var native = new[]
+        {
+            new PdfSearchHit(1, "b", 2, 1),
+            new PdfSearchHit(0, "a", 0, 1),
+        };
+        var ocr = new[]
+        {
+            new PdfSearchHit(0, "a", 0, 1), // duplicate of native
+            new PdfSearchHit(0, "c", 5, 1),
+        };
+
+        var merged = PdfPageTextSearch.Merge(native, ocr);
+
+        merged.Should().HaveCount(3);
+        merged.Select(h => (h.PageIndex, h.MatchStart)).Should().ContainInOrder(
+            (0, 0),
+            (0, 5),
+            (1, 2));
+    }
 }

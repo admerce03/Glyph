@@ -38,6 +38,7 @@ public sealed class FileSignatureLibrary : ISignatureLibrary
     public async Task<SignatureEntry> SaveAsync(
         string name,
         Stream pngStream,
+        string? description = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -55,11 +56,42 @@ public sealed class FileSignatureLibrary : ISignatureLibrary
                 await pngStream.CopyToAsync(file, cancellationToken);
             }
 
-            var entry = new SignatureEntry(id, name.Trim(), fileName, DateTimeOffset.UtcNow);
+            var entry = new SignatureEntry(
+                id,
+                name.Trim(),
+                fileName,
+                DateTimeOffset.UtcNow,
+                (description ?? string.Empty).Trim());
             var list = (await ReadIndexAsync(cancellationToken)).ToList();
             list.Add(entry);
             await WriteIndexAsync(list, cancellationToken);
             return entry;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task UpdateDescriptionAsync(
+        string id,
+        string description,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var list = (await ReadIndexAsync(cancellationToken)).ToList();
+            var index = list.FindIndex(e => e.Id == id);
+            if (index < 0)
+            {
+                throw new FileNotFoundException($"Signature '{id}' was not found.");
+            }
+
+            var existing = list[index];
+            list[index] = existing with { Description = (description ?? string.Empty).Trim() };
+            await WriteIndexAsync(list, cancellationToken);
         }
         finally
         {
@@ -117,6 +149,73 @@ public sealed class FileSignatureLibrary : ISignatureLibrary
         }
     }
 
+    public async Task ClearAllAsync(CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var list = await ReadIndexAsync(cancellationToken);
+            foreach (var entry in list)
+            {
+                var path = Path.Combine(_directory, entry.FileName);
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+
+            await WriteIndexAsync([], cancellationToken);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task ReorderAsync(IReadOnlyList<string> orderedIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(orderedIds);
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var current = await ReadIndexAsync(cancellationToken);
+            if (current.Count == 0)
+            {
+                if (orderedIds.Count != 0)
+                {
+                    throw new ArgumentException("Cannot reorder an empty signature library.", nameof(orderedIds));
+                }
+
+                return;
+            }
+
+            if (orderedIds.Count != current.Count || orderedIds.Distinct(StringComparer.Ordinal).Count() != orderedIds.Count)
+            {
+                throw new ArgumentException(
+                    "orderedIds must be a permutation of the current signature ids.",
+                    nameof(orderedIds));
+            }
+
+            var byId = current.ToDictionary(e => e.Id, StringComparer.Ordinal);
+            var reordered = new List<SignatureEntry>(orderedIds.Count);
+            foreach (var id in orderedIds)
+            {
+                if (!byId.TryGetValue(id, out var entry))
+                {
+                    throw new ArgumentException($"Unknown signature id '{id}'.", nameof(orderedIds));
+                }
+
+                reordered.Add(entry);
+            }
+
+            await WriteIndexAsync(reordered, cancellationToken);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     private async Task<IReadOnlyList<SignatureEntry>> ReadIndexAsync(CancellationToken cancellationToken)
     {
         if (!File.Exists(_indexPath))
@@ -126,7 +225,15 @@ public sealed class FileSignatureLibrary : ISignatureLibrary
 
         await using var stream = File.OpenRead(_indexPath);
         var list = await JsonSerializer.DeserializeAsync<List<SignatureEntry>>(stream, JsonOptions, cancellationToken);
-        return list ?? [];
+        if (list is null)
+        {
+            return [];
+        }
+
+        // Normalize legacy index rows that omit description.
+        return list
+            .Select(e => e with { Description = e.Description ?? string.Empty })
+            .ToList();
     }
 
     private async Task WriteIndexAsync(IReadOnlyList<SignatureEntry> entries, CancellationToken cancellationToken)

@@ -8,6 +8,102 @@ namespace Glyph.Pdf.Tests;
 public class PdfiumFormStoreTests
 {
     [Fact]
+    public async Task Set_text_enables_auto_font_size_in_da()
+    {
+        var path = CreateAcroFormPdf();
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-form-auto-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var forms = new PdfiumFormStore();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var fields = await forms.ListFieldsAsync(document);
+                var name = fields.Should().ContainSingle(f => f.Name == "Name").Subject;
+                name.UsesAutoFontSize.Should().BeFalse();
+                PdfFormDefaultAppearance.TryGetFontSize(name.DefaultAppearance).Should().Be(12f);
+
+                await forms.SetTextValueAsync(document, name.PageIndex, name.AnnotIndex, "Very Long Name That Should Shrink");
+                var after = await forms.ListFieldsAsync(document);
+                var updated = after.Should().ContainSingle(f => f.Name == "Name").Subject;
+                updated.Value.Should().Be("Very Long Name That Should Shrink");
+                updated.UsesAutoFontSize.Should().BeTrue();
+                PdfFormDefaultAppearance.TryGetFontSize(updated.DefaultAppearance).Should().Be(0f);
+                updated.DefaultAppearance.Should().Contain("/Helv");
+
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var fields = await forms.ListFieldsAsync(reopened);
+                var name = fields.Should().ContainSingle(f => f.Name == "Name").Subject;
+                name.UsesAutoFontSize.Should().BeTrue();
+                name.Value.Should().Be("Very Long Name That Should Shrink");
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Set_text_can_skip_auto_font_size()
+    {
+        var path = CreateAcroFormPdf();
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var forms = new PdfiumFormStore();
+
+            await using var document = await factory.OpenAsync(path);
+            var fields = await forms.ListFieldsAsync(document);
+            var city = fields.Should().ContainSingle(f => f.Name == "City").Subject;
+
+            await forms.SetTextValueAsync(
+                document,
+                city.PageIndex,
+                city.AnnotIndex,
+                "Paris",
+                autoFontSize: false);
+
+            var after = await forms.ListFieldsAsync(document);
+            var updated = after.Should().ContainSingle(f => f.Name == "City").Subject;
+            updated.Value.Should().Be("Paris");
+            updated.UsesAutoFontSize.Should().BeFalse();
+            PdfFormDefaultAppearance.TryGetFontSize(updated.DefaultAppearance).Should().Be(12f);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void Default_appearance_helpers_rewrite_and_fit()
+    {
+        PdfFormDefaultAppearance.WithAutoFontSize("/Helv 12 Tf 0 g")
+            .Should().Be("/Helv 0 Tf 0 g");
+        PdfFormDefaultAppearance.WithFontSize("/TiRo 18 Tf 0.1 0.2 0.3 rg", 9)
+            .Should().Be("/TiRo 9 Tf 0.1 0.2 0.3 rg");
+        PdfFormDefaultAppearance.WithAutoFontSize(null)
+            .Should().Be("/Helv 0 Tf 0 g");
+        PdfFormDefaultAppearance.UsesAutoFontSize("/Helv 0 Tf 0 g").Should().BeTrue();
+        PdfFormDefaultAppearance.UsesAutoFontSize("/Helv 12 Tf 0 g").Should().BeFalse();
+
+        var bounds = new PdfRect(0, 0, 100, 20);
+        var fit = PdfFormDefaultAppearance.ComputeFitSize(bounds, "Hi", multiline: false);
+        fit.Should().BeInRange(4f, 20f);
+    }
+
+    [Fact]
     public async Task List_and_set_text_field_round_trips_and_tab_order()
     {
         var path = CreateAcroFormPdf();
@@ -203,13 +299,116 @@ public class PdfiumFormStoreTests
         }
     }
 
+    [Fact]
+    public async Task Signature_field_accepts_stamp_in_field_bounds()
+    {
+        var path = CreateAcroFormPdf(includeSignature: true);
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-sigfield-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var forms = new PdfiumFormStore();
+            var annots = new PdfiumAnnotationService();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var fields = await forms.ListFieldsAsync(document);
+                var sig = fields.Should().ContainSingle(f => f.Kind == PdfFormFieldKind.Signature).Subject;
+
+                // 2×2 opaque black BGRA stamp fitted into the field rect.
+                var pixels = new byte[]
+                {
+                    0, 0, 0, 255, 0, 0, 0, 255,
+                    0, 0, 0, 255, 0, 0, 0, 255,
+                };
+                await annots.AddStampAsync(
+                    document,
+                    sig.PageIndex,
+                    sig.Bounds,
+                    pixels,
+                    pixelWidth: 2,
+                    pixelHeight: 2);
+
+                var listed = await annots.ListAsync(document, sig.PageIndex);
+                listed.Should().Contain(a => a.IsStamp);
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var listed = await annots.ListAsync(reopened, 0);
+                listed.Should().Contain(a => a.IsStamp);
+                var formsListed = await forms.ListFieldsAsync(reopened);
+                formsListed.Should().Contain(f => f.Name == "Signer" && f.Kind == PdfFormFieldKind.Signature);
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Signature_field_is_listed_as_signature_kind()
+    {
+        var path = CreateAcroFormPdf(includeSignature: true);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var forms = new PdfiumFormStore();
+
+            await using var document = await factory.OpenAsync(path);
+            var fields = await forms.ListFieldsAsync(document);
+            var sig = fields.Should().ContainSingle(f => f.Name == "Signer").Subject;
+            sig.Kind.Should().Be(PdfFormFieldKind.Signature);
+            sig.Bounds.Width.Should().BeGreaterThan(10);
+            sig.Bounds.Height.Should().BeGreaterThan(10);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task Push_button_exposes_uri_action()
+    {
+        var path = CreateAcroFormPdf(includePushButton: true);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var forms = new PdfiumFormStore();
+
+            await using var document = await factory.OpenAsync(path);
+            var fields = await forms.ListFieldsAsync(document);
+            var button = fields.Should().ContainSingle(f => f.Name == "Website").Subject;
+            button.Kind.Should().Be(PdfFormFieldKind.PushButton);
+            button.Value.Should().Be("Open site");
+            button.ButtonAction.Should().NotBeNull();
+            button.ButtonAction!.Kind.Should().Be(PdfFormButtonActionKind.Uri);
+            button.ButtonAction.Uri.Should().Be("https://example.com/glyph");
+            button.ButtonAction.Caption.Should().Be("Open site");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     /// <summary>
     /// Minimal AcroForm (letter page) written with a correct xref.
     /// </summary>
     private static string CreateAcroFormPdf(
         bool includeCheckBox = false,
         bool includeRadio = false,
-        bool includeChoice = false)
+        bool includeChoice = false,
+        bool includePushButton = false,
+        bool includeSignature = false)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-acroform-" + Guid.NewGuid().ToString("N") + ".pdf");
         var annotRefs = new List<string> { "7 0 R", "8 0 R" };
@@ -231,6 +430,18 @@ public class PdfiumFormStoreTests
         {
             annotRefs.Add($"{nextObj} 0 R");
             annotRefs.Add($"{nextObj + 1} 0 R");
+            nextObj += 2;
+        }
+
+        if (includePushButton)
+        {
+            annotRefs.Add($"{nextObj} 0 R");
+            nextObj++;
+        }
+
+        if (includeSignature)
+        {
+            annotRefs.Add($"{nextObj} 0 R");
         }
 
         var annots = "[" + string.Join(" ", annotRefs) + "]";
@@ -277,6 +488,19 @@ public class PdfiumFormStoreTests
                 "<< /Type /Annot /Subtype /Widget /Rect [120 550 280 575] /F 4 /P 3 0 R /FT /Ch /T (Flavor) /V (Vanilla) /DV (Vanilla) /Opt [(Vanilla)(Chocolate)(Strawberry)] /Ff 131072 /DA (/Helv 12 Tf 0 g) /MK << >> >>");
             objects.Add(
                 "<< /Type /Annot /Subtype /Widget /Rect [120 500 280 545] /F 4 /P 3 0 R /FT /Ch /T (Size) /V (Small) /DV (Small) /Opt [(Small)(Medium)(Large)] /Ff 0 /DA (/Helv 12 Tf 0 g) /MK << >> >>");
+        }
+
+        if (includePushButton)
+        {
+            // Ff bit 17 (65536) = pushbutton. URI action + caption in /MK /CA.
+            objects.Add(
+                "<< /Type /Annot /Subtype /Widget /Rect [120 450 220 480] /F 4 /P 3 0 R /FT /Btn /T (Website) /Ff 65536 /TU (Open site) /MK << /CA (Open site) >> /A << /S /URI /URI (https://example.com/glyph) >> >>");
+        }
+
+        if (includeSignature)
+        {
+            objects.Add(
+                "<< /Type /Annot /Subtype /Widget /Rect [120 380 320 430] /F 4 /P 3 0 R /FT /Sig /T (Signer) /V null /MK << >> >>");
         }
 
         using var ms = new MemoryStream();

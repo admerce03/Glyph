@@ -5,6 +5,69 @@ When a decision needs product/licensing/privacy approval, it is marked **Needs a
 
 ---
 
+## ADR-016 — Defer PDF font subsetting and Fast Web View linearization
+
+**Status:** Accepted (Milestone 7)  
+**Date:** 2026-10-05
+
+### Context
+
+M7 §24 asks for font subsetting and linearize / Fast Web View. PDFiumCore exposes neither a font-subset writer nor a linearization save flag (only `FPDF_SaveAsCopy` / `SaveWithVersion` with incremental / no-incremental / remove-security). Hand-rolling either feature is a large PDF-structure project outside Preview scope.
+
+### Decision
+
+1. Defer F24-11 (subset fonts) and F24-14 (linearize / Fast Web View) until a dedicated optimizer engine or approved second write stack lands.
+2. Treat F24-12/13 (remove unused objects / optimize structure) as **best-effort** via `FPDF_NO_INCREMENTAL` full rewrite after attachment unlink and image downsample — not a full unused-object GC.
+
+### Consequences
+
+- Matrix rows F24-11/F24-14 marked Deferred with this ADR.
+- Optimize presets remain useful for DPI downsample, attachment strip, metadata clear, and full rewrite.
+
+---
+
+## ADR-015 — PDF password-protect write path (no PDFium encrypt API)
+
+**Status:** Needs approval (Milestone 7)  
+**Date:** 2026-10-05
+
+### Context
+
+M7 §23 requires creating password-protected PDFs, setting user/owner passwords and permission flags, changing protection, and removing it when authorized. Glyph already **opens** encrypted PDFs via PDFium (`FPDF_LoadDocument` + password) and **displays** encryption/permission info (`IPdfDocumentInfoService`).
+
+PDFiumCore’s save path is `FPDF_SaveAsCopy` / `FPDF_SaveWithVersion` only — there is **no** `SetPassword`, encrypt-on-save flag, or security-handler write API in the bindings we ship. PdfPig’s encryption types are read-path (open/decrypt); its writer does not emit a Standard Security Handler. Shipping F23-02–F23-07 therefore needs a **separate write-encrypt strategy**.
+
+### Options
+
+| Option | Approach | Pros | Cons |
+| --- | --- | --- | --- |
+| **A. PdfSharp / PdfSharpCore write-encrypt adapter** | Behind `IPdfSecurityService`: save/unencrypt with PDFium when needed, then apply user/owner password + `/P` flags with PdfSharp (MIT) or PdfSharpCore (MIT fork) | Known library; AES/RC4 Standard Security Handler; keeps PDFium for render | Extra dependency; round-trip may drop exotic constructs; must verify annotations/forms survive |
+| **B. Hand-rolled Standard Security Handler (BCL crypto)** | After PDFium save, rewrite trailer `/Encrypt` + encrypt streams/strings with `System.Security.Cryptography` (RC4 rev 2–3 and/or AES-128/256 rev 4–6) | No new package; full control | High crypto/PDF correctness risk; long test surface; easy to ship broken interop |
+| **C. Commercial PDF SDK encrypt** | License a commercial engine solely for security write | Fastest “correct” encrypt UX | Cost + licensing — product escalate |
+| **D. Defer write-protect past M7 Preview** | Keep open + Info only; matrix rows stay Blocked | Zero risk now | §23 incomplete for Preview if protect is in-scope |
+
+### Proposed decision (pending approval)
+
+1. **Do not** implement password-write until this ADR is Accepted.
+2. Prefer **Option A** (PdfSharp MIT, pinned centrally) behind a narrow `IPdfSecurityService` (set/change/remove protection + permission flags). Keep PDFium as the sole renderer/open path (ADR-003).
+3. Reject **Option B** as a default — too easy to get wrong for Preview.
+4. **Option C** only if A fails interoperability testing and licensing cost is approved.
+5. First slice after approval: user (open) password round-trip testable with existing `encrypted.pdf` open path; then owner/permissions with the existing Info advisory warning (F23-09).
+
+### Needs approval
+
+- Adding a second PDF write stack (architecture).
+- Shipping document encryption UX (major product/security behavior).
+- Any move to a commercial SDK (cost/licensing).
+
+### Consequences (if A accepted)
+
+- New package pin in `Directory.Packages.props`; confine types to `Glyph.Pdf` security adapter.
+- Automated round-trips: protect → reopen with PDFium password → wrong password fails → remove protection.
+- Matrix F23-02–F23-07 move from Blocked → Implemented/Tested only after those tests land.
+
+---
+
 ## ADR-001 — Native WinUI / .NET 10 stack
 
 **Status:** Accepted (Phase 0)  
@@ -237,7 +300,7 @@ Use `Directory.Packages.props` + `Directory.Build.props` for shared TFM/nullable
 
 ## ADR-014 — Defer loupe, rectangular zoom, and presentation mode
 
-**Status:** Accepted (Milestone 2)  
+**Status:** Accepted (Milestone 2); **superseded for shipping** — F04-29/30/31 Implemented post-core (M7 polish, 2026-10-05)  
 **Date:** 2026-10-04
 
 ### Context
@@ -252,6 +315,7 @@ Defer F04-29/F04-30/F04-31 until post-core polish (likely M9 or a focused M2.1 s
 
 - Core viewer can be marked complete without loupe/rect/slideshow
 - Matrix rows stay Deferred with this ADR as the reason rather than silent Not Started
+- **Follow-up:** Zoom ▭ / Glass / Present shipped on `cursor/m7-redaction-50da`; matrix rows now Implemented
 
 ---
 

@@ -104,4 +104,37 @@ public sealed class PageSelection
 
         return !before.SequenceEqual(_selected);
     }
+
+    /// <summary>
+    /// Editing scope: selected page indexes when any are selected, otherwise the current page.
+    /// </summary>
+    public IReadOnlyList<int> SelectedOrFallback(int currentPageIndex)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(currentPageIndex);
+        if (_selected.Count > 0)
+        {
+            return _selected.OrderBy(i => i).ToList();
+        }
+
+        return [currentPageIndex];
+    }
+
+    /// <summary>
+    /// Crop/print-style target resolution: all pages, else selection-or-current.
+    /// </summary>
+    public static IReadOnlyList<int> ResolveTargets(
+        bool allPages,
+        PageSelection selection,
+        int pageCount,
+        int currentPageIndex)
+    {
+        ArgumentNullException.ThrowIfNull(selection);
+        ArgumentOutOfRangeException.ThrowIfNegative(pageCount);
+        if (allPages)
+        {
+            return pageCount == 0 ? [] : Enumerable.Range(0, pageCount).ToList();
+        }
+
+        return selection.SelectedOrFallback(currentPageIndex);
+    }
 }

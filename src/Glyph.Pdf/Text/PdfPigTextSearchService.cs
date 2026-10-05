@@ -157,7 +157,7 @@ public sealed class PdfPigTextSearchService : IPdfTextSearchService
             var snippetStart = Math.Min(found, Math.Max(0, snippetSource.Length - 1));
             hits.Add(new PdfSearchHit(
                 PageIndex: pageIndex,
-                Snippet: BuildSnippet(snippetSource, snippetStart, needle.Length),
+                Snippet: PdfSearchSnippet.Build(snippetSource, snippetStart, needle.Length),
                 MatchStart: found,
                 MatchLength: needle.Length));
 
@@ -212,30 +212,6 @@ public sealed class PdfPigTextSearchService : IPdfTextSearchService
         }
 
         return new string(chars, 0, length);
-    }
-
-    private static string BuildSnippet(string text, int matchStart, int matchLength)
-    {
-        const int pad = 28;
-        var start = Math.Max(0, matchStart - pad);
-        var end = Math.Min(text.Length, matchStart + matchLength + pad);
-        if (start >= end || text.Length == 0)
-        {
-            return string.Empty;
-        }
-
-        var snippet = text[start..end].Replace('\n', ' ').Replace('\r', ' ');
-        if (start > 0)
-        {
-            snippet = "…" + snippet;
-        }
-
-        if (end < text.Length)
-        {
-            snippet += "…";
-        }
-
-        return snippet.Trim();
     }
 
     private static bool IsLikelyEncryptionFailure(Exception ex)

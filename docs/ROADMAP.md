@@ -19,14 +19,14 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | --- | --- | --- | --- |
 | M0 | Architecture and engineering foundation | **Tested** | — |
 | M1 | Application shell and basic file opening | **Implemented** (CI green; interactive screenshot pending) | M0 |
-| M2 | Core PDF viewer | **Implemented** (landed via PR #7 → `33deca2`) | M1 |
-| M3 | Core PDF page manipulation | **Implemented** (CI green; §11 cross-doc DnD screen recording pending) | M2 |
-| M4 | PDF markup and editing | **In Progress** | M2 (forms/security touch M7) |
-| M5 | Image viewer/editor | **In Progress** | M1 (shares shell/DnD with M3) |
-| M6 | OCR and scanned-document capabilities | **In Progress** | M2, M5 |
-| M7 | Redaction, PDF security, optimization, metadata | Not Started | M2–M4 |
-| M8 | Batch ops, scanner, color management, advanced | Not Started | M5–M7 |
-| M9 | Performance, polish, a11y, installer, audit | Not Started | M1–M8 core paths |
+| M2 | Core PDF viewer | **Implemented** (+ post-core Zoom ▭ / Glass / Present) | M1 |
+| M3 | Core PDF page manipulation | **Tested** (matrix F10–F12; §11 DnD screen recording + CI merge pending) | M2 |
+| M4 | PDF markup and editing | **Tested** (matrix-complete; Quadding `/Q` via dict patch) | M2 (forms/security touch M7) |
+| M5 | Image viewer/editor | **Tested** (matrix-complete; HDR/HEIF deferred) | M1 (shares shell/DnD with M3) |
+| M6 | OCR and scanned-document capabilities | **In Progress** (PRs #62–#66 stacked; Actions billing blocks CI/merge) | M2, M5 |
+| M7 | Redaction, PDF security, optimization, metadata | **In Progress** (redact/optimize/metadata Tested; password-write → ADR-015) | M2–M4 |
+| M8 | Batch ops, scanner, color management, advanced | **Tested** (hardware validation TBD; ML subject deferred) | M5–M7 |
+| M9 | Performance, polish, a11y, installer, audit | **In Progress** (matrix a11y/perf/share Tested; MSIX → ADR-012) | M1–M8 core paths |
 
 M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behind separate interfaces. M3 remains the highest-priority Preview-differentiator after viewing works.
 
@@ -123,15 +123,16 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Durable page/zoom/layout persistence via `IDocumentViewStateStore`; drag text selection + on-page Find highlights.
 - Continuous mode uses windowed page virtualization (`ContinuousPageWindow`) so large docs do not materialize every page control.
 - Page `/Rotate` metadata read via PDFium; Find Clear + Escape clears results/overlays.
-- Deferred (ADR-014): rectangular zoom, loupe, presentation mode.
-- Optional stretch still open: search-all-open-PDFs, richer multi-line/column selection.
+- Deferred (ADR-014): rectangular zoom, loupe, presentation mode — **shipped post-core** (Zoom ▭ / Glass / Present on m7 polish branch; ADR-014 annotated).
+- Optional stretch still open: richer multi-line/column selection polish.
 - PR #7 squash-merged to `main` (`33deca2`) with Windows + Linux CI green on head `0074671`.
+- Post-core: Ctrl+A page text select-all; sidebar mode ComboBox; continuous-scroll throttled renders; cold-start ms.
 
 ---
 
 ## Milestone 3 — Core PDF page manipulation
 
-**Status:** Implemented · Depends on M2
+**Status:** Tested · Depends on M2
 
 ### Scope (`FEATURES.md` §10–12, §59 PDF DnD)
 
@@ -160,20 +161,20 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Explorer PDF → thumbnail insert, cross-tab/window page DnD (`PageDragPayload` / `PdfPageDragRegistry`), drag-out extract via deferred StorageItems, Ctrl+C/V via `PdfPageClipboard`.
 - Non-destructive CropBox crop (`CropPagesAsync` / `SetCropBoxAsync` + numeric dialog / visual handles + optional permanent export).
 - Multi-window shell (`File → New Window`) with per-window `WorkspaceState`.
-- Remaining M3 polish: §11 cross-document DnD screen recording (same class of proof debt as M1 interactive screenshot).
+- Remaining M3 polish: §11 cross-document DnD screen recording (same class of proof debt as M1 interactive screenshot). Matrix F10–F12 / F11 DnD rows are unit-Tested; Windows CI merge of local +N stack still blocked on Actions billing.
 
 ---
 
 ## Milestone 4 — PDF markup and editing
 
-**Status:** In Progress · Depends on M2
+**Status:** Tested · Depends on M2
 
 ### Scope (`FEATURES.md` §13–20, §22)
 
 - Highlights / underline / strikethrough
 - Notes, text boxes, callouts
 - Shapes and freehand mouse drawing
-- Signatures (mouse / image import; webcam later)
+- Signatures (mouse / image import / webcam)
 - AcroForm fill + overlay form mode
 - Annotation sidebar
 - Flatten annotations
@@ -190,22 +191,23 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - `IPdfAnnotationService` / `PdfiumAnnotationService`: create/list/remove text markup (Highlight / Underline / StrikeOut) with QuadPoints + color; round-trip save/reopen covered by Pdf.Tests.
 - Viewer: select text → Highlight (multi-color picker; persistent mode toggles so every selection highlights) / Underline / Strike toolbar actions; sidebar Color recolors selected markup.
 - Annotation sidebar lists text markup; click jumps to page; Delete removes selected markup.
-- Sticky notes: `AddStickyNoteAsync` + Note toolbar dialog (text + color presets); Contents/color/move APIs; notes appear in sidebar.
-- Freehand ink: `AddInkAsync` + Ink draw mode on page surface (stroke color + width picker); listed in annotation sidebar.
-- Shapes: `AddShapeAsync` for rectangle/ellipse (Square/Circle), line, and arrow (ink strokes; arrow adds head wings); Rect/Ellipse/Line/Arrow draw modes with border/fill color and width picker.
+- Sticky notes: `AddStickyNoteAsync` + Note toolbar dialog (text + color presets); Contents/color/move APIs; Sidebar Edit → `SetContentsAsync`; notes appear in sidebar; Expand/Collapse popup overlay; Export notes → printable text listing (`PdfNotesExport`).
+- Freehand ink: `AddInkAsync` + Ink draw mode on page surface (stroke color + width picker); listed in annotation sidebar; Ctrl+Z undoes last ink/freeform/polygon stroke; smart drawing (`PdfStrokeShapeRecognizer`) offers cleaned line/rect/ellipse/triangle after ink/freeform.
+- Shapes: `AddShapeAsync` for rectangle/ellipse (Square/Circle), line, arrow, star, speech bubble (ink strokes; arrow adds head wings; star is a closed 5-point path; bubble is body+pointer outline), and loupe (Circle + Contents=Loupe; select shows 3× magnified crop); Rect/Ellipse/Line/Arrow/Star/Bubble/Loupe draw modes with border/fill color and width picker; line/arrow selection uses endpoint handles (`SetLineEndpointsAsync`).
 - Freeform: `AddFreeformAsync` closed ink path; Freeform draw mode.
-- Text boxes: `AddTextBoxAsync` FreeText with Contents + DA + optional fill/border; TextBox toolbar dialog; listed in sidebar.
-- Callouts: `AddCalloutAsync` FreeText (`Subj=Callout`) + ink pointer; Callout draw mode (drag tip → box).
+- Polygon: `AddPolygonAsync` click-to-place vertices (Enter / near-first closes); Polygon toolbar mode.
+- Text boxes: `AddTextBoxAsync` FreeText with Contents + DA + optional fill/border; TextBox toolbar dialog (font family/size/bold/italic/underline, text/fill/border color); listed in sidebar.
+- Callouts: `AddCalloutAsync` FreeText (`Subj=Callout`) + ink pointer; Callout draw mode (drag tip → box) with font + text color dialog; underline via `SetUnderlineAsync`.
 - Flatten: `FlattenAsync` via `FPDFPage_Flatten` + Flatten toolbar (confirm dialog); editable annots removed after bake.
-- Signatures: `AddStampAsync` (BGRA stamp image) + local `FileSignatureLibrary`; Sign toolbar Draw (mouse stroke → PNG/library/stamp) or Import image.
-- AcroForm: `IPdfFormStore` / `PdfiumFormStore` lists widgets, sets text/combo/list `/V`, toggles checkboxes (`/V`+`/AS`), selects radios (mutual exclusion by field name), exposes choice `/Opt` via PdfPig, tab-adjacent focus; Form toolbar Overlay mode (clickable field boxes) or list dialog; Pdf.Tests sample AcroForm.
-- Annotation selection: click annot on page (or sidebar) to select; drag moves via `MoveAsync`; corner/edge handles resize; Dup clones (offset); Color / Opacity via `SetColorAsync` / `SetOpacityAsync`; selection chrome on overlay.
+- Signatures: `AddStampAsync` (BGRA stamp image) + local `FileSignatureLibrary`; Sign toolbar Draw (mouse stroke → PNG/library/stamp), Import image, or Webcam (`MediaCapture` preview + capture with near-white paper keying via `SignaturePaperKeying`); library dialog lists saved signatures with ↑/↓ reorder + Insert/Delete; `DuplicateAsync` clones stamp pixels with offset.
+- AcroForm: `IPdfFormStore` / `PdfiumFormStore` lists widgets, sets text/combo/list `/V`, toggles checkboxes (`/V`+`/AS`), selects radios (mutual exclusion by field name), exposes choice `/Opt` via PdfPig, tab-adjacent focus; Form toolbar Overlay mode (clickable field boxes) or list dialog; recent text values via `IFormValueHistory` (`form-values.json`); AutoFill profile (name/address/email/phone) via `IFormAutofillProfileStore`; text fill sets `/DA` to `0 Tf` (automatic font sizing) via `PdfFormDefaultAppearance`; push buttons resolve URI `/A` (`PdfFormButtonAction`) and activate from Form UI; signature fields accept visual stamp fill from the signature library; Pdf.Tests sample AcroForm.
+- Annotation selection: click annot on page (or sidebar) to select; Ctrl+click / Extended list multi-select; Group/Ungroup persists `GlyphGroup` and selects/moves members together; drag moves via `MoveAsync` (multi moves together); corner/edge handles resize; line/arrow endpoint handles; Rotate 90° via `RotateAsync` (stamp/ink/FreeText/shapes); Dup clones (offset); Color / Opacity / Width via `SetColorAsync` / `SetOpacityAsync` / `SetBorderWidthAsync`; Delete removes all selected; selection chrome on overlay.
 
 ---
 
 ## Milestone 5 — Image viewer/editor
 
-**Status:** In Progress · Depends on M1
+**Status:** Tested · Depends on M1 (HDR/HEIF deferred)
 
 ### Scope (`FEATURES.md` §26–35, §37–38, §61 image parts)
 
@@ -224,9 +226,10 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Progress notes
 
-- Magick.NET adapter: `MagickImageDecoder` / `Document` / `Processor` / `Encoder` (open with EXIF AutoOrient, rotate, flip, crop, resize, color adjust, metadata/EXIF/GPS, export PNG/JPEG/WebP/TIFF/BMP/GIF with JPEG/WebP quality options).
-- `ImageDocumentView`: zoom/fit, fullscreen, rotate L/R/180, Orient (normalize EXIF), flip H/V, numeric crop, interactive drag-crop (Crop…), resize dialog (px/%, aspect lock), Adjust (brightness/contrast/saturation), Meta (EXIF/GPS copy/map/strip), Convert dialog (WebP quality/lossless), JPEG quality export, folder prev/next + image list sidebar (in-place tab reuse when clean), save/export; wired from MainWindow for image kinds.
-- Imaging.Tests cover processor round-trips including rotate-right/180, resize, AdjustAsync, multi-format SaveAs, JPEG quality sizing, WebP lossless, EXIF read/orientation, GPS strip, folder sibling navigation, and crop display→pixel mapping.
+- Magick.NET adapter: `MagickImageDecoder` / `Document` / `Processor` / `Encoder` (open with EXIF AutoOrient, rotate, flip, crop, resize, color adjust including brightness/contrast/saturation/highlights/shadows/levels/gamma/temperature/tint/auto-levels/sharpness/sepia, metadata/EXIF/IPTC/XMP/GPS, selection extract/clear/move, freehand markup flatten, export PNG/JPEG/WebP/TIFF/BMP/GIF/AVIF/JP2/HEIC with quality/alpha/metadata/TIFF-compression/sRGB options).
+- `ImageDocumentView`: zoom/fit, fullscreen, rotate L/R/180, Orient (normalize EXIF), Batch… folder rotate/flip/orient, flip H/V, numeric crop, interactive drag-crop (Crop… + aspect presets), rectangular/elliptical/freeform/smart-lasso pixel selection with invert (copy/cut/paste/delete/crop-to/move via drag or arrow keys), Draw markup overlay (freehand/rect/ellipse/line/arrow/text/callout; non-destructive until Flatten/Save), Stamp from signature library, clipboard Copy/Paste (whole image or selection), resize dialog (px/%/in/cm/mm, DPI, resampling, size estimate, optional batch folder scale %), Adjust dialog with live preview + luminance histogram + per-slider reset (brightness/contrast/highlights/shadows/levels/gamma/saturation/temperature/tint/sharpness/auto-levels/sepia), Meta (EXIF/IPTC/XMP/GPS copy/map/strip + Edit… for IPTC title/caption/keywords/copyright), Convert dialog (WebP/AVIF/JP2/HEIC quality/lossless + TIFF compression + preserve alpha/metadata + embed sRGB), JPEG quality export, folder prev/next + Slideshow (3s loop) + swipe nav + image list sidebar (in-place tab reuse when clean), edit undo (Ctrl+Z), save/export; Open picker includes HEIF/AVIF/JP2; wired from MainWindow for image kinds.
+- Imaging.Tests cover processor round-trips including rotate-right/180, resize+DPI/filter, AdjustAsync (incl. shadows/highlights/levels/gamma/temp/tint), MoveRectAsync, elliptical/freeform/smart extract/clear/move, inverted extract/clear, FlattenMarkupAsync, IPTC read/write title/description/keywords/copyright, metadata strip on convert, TIFF LZW SaveAs, multi-format SaveAs, JPEG quality sizing, WebP lossless, AVIF/JP2 decode, EXIF read/orientation, GPS strip, folder sibling navigation, and crop display→pixel mapping.
+- Deferred: HDR display (F26-24) and color-managed display (F26-25) → M8 §39 color management / WinUI HDR pipeline.
 ---
 
 ## Milestone 6 — OCR and scanned-document capabilities
@@ -271,28 +274,69 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 7 — Redaction, PDF security, optimization, metadata
 
-**Status:** Not Started · Depends on M2–M4
+**Status:** In Progress (write-protect → ADR-015) · Depends on M2–M4
 
 ### Scope (`FEATURES.md` §21, §23–25)
 
-- True redaction (content removal)
-- Password open/protect/permissions UI with honest warnings
-- Optimization presets + custom controls
-- Metadata view/edit
+- True redaction (content removal) — mark/preview/apply, find-matches, annotation sanitize
+- Password open + Info encryption/permissions display; write-protect deferred pending ADR-015
+- Optimization presets + custom controls + page image export
+- Metadata view/edit (version, page size, fonts, title/author/subject/keywords/creator/producer)
 
 ### Completion criteria
 
 - Redacted text not extractable after apply
 - Optimization size estimate within reasonable tolerance
 - Tests for security round-trips and metadata edits
+- ADR-015 approved before shipping password-protect / permission-write
+
+### Progress notes
+
+- Redact mark/preview/apply removes intersecting text/images/annotations + attachment name-tree entries + Info metadata (F21 mark/apply/search-hit paths unit-tested)
+- Info dialog: encryption/permissions, version, page size, fonts, attachment count; Edit writes Title/Author/Subject/Keywords/Creator/Producer (Ctrl+Z undoes); `/ModDate` stamped on edit
+- Optimize presets + Custom (DPI + JPEG quality NumberBox) + estimate; HighQuality/Lossless/PreserveMonochrome covered by unit tests; F24-08 JPEG via zeroed FILEACCESS + LoadJpegFileInline; font subset/linearize deferred (ADR-016)
+- Page Export → PNG/JPEG/WebP/TIFF/BMP/GIF/AVIF/JP2 with DPI/quality, Title/Author metadata, sRGB ICC (F45-07), alpha where codec allows
+- FreeText Align / `/Q` quadding via post-save dict patch (F13-38 / F16-15)
+- Bookmarks → PDF `/Outlines` export (F09-08)
+- Password-protect write blocked on ADR-015 (Needs approval)
+- Local polish (+238 on `cursor/m7-redaction-50da`); fix ImageDocumentView resize checkbox syntax and Magick text draw font fallback for Linux CI.
+- FEATURE_MATRIX: no Implemented/In Progress rows; Blocked = ADR-015 password-write; Deferred catalogs unit-tested (`PackagingDeferredPolicy`, `PdfOptimizeDeferredPolicy`, `ImageAdvancedDeferredPolicy`, …)
+- Print N-up/scale/rotate/center extracted to `PrintSheetLayout`; scroll throttle + presentation defaults unit-tested
+- Search result snippets unified via `PdfSearchSnippet` (F06-10)
+- Page drop accept/copy helpers + ink dash preview pattern extracted
+- M3 insert prepend/append + text reading-order helpers unit-tested (F10-09/11/12, F07-03)
+- Page paste/drag-out/registry helpers moved to Core/Pdf with tests (F10-24, F11-07/09)
+- Cross-window page drop same-doc semantics via `PageDragSemantics` (F11-08)
+- Merge prepend + undo-after-insert + PageReorder→ReorderPagesAsync edge tests
+- Crop undo restores page size via `PdfPageEditHistory` (F12-08 / F49-07)
+- Permanent crop undo + F59-01/02/09 multi-doc workflow rows Tested
+- Contact sheet layout extract + merge undo; F59-05 / F61 non-destructive rows Tested
+- Tab tear-off policy extract; F02-11/12 + F59-03/07 Tested
+- SidebarModeCombo extract; F03-10 / F01-26 / F02-10 Tested
+- ThumbnailWidthConstraints + DocumentClosePolicy; F03-01 / F04-13 / F01-22 Tested
+- FileFormatDetector owns picker extensions + FilterSupportedPaths; F01-02 Tested
+- ExplorerFileDropPolicy + ReadOnlySavePolicy; F01-08 / F01-13 Tested
+- DocumentFileNamePolicy duplicate/rename; F01-15 / F01-19 Tested
+- DocumentMovePolicy same-folder/overwrite; F01-20 Tested
+- ToolbarVisibilityLabel; F02-05 Tested
+- FullscreenTogglePolicy + MonitorCyclePolicy; F02-09 / F02-19 Tested
+- ClipboardImageFileName + DocumentPropertiesRouting + StartupReadyStatus + PdfLoupeSampleRegion; F01-14/21 / F04-30 / F57-01 Tested
+- DocumentSaveStatus + DpiAwarenessDeclaration; F01-16 / F02-18 / F02-20 Tested
+- CaptureFileName camera/scan naming; F43-02 Tested; M3 section status → Tested
+- PdfZoom ApplyManipulationScale + FindAllOpenPdfsStatus; F02-22 / F06-08 Tested
+- ShellKeyboardShortcuts + PdfSearchHighlightStyle; F02-23 / F06-09 / F06-15 Tested
+- DocumentExportFormats + ChromeAutomationNames; F01-18 / F02-24 / F56-01 Tested
+- ShellMenuCatalog + PdfOutlineTree + WheelInputPolicy; F02-02 / F03-02/03 / F04-20 / F05-02/05 Tested
+- ThumbnailContextMenu + PdfLinkAction/OutlineNavigation; F02-14 / F03-17 / F05-04/08 Tested
+- PdfTextSelectAllPolicy + PdfSearchHitOrder + OutlineExpandPolicy + PdfPageSizeSet; F07-05 / F06-12 / F05-03 / F04-07 Tested
+- PdfTextInteractionUi context/copy labels; F07-02/06/07/08/11 Tested
+- Region/OCR/drag/chrome/render capability extracts; F02-01/21 / F04-02..05 / F07-09/12/13 / F56-08 Tested
 
 ---
 
 ## Milestone 8 — Batch operations, scanner, color management, advanced
 
-**Status:** Not Started · Depends on M5–M7
-
-### Scope (`FEATURES.md` §27, §29, §36, §39, §42–48 advanced)
+**Status:** Tested · Depends on M5–M7 (hardware scanner validation TBD; ML subject deferred)
 
 - Batch image ops
 - Scanner support (Windows APIs)
@@ -300,7 +344,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Color management / soft proof
 - Animated image controls
 - Smart selection / background removal (local)
-- Printing polish, Share UI, inspector completeness
+- Printing polish, Share UI, inspector completeness (File → Properties / Ctrl+I)
 
 ### Completion criteria
 
@@ -308,21 +352,31 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - At least one scanner path validated on hardware when available (emulated tests otherwise)
 - Color-managed display path documented and tested with profiled sample
 
----
+### Progress notes
+
+- Folder Batch… covers rotate/flip/orient, convert/export (PNG/JPEG/WebP/TIFF/BMP/GIF/AVIF/JP2), strip metadata, rename (`{name}-{n:000}`), and color profile assign/convert (sRGB/Adobe RGB); Resize dialog can scale all folder siblings; progress dialog with Cancel.
+- Color management: detect ICC (`HasIccProfile`), assign/convert via Magick `SetProfile` / `TransformColorSpace`; Meta dialog Assign sRGB / Convert → sRGB; display honors ICC→sRGB (F39-02) with soft-proof Adobe RGB + rendering intent (F39-06/07/09); monitor profile / gamut warning deferred.
+- Animated GIF/WebP: decoder coalesces multi-frame images; Play/Pause/Restart/prev/next frame, Loop, frame label, Save frame → PNG (F27-01–10).
+- Background/subject: BG dialog corner flood-fill + fuzz, optional trim; extract to clipboard or PNG; Smart lasso covers F29-01/02 (F29-05 ML deferred).
+- Printing: PDF/image Print… + Ctrl+P via WinUI `PrintManager`/`PrintDocument` (scope/range/scale/grayscale/center/auto-rotate; annotations in render; optional notes page; 1/2/4-up pages-per-sheet). System UI covers printer/copies/collate/duplex/paper (F44).
+- Webcam import: File → Capture from Camera… opens PNG tab; PDF Camera stamps capture onto current page (F43). Signature webcam path unchanged.
+- Scanner: File → Scan… discovers WinRT ImageScanner devices; flatbed/ADF, color/gray/B&W, DPI, duplex, auto-crop (single/multi-photo), straighten (Magick deskew), brightness/contrast, paper size (Letter/Legal/A4/… + feeder auto-detect); destinations images / new PDF / insert into open PDF (F42).
+- Share/Explorer: File → Share / Show in File Explorer / Copy path|file / Open With / Send Email (F46–F47).
+- Webcam signature capture already shipped in M4; HDR display (F26-24) still deferred.
 
 ## Milestone 9 — Performance, polish, accessibility, installer, audit
 
-**Status:** Not Started · Depends on prior milestones’ core paths
+**Status:** In Progress · Depends on prior milestones’ core paths
 
 ### Scope (`FEATURES.md` §52–56, §57–60 remaining, distribution)
 
 - Startup and large-doc performance pass
-- Accessibility (UIA, keyboard, high contrast, text scaling)
+- Accessibility (UIA, keyboard, high contrast, text scaling) — toolbar icon Names started (F56-01/04/08)
 - Shortcut customization
 - Toolbar customization polish
 - Installer / MSIX / file associations finalize
 - Complete feature-spec audit against `FEATURE_MATRIX.md`
-- No silent drops: every requirement Implemented/Tested or Deferred with reason
+- No silent drops: every requirement Tested or Deferred/Blocked with reason
 
 ### Completion criteria
 
@@ -331,42 +385,51 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Accessibility smoke pass
 - Performance checklist signed off for representative large PDF/image fixtures
 
+### Progress notes
+
+- Prefs, toolbar customization, session restore, crash recovery, version snapshots, a11y Names, cold-start timing shipped in matrix
+- MSIX / file associations still Deferred (ADR-012)
+- Matrix: no In Progress/Implemented rows; Blocked = ADR-015 (`PdfPasswordWriteBlockedPolicy`); Deferred ADR-012/016 + HDR/HEIF/ML/map catalogued
+
 ---
 
 ## Feature-area status board
 
 | Area | FEATURES.md | Milestone | Status |
 | --- | --- | --- | --- |
-| App/file handling | §1 | M1, M9 | In Progress |
-| Main window/UI chrome | §2 | M1, M9 | In Progress |
-| Sidebar modes | §3 | M2–M5 | In Progress |
-| PDF viewing | §4 | M2 | Implemented |
-| PDF TOC/links | §5 | M2 | Implemented |
-| PDF search | §6 | M2, M6 | Implemented |
-| PDF text interaction | §7 | M2, M6 | Implemented |
-| OCR / Live Text | §8 | M6 | In Progress |
-| User bookmarks | §9 | M2/M4 | Not Started |
-| PDF page manipulation | §10–12 | M3 | Implemented |
-| PDF annotations/markup | §13–19 | M4 | In Progress |
-| PDF forms | §20 | M4 | In Progress |
-| Redaction | §21 | M7 | Not Started |
-| Flattening | §22 | M4 | Not Started |
-| PDF security | §23 | M7 | Not Started |
-| Optimization | §24 | M7 | Not Started |
-| PDF metadata | §25 | M7 | Not Started |
-| Image viewing/editing | §26–35 | M5 | In Progress |
-| Batch images | §36 | M8 | Not Started |
-| Image metadata/GPS | §37–38 | M5, M8 | In Progress (EXIF/GPS inspector + strip) |
-| Color management | §39 | M8 | Not Started |
-| Clipboard/screenshots | §40–41 | M1, M5 | Not Started |
-| Scanner/webcam | §42–43 | M8 | Not Started |
-| Printing | §44 | M8 | Not Started |
-| Export/share/integration | §45–48 | M5–M9 | Not Started |
-| Undo/autosave/snapshots | §49–51 | M1–M4, M9 | Not Started |
-| Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Not Started |
-| Accessibility | §56 | M9 | Not Started |
-| Performance/large docs | §57–58 | M2+, M9 | In Progress |
-| Multi-doc workflows | §59–60 | M1, M3 | In Progress (tabs/windows/page DnD/clipboard/undo; tab tear-off + §60 context cmds open) |
-| Non-destructive editing | §61 | M3–M5 | In Progress (CropBox crops; annotations/markup later) |
-| Output formats | §62 | M5, M7 | Not Started |
-| Explicit exclusions | §63 | — | Documented (out of scope) |
+| App/file handling | §1 | M1, M9 | Tested (associations → ADR-012) |
+| Main window/UI chrome | §2 | M1, M9 | Tested |
+| Sidebar modes | §3 | M2–M5 | Tested (mode ComboBox + panels) |
+| PDF viewing | §4 | M2 | Tested (incl. Zoom ▭ / Glass / Present) |
+| PDF TOC/links | §5 | M2 | Tested |
+| PDF search | §6 | M2, M6 | Tested |
+| PDF text interaction | §7 | M2, M6 | Tested |
+| OCR / Live Text | §8 | M6 | In Progress (PR stack #62–#66; billing blocks merge) |
+| User bookmarks | §9 | M2/M4 | Tested (app-local + export to PDF `/Outlines`) |
+| PDF page manipulation | §10–12 | M3 | Tested (selection/reorder/insert/merge/split/crop/DnD/clipboard unit-covered; §11 screen recording pending) |
+| PDF annotations/markup | §13–19 | M4 | Tested |
+| PDF forms | §20 | M4 | Tested (visual sig stamps; PKCS#7 → ADR-015) |
+| Redaction | §21 | M7 | Tested (mark/preview/apply + sanitize + confirm copy; password-write separate) |
+| Flattening | §22 | M4 | Tested (`FlattenAsync` / FPDFPage_Flatten) |
+| PDF security | §23 | M7 | In Progress (open + info/permissions/advisory Tested; write-protect blocked on ADR-015) |
+| Optimization | §24 | M7 | Tested (presets + downsample + JPEG quality + estimate + page export/ICC; font subset/linearize → ADR-016) |
+| PDF metadata | §25 | M7 | Tested (read + edit title/author/subject/keywords/creator/producer + ModDate) |
+| Image viewing/editing | §26–35 | M5 | Tested (HDR/HEIF deferred) |
+| Batch images | §36 | M8 | Tested (ops + progress/cancel + color profile) |
+| Animated images | §27 | M8 | Tested (play/pause/frame nav/extract) |
+| Smart selection / BG | §29 | M8 | Tested (flood-fill remove; ML subject deferred) |
+| Image metadata/GPS | §37–38 | M5, M8 | Tested (EXIF/GPS inspector + strip; in-app map deferred) |
+| Color management | §39 | M8 | Tested (display ICC→sRGB + soft-proof; monitor ICC deferred) |
+| Clipboard/screenshots | §40–41 | M1, M5 | Tested (region/annot/image clipboard + Snipping Tool Ctrl+V) |
+| Scanner/webcam | §42–43 | M8 | Tested (webcam + scanner WinRT; hardware validation TBD) |
+| Printing | §44 | M8 | Tested (system Print UI + `PrintPageScopeChooser` / `PrintSheetLayout` / `PrintSystemCapabilities`) |
+| Export/share/integration | §45–48 | M5–M9 | Tested (matrix F45–F47; PDF security export → ADR-015) |
+| Undo/autosave/snapshots | §49–51 | M1–M4, M9 | Tested (per-doc stacks + F50 crash-recovery UI; unified app-wide later) |
+| Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Tested (F52–F53 catalogs; update check → ADR-012) |
+| Accessibility | §56 | M9 | Tested (`AccessibilityPolicy` + chrome automation names) |
+| Performance/large docs | §57–58 | M2+, M9 | Tested (`PerformanceBehaviorPolicy` / `ContinuousPageWindow`; bg index / GPU deferred) |
+| Multi-doc workflows | §59–60 | M1, M3 | Tested (tabs/windows/page+image DnD/clipboard/registry; interactive DnD demo pending) |
+| Non-destructive editing | §61 | M3–M5 | Tested (CropBox + in-memory image edits until Save) |
+| Output formats | §62 | M5, M7 | Tested (HEIF deferred; `OutputFormatSupport`) |
+| Explicit exclusions | §63 | — | Tested (`ExplicitExclusionPolicy` documents non-goals) |
+| Product framing | §64 | all | Tested (`ProductFramingPolicy` six-tool catalog) |

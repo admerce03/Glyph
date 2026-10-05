@@ -716,6 +716,8 @@ Edit:
 - author
 - subject
 - keywords
+- creator
+- producer
 
 ---
 

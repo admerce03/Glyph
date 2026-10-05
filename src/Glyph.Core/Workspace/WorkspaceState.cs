@@ -107,6 +107,31 @@ public sealed class WorkspaceState
         return true;
     }
 
+    /// <summary>Reorder open sessions to match UI tab order (F02-13).</summary>
+    public void Reorder(IReadOnlyList<DocumentId> orderedIds)
+    {
+        ArgumentNullException.ThrowIfNull(orderedIds);
+        if (orderedIds.Count == 0 || _documents.Count == 0)
+        {
+            return;
+        }
+
+        var map = _documents.ToDictionary(d => d.Id);
+        var next = new List<DocumentSession>(orderedIds.Count);
+        foreach (var id in orderedIds)
+        {
+            if (map.Remove(id, out var session))
+            {
+                next.Add(session);
+            }
+        }
+
+        // Preserve any sessions missing from the UI list (should be rare).
+        next.AddRange(map.Values);
+        _documents.Clear();
+        _documents.AddRange(next);
+    }
+
     public IReadOnlyList<DocumentId> CloseAll()
     {
         var ids = _documents.Select(d => d.Id).ToList();

@@ -1,0 +1,494 @@
+using System.Runtime.InteropServices;
+using Glyph.Pdf.Abstractions;
+using PDFiumCore;
+
+namespace Glyph.Pdf.Pdfium;
+
+public sealed class PdfiumOptimizeService : IPdfOptimizeService
+{
+    private const int PageObjImage = 3;
+    // PDFium FPDF_NO_INCREMENTAL — full rewrite (can drop orphaned objects from unlinked attachments).
+    private const uint SaveNoIncremental = 2;
+    private readonly IPdfImageJpegEncoder? _jpegEncoder;
+
+    public PdfiumOptimizeService(IPdfImageJpegEncoder? jpegEncoder = null)
+    {
+        _jpegEncoder = jpegEncoder;
+    }
+
+    public PdfOptimizeEstimate Estimate(IPdfDocument document, PdfOptimizeOptions? options = null)
+    {
+        var pdfium = RequirePdfium(document);
+        var opts = Resolve(options);
+        PdfiumLibrary.EnsureInitialized();
+        lock (PdfiumSync.Gate)
+        {
+            pdfium.ThrowIfDisposed();
+            var current = PdfiumDocumentSaver.SaveToBytes(pdfium.Handle, SaveNoIncremental).LongLength;
+            var (eligible, _) = ScanImages(pdfium, opts, mutate: false);
+            var attachments = Math.Max(0, fpdf_attachment.FPDFDocGetAttachmentCount(pdfium.Handle));
+            // Heuristic: each eligible image contributes a share of the file; after downsample the
+            // remaining fraction tracks pixel area (ratio) scaled by JPEG quality (lower → smaller).
+            var estimated = current;
+            if (eligible.Count > 0)
+            {
+                var jpegFactor = Math.Clamp(opts.JpegQuality, 1, 100) / 100.0;
+                // DCTDecode payloads are typically far smaller than raw bitmaps stored pre-optimize.
+                var jpegWeight = 0.25 + (0.75 * jpegFactor);
+                var perImageShare = current / (double)(eligible.Count + 2);
+                foreach (var ratio in eligible)
+                {
+                    var areaRemaining = Math.Clamp(ratio, 0.0, 1.0);
+                    var remaining = Math.Clamp(areaRemaining * jpegWeight, 0.0, 1.0);
+                    estimated -= (long)(perImageShare * (1.0 - remaining));
+                }
+            }
+
+            if (opts.RemoveEmbeddedAttachments && attachments > 0)
+            {
+                // Soft credit — actual shrink depends on attachment payload size.
+                estimated -= Math.Min(estimated / 20, attachments * 2048L);
+            }
+
+            estimated = Math.Max(estimated, Math.Max(current / 5, 256));
+            estimated = Math.Min(estimated, current);
+            return new PdfOptimizeEstimate(current, estimated, eligible.Count, attachments);
+        }
+    }
+
+    public Task<PdfOptimizeResult> OptimizeAsync(
+        IPdfDocument document,
+        PdfOptimizeOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        var opts = Resolve(options);
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    var before = PdfiumDocumentSaver.SaveToBytes(pdfium.Handle, SaveNoIncremental).LongLength;
+                    var (_, downsampled) = ScanImages(pdfium, opts, mutate: true);
+                    var attachmentsRemoved = 0;
+                    if (opts.RemoveEmbeddedAttachments)
+                    {
+                        for (var i = fpdf_attachment.FPDFDocGetAttachmentCount(pdfium.Handle) - 1; i >= 0; i--)
+                        {
+                            if (fpdf_attachment.FPDFDocDeleteAttachment(pdfium.Handle, i) != 0)
+                            {
+                                attachmentsRemoved++;
+                            }
+                        }
+                    }
+
+                    // RemoveMetadata clears Info dictionary fields via incremental patch.
+                    if (opts.RemoveMetadata)
+                    {
+                        var cleared = PdfInfoDictionaryPatcher.Apply(
+                            PdfiumDocumentSaver.SaveToBytes(pdfium.Handle, SaveNoIncremental),
+                            new PdfInfoFields(
+                                Title: string.Empty,
+                                Author: string.Empty,
+                                Subject: string.Empty,
+                                Keywords: string.Empty,
+                                Creator: string.Empty,
+                                Producer: string.Empty,
+                                CreationDate: string.Empty,
+                                ModDate: string.Empty));
+                        pdfium.ReplaceFromBytes(cleared);
+                    }
+
+                    var after = PdfiumDocumentSaver.SaveToBytes(pdfium.Handle, SaveNoIncremental).LongLength;
+                    if (downsampled > 0)
+                    {
+                        pdfium.NotifyAnnotationsChanged();
+                    }
+
+                    return new PdfOptimizeResult(downsampled, attachmentsRemoved, before, after);
+                }
+            },
+            cancellationToken);
+    }
+
+    private static PdfOptimizeOptions Resolve(PdfOptimizeOptions? options)
+    {
+        // Trust the options object. Callers should build via FromPreset(...) or Custom
+        // fields; re-applying FromPreset here would wipe overrides like `with { JpegQuality = n }`.
+        return options ?? PdfOptimizeOptions.FromPreset(PdfOptimizePreset.Balanced);
+    }
+
+    /// <summary>
+    /// Returns per-image area scale factors (new/old) for estimate, plus mutate count.
+    /// </summary>
+    private (List<double> ScaleFactors, int Downsampled) ScanImages(
+        PdfiumDocument pdfium,
+        PdfOptimizeOptions opts,
+        bool mutate)
+    {
+        var factors = new List<double>();
+        var downsampled = 0;
+        if (!opts.DownsampleImages)
+        {
+            return (factors, 0);
+        }
+
+        for (var pageIndex = 0; pageIndex < pdfium.PageCount; pageIndex++)
+        {
+            var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
+            if (page is null)
+            {
+                continue;
+            }
+
+            try
+            {
+                var count = fpdf_edit.FPDFPageCountObjects(page);
+                var dirty = false;
+                for (var i = 0; i < count; i++)
+                {
+                    var obj = fpdf_edit.FPDFPageGetObject(page, i);
+                    if (obj is null || fpdf_edit.FPDFPageObjGetType(obj) != PageObjImage)
+                    {
+                        continue;
+                    }
+
+                    if (!TryGetEffectiveDpi(page, obj, out var dpiX, out var dpiY, out var pixelW, out var pixelH))
+                    {
+                        continue;
+                    }
+
+                    var dpi = Math.Max(dpiX, dpiY);
+                    if (dpi <= opts.DownsampleAboveDpi || pixelW < 2 || pixelH < 2)
+                    {
+                        continue;
+                    }
+
+                    if (opts.PreserveMonochrome)
+                    {
+                        using var meta = new FPDF_IMAGEOBJ_METADATA();
+                        if (fpdf_edit.FPDFImageObjGetImageMetadata(obj, page, meta) != 0
+                            && meta.BitsPerPixel is > 0 and <= 1)
+                        {
+                            continue;
+                        }
+                    }
+
+                    var scale = opts.TargetDpi / dpi;
+                    if (scale >= 0.98)
+                    {
+                        continue;
+                    }
+
+                    var newW = Math.Max(1, (int)Math.Round(pixelW * scale));
+                    var newH = Math.Max(1, (int)Math.Round(pixelH * scale));
+                    if (newW >= pixelW && newH >= pixelH)
+                    {
+                        continue;
+                    }
+
+                    factors.Add((double)(newW * newH) / (pixelW * pixelH));
+                    if (!mutate)
+                    {
+                        continue;
+                    }
+
+                    if (DownsampleImageObject(page, obj, newW, newH, opts.JpegQuality))
+                    {
+                        downsampled++;
+                        dirty = true;
+                    }
+                }
+
+                if (dirty && fpdf_edit.FPDFPageGenerateContent(page) == 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Failed to generate page content after optimize on page {pageIndex + 1}.");
+                }
+            }
+            finally
+            {
+                fpdfview.FPDF_ClosePage(page);
+            }
+        }
+
+        return (factors, downsampled);
+    }
+
+    private static bool TryGetEffectiveDpi(
+        FpdfPageT page,
+        FpdfPageobjectT obj,
+        out double dpiX,
+        out double dpiY,
+        out int pixelW,
+        out int pixelH)
+    {
+        dpiX = dpiY = 0;
+        pixelW = pixelH = 0;
+        using var meta = new FPDF_IMAGEOBJ_METADATA();
+        if (fpdf_edit.FPDFImageObjGetImageMetadata(obj, page, meta) != 0
+            && meta.Width > 0
+            && meta.Height > 0)
+        {
+            pixelW = (int)meta.Width;
+            pixelH = (int)meta.Height;
+            if (meta.HorizontalDpi > 1 && meta.VerticalDpi > 1)
+            {
+                dpiX = meta.HorizontalDpi;
+                dpiY = meta.VerticalDpi;
+                return true;
+            }
+        }
+
+        float left = 0, bottom = 0, right = 0, top = 0;
+        if (fpdf_edit.FPDFPageObjGetBounds(obj, ref left, ref bottom, ref right, ref top) == 0)
+        {
+            return false;
+        }
+
+        var displayW = Math.Abs(right - left);
+        var displayH = Math.Abs(top - bottom);
+        if (pixelW <= 0 || pixelH <= 0)
+        {
+            var bmp = fpdf_edit.FPDFImageObjGetBitmap(obj);
+            if (bmp is null)
+            {
+                return false;
+            }
+
+            try
+            {
+                pixelW = fpdfview.FPDFBitmapGetWidth(bmp);
+                pixelH = fpdfview.FPDFBitmapGetHeight(bmp);
+            }
+            finally
+            {
+                fpdfview.FPDFBitmapDestroy(bmp);
+            }
+        }
+
+        if (pixelW <= 0 || pixelH <= 0 || displayW < 0.5 || displayH < 0.5)
+        {
+            return false;
+        }
+
+        // points → inches = /72; DPI = pixels / inches
+        dpiX = pixelW * 72.0 / displayW;
+        dpiY = pixelH * 72.0 / displayH;
+        return true;
+    }
+
+    private bool DownsampleImageObject(FpdfPageT page, FpdfPageobjectT obj, int newW, int newH, int jpegQuality)
+    {
+        var srcBmp = fpdf_edit.FPDFImageObjGetBitmap(obj);
+        if (srcBmp is null)
+        {
+            return false;
+        }
+
+        byte[] srcPixels;
+        int srcW, srcH, srcStride, format;
+        try
+        {
+            srcW = fpdfview.FPDFBitmapGetWidth(srcBmp);
+            srcH = fpdfview.FPDFBitmapGetHeight(srcBmp);
+            srcStride = fpdfview.FPDFBitmapGetStride(srcBmp);
+            format = fpdfview.FPDFBitmapGetFormat(srcBmp);
+            var buffer = fpdfview.FPDFBitmapGetBuffer(srcBmp);
+            if (buffer == IntPtr.Zero || srcW <= 0 || srcH <= 0)
+            {
+                return false;
+            }
+
+            srcPixels = new byte[srcStride * srcH];
+            Marshal.Copy(buffer, srcPixels, 0, srcPixels.Length);
+        }
+        finally
+        {
+            fpdfview.FPDFBitmapDestroy(srcBmp);
+        }
+
+        var srcBgra = ToBgra(srcPixels, srcW, srcH, srcStride, format);
+        var dstBgra = ResizeBgraNearest(srcBgra, srcW, srcH, newW, newH);
+
+        // Prefer DCTDecode rewrite when an encoder is available. PDFiumCore's FPDF_FILEACCESS
+        // allocates native memory without zeroing; on Linux m_FileLen is unsigned long (8 bytes)
+        // so garbage high bytes make LoadJpegFileInline read past the buffer — zero first.
+        if (_jpegEncoder is not null)
+        {
+            try
+            {
+                var jpeg = _jpegEncoder.EncodeBgraToJpeg(dstBgra, newW, newH, jpegQuality);
+                if (jpeg is { Length: > 0 } && TryLoadJpegInline(page, obj, jpeg))
+                {
+                    return true;
+                }
+            }
+            catch
+            {
+                // Fall through to SetBitmap.
+            }
+        }
+
+        return SetBitmapPixels(page, obj, dstBgra, newW, newH);
+    }
+
+    /// <summary>
+    /// Load JPEG bytes into an existing image object via FPDFImageObj_LoadJpegFileInline.
+    /// Zeros the CppSharp FILEACCESS native blob before use (required for Linux ABI).
+    /// </summary>
+    private static unsafe bool TryLoadJpegInline(FpdfPageT page, FpdfPageobjectT obj, byte[] jpeg)
+    {
+        var access = new FPDF_FILEACCESS();
+        PDFiumCore.Delegates.Func_int___IntPtr_uint_bytePtr_uint? getBlock = null;
+        try
+        {
+            new Span<byte>((void*)access.__Instance, sizeof(FPDF_FILEACCESS.__Internal)).Clear();
+            access.MFileLen = (uint)jpeg.Length;
+            access.MParam = IntPtr.Zero;
+            getBlock = (_, position, pBuf, size) =>
+            {
+                if (position >= (uint)jpeg.Length)
+                {
+                    return 0;
+                }
+
+                var remaining = (uint)jpeg.Length - position;
+                var toCopy = size < remaining ? size : remaining;
+                Marshal.Copy(jpeg, (int)position, (IntPtr)pBuf, (int)toCopy);
+                // PDFium treats a non-zero return as success for a full |size| read.
+                return toCopy == size ? 1 : 0;
+            };
+            access.MGetBlock = getBlock;
+
+            return fpdf_edit.FPDFImageObjLoadJpegFileInline(page, 1, obj, access) != 0;
+        }
+        finally
+        {
+            GC.KeepAlive(getBlock);
+            access.Dispose();
+        }
+    }
+
+    private static bool SetBitmapPixels(FpdfPageT page, FpdfPageobjectT obj, byte[] bgra, int width, int height)
+    {
+        var handle = GCHandle.Alloc(bgra, GCHandleType.Pinned);
+        FpdfBitmapT? dstBmp = null;
+        try
+        {
+            dstBmp = fpdfview.FPDFBitmapCreateEx(
+                width,
+                height,
+                PdfiumBitmapFormats.Bgra,
+                handle.AddrOfPinnedObject(),
+                width * 4);
+            if (dstBmp is null)
+            {
+                return false;
+            }
+
+            return fpdf_edit.FPDFImageObjSetBitmap(page, 1, obj, dstBmp) != 0;
+        }
+        finally
+        {
+            if (dstBmp is not null)
+            {
+                fpdfview.FPDFBitmapDestroy(dstBmp);
+            }
+
+            if (handle.IsAllocated)
+            {
+                handle.Free();
+            }
+        }
+    }
+
+    private static byte[] ToBgra(byte[] src, int width, int height, int stride, int format)
+    {
+        var dst = new byte[width * height * 4];
+        for (var y = 0; y < height; y++)
+        {
+            var srcRow = y * stride;
+            var dstRow = y * width * 4;
+            for (var x = 0; x < width; x++)
+            {
+                var di = dstRow + x * 4;
+                switch (format)
+                {
+                    case PdfiumBitmapFormats.Bgra:
+                    case PdfiumBitmapFormats.Bgrx:
+                        {
+                            var si = srcRow + x * 4;
+                            dst[di] = src[si];
+                            dst[di + 1] = src[si + 1];
+                            dst[di + 2] = src[si + 2];
+                            dst[di + 3] = format == PdfiumBitmapFormats.Bgra ? src[si + 3] : (byte)255;
+                            break;
+                        }
+
+                    case PdfiumBitmapFormats.Bgr:
+                        {
+                            var si = srcRow + x * 3;
+                            dst[di] = src[si];
+                            dst[di + 1] = src[si + 1];
+                            dst[di + 2] = src[si + 2];
+                            dst[di + 3] = 255;
+                            break;
+                        }
+
+                    case PdfiumBitmapFormats.Gray:
+                        {
+                            var g = src[srcRow + x];
+                            dst[di] = g;
+                            dst[di + 1] = g;
+                            dst[di + 2] = g;
+                            dst[di + 3] = 255;
+                            break;
+                        }
+
+                    default:
+                        dst[di] = dst[di + 1] = dst[di + 2] = 0;
+                        dst[di + 3] = 255;
+                        break;
+                }
+            }
+        }
+
+        return dst;
+    }
+
+    private static byte[] ResizeBgraNearest(byte[] src, int srcW, int srcH, int dstW, int dstH)
+    {
+        var dst = new byte[dstW * dstH * 4];
+        for (var y = 0; y < dstH; y++)
+        {
+            var sy = Math.Min(srcH - 1, (int)((y + 0.5) * srcH / dstH));
+            for (var x = 0; x < dstW; x++)
+            {
+                var sx = Math.Min(srcW - 1, (int)((x + 0.5) * srcW / dstW));
+                var si = (sy * srcW + sx) * 4;
+                var di = (y * dstW + x) * 4;
+                dst[di] = src[si];
+                dst[di + 1] = src[si + 1];
+                dst[di + 2] = src[si + 2];
+                dst[di + 3] = src[si + 3];
+            }
+        }
+
+        return dst;
+    }
+
+    private static PdfiumDocument RequirePdfium(IPdfDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        if (document is not PdfiumDocument pdfium)
+        {
+            throw new ArgumentException("Document must be a PDFium-backed instance.", nameof(document));
+        }
+
+        return pdfium;
+    }
+}

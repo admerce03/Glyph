@@ -10,4 +10,11 @@ public enum PdfShapeKind
     Line = 2,
     Arrow = 3,
     Freeform = 4,
+    RoundedRectangle = 5,
+    HighlightRectangle = 6,
+    Star = 7,
+    Polygon = 8,
+    SpeechBubble = 9,
+    /// <summary>Circular magnification marker (Circle subtype, Contents=Loupe).</summary>
+    Loupe = 10,
 }

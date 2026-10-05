@@ -18,7 +18,7 @@
             </StackPanel>
         </Grid>
 
-        <MenuBar Grid.Row="1" Margin="8,0,8,4">
+        <MenuBar Grid.Row="1" Margin="8,0,8,4" TabIndex="1" XYFocusKeyboardNavigation="Enabled">
             <MenuBarItem Title="File">
                 <MenuFlyoutItem x:Name="OpenMenuItem" Text="Open…" Click="OpenMenuItem_Click">
                     <MenuFlyoutItem.KeyboardAccelerators>
@@ -31,6 +31,40 @@
                         <KeyboardAccelerator Key="N" Modifiers="Control,Shift" />
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="CaptureCameraMenuItem" Text="Capture from Camera…" Click="CaptureCameraMenuItem_Click" />
+                <MenuFlyoutItem x:Name="ScanMenuItem" Text="Scan…" Click="ScanMenuItem_Click" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem x:Name="SaveMenuItem" Text="Save" Click="SaveMenuItem_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="S" Modifiers="Control" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="SaveAsMenuItem" Text="Save As…" Click="SaveAsMenuItem_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="S" Modifiers="Control,Shift" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="DuplicateMenuItem" Text="Duplicate" Click="DuplicateMenuItem_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="D" Modifiers="Control,Shift" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="RenameMenuItem" Text="Rename…" Click="RenameMenuItem_Click" />
+                <MenuFlyoutItem x:Name="MoveMenuItem" Text="Move…" Click="MoveMenuItem_Click" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem x:Name="ShareMenuItem" Text="Share…" Click="ShareMenuItem_Click" />
+                <MenuFlyoutItem x:Name="ShowInExplorerMenuItem" Text="Show in File Explorer" Click="ShowInExplorerMenuItem_Click" />
+                <MenuFlyoutItem x:Name="PropertiesMenuItem" Text="Properties" Click="PropertiesMenuItem_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="I" Modifiers="Control" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="VersionSnapshotsMenuItem" Text="Version Snapshots…" Click="VersionSnapshotsMenuItem_Click" AutomationProperties.Name="Version snapshots" />
+                <MenuFlyoutItem x:Name="CopyPathMenuItem" Text="Copy File Path" Click="CopyPathMenuItem_Click" />
+                <MenuFlyoutItem x:Name="CopyFileMenuItem" Text="Copy File" Click="CopyFileMenuItem_Click" />
+                <MenuFlyoutItem x:Name="OpenWithMenuItem" Text="Open With Default App" Click="OpenWithMenuItem_Click" />
+                <MenuFlyoutItem x:Name="EmailMenuItem" Text="Send Email…" Click="EmailMenuItem_Click" />
+                <MenuFlyoutSeparator />
                 <MenuFlyoutItem x:Name="NewWindowMenuItem" Text="New Window" Click="NewWindowMenuItem_Click">
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="N" Modifiers="Control" />
@@ -54,6 +88,12 @@
             </MenuBarItem>
 
             <MenuBarItem Title="Edit">
+                <MenuFlyoutItem x:Name="PasteMenuItem" Text="Paste" Click="PasteMenuItem_Click" AutomationProperties.Name="Paste">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="V" Modifiers="Control" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutSeparator />
                 <MenuFlyoutItem x:Name="FindAllPdfsMenuItem" Text="Find in all open PDFs…" Click="FindAllPdfsMenuItem_Click">
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="F" Modifiers="Control,Shift" />
@@ -63,12 +103,20 @@
 
             <MenuBarItem Title="View">
                 <MenuFlyoutItem x:Name="ToggleSidebarMenuItem" Text="Hide Sidebar" Click="ToggleSidebarMenuItem_Click" />
+                <MenuFlyoutItem x:Name="ToggleToolbarMenuItem" Text="Hide Toolbar" Click="ToggleToolbarMenuItem_Click" />
+                <MenuFlyoutItem x:Name="FullscreenMenuItem" Text="Full Screen" Click="FullscreenMenuItem_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="F11" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
                 <MenuFlyoutSeparator />
                 <MenuFlyoutSubItem Text="Theme">
                     <RadioMenuFlyoutItem x:Name="ThemeSystemItem" Text="System" GroupName="Theme" Click="ThemeSystemItem_Click" />
                     <RadioMenuFlyoutItem x:Name="ThemeLightItem" Text="Light" GroupName="Theme" Click="ThemeLightItem_Click" />
                     <RadioMenuFlyoutItem x:Name="ThemeDarkItem" Text="Dark" GroupName="Theme" Click="ThemeDarkItem_Click" />
                 </MenuFlyoutSubItem>
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem x:Name="PreferencesMenuItem" Text="Preferences…" Click="PreferencesMenuItem_Click" AutomationProperties.Name="Preferences" />
             </MenuBarItem>
 
             <MenuBarItem Title="Window">
@@ -82,14 +130,22 @@
                         <KeyboardAccelerator Key="Tab" Modifiers="Control,Shift" />
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem x:Name="MoveTabToNewWindowMenuItem" Text="Move Tab to New Window" Click="MoveTabToNewWindowMenuItem_Click" />
+                <MenuFlyoutItem x:Name="MoveToNextMonitorMenuItem" Text="Move to Next Monitor" Click="MoveToNextMonitorMenuItem_Click" />
             </MenuBarItem>
         </MenuBar>
 
-        <Grid x:Name="ContentGrid" Grid.Row="2" ColumnDefinitions="220,*" Margin="12,0,12,12" ColumnSpacing="12">
+        <Grid x:Name="ContentGrid" Grid.Row="2" ColumnDefinitions="Auto,6,*" Margin="12,0,12,12" ColumnSpacing="0">
             <Border x:Name="SidebarBorder"
+                    Width="220"
+                    TabIndex="2"
+                    IsTabStop="True"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     CornerRadius="8"
-                    Padding="12">
+                    Padding="12"
+                    Margin="0,0,6,0"
+                    AutomationProperties.Name="Sidebar">
                 <Grid RowDefinitions="Auto,Auto,*,Auto">
                     <TextBlock Text="Sidebar" FontWeight="SemiBold" />
                     <TextBlock Grid.Row="1"
@@ -117,19 +173,44 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Column="1"
+            <Border x:Name="SidebarSplitter"
+                    Grid.Column="1"
+                    Width="6"
+                    Background="Transparent"
+                    AutomationProperties.Name="Resize sidebar"
+                    PointerPressed="SidebarSplitter_PointerPressed"
+                    PointerMoved="SidebarSplitter_PointerMoved"
+                    PointerReleased="SidebarSplitter_PointerReleased"
+                    PointerCaptureLost="SidebarSplitter_PointerCaptureLost"
+                    ToolTipService.ToolTip="Drag to resize sidebar">
+                <Rectangle HorizontalAlignment="Center"
+                           Width="2"
+                           Margin="0,16"
+                           Opacity="0.35"
+                           Fill="{ThemeResource SystemControlForegroundBaseMediumBrush}" />
+            </Border>
+
+            <Border Grid.Column="2"
                     x:Name="DropHost"
                     AllowDrop="True"
                     DragOver="DropHost_DragOver"
                     Drop="DropHost_Drop"
                     Background="{ThemeResource LayerFillColorDefaultBrush}"
                     CornerRadius="8"
-                    Padding="16">
+                    Padding="16"
+                    Margin="6,0,0,0">
                 <Grid RowDefinitions="Auto,*">
                     <TabView x:Name="DocumentTabs"
+                             TabIndex="3"
+                             CanReorderTabs="True"
+                             CanDragTabs="True"
+                             AllowDropTabs="True"
                              AddTabButtonClick="DocumentTabs_AddTabButtonClick"
                              TabCloseRequested="DocumentTabs_TabCloseRequested"
-                             SelectionChanged="DocumentTabs_SelectionChanged" />
+                             TabItemsChanged="DocumentTabs_TabItemsChanged"
+                             TabDroppedOutside="DocumentTabs_TabDroppedOutside"
+                             SelectionChanged="DocumentTabs_SelectionChanged"
+                             AutomationProperties.Name="Open documents" />
 
                     <StackPanel Grid.Row="1"
                                 x:Name="EmptyState"
@@ -139,7 +220,7 @@
                         <TextBlock Text="Open a PDF or image to begin"
                                    FontSize="20"
                                    HorizontalAlignment="Center" />
-                        <TextBlock Text="File → Open, drag files here, or pick a recent document."
+                        <TextBlock Text="File → Open, drag files here, Win+Shift+S then Ctrl+V, or pick a recent document."
                                    Opacity="0.7"
                                    HorizontalAlignment="Center"
                                    TextWrapping="WrapWholeWords" />

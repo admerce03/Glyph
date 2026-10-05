@@ -1,13 +1,29 @@
 using System.Runtime.InteropServices.WindowsRuntime;
+using Glyph.App.Capture;
+using Glyph.App.Printing;
 using Glyph.Core.Documents;
+using Glyph.Core.IO;
+using Glyph.Core.Ocr;
+using Glyph.Core.Pdf;
+using Glyph.Core.Printing;
 using Glyph.Core.Signatures;
+using Glyph.Core.Text;
+using Glyph.Imaging.Abstractions;
+using Glyph.Infrastructure.Forms;
+using Glyph.Infrastructure.Settings;
 using Glyph.Ocr.Abstractions;
 using Glyph.Pdf.Abstractions;
+using Glyph.Pdf.Annotations;
 using Glyph.Pdf.Editing;
+using Glyph.Pdf.Forms;
+using Glyph.Pdf.Info;
 using Glyph.Pdf.Rendering;
 using Glyph.Pdf.Text;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
@@ -28,7 +44,6 @@ namespace Glyph.App.Views;
 /// </summary>
 public sealed class PdfDocumentView : UserControl
 {
-    private const double ThumbnailWidth = 108;
     private const int OcrMaxEdgePixels = 2048;
 
     private readonly IPdfDocument _document;
@@ -37,18 +52,27 @@ public sealed class PdfDocumentView : UserControl
     private readonly PdfSearchCoordinator _searchCoordinator;
     private readonly IPdfTextExtractor _textExtractor;
     private readonly IPdfOutlineService _outlineService;
+    private readonly IPdfOutlineExportService _outlineExport;
     private readonly IPdfLinkService _linkService;
     private readonly IPdfPageEditor _pageEditor;
     private readonly IPdfAnnotationService _annotations;
+    private readonly IPdfRedactionService _redaction;
+    private readonly IPdfDocumentInfoService _documentInfo;
+    private readonly IPdfOptimizeService _optimize;
+    private readonly IImageEncoder _imageEncoder;
     private readonly ISignatureLibrary _signatures;
     private readonly IPdfFormStore _forms;
+    private readonly IFormValueHistory _formValueHistory;
+    private readonly IFormAutofillProfileStore _formProfile;
     private readonly IPdfDocumentFactory _documentFactory;
     private readonly IOcrEngine? _ocr;
     private readonly Button _ocrCancelButton;
+    private readonly ProgressBar _jobProgress;
     private CancellationTokenSource? _ocrCts;
     private readonly Dictionary<int, string> _ocrPageTexts = new();
     private readonly Dictionary<int, (OcrResult Result, int SourceWidth, int SourceHeight)> _ocrPageData = new();
     private readonly Dictionary<int, Canvas> _ocrOverlays = new();
+    private readonly Dictionary<int, Canvas> _redactionOverlays = new();
     private readonly Dictionary<int, List<(OcrWord Word, Microsoft.UI.Xaml.Shapes.Rectangle Visual)>> _ocrVisualsByPage = new();
     private readonly HashSet<(int PageIndex, int WordIndex)> _selectedOcrIndices = [];
     private readonly Button _copyOcrButton;
@@ -59,6 +83,8 @@ public sealed class PdfDocumentView : UserControl
     private readonly DocumentViewState _viewState;
     private readonly DocumentNavigationHistory _history = new();
     private readonly PdfPageEditHistory _editHistory = new();
+    private readonly Action? _onEdited;
+    private bool _hasUnsavedContent;
     private readonly PageSelection _pageSelection = new();
     private readonly string _documentKey;
     private readonly string _thumbnailKey;
@@ -66,11 +92,21 @@ public sealed class PdfDocumentView : UserControl
     private readonly ScrollViewer _scrollViewer;
     private readonly StackPanel _continuousHost;
     private readonly StackPanel _spreadHost;
+    private readonly StackPanel _contactSheetHost;
+    private bool _contactSheetMode;
     private readonly StackPanel _thumbnailHost;
     private readonly ScrollViewer _thumbnailScroll;
+    private Grid? _sidePanel;
+    private ComboBox? _sidebarModeBox;
+    private readonly List<UIElement> _sidebarSections = new();
     private readonly TreeView _outlineTree;
+    private readonly ListView _bookmarkList;
     private readonly ListView _searchResults;
+    private StackPanel? _toolbar;
     private readonly ListView _annotationList;
+    private readonly ListView _attachmentList;
+    private readonly TextBlock _propertiesSummary;
+    private IReadOnlyList<PdfEmbeddedAttachmentInfo> _attachmentItems = [];
     private readonly TextBox _searchBox;
     private readonly TextBox _gotoBox;
     private readonly CheckBox _caseSensitiveBox;
@@ -86,9 +122,11 @@ public sealed class PdfDocumentView : UserControl
     private readonly Dictionary<int, Image> _thumbnailImages = new();
     private readonly Dictionary<int, Border> _thumbnailBorders = new();
     private readonly SemaphoreSlim _renderGate = new(1, 1);
+    private double _thumbnailWidth = ThumbnailWidthConstraints.Default;
     private double _scale = 1.25;
     private PageLayoutMode _layoutMode = PageLayoutMode.Continuous;
     private int _renderGeneration;
+    private long _lastIntermediateRenderTick;
     private bool _loaded;
     private bool _suppressThumbnailNav;
     private IReadOnlyList<PdfSearchHit> _hits = [];
@@ -96,9 +134,22 @@ public sealed class PdfDocumentView : UserControl
     private IReadOnlyList<PdfAnnotationInfo> _annotationItems = [];
     private bool _suppressAnnotationNav;
     private bool _inkMode;
+    private bool _eraserMode;
     private bool _freeformMode;
+    private bool _polygonMode;
+    private int _polygonPageIndex = -1;
+    private readonly List<PdfPagePoint> _polygonVertices = [];
+    private Microsoft.UI.Xaml.Shapes.Polyline? _polygonPreview;
+    /// <summary>Recent ink/freeform/polygon strokes for F18-06 stroke undo (Ctrl+Z prefers this).</summary>
+    private readonly AnnotationUndoStack _strokeUndoStack = new();
+    /// <summary>Previous form field values for F49-11 Ctrl+Z undo.</summary>
+    private readonly FormFillUndoStack _formUndoStack = new();
+    /// <summary>Previous Info dictionary fields for F49-10 Ctrl+Z undo after Edit document info.</summary>
+    private readonly DocumentInfoUndoStack _infoUndoStack = new();
     private PdfAnnotationColor _drawStrokeColor = PdfAnnotationColor.InkRed;
     private float _drawStrokeWidth = 2f;
+    private PdfInkLineStyle _drawInkLineStyle = PdfInkLineStyle.Solid;
+    private PdfArrowheadStyle _drawArrowheadStyle = PdfArrowheadStyle.Open;
     private bool _highlightMode;
     private PdfAnnotationColor _highlightModeColor = PdfAnnotationColor.YellowHighlight;
     private bool _formOverlayMode;
@@ -117,36 +168,76 @@ public sealed class PdfDocumentView : UserControl
     private FrameworkElement? _shapePreview;
     private Button? _inkButton;
     private Button? _freeformButton;
+    private Button? _polygonButton;
+    private Button? _eraserButton;
     private Button? _highlightButton;
     private Button? _formButton;
     private Button? _signButton;
     private Button? _rectButton;
+    private Button? _roundRectButton;
+    private Button? _hiRectButton;
     private Button? _ellipseButton;
     private Button? _lineButton;
     private Button? _arrowButton;
+    private Button? _starButton;
+    private Button? _bubbleButton;
+    private Button? _loupeButton;
     private Button? _calloutButton;
+    private readonly List<FrameworkElement> _loupePopupVisuals = [];
+    private Button? _redactButton;
     private bool _calloutMode;
+    private bool _calloutTipEditMode;
+    private PdfAnnotationInfo? _calloutTipTarget;
+    private bool _redactionMode;
+    private bool _redactionDrawing;
+    private int _redactionPageIndex = -1;
+    private Windows.Foundation.Point _redactionStart;
+    private FrameworkElement? _redactionPreview;
     private bool _dragSelecting;
     private Windows.Foundation.Point _dragStart;
     private int _dragPageIndex = -1;
     private int _regionCopyPageIndex = -1;
     private Windows.Foundation.Rect _regionCopyDisplayRect;
     private PdfAnnotationInfo? _selectedAnnot;
+    private readonly List<PdfAnnotationInfo> _selectedAnnots = [];
+    private readonly List<(PdfAnnotationInfo Info, PdfRect OriginBounds)> _multiDragOrigins = [];
     private bool _annotDragging;
     private PdfRect _annotDragOriginBounds;
+    private PdfPagePoint _annotDragOriginEndpointA;
+    private PdfPagePoint _annotDragOriginEndpointB;
     private Windows.Foundation.Point _annotDragOriginUi;
     private string? _annotResizeHandle;
     private Microsoft.UI.Xaml.Shapes.Rectangle? _annotSelectionRect;
+    private readonly List<FrameworkElement> _annotSelectionVisuals = [];
     private readonly List<FrameworkElement> _annotResizeHandleVisuals = [];
+    private readonly HashSet<(int PageIndex, int AnnotIndex)> _expandedStickyNotes = [];
+    private readonly List<FrameworkElement> _stickyNotePopupVisuals = [];
+    /// <summary>In-app annotation clipboard (page/annot index). Cut removes the source on paste.</summary>
+    private (int PageIndex, int AnnotIndex)? _annotClipboard;
+    private bool _annotClipboardIsCut;
     private string _searchQuery = string.Empty;
     private bool _searchCaseSensitive;
     private bool _cropMode;
+    private bool _zoomAreaMode;
+    private Button? _zoomAreaButton;
+    private bool _viewLoupeMode;
+    private Button? _viewLoupeButton;
+    private Border? _viewLoupePopup;
+    private Canvas? _viewLoupeHost;
+    private bool _presentationMode;
+    private Button? _presentButton;
+    private PageLayoutMode _layoutBeforePresentation = PageLayoutMode.Continuous;
+    private double _scaleBeforePresentation = 1.25;
+    private bool _toolbarWasVisible = true;
+    private Grid? _bodyGrid;
+    private DispatcherTimer? _presentationTimer;
     private int _cropPageIndex = -1;
     private double _cropMarginLeftPt;
     private double _cropMarginTopPt;
     private double _cropMarginRightPt;
     private double _cropMarginBottomPt;
     private string? _cropDragHandle;
+    private string _annotationAuthor = Environment.UserName;
     private Windows.Foundation.Point _cropPointerStart;
     private double _cropDragStartLeft;
     private double _cropDragStartTop;
@@ -162,15 +253,23 @@ public sealed class PdfDocumentView : UserControl
         IPdfTextSearchService searchService,
         IPdfTextExtractor textExtractor,
         IPdfOutlineService outlineService,
+        IPdfOutlineExportService outlineExport,
         IPdfLinkService linkService,
         IPdfPageEditor pageEditor,
         IPdfAnnotationService annotations,
+        IPdfRedactionService redaction,
+        IPdfDocumentInfoService documentInfo,
+        IPdfOptimizeService optimize,
+        IImageEncoder imageEncoder,
         ISignatureLibrary signatures,
         IPdfFormStore forms,
+        IFormValueHistory formValueHistory,
+        IFormAutofillProfileStore formProfile,
         IPdfDocumentFactory documentFactory,
         DocumentViewState? viewState = null,
         Window? ownerWindow = null,
-        IOcrEngine? ocr = null)
+        IOcrEngine? ocr = null,
+        Action? onEdited = null)
     {
         _document = document;
         _renderer = renderer;
@@ -178,20 +277,41 @@ public sealed class PdfDocumentView : UserControl
         _searchCoordinator = new PdfSearchCoordinator(searchService);
         _textExtractor = textExtractor;
         _outlineService = outlineService;
+        _outlineExport = outlineExport;
         _linkService = linkService;
         _pageEditor = pageEditor;
         _annotations = annotations;
+        _redaction = redaction;
+        _documentInfo = documentInfo;
+        _optimize = optimize;
+        _imageEncoder = imageEncoder;
         _signatures = signatures;
         _forms = forms;
+        _formValueHistory = formValueHistory;
+        _formProfile = formProfile;
         _documentFactory = documentFactory;
         _ocr = ocr;
         _ownerWindow = ownerWindow;
+        _onEdited = onEdited;
         _viewState = viewState ?? new DocumentViewState();
-        _scale = PdfZoomCalculator.Clamp(_viewState.Zoom <= 0 ? 1.25 : _viewState.Zoom);
+        var settings = TryGetSettings();
+        if (!string.IsNullOrWhiteSpace(settings?.AnnotationAuthor))
+        {
+            _annotationAuthor = settings.AnnotationAuthor.Trim();
+        }
+
+        ApplyAnnotationDefaults(settings);
+        if (settings is not null)
+        {
+            _thumbnailWidth = ThumbnailWidthConstraints.Clamp(settings.ThumbnailWidth);
+        }
+
+        var defaultZoom = settings?.DefaultZoom > 0 ? settings.DefaultZoom : 1.25;
+        _scale = PdfZoomCalculator.Clamp(_viewState.Zoom <= 0 ? defaultZoom : _viewState.Zoom);
         _layoutMode = _viewState.PageLayout;
         CurrentPageIndex = Math.Clamp(_viewState.CurrentPageIndex, 0, Math.Max(0, document.PageCount - 1));
         _pageSelection.SelectOnly(CurrentPageIndex);
-        _documentKey = document.Path ?? document.GetHashCode().ToString("X");
+        _documentKey = PageDragSemantics.DocumentKey(document.Path, document.GetHashCode());
         _thumbnailKey = _documentKey + "|thumb";
 
         _continuousHost = new StackPanel { Spacing = 12, Padding = new Thickness(12) };
@@ -202,6 +322,7 @@ public sealed class PdfDocumentView : UserControl
             Padding = new Thickness(12),
             HorizontalAlignment = HorizontalAlignment.Center,
         };
+        _contactSheetHost = new StackPanel { Spacing = 12, Padding = new Thickness(12) };
         _scrollViewer = new ScrollViewer
         {
             Content = _continuousHost,
@@ -211,7 +332,8 @@ public sealed class PdfDocumentView : UserControl
         };
         _scrollViewer.ViewChanged += ScrollViewer_ViewChanged;
         _scrollViewer.PointerWheelChanged += ScrollViewer_PointerWheelChanged;
-        // Precision-touchpad pinch often arrives as Ctrl+wheel; Manipulation Scale covers direct pinch.
+        // Precision-touchpad pinch often arrives as Ctrl+wheel; Manipulation Scale covers direct pinch
+        // (TouchpadGesturePolicy.PreferPinchZoom).
         _scrollViewer.ManipulationMode = ManipulationModes.Scale;
         _scrollViewer.ManipulationDelta += ScrollViewer_ManipulationDelta;
 
@@ -228,84 +350,147 @@ public sealed class PdfDocumentView : UserControl
         _thumbnailScroll.Drop += ThumbnailHost_Drop;
         _outlineTree = new TreeView { SelectionMode = TreeViewSelectionMode.Single };
         _outlineTree.ItemInvoked += OutlineTree_ItemInvoked;
+        _outlineTree.KeyDown += OutlineTree_KeyDown;
+        AutomationProperties.SetName(_outlineTree, PdfViewerAutomationNames.TableOfContents);
 
-        _searchBox = new TextBox { PlaceholderText = "Find in document", Width = 160 };
+        _searchBox = new TextBox { PlaceholderText = PdfDialogPlaceholders.FindInDocument, Width = 160 };
         _searchBox.KeyDown += SearchBox_KeyDown;
-        _caseSensitiveBox = new CheckBox { Content = "Aa", VerticalAlignment = VerticalAlignment.Center };
-        ToolTipService.SetToolTip(_caseSensitiveBox, "Match case");
-        var searchButton = new Button { Content = "Find" };
+        _caseSensitiveBox = new CheckBox { Content = PdfViewerChromeLabels.Aa, VerticalAlignment = VerticalAlignment.Center };
+        ToolTipService.SetToolTip(_caseSensitiveBox, PdfViewerTooltips.MatchCase);
+        var searchButton = new Button { Content = PdfViewerChromeLabels.Find };
         searchButton.Click += async (_, _) => await RunSearchAsync();
-        var findSelection = new Button { Content = "Find sel" };
+        var findSelection = new Button { Content = PdfViewerChromeLabels.FindSelection };
         findSelection.Click += async (_, _) => await SearchSelectedTextAsync();
-        ToolTipService.SetToolTip(findSelection, "Search for the currently selected text");
-        var ocrPage = new Button { Content = "OCR" };
+        ToolTipService.SetToolTip(findSelection, PdfViewerTooltips.SearchForTheCurrentlySelectedText);
+        var ocrPage = new Button { Content = PdfViewerChromeLabels.Ocr };
         ocrPage.Click += async (_, _) => await OnOcrButtonClickAsync();
-        ToolTipService.SetToolTip(ocrPage, "Run offline OCR on selected pages or the entire PDF");
-        _ocrCancelButton = new Button { Content = "Cancel OCR", Visibility = Visibility.Collapsed };
+        ToolTipService.SetToolTip(ocrPage, PdfViewerTooltips.RunOfflineOcrOnSelectedPages);
+        _ocrCancelButton = new Button { Content = PerformanceBehaviorPolicy.CancelOcrButton, Visibility = Visibility.Collapsed };
         _ocrCancelButton.Click += (_, _) => CancelOcr();
-        ToolTipService.SetToolTip(_ocrCancelButton, "Cancel the in-flight OCR job");
-        _copyOcrButton = new Button { Content = "Copy OCR", Visibility = Visibility.Collapsed };
+        ToolTipService.SetToolTip(_ocrCancelButton, PdfViewerTooltips.CancelTheInFlightOcrJob);
+        _jobProgress = new ProgressBar
+        {
+            Width = 120,
+            Height = 8,
+            Minimum = 0,
+            Maximum = 100,
+            Visibility = Visibility.Collapsed,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        ToolTipService.SetToolTip(_jobProgress, PdfViewerTooltips.LongRunningJobProgress);
+        _copyOcrButton = new Button { Content = PdfViewerChromeLabels.CopyOcr, Visibility = Visibility.Collapsed };
         _copyOcrButton.Click += (_, _) => CopySelectedOcrText();
-        ToolTipService.SetToolTip(_copyOcrButton, "Copy selected OCR words (or all OCR text on visible pages)");
-        _clearOcrOverlayButton = new Button { Content = "Clear OCR", Visibility = Visibility.Collapsed };
+        ToolTipService.SetToolTip(_copyOcrButton, PdfViewerTooltips.CopySelectedOcrWordsOrAll);
+        _clearOcrOverlayButton = new Button { Content = PdfViewerChromeLabels.ClearOcr, Visibility = Visibility.Collapsed };
         _clearOcrOverlayButton.Click += (_, _) => ClearOcrOverlays();
-        ToolTipService.SetToolTip(_clearOcrOverlayButton, "Hide OCR word overlays (keeps Find OCR cache)");
-        _ocrSavePdfButton = new Button { Content = "OCR→PDF", Visibility = Visibility.Collapsed };
+        ToolTipService.SetToolTip(_clearOcrOverlayButton, PdfViewerTooltips.HideOcrWordOverlaysKeepsFind);
+        _ocrSavePdfButton = new Button { Content = PdfViewerChromeLabels.OcrToPdf, Visibility = Visibility.Collapsed };
         _ocrSavePdfButton.Click += async (_, _) => await SaveSearchableOcrPdfAsync();
-        ToolTipService.SetToolTip(_ocrSavePdfButton, "Export OCR'd pages as a searchable PDF with invisible text");
-        _ocrEntitiesButton = new Button { Content = "Entities", Visibility = Visibility.Collapsed };
+        ToolTipService.SetToolTip(_ocrSavePdfButton, PdfViewerTooltips.ExportOcrDPagesAsA);
+        _ocrEntitiesButton = new Button { Content = PdfViewerChromeLabels.Entities, Visibility = Visibility.Collapsed };
         _ocrEntitiesButton.Click += async (_, _) => await ShowOcrEntitiesAsync();
-        ToolTipService.SetToolTip(_ocrEntitiesButton, "Review detected URLs, emails, phones, addresses, dates, and times in OCR text");
-        var clearSearch = new Button { Content = "Clear" };
-        ToolTipService.SetToolTip(clearSearch, "Clear search results");
+        ToolTipService.SetToolTip(_ocrEntitiesButton, PdfViewerTooltips.ReviewDetectedUrlsEmailsPhonesAddresses);
+        var clearSearch = new Button { Content = PdfViewerChromeLabels.Clear };
+        ToolTipService.SetToolTip(clearSearch, PdfViewerTooltips.ClearSearchResults);
         clearSearch.Click += async (_, _) => await ClearSearchAsync();
-        var prevMatch = new Button { Content = "◁" };
-        var nextMatch = new Button { Content = "▷" };
-        ToolTipService.SetToolTip(prevMatch, "Previous match");
-        ToolTipService.SetToolTip(nextMatch, "Next match");
+        var prevMatch = new Button { Content = PdfViewerChromeLabels.NavPrev };
+        var nextMatch = new Button { Content = PdfViewerChromeLabels.NavNext };
+        ToolTipService.SetToolTip(prevMatch, PdfViewerTooltips.PreviousMatch);
+        ToolTipService.SetToolTip(nextMatch, PdfViewerTooltips.NextMatch);
         prevMatch.Click += async (_, _) => await GoToHitAsync(_activeHitIndex - 1);
         nextMatch.Click += async (_, _) => await GoToHitAsync(_activeHitIndex + 1);
         _searchResults = new ListView
         {
             SelectionMode = ListViewSelectionMode.Single,
-            Height = 120,
         };
         _searchResults.SelectionChanged += SearchResults_SelectionChanged;
+        _searchResults.RightTapped += SearchResults_RightTapped;
         _annotationList = new ListView
         {
-            SelectionMode = ListViewSelectionMode.Single,
-            Height = 140,
+            SelectionMode = ListViewSelectionMode.Extended,
         };
         _annotationList.SelectionChanged += AnnotationList_SelectionChanged;
-
-        var sidePanel = new Grid
+        _annotationList.RightTapped += AnnotationList_RightTapped;
+        _attachmentList = new ListView
         {
-            Width = 180,
-            RowDefinitions =
+            SelectionMode = ListViewSelectionMode.Single,
+        };
+        _attachmentList.RightTapped += AttachmentList_RightTapped;
+
+        _bookmarkList = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            IsItemClickEnabled = true,
+        };
+        _bookmarkList.ItemClick += async (_, args) =>
+        {
+            if (args.ClickedItem is BookmarkListItem item)
             {
-                new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
-                new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(100) },
-                new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(110) },
-                new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(140) },
+                await GoToPageAsync(item.PageIndex, recordHistory: true);
+            }
+        };
+        _bookmarkList.RightTapped += BookmarkList_RightTapped;
+
+        var bookmarkHeader = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            Margin = new Thickness(8, 8, 8, 4),
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = PdfViewerTextLabels.Bookmarks,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
             },
         };
-        sidePanel.Children.Add(new TextBlock { Text = "Pages", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(8, 8, 8, 4) });
-        Grid.SetRow(_thumbnailScroll, 1);
-        sidePanel.Children.Add(_thumbnailScroll);
-        var tocHeader = new TextBlock { Text = "Contents", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(8, 8, 8, 4) };
-        Grid.SetRow(tocHeader, 2);
-        sidePanel.Children.Add(tocHeader);
-        Grid.SetRow(_outlineTree, 3);
-        sidePanel.Children.Add(_outlineTree);
-        var searchHeader = new TextBlock { Text = "Search", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(8, 8, 8, 4) };
-        Grid.SetRow(searchHeader, 4);
-        sidePanel.Children.Add(searchHeader);
-        Grid.SetRow(_searchResults, 5);
-        sidePanel.Children.Add(_searchResults);
+        var addBookmark = new Button { Content = PdfViewerChromeLabels.Plus, Width = 28, Padding = new Thickness(0) };
+        ToolTipService.SetToolTip(addBookmark, PdfViewerTooltips.AddBookmarkAtCurrentPage);
+        AutomationProperties.SetName(addBookmark, PdfViewerAutomationNames.AddBookmarkAtCurrentPage);
+        addBookmark.Click += async (_, _) => await AddBookmarkAsync();
+        var renameBookmark = new Button { Content = PdfViewerChromeLabels.Rename, Padding = new Thickness(4, 2, 4, 2) };
+        ToolTipService.SetToolTip(renameBookmark, PdfViewerTooltips.RenameSelectedBookmark);
+        AutomationProperties.SetName(renameBookmark, PdfViewerAutomationNames.RenameSelectedBookmark);
+        renameBookmark.Click += async (_, _) => await RenameSelectedBookmarkAsync();
+        var deleteBookmark = new Button { Content = PdfViewerChromeLabels.DeleteShort, Padding = new Thickness(4, 2, 4, 2) };
+        ToolTipService.SetToolTip(deleteBookmark, PdfViewerTooltips.DeleteSelectedBookmark);
+        AutomationProperties.SetName(deleteBookmark, PdfViewerAutomationNames.DeleteSelectedBookmark);
+        deleteBookmark.Click += (_, _) => DeleteSelectedBookmark();
+        var upBookmark = new Button { Content = PdfViewerChromeLabels.MoveUp, Width = 28, Padding = new Thickness(0) };
+        ToolTipService.SetToolTip(upBookmark, PdfViewerTooltips.MoveBookmarkUp);
+        AutomationProperties.SetName(upBookmark, PdfViewerAutomationNames.MoveBookmarkUp);
+        upBookmark.Click += (_, _) => MoveSelectedBookmark(-1);
+        var downBookmark = new Button { Content = PdfViewerChromeLabels.MoveDown, Width = 28, Padding = new Thickness(0) };
+        ToolTipService.SetToolTip(downBookmark, PdfViewerTooltips.MoveBookmarkDown);
+        AutomationProperties.SetName(downBookmark, PdfViewerAutomationNames.MoveBookmarkDown);
+        downBookmark.Click += (_, _) => MoveSelectedBookmark(1);
+        var exportBookmarks = new Button { Content = PdfViewerChromeLabels.Pdf, Padding = new Thickness(4, 2, 4, 2) };
+        ToolTipService.SetToolTip(exportBookmarks, PdfViewerTooltips.WriteBookmarksIntoThisPdfAs);
+        AutomationProperties.SetName(exportBookmarks, PdfViewerAutomationNames.ExportBookmarksToPdfOutline);
+        exportBookmarks.Click += async (_, _) => await ExportBookmarksToPdfOutlineAsync();
+        bookmarkHeader.Children.Add(addBookmark);
+        bookmarkHeader.Children.Add(renameBookmark);
+        bookmarkHeader.Children.Add(deleteBookmark);
+        bookmarkHeader.Children.Add(upBookmark);
+        bookmarkHeader.Children.Add(downBookmark);
+        bookmarkHeader.Children.Add(exportBookmarks);
+
+        var tocHeader = new TextBlock
+        {
+            Text = PdfViewerTextLabels.Contents,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Margin = new Thickness(8, 8, 8, 4),
+        };
+
+        var searchHeader = new TextBlock
+        {
+            Text = PdfViewerTextLabels.Search,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Margin = new Thickness(8, 8, 8, 4),
+        };
+
         var annotHeaderRow = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -315,126 +500,421 @@ public sealed class PdfDocumentView : UserControl
             {
                 new TextBlock
                 {
-                    Text = "Annotations",
+                    Text = PdfViewerTextLabels.Annotations,
                     FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                     VerticalAlignment = VerticalAlignment.Center,
                 },
             },
         };
-        var removeAnnot = new Button { Content = "Delete", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(removeAnnot, "Delete selected annotation");
+        var removeAnnot = new Button { Content = PdfViewerChromeLabels.Delete, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(removeAnnot, PdfViewerTooltips.DeleteSelectedAnnotation);
         removeAnnot.Click += async (_, _) => await RemoveSelectedAnnotationAsync();
-        var duplicateAnnot = new Button { Content = "Dup", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(duplicateAnnot, "Duplicate selected annotation (offset copy)");
+        var duplicateAnnot = new Button { Content = PdfViewerChromeLabels.Duplicate, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(duplicateAnnot, PdfViewerTooltips.DuplicateSelectedAnnotationOffsetCopy);
         duplicateAnnot.Click += async (_, _) => await DuplicateSelectedAnnotationAsync();
+        var copyAnnot = new Button { Content = PdfViewerChromeLabels.Copy, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(copyAnnot, PdfViewerTooltips.CopySelectedAnnotationCtrlCWhen);
+        copyAnnot.Click += (_, _) => CopySelectedAnnotationToClipboard();
+        var cutAnnot = new Button { Content = PdfViewerChromeLabels.Cut, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(cutAnnot, PdfViewerTooltips.CutSelectedAnnotationCtrlXWhen);
+        cutAnnot.Click += (_, _) => CutSelectedAnnotationToClipboard();
+        var pasteAnnot = new Button { Content = PdfViewerChromeLabels.Paste, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(pasteAnnot, PdfViewerTooltips.PasteAnnotationClipboardCtrlVWhen);
+        pasteAnnot.Click += async (_, _) => await PasteAnnotationClipboardAsync();
+        var editAnnot = new Button { Content = PdfViewerChromeLabels.Edit, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(editAnnot, PdfViewerTooltips.EditContentsOfSelectedStickyNote);
+        editAnnot.Click += async (_, _) => await EditSelectedAnnotationContentsAsync();
+        var authorAnnot = new Button { Content = PdfViewerChromeLabels.Author, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(authorAnnot, PdfViewerTooltips.SetDefaultAnnotationAuthorNameFor);
+        authorAnnot.Click += async (_, _) => await ConfigureAnnotationAuthorAsync();
         annotHeaderRow.Children.Add(duplicateAnnot);
-        var colorAnnot = new Button { Content = "Color", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(colorAnnot, "Change selected annotation color");
+        annotHeaderRow.Children.Add(editAnnot);
+        annotHeaderRow.Children.Add(copyAnnot);
+        annotHeaderRow.Children.Add(cutAnnot);
+        annotHeaderRow.Children.Add(pasteAnnot);
+        annotHeaderRow.Children.Add(authorAnnot);
+        var expandNote = new Button { Content = PdfViewerChromeLabels.Expand, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(expandNote, PdfViewerTooltips.ExpandSelectedStickyNoteShowPopup);
+        expandNote.Click += (_, _) => ExpandSelectedStickyNote();
+        annotHeaderRow.Children.Add(expandNote);
+        var collapseNote = new Button { Content = PdfViewerChromeLabels.Collapse, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(collapseNote, PdfViewerTooltips.CollapseExpandedStickyNotePopup);
+        collapseNote.Click += (_, _) => CollapseSelectedStickyNote();
+        annotHeaderRow.Children.Add(collapseNote);
+        var exportNotes = new Button { Content = PdfViewerChromeLabels.ExportNotes, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(exportNotes, PdfViewerTooltips.SaveStickyNotesAsAPrintable);
+        exportNotes.Click += async (_, _) => await ExportNotesAsync();
+        annotHeaderRow.Children.Add(exportNotes);
+        var underlineAnnot = new Button { Content = PdfViewerChromeLabels.Underline, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(underlineAnnot, PdfViewerTooltips.ToggleUnderlineOnSelectedTextBox);
+        underlineAnnot.Click += async (_, _) => await ToggleSelectedTextUnderlineAsync();
+        annotHeaderRow.Children.Add(underlineAnnot);
+        var alignAnnot = new Button { Content = PdfViewerChromeLabels.Align, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(alignAnnot, PdfViewerTooltips.SetTextAlignmentLeftCenterRight);
+        alignAnnot.Click += async (_, _) => await SetSelectedTextQuaddingAsync();
+        annotHeaderRow.Children.Add(alignAnnot);
+        var colorAnnot = new Button { Content = PdfViewerChromeLabels.Color, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(colorAnnot, PdfViewerTooltips.ChangeSelectedAnnotationColor);
         colorAnnot.Click += async (_, _) => await SetSelectedAnnotationColorAsync();
         annotHeaderRow.Children.Add(colorAnnot);
-        var opacityAnnot = new Button { Content = "Opacity", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(opacityAnnot, "Change selected annotation opacity");
+        var fillAnnot = new Button { Content = PdfViewerChromeLabels.Fill, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(fillAnnot, PdfViewerTooltips.ChangeFillColorForShapesAnd);
+        fillAnnot.Click += async (_, _) => await SetSelectedAnnotationFillAsync();
+        annotHeaderRow.Children.Add(fillAnnot);
+        var tipAnnot = new Button { Content = PdfViewerChromeLabels.CalloutTip, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(tipAnnot, PdfViewerTooltips.RepositionCalloutPointerTipClickOn);
+        tipAnnot.Click += (_, _) => BeginCalloutTipEdit();
+        annotHeaderRow.Children.Add(tipAnnot);
+        var groupAnnot = new Button { Content = PdfViewerChromeLabels.Group, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(groupAnnot, PdfViewerTooltips.GroupSelectedAnnotationsSoTheyMove);
+        groupAnnot.Click += async (_, _) => await GroupSelectedAnnotationsAsync();
+        annotHeaderRow.Children.Add(groupAnnot);
+        var ungroupAnnot = new Button { Content = PdfViewerChromeLabels.Ungroup, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(ungroupAnnot, PdfViewerTooltips.RemoveGroupFromSelectedAnnotations);
+        ungroupAnnot.Click += async (_, _) => await UngroupSelectedAnnotationsAsync();
+        annotHeaderRow.Children.Add(ungroupAnnot);
+        var opacityAnnot = new Button { Content = PdfViewerChromeLabels.Opacity, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(opacityAnnot, PdfViewerTooltips.ChangeSelectedAnnotationOpacity);
         opacityAnnot.Click += async (_, _) => await SetSelectedAnnotationOpacityAsync();
         annotHeaderRow.Children.Add(opacityAnnot);
+        var widthAnnot = new Button { Content = PdfViewerChromeLabels.Width, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(widthAnnot, PdfViewerTooltips.ChangeStrokeOrBorderWidthFor);
+        widthAnnot.Click += async (_, _) => await SetSelectedAnnotationBorderWidthAsync();
+        annotHeaderRow.Children.Add(widthAnnot);
+        var rotateAnnot = new Button { Content = PdfViewerChromeLabels.Rotate, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(rotateAnnot, PdfViewerTooltips.RotateSelectedStampInkShapeOr);
+        rotateAnnot.Click += async (_, _) => await RotateSelectedAnnotationAsync();
+        annotHeaderRow.Children.Add(rotateAnnot);
         annotHeaderRow.Children.Add(removeAnnot);
-        Grid.SetRow(annotHeaderRow, 6);
-        sidePanel.Children.Add(annotHeaderRow);
-        Grid.SetRow(_annotationList, 7);
-        sidePanel.Children.Add(_annotationList);
 
         _status = new TextBlock { Opacity = 0.75, FontSize = 12, Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
-        _gotoBox = new TextBox { PlaceholderText = "#", Width = 48 };
+
+        var propertiesHeader = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            Margin = new Thickness(8, 8, 8, 4),
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = PdfViewerTextLabels.Properties,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+            },
+        };
+        var propertiesMore = new Button { Content = PdfViewerChromeLabels.MoreEllipsis, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(propertiesMore, PdfViewerTooltips.OpenFullDocumentInfoDialog);
+        propertiesMore.Click += async (_, _) => await ShowDocumentInfoAsync();
+        var propertiesEdit = new Button { Content = PdfViewerChromeLabels.EditEllipsis, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(propertiesEdit, PdfViewerTooltips.EditTitleAuthorSubjectAndKeywords);
+        propertiesEdit.Click += async (_, _) =>
+        {
+            try
+            {
+                var info = _documentInfo.GetInfo(_document);
+                await EditDocumentInfoAsync(info);
+            }
+            catch (Exception ex)
+            {
+                _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.EditProperties, ex.Message);
+            }
+        };
+        propertiesHeader.Children.Add(propertiesMore);
+        propertiesHeader.Children.Add(propertiesEdit);
+        _propertiesSummary = new TextBlock
+        {
+            Margin = new Thickness(8, 0, 8, 8),
+            FontSize = 11,
+            Opacity = 0.85,
+            TextWrapping = TextWrapping.Wrap,
+            Text = PdfViewerTextLabels.LoadingEllipsis,
+        };
+
+        var attachmentHeader = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            Margin = new Thickness(8, 8, 8, 4),
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = PdfViewerTextLabels.Attachments,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+            },
+        };
+        var saveAttachment = new Button { Content = PdfViewerChromeLabels.SaveEllipsis, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(saveAttachment, PdfViewerTooltips.SaveSelectedEmbeddedAttachmentToDisk);
+        saveAttachment.Click += async (_, _) => await SaveSelectedAttachmentAsync();
+        var refreshAttachments = new Button { Content = PdfViewerChromeLabels.RotateRefresh, Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(refreshAttachments, PdfViewerTooltips.RefreshAttachmentList);
+        refreshAttachments.Click += (_, _) => RefreshAttachmentsSidebar();
+        attachmentHeader.Children.Add(saveAttachment);
+        attachmentHeader.Children.Add(refreshAttachments);
+
+        static Grid BuildSidebarSection(UIElement header, UIElement body)
+        {
+            var section = new Grid
+            {
+                RowDefinitions =
+                {
+                    new RowDefinition { Height = GridLength.Auto },
+                    new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
+                },
+            };
+            if (header is FrameworkElement headerFe)
+            {
+                Grid.SetRow(headerFe, 0);
+            }
+
+            section.Children.Add(header);
+            if (body is FrameworkElement bodyFe)
+            {
+                Grid.SetRow(bodyFe, 1);
+            }
+
+            section.Children.Add(body);
+            return section;
+        }
+
+        var pagesSection = BuildSidebarSection(BuildPagesHeader(), _thumbnailScroll);
+        var tocSection = BuildSidebarSection(tocHeader, _outlineTree);
+        var bookmarksSection = BuildSidebarSection(bookmarkHeader, _bookmarkList);
+        var searchSection = BuildSidebarSection(searchHeader, _searchResults);
+        var annotSection = BuildSidebarSection(annotHeaderRow, _annotationList);
+        var propertiesSection = BuildSidebarSection(propertiesHeader, _propertiesSummary);
+        var attachmentSection = BuildSidebarSection(attachmentHeader, _attachmentList);
+
+        _sidebarSections.Clear();
+        _sidebarSections.Add(pagesSection);
+        _sidebarSections.Add(tocSection);
+        _sidebarSections.Add(bookmarksSection);
+        _sidebarSections.Add(searchSection);
+        _sidebarSections.Add(annotSection);
+        _sidebarSections.Add(propertiesSection);
+        _sidebarSections.Add(attachmentSection);
+
+        _sidebarModeBox = new ComboBox
+        {
+            Margin = new Thickness(8, 8, 8, 4),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            ItemsSource = SidebarModeCombo.Labels.ToArray(),
+            SelectedIndex = SidebarModeCombo.FromSidebarMode(_viewState.SidebarMode),
+        };
+        AutomationProperties.SetName(_sidebarModeBox, PdfViewerAutomationNames.SidebarMode);
+        ToolTipService.SetToolTip(_sidebarModeBox, PdfViewerTooltips.SwitchSidebarModeWithoutOpeningAnother);
+        _sidebarModeBox.SelectionChanged += (_, _) => ApplySidebarMode();
+
+        var sideContentHost = new Grid();
+        foreach (var section in _sidebarSections)
+        {
+            sideContentHost.Children.Add(section);
+        }
+
+        var sidePanel = new Grid
+        {
+            Width = Math.Max(180, _thumbnailWidth + 48),
+            RowDefinitions =
+            {
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
+            },
+        };
+        _sidePanel = sidePanel;
+        Grid.SetRow(_sidebarModeBox, 0);
+        sidePanel.Children.Add(_sidebarModeBox);
+        Grid.SetRow(sideContentHost, 1);
+        sidePanel.Children.Add(sideContentHost);
+        ApplySidebarMode();
+
+        _status = new TextBlock { Opacity = 0.75, FontSize = 12, Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+        _gotoBox = new TextBox { PlaceholderText = PdfDialogPlaceholders.GotoPage, Width = 48 };
         _gotoBox.KeyDown += GotoBox_KeyDown;
         _layoutBox = new ComboBox
         {
             Width = 150,
-            ItemsSource = new[] { "Continuous", "Single", "Two-page", "Two-page + cover" },
-            SelectedIndex = LayoutToComboIndex(_layoutMode),
+            ItemsSource = PdfDialogOptions.LayoutModes.ToList(),
+            SelectedIndex = PageLayoutCombo.ToComboIndex(_layoutMode),
         };
-        _layoutBox.SelectionChanged += async (_, _) => await SetLayoutModeAsync(SelectedLayout());
+        _layoutBox.SelectionChanged += async (_, _) =>
+        {
+            if (_layoutBox.SelectedIndex == PageLayoutCombo.ContactSheetIndex)
+            {
+                await EnterContactSheetAsync();
+                return;
+            }
 
-        var first = new Button { Content = "First" };
-        var prev = new Button { Content = "Prev" };
-        var next = new Button { Content = "Next" };
-        var last = new Button { Content = "Last" };
-        var back = new Button { Content = "Back" };
-        var forward = new Button { Content = "Fwd" };
-        var zoomOut = new Button { Content = "−", Width = 36 };
-        var zoomIn = new Button { Content = "+", Width = 36 };
-        var fitWidth = new Button { Content = "Fit width" };
-        var fitPage = new Button { Content = "Fit page" };
-        var actual = new Button { Content = "100%" };
-        var copy = new Button { Content = "Copy" };
-        ToolTipService.SetToolTip(copy, "Copy selected text, or the current page text if nothing is selected");
-        var rotateLeft = new Button { Content = "⟲" };
-        var rotateRight = new Button { Content = "⟳" };
-        var deletePages = new Button { Content = "Delete" };
-        var moveUp = new Button { Content = "↑" };
-        var moveDown = new Button { Content = "↓" };
-        var insertBlank = new Button { Content = "Blank" };
-        var duplicate = new Button { Content = "Dup" };
-        var extract = new Button { Content = "Extract" };
-        var merge = new Button { Content = "Merge" };
-        var split = new Button { Content = "Split" };
-        var crop = new Button { Content = "Crop" };
-        var highlight = new Button { Content = "Highlight" };
-        var underline = new Button { Content = "Underline" };
-        var strikeout = new Button { Content = "Strike" };
-        var stickyNote = new Button { Content = "Note" };
-        var textBox = new Button { Content = "TextBox" };
-        var callout = new Button { Content = "Callout" };
-        var flatten = new Button { Content = "Flatten" };
-        var sign = new Button { Content = "Sign" };
-        var formFill = new Button { Content = "Form" };
-        var ink = new Button { Content = "Ink" };
-        var freeform = new Button { Content = "Freeform" };
-        var rect = new Button { Content = "Rect" };
-        var ellipse = new Button { Content = "Ellipse" };
-        var line = new Button { Content = "Line" };
-        var arrow = new Button { Content = "Arrow" };
+            if (_contactSheetMode)
+            {
+                _contactSheetMode = false;
+            }
+
+            await SetLayoutModeAsync(SelectedLayout());
+        };
+
+        var first = new Button { Content = PdfViewerChromeLabels.First };
+        var prev = new Button { Content = PdfViewerChromeLabels.Prev };
+        var next = new Button { Content = PdfViewerChromeLabels.Next };
+        var last = new Button { Content = PdfViewerChromeLabels.Last };
+        var back = new Button { Content = PdfViewerChromeLabels.Back };
+        var forward = new Button { Content = PdfViewerChromeLabels.Fwd };
+        var zoomOut = new Button { Content = PdfViewerChromeLabels.Minus, Width = 36 };
+        var zoomIn = new Button { Content = PdfViewerChromeLabels.Plus, Width = 36 };
+        var fitWidth = new Button { Content = PdfViewerChromeLabels.FitWidth };
+        var fitPage = new Button { Content = PdfViewerChromeLabels.FitPage };
+        var actual = new Button { Content = PdfViewerChromeLabels.Zoom100 };
+        _zoomAreaButton = new Button { Content = PdfViewerChromeLabels.ZoomArea };
+        ToolTipService.SetToolTip(_zoomAreaButton, PdfViewerTooltips.RectangularZoomToAreaDragOn);
+        AutomationProperties.SetName(_zoomAreaButton, PdfViewerAutomationNames.ZoomToArea);
+        _viewLoupeButton = new Button { Content = PdfViewerChromeLabels.LoupeGlass };
+        ToolTipService.SetToolTip(_viewLoupeButton, PdfViewerTooltips.MagnifierLoupeMoveOverThePage);
+        AutomationProperties.SetName(_viewLoupeButton, PdfViewerAutomationNames.MagnifierLoupe);
+        _presentButton = new Button { Content = PdfViewerChromeLabels.Present };
+        ToolTipService.SetToolTip(_presentButton, PdfViewerTooltips.PresentationModeFullscreenHideChromeSingle);
+        AutomationProperties.SetName(_presentButton, PdfViewerAutomationNames.PresentationMode);
+        var copy = new Button { Content = PdfViewerChromeLabels.Copy };
+        ToolTipService.SetToolTip(copy, PdfViewerTooltips.CopySelectedTextOrTheCurrent);
+        var rotateLeft = new Button { Content = PdfViewerChromeLabels.RotateCcw };
+        var rotateRight = new Button { Content = PdfViewerChromeLabels.RotateCw };
+        var deletePages = new Button { Content = PdfViewerChromeLabels.Delete };
+        var moveUp = new Button { Content = PdfViewerChromeLabels.MoveUp };
+        var moveDown = new Button { Content = PdfViewerChromeLabels.MoveDown };
+        var insertBlank = new Button { Content = PdfViewerChromeLabels.Blank };
+        var duplicate = new Button { Content = PdfViewerChromeLabels.Duplicate };
+        var extract = new Button { Content = PdfViewerChromeLabels.Extract };
+        var merge = new Button { Content = PdfViewerChromeLabels.Merge };
+        var split = new Button { Content = PdfViewerChromeLabels.Split };
+        var crop = new Button { Content = PdfViewerChromeLabels.Crop };
+        var highlight = new Button { Content = PdfViewerChromeLabels.Highlight };
+        var underline = new Button { Content = PdfViewerChromeLabels.Underline };
+        var strikeout = new Button { Content = PdfViewerChromeLabels.Strike };
+        var stickyNote = new Button { Content = PdfViewerChromeLabels.Note };
+        var textBox = new Button { Content = PdfViewerChromeLabels.TextBox };
+        var callout = new Button { Content = PdfViewerChromeLabels.Callout };
+        var flatten = new Button { Content = PdfViewerChromeLabels.Flatten };
+        var redact = new Button { Content = PdfViewerChromeLabels.Redact };
+        var info = new Button { Content = PdfViewerChromeLabels.Info };
+        var optimizeButton = new Button { Content = PdfViewerChromeLabels.Optimize };
+        var export = new Button { Content = PdfViewerChromeLabels.Export };
+        var print = new Button { Content = PdfViewerChromeLabels.Print };
+        var camera = new Button { Content = WebcamCaptureUi.CaptureButton };
+        var sign = new Button { Content = PdfViewerChromeLabels.Sign };
+        var share = new Button { Content = PdfViewerChromeLabels.Share };
+        var sidebarToggle = new Button { Content = PdfViewerChromeLabels.Sidebar };
+        var formFill = new Button { Content = PdfViewerChromeLabels.Form };
+        var ink = new Button { Content = PdfViewerChromeLabels.Ink };
+        var freeform = new Button { Content = PdfViewerChromeLabels.Freeform };
+        var polygon = new Button { Content = PdfViewerChromeLabels.Polygon };
+        var eraser = new Button { Content = PdfViewerChromeLabels.Eraser };
+        var rect = new Button { Content = PdfViewerChromeLabels.Rect };
+        var roundRect = new Button { Content = PdfViewerChromeLabels.Round };
+        var hiRect = new Button { Content = PdfViewerChromeLabels.Area };
+        var ellipse = new Button { Content = PdfViewerChromeLabels.Ellipse };
+        var line = new Button { Content = PdfViewerChromeLabels.Line };
+        var arrow = new Button { Content = PdfViewerChromeLabels.Arrow };
+        var star = new Button { Content = PdfViewerChromeLabels.Star };
+        var bubble = new Button { Content = PdfViewerChromeLabels.Bubble };
+        var loupe = new Button { Content = PdfViewerChromeLabels.Loupe };
+        var fullscreen = new Button { Content = PdfViewerChromeLabels.Fullscreen };
         _signButton = sign;
         _inkButton = ink;
         _freeformButton = freeform;
+        _polygonButton = polygon;
+        _eraserButton = eraser;
         _highlightButton = highlight;
         _formButton = formFill;
         _rectButton = rect;
+        _roundRectButton = roundRect;
+        _hiRectButton = hiRect;
         _ellipseButton = ellipse;
         _lineButton = line;
         _arrowButton = arrow;
+        _starButton = star;
+        _bubbleButton = bubble;
+        _loupeButton = loupe;
         _calloutButton = callout;
-        var undoEdit = new Button { Content = "Undo" };
-        var redoEdit = new Button { Content = "Redo" };
-        ToolTipService.SetToolTip(rotateLeft, "Rotate selected pages left");
-        ToolTipService.SetToolTip(rotateRight, "Rotate selected pages right");
-        ToolTipService.SetToolTip(deletePages, "Delete selected pages");
-        ToolTipService.SetToolTip(moveUp, "Move selected pages earlier");
-        ToolTipService.SetToolTip(moveDown, "Move selected pages later");
-        ToolTipService.SetToolTip(insertBlank, "Insert blank page after selection");
-        ToolTipService.SetToolTip(duplicate, "Duplicate selected pages");
-        ToolTipService.SetToolTip(extract, "Extract selected pages to a new PDF file");
-        ToolTipService.SetToolTip(merge, "Merge other PDF files into this document");
-        ToolTipService.SetToolTip(split, "Split document before each selected page");
-        ToolTipService.SetToolTip(crop, "Interactive CropBox crop (visual handles; numeric via Crop → Numeric)");
-        ToolTipService.SetToolTip(highlight, "Highlight selected text, or toggle persistent highlight mode");
-        ToolTipService.SetToolTip(underline, "Underline selected text");
-        ToolTipService.SetToolTip(strikeout, "Strike through selected text");
-        ToolTipService.SetToolTip(stickyNote, "Add a sticky note on the current page");
-        ToolTipService.SetToolTip(textBox, "Add a FreeText text box on the current page");
-        ToolTipService.SetToolTip(callout, "Draw a callout: drag from tip to text box");
-        ToolTipService.SetToolTip(flatten, "Flatten annotations into page content (permanent)");
-        ToolTipService.SetToolTip(sign, "Signature: draw with mouse or import PNG/JPEG (saved to library)");
-        ToolTipService.SetToolTip(formFill, "Form fill: overlay mode or field list (Tab order)");
-        ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
-        ToolTipService.SetToolTip(freeform, "Draw a closed freeform shape (auto-closes path)");
-        ToolTipService.SetToolTip(rect, "Draw a rectangle annotation");
-        ToolTipService.SetToolTip(ellipse, "Draw an ellipse annotation");
-        ToolTipService.SetToolTip(line, "Draw a line (stored as a 2-point ink stroke)");
-        ToolTipService.SetToolTip(arrow, "Draw an arrow (ink shaft + arrowhead)");
-        ToolTipService.SetToolTip(undoEdit, "Undo last page edit (Ctrl+Z)");
-        ToolTipService.SetToolTip(redoEdit, "Redo page edit (Ctrl+Y)");
+        _redactButton = redact;
+        var undoEdit = new Button { Content = PdfViewerChromeLabels.Undo };
+        var redoEdit = new Button { Content = PdfViewerChromeLabels.Redo };
+        ToolTipService.SetToolTip(rotateLeft, PdfViewerTooltips.RotateSelectedPagesLeft);
+        ToolTipService.SetToolTip(rotateRight, PdfViewerTooltips.RotateSelectedPagesRight);
+        ToolTipService.SetToolTip(deletePages, PdfViewerTooltips.DeleteSelectedPages);
+        ToolTipService.SetToolTip(moveUp, PdfViewerTooltips.MoveSelectedPagesEarlier);
+        ToolTipService.SetToolTip(moveDown, PdfViewerTooltips.MoveSelectedPagesLater);
+        ToolTipService.SetToolTip(insertBlank, PdfViewerTooltips.InsertBlankPageAfterSelection);
+        ToolTipService.SetToolTip(duplicate, PdfViewerTooltips.DuplicateSelectedPages);
+        ToolTipService.SetToolTip(extract, PdfViewerTooltips.ExtractSelectedPagesToANew);
+        ToolTipService.SetToolTip(merge, PdfViewerTooltips.MergeOtherPdfFilesIntoThis);
+        ToolTipService.SetToolTip(split, PdfViewerTooltips.SplitDocumentBeforeEachSelectedPage);
+        ToolTipService.SetToolTip(crop, PdfViewerTooltips.InteractiveCropboxCropVisualHandlesNumeric);
+        ToolTipService.SetToolTip(highlight, PdfViewerTooltips.HighlightSelectedTextOrTogglePersistent);
+        ToolTipService.SetToolTip(underline, PdfViewerTooltips.UnderlineSelectedText);
+        ToolTipService.SetToolTip(strikeout, PdfViewerTooltips.StrikeThroughSelectedText);
+        ToolTipService.SetToolTip(stickyNote, PdfViewerTooltips.AddAStickyNoteOnThe);
+        ToolTipService.SetToolTip(textBox, PdfViewerTooltips.AddAFreetextTextBoxOn);
+        ToolTipService.SetToolTip(callout, PdfViewerTooltips.DrawACalloutDragFromTip);
+        ToolTipService.SetToolTip(flatten, PdfViewerTooltips.FlattenAnnotationsIntoPageContentPermanent);
+        ToolTipService.SetToolTip(redact, PdfRedactionUiCopy.ToolbarTooltip);
+        ToolTipService.SetToolTip(info, PdfViewerTooltips.DocumentMetadataEncryptionAndPermissions);
+        ToolTipService.SetToolTip(optimizeButton, PdfViewerTooltips.DownsampleImagesShrinkPdfPresets);
+        ToolTipService.SetToolTip(export, PdfViewerTooltips.ExportSelectedCurrentPageSAs);
+        ToolTipService.SetToolTip(print, PdfViewerTooltips.PrintCurrentSelectedRangeOrAll);
+        ToolTipService.SetToolTip(camera, PdfViewerTooltips.CaptureFromWebcamAndInsertOnto);
+        ToolTipService.SetToolTip(share, PdfViewerTooltips.ShareViaWindowsShareUi);
+        ToolTipService.SetToolTip(sidebarToggle, PdfViewerTooltips.ShowOrHideTheAppSidebar);
+        ToolTipService.SetToolTip(sign, PdfViewerTooltips.SignatureDrawImportPngJpegOr);
+        ToolTipService.SetToolTip(formFill, PdfViewerTooltips.FormFillOverlayModeOrField);
+        ToolTipService.SetToolTip(ink, PdfViewerTooltips.ToggleFreehandInkDrawingOnThe);
+        ToolTipService.SetToolTip(freeform, PdfViewerTooltips.DrawAClosedFreeformShapeAuto);
+        ToolTipService.SetToolTip(eraser, PdfViewerTooltips.EraseAnnotationsByClickingThemInk);
+        ToolTipService.SetToolTip(rect, PdfViewerTooltips.DrawARectangleAnnotation);
+        ToolTipService.SetToolTip(roundRect, PdfViewerTooltips.DrawARoundedRectangleAnnotation);
+        ToolTipService.SetToolTip(hiRect, PdfViewerTooltips.DrawATranslucentHighlightRectangleArea);
+        ToolTipService.SetToolTip(ellipse, PdfViewerTooltips.DrawAnEllipseAnnotation);
+        ToolTipService.SetToolTip(line, PdfViewerTooltips.DrawALineStoredAsA);
+        ToolTipService.SetToolTip(arrow, PdfViewerTooltips.DrawAnArrowInkShaftArrowhead);
+        ToolTipService.SetToolTip(star, PdfViewerTooltips.DrawA5PointStarOutline);
+        ToolTipService.SetToolTip(bubble, PdfViewerTooltips.DrawASpeechBubbleOutline);
+        ToolTipService.SetToolTip(loupe, PdfViewerTooltips.DrawALoupeMagnificationMarkerSelect);
+        ToolTipService.SetToolTip(fullscreen, PdfViewerTooltips.ToggleWindowFullscreenF11);
+        ToolTipService.SetToolTip(undoEdit, PdfViewerTooltips.UndoLastStrokeIfAnyOr);
+        ToolTipService.SetToolTip(redoEdit, PdfViewerTooltips.RedoPageEditCtrlY);
+        ToolTipService.SetToolTip(first, PdfViewerTooltips.GoToFirstPage);
+        ToolTipService.SetToolTip(prev, PdfViewerTooltips.PreviousPage);
+        ToolTipService.SetToolTip(next, PdfViewerTooltips.NextPage);
+        ToolTipService.SetToolTip(last, PdfViewerTooltips.GoToLastPage);
+        ToolTipService.SetToolTip(back, PdfViewerTooltips.NavigateBackInPageHistory);
+        ToolTipService.SetToolTip(forward, PdfViewerTooltips.NavigateForwardInPageHistory);
+        ToolTipService.SetToolTip(zoomOut, PdfViewerTooltips.ZoomOut);
+        ToolTipService.SetToolTip(zoomIn, PdfViewerTooltips.ZoomIn);
+        ToolTipService.SetToolTip(fitWidth, PdfViewerTooltips.FitPageWidth);
+        ToolTipService.SetToolTip(fitPage, PdfViewerTooltips.FitPage);
+        ToolTipService.SetToolTip(actual, PdfViewerTooltips.ZoomTo100);
+        ToolTipService.SetToolTip(_layoutBox, PdfViewerTooltips.PageLayoutMode);
+        ToolTipService.SetToolTip(_gotoBox, PdfViewerTooltips.GoToPageNumber);
+        ApplyToolbarAccessibleNames(
+            first, prev, next, last, back, forward, zoomOut, zoomIn, fitWidth, fitPage, actual, _zoomAreaButton, _viewLoupeButton, _presentButton, copy,
+            rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract,
+            merge, split, crop, highlight, underline, strikeout, stickyNote, textBox, callout, flatten,
+            redact, info, optimizeButton, export, print, share, sidebarToggle, camera, sign, formFill, ink, freeform, eraser, rect,
+            roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, fullscreen, undoEdit, redoEdit,
+            _layoutBox, _gotoBox,
+            _caseSensitiveBox, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton,
+            _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch,
+            removeAnnot, duplicateAnnot, copyAnnot, cutAnnot, pasteAnnot, editAnnot, authorAnnot,
+            expandNote, collapseNote, exportNotes, underlineAnnot, colorAnnot, fillAnnot, tipAnnot,
+            groupAnnot, ungroupAnnot, opacityAnnot, widthAnnot, rotateAnnot);
 
-        first.Click += async (_, _) => await GoToPageAsync(0, recordHistory: true);
-        last.Click += async (_, _) => await GoToPageAsync(_document.PageCount - 1, recordHistory: true);
+        first.Click += async (_, _) => await GoToPageAsync(
+            PageLayoutCalculator.FirstPageIndex(_layoutMode, _document.PageCount),
+            recordHistory: true);
+        last.Click += async (_, _) => await GoToPageAsync(
+            PageLayoutCalculator.LastPageIndex(_layoutMode, _document.PageCount),
+            recordHistory: true);
         prev.Click += async (_, _) => await GoToPageAsync(
             PageLayoutCalculator.PreviousPageIndex(_layoutMode, CurrentPageIndex, _document.PageCount),
             recordHistory: true);
@@ -460,6 +940,9 @@ public sealed class PdfDocumentView : UserControl
         fitWidth.Click += async (_, _) => await FitWidthAsync();
         fitPage.Click += async (_, _) => await FitPageAsync();
         actual.Click += async (_, _) => await SetScaleAsync(PdfZoomCalculator.ActualSize());
+        _zoomAreaButton.Click += (_, _) => ToggleZoomAreaMode();
+        _viewLoupeButton.Click += (_, _) => ToggleViewLoupeMode();
+        _presentButton.Click += async (_, _) => await TogglePresentationModeAsync();
         copy.Click += async (_, _) => await CopyTextAsync();
         rotateLeft.Click += async (_, _) => await RotateSelectedAsync(-90);
         rotateRight.Click += async (_, _) => await RotateSelectedAsync(90);
@@ -479,32 +962,123 @@ public sealed class PdfDocumentView : UserControl
         textBox.Click += async (_, _) => await AddTextBoxAsync();
         callout.Click += (_, _) => ToggleCalloutMode();
         flatten.Click += async (_, _) => await FlattenAnnotationsAsync();
+        redact.Click += async (_, _) => await OnRedactButtonClickAsync();
+        info.Click += async (_, _) => await ShowDocumentInfoAsync();
+        optimizeButton.Click += async (_, _) => await ShowOptimizeDialogAsync();
+        export.Click += async (_, _) => await ExportPagesAsImagesAsync();
+        print.Click += async (_, _) => await PrintDocumentAsync();
+        camera.Click += async (_, _) => await CaptureCameraIntoDocumentAsync();
         sign.Click += async (_, _) => await BeginSignatureAsync();
+        share.Click += (_, _) =>
+        {
+            if (App.CurrentApp.MainWindowInstance is MainWindow mw)
+            {
+                mw.ShareActiveDocumentFromToolbar();
+            }
+            else
+            {
+                _status.Text = DocumentShareStatus.ShareUnavailable;
+            }
+        };
+        sidebarToggle.Click += async (_, _) =>
+        {
+            if (App.CurrentApp.MainWindowInstance is MainWindow mw)
+            {
+                await mw.ToggleSidebarFromToolbarAsync();
+            }
+            else
+            {
+                _status.Text = SidebarModeCombo.ToggleUnavailable;
+            }
+        };
         formFill.Click += async (_, _) => await OnFormButtonClickAsync();
         ink.Click += async (_, _) => await ToggleInkModeAsync();
         freeform.Click += async (_, _) => await ToggleFreeformModeAsync();
+        polygon.Click += async (_, _) => await TogglePolygonModeAsync();
+        eraser.Click += (_, _) => ToggleEraserMode();
         rect.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Rectangle);
+        roundRect.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.RoundedRectangle);
+        hiRect.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.HighlightRectangle);
         ellipse.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Ellipse);
         line.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Line);
         arrow.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Arrow);
-        undoEdit.Click += async (_, _) => await UndoPageEditAsync();
+        star.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Star);
+        bubble.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.SpeechBubble);
+        loupe.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Loupe);
+        fullscreen.Click += (_, _) => ToggleFullscreen();
+        undoEdit.Click += async (_, _) => await UndoMostRecentAsync();
         redoEdit.Click += async (_, _) => await RedoPageEditAsync();
 
-        var toolbar = new StackPanel
+        _toolbar = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 6,
-            Padding = new Thickness(8),
+            Spacing = settings?.CompactToolbar == true ? 2 : 6,
+            Padding = settings?.CompactToolbar == true ? new Thickness(4, 2, 4, 2) : new Thickness(8),
             Children =
             {
-                first, prev, _gotoBox, next, last, back, forward,
-                zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
+                sidebarToggle, first, prev, _gotoBox, next, last, back, forward,
+                zoomOut, zoomIn, fitWidth, fitPage, actual, _zoomAreaButton, _viewLoupeButton, _presentButton, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, sign, formFill, ink, freeform, rect, ellipse, line, arrow,
-                _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _status,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimizeButton, export, print, share, camera, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, fullscreen,
+                _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _jobProgress, _status,
             },
         };
+        TagToolbarCommand(sidebarToggle, ToolbarCommands.Sidebar);
+        TagToolbarCommand(prev, ToolbarCommands.Previous);
+        TagToolbarCommand(next, ToolbarCommands.Next);
+        TagToolbarCommand(_gotoBox, ToolbarCommands.PageNumber);
+        TagToolbarCommand(zoomOut, ToolbarCommands.Zoom);
+        TagToolbarCommand(zoomIn, ToolbarCommands.Zoom);
+        TagToolbarCommand(fitPage, ToolbarCommands.FitPage);
+        TagToolbarCommand(fitWidth, ToolbarCommands.FitWidth);
+        TagToolbarCommand(_zoomAreaButton, ToolbarCommands.Zoom);
+        if (_viewLoupeButton is not null)
+        {
+            TagToolbarCommand(_viewLoupeButton, ToolbarCommands.Zoom);
+        }
+
+        if (_presentButton is not null)
+        {
+            TagToolbarCommand(_presentButton, ToolbarCommands.FitPage);
+        }
+        TagToolbarCommand(_searchBox, ToolbarCommands.Search);
+        TagToolbarCommand(_caseSensitiveBox, ToolbarCommands.Search);
+        TagToolbarCommand(searchButton, ToolbarCommands.Search);
+        TagToolbarCommand(findSelection, ToolbarCommands.Search);
+        TagToolbarCommand(clearSearch, ToolbarCommands.Search);
+        TagToolbarCommand(prevMatch, ToolbarCommands.Search);
+        TagToolbarCommand(nextMatch, ToolbarCommands.Search);
+        TagToolbarCommand(ink, ToolbarCommands.Markup);
+        TagToolbarCommand(freeform, ToolbarCommands.Markup);
+        TagToolbarCommand(polygon, ToolbarCommands.Markup);
+        TagToolbarCommand(eraser, ToolbarCommands.Markup);
+        TagToolbarCommand(rect, ToolbarCommands.Markup);
+        TagToolbarCommand(roundRect, ToolbarCommands.Markup);
+        TagToolbarCommand(hiRect, ToolbarCommands.Markup);
+        TagToolbarCommand(ellipse, ToolbarCommands.Markup);
+        TagToolbarCommand(line, ToolbarCommands.Markup);
+        TagToolbarCommand(arrow, ToolbarCommands.Markup);
+        TagToolbarCommand(star, ToolbarCommands.Markup);
+        TagToolbarCommand(bubble, ToolbarCommands.Markup);
+        TagToolbarCommand(loupe, ToolbarCommands.Markup);
+        TagToolbarCommand(highlight, ToolbarCommands.Highlight);
+        TagToolbarCommand(underline, ToolbarCommands.Highlight);
+        TagToolbarCommand(strikeout, ToolbarCommands.Highlight);
+        TagToolbarCommand(rotateLeft, ToolbarCommands.Rotate);
+        TagToolbarCommand(rotateRight, ToolbarCommands.Rotate);
+        TagToolbarCommand(crop, ToolbarCommands.Crop);
+        TagToolbarCommand(sign, ToolbarCommands.Signature);
+        TagToolbarCommand(print, ToolbarCommands.Print);
+        TagToolbarCommand(info, ToolbarCommands.Inspector);
+        TagToolbarCommand(share, ToolbarCommands.Share);
+        TagToolbarCommand(ocrPage, ToolbarCommands.Ocr);
+        TagToolbarCommand(_ocrCancelButton, ToolbarCommands.Ocr);
+        TagToolbarCommand(_copyOcrButton, ToolbarCommands.Ocr);
+        TagToolbarCommand(_clearOcrOverlayButton, ToolbarCommands.Ocr);
+        TagToolbarCommand(_ocrSavePdfButton, ToolbarCommands.Ocr);
+        TagToolbarCommand(_ocrEntitiesButton, ToolbarCommands.Ocr);
+        ApplyToolbarCommandVisibility(_toolbar, settings);
 
         var body = new Grid
         {
@@ -514,9 +1088,13 @@ public sealed class PdfDocumentView : UserControl
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
             },
         };
+        _bodyGrid = body;
         body.Children.Add(sidePanel);
         Grid.SetColumn(_scrollViewer, 1);
         body.Children.Add(_scrollViewer);
+        _viewLoupeHost = new Canvas { IsHitTestVisible = false };
+        Grid.SetColumnSpan(_viewLoupeHost, 2);
+        body.Children.Add(_viewLoupeHost);
 
         var root = new Grid
         {
@@ -526,7 +1104,7 @@ public sealed class PdfDocumentView : UserControl
                 new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
             },
         };
-        root.Children.Add(toolbar);
+        root.Children.Add(_toolbar);
         Grid.SetRow(body, 1);
         root.Children.Add(body);
         Content = root;
@@ -539,6 +1117,34 @@ public sealed class PdfDocumentView : UserControl
     }
 
     public int CurrentPageIndex { get; private set; }
+
+    private static void TagToolbarCommand(FrameworkElement element, string commandId) =>
+        element.Tag = commandId;
+
+    private static void ApplyToolbarCommandVisibility(StackPanel? toolbar, AppSettings? settings)
+    {
+        if (toolbar is null)
+        {
+            return;
+        }
+
+        var hidden = new HashSet<string>(
+            settings?.ToolbarHiddenCommands ?? [],
+            StringComparer.OrdinalIgnoreCase);
+        if (hidden.Count == 0)
+        {
+            return;
+        }
+
+        for (var i = toolbar.Children.Count - 1; i >= 0; i--)
+        {
+            if (toolbar.Children[i] is FrameworkElement { Tag: string id }
+                && hidden.Contains(id))
+            {
+                toolbar.Children.RemoveAt(i);
+            }
+        }
+    }
 
     private async void PdfDocumentView_Loaded(object sender, RoutedEventArgs e)
     {
@@ -556,13 +1162,18 @@ public sealed class PdfDocumentView : UserControl
         await RenderVisibleAsync();
         _ = RenderThumbnailsAsync();
         _ = LoadOutlineAsync();
+        RefreshBookmarkList();
         _ = RefreshAnnotationSidebarAsync();
+        RefreshPropertiesSidebar();
+        RefreshAttachmentsSidebar();
     }
 
     private void PdfDocumentView_Unloaded(object sender, RoutedEventArgs e)
     {
         PdfPageDragRegistry.Unregister(_documentKey);
         ClearDropHighlight();
+        _presentationTimer?.Stop();
+        _presentationTimer = null;
         if (_cropMode)
         {
             CancelCropMode();
@@ -573,28 +1184,136 @@ public sealed class PdfDocumentView : UserControl
         _cache.ClearDocument(_thumbnailKey);
     }
 
-    private PageLayoutMode SelectedLayout() => _layoutBox.SelectedIndex switch
+    private async Task EnterContactSheetAsync()
     {
-        1 => PageLayoutMode.SinglePage,
-        2 => PageLayoutMode.TwoPage,
-        3 => PageLayoutMode.TwoPageWithCover,
-        _ => PageLayoutMode.Continuous,
-    };
+        _contactSheetMode = true;
+        _status.Text = ContactSheetLayout.OpenHint;
+        BuildContactSheet();
+        _scrollViewer.Content = _contactSheetHost;
+        SyncViewState();
+        await RenderContactSheetAsync();
+    }
 
-    private static int LayoutToComboIndex(PageLayoutMode mode) => mode switch
+    private void BuildContactSheet()
     {
-        PageLayoutMode.SinglePage => 1,
-        PageLayoutMode.TwoPage => 2,
-        PageLayoutMode.TwoPageWithCover => 3,
-        _ => 0,
-    };
+        _contactSheetHost.Children.Clear();
+        const int columns = ContactSheetLayout.DefaultColumns;
+        StackPanel? row = null;
+        for (var i = 0; i < _document.PageCount; i++)
+        {
+            if (ContactSheetLayout.StartsRow(i, columns))
+            {
+                row = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = ContactSheetLayout.DefaultSpacing,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                };
+                _contactSheetHost.Children.Add(row);
+            }
+
+            var pageIndex = i;
+            var image = new Image
+            {
+                Width = ContactSheetLayout.DefaultCellWidth,
+                Stretch = Stretch.Uniform,
+                Tag = pageIndex,
+            };
+            if (_thumbnailImages.TryGetValue(pageIndex, out var thumb) && thumb.Source is not null)
+            {
+                image.Source = thumb.Source;
+            }
+
+            var label = new TextBlock
+            {
+                Text = $"{pageIndex + 1}",
+                FontSize = 12,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Opacity = 0.8,
+            };
+            var stack = new StackPanel { Spacing = 4, Children = { image, label } };
+            var border = new Border
+            {
+                BorderBrush = new SolidColorBrush(
+                    pageIndex == CurrentPageIndex ? Colors.DodgerBlue : Colors.Transparent),
+                BorderThickness = new Thickness(2),
+                Padding = new Thickness(4),
+                Child = stack,
+                Tag = pageIndex,
+            };
+            border.PointerPressed += async (_, e) =>
+            {
+                e.Handled = true;
+                _contactSheetMode = false;
+                // SelectionChanged → SetLayoutModeAsync rebuilds continuous view.
+                if (_layoutBox.SelectedIndex != 0)
+                {
+                    _layoutBox.SelectedIndex = 0;
+                }
+                else
+                {
+                    await SetLayoutModeAsync(PageLayoutMode.Continuous);
+                }
+
+                await GoToPageAsync(pageIndex, recordHistory: true);
+            };
+            row!.Children.Add(border);
+        }
+    }
+
+    private async Task RenderContactSheetAsync()
+    {
+        // Prefer already-rendered sidebar thumbs; fill any missing at contact-sheet size.
+        for (var i = 0; i < _document.PageCount; i++)
+        {
+            if (_thumbnailImages.TryGetValue(i, out var existing) && existing.Source is not null)
+            {
+                continue;
+            }
+
+            try
+            {
+                await RenderThumbnailAsync(i);
+            }
+            catch
+            {
+                // Contact sheet still usable with missing cells.
+            }
+        }
+
+        // Refresh sources after thumbnail pass.
+        foreach (var border in _contactSheetHost.Children
+                     .OfType<StackPanel>()
+                     .SelectMany(r => r.Children.OfType<Border>()))
+        {
+            if (border.Tag is not int pageIndex
+                || border.Child is not StackPanel stack
+                || stack.Children.OfType<Image>().FirstOrDefault() is not { } image)
+            {
+                continue;
+            }
+
+            if (_thumbnailImages.TryGetValue(pageIndex, out var thumb) && thumb.Source is not null)
+            {
+                image.Source = thumb.Source;
+            }
+        }
+    }
+
+    private PageLayoutMode SelectedLayout() => PageLayoutCombo.FromComboIndex(_layoutBox.SelectedIndex);
 
     private async Task SetLayoutModeAsync(PageLayoutMode mode)
     {
+        _contactSheetMode = false;
         _layoutMode = mode;
-        if (_layoutBox.SelectedIndex != LayoutToComboIndex(mode))
+        if (_layoutBox.SelectedIndex != PageLayoutCombo.ToComboIndex(mode) && _layoutBox.SelectedIndex != PageLayoutCombo.ContactSheetIndex)
         {
-            _layoutBox.SelectedIndex = LayoutToComboIndex(mode);
+            _layoutBox.SelectedIndex = PageLayoutCombo.ToComboIndex(mode);
+        }
+        else if (_layoutBox.SelectedIndex == PageLayoutCombo.ContactSheetIndex)
+        {
+            // Leaving contact sheet via SetLayoutMode — sync combo to mode.
+            _layoutBox.SelectedIndex = PageLayoutCombo.ToComboIndex(mode);
         }
 
         CurrentPageIndex = PageLayoutCalculator.NormalizePageIndex(mode, CurrentPageIndex, _document.PageCount);
@@ -613,6 +1332,7 @@ public sealed class PdfDocumentView : UserControl
         _pageImages.Clear();
         _pageOverlays.Clear();
         _ocrOverlays.Clear();
+        _redactionOverlays.Clear();
         _ocrVisualsByPage.Clear();
         _selectedOcrIndices.Clear();
         UpdateOcrOverlayChrome();
@@ -709,9 +1429,18 @@ public sealed class PdfDocumentView : UserControl
         };
         _ocrOverlays[pageIndex] = ocrOverlay;
 
+        var redactionOverlay = new Canvas
+        {
+            Width = width,
+            Height = height,
+            IsHitTestVisible = false,
+        };
+        _redactionOverlays[pageIndex] = redactionOverlay;
+
         var layer = new Grid { Width = width, Height = height };
         layer.Children.Add(image);
         layer.Children.Add(overlay);
+        layer.Children.Add(redactionOverlay);
         layer.Children.Add(ocrOverlay);
 
         var border = new Border
@@ -730,6 +1459,7 @@ public sealed class PdfDocumentView : UserControl
         border.CanDrag = true;
         border.DragStarting += PageBorder_DragStarting;
         RebuildOcrOverlayForPage(pageIndex);
+        RefreshPendingRedactionOverlay(pageIndex);
         return border;
     }
 
@@ -742,10 +1472,10 @@ public sealed class PdfDocumentView : UserControl
         for (var i = 0; i < _document.PageCount; i++)
         {
             var page = _document.GetPage(i);
-            var thumbScale = ThumbnailWidth / Math.Max(1, page.WidthPoints);
+            var thumbScale = _thumbnailWidth / Math.Max(1, page.WidthPoints);
             var image = new Image
             {
-                Width = ThumbnailWidth,
+                Width = _thumbnailWidth,
                 Height = Math.Max(1, page.HeightPoints * thumbScale),
                 Stretch = Stretch.Uniform,
             };
@@ -771,6 +1501,7 @@ public sealed class PdfDocumentView : UserControl
                 AllowDrop = true,
             };
             border.PointerPressed += Thumbnail_PointerPressed;
+            border.RightTapped += Thumbnail_RightTapped;
             border.DragStarting += Thumbnail_DragStarting;
             border.DragOver += Thumbnail_DragOver;
             border.DragLeave += ThumbnailHost_DragLeave;
@@ -800,6 +1531,160 @@ public sealed class PdfDocumentView : UserControl
         e.Handled = true;
     }
 
+    private void Thumbnail_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (sender is not Border { Tag: int index } target)
+        {
+            return;
+        }
+
+        if (!_pageSelection.Contains(index))
+        {
+            _pageSelection.SelectOnly(index);
+            RefreshThumbnailSelectionChrome();
+        }
+
+        var count = Math.Max(1, _pageSelection.Count);
+        var flyout = new MenuFlyout();
+
+        var rotateLeft = new MenuFlyoutItem { Text = ThumbnailContextMenu.RotateLeft(count) };
+        rotateLeft.Click += async (_, _) => await RotateSelectedAsync(-90);
+        var rotateRight = new MenuFlyoutItem { Text = ThumbnailContextMenu.RotateRight(count) };
+        rotateRight.Click += async (_, _) => await RotateSelectedAsync(90);
+        var duplicate = new MenuFlyoutItem { Text = ThumbnailContextMenu.Duplicate(count) };
+        duplicate.Click += async (_, _) => await DuplicateSelectedAsync();
+        var extract = new MenuFlyoutItem { Text = ThumbnailContextMenu.Extract(count) };
+        extract.Click += async (_, _) => await ExtractSelectedAsync();
+        var copyPages = new MenuFlyoutItem { Text = ThumbnailContextMenu.CopyPages(count) };
+        copyPages.Click += async (_, _) => await CopySelectedPagesAsync();
+        var insertBlank = new MenuFlyoutItem { Text = ThumbnailContextMenu.InsertBlankAfter };
+        insertBlank.Click += async (_, _) => await InsertBlankAfterSelectionAsync();
+        var delete = new MenuFlyoutItem { Text = ThumbnailContextMenu.Delete(count) };
+        delete.Click += async (_, _) => await DeleteSelectedAsync();
+
+        flyout.Items.Add(rotateLeft);
+        flyout.Items.Add(rotateRight);
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(duplicate);
+        flyout.Items.Add(extract);
+        flyout.Items.Add(copyPages);
+        flyout.Items.Add(insertBlank);
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(delete);
+        flyout.ShowAt(target, e.GetPosition(target));
+        e.Handled = true;
+    }
+
+    private void AnnotationList_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (!TryGetSelectedAnnotation(out _))
+        {
+            _status.Text = AnnotationSelectionStatus.AnnotationContextHint;
+            return;
+        }
+
+        if (sender is not FrameworkElement target)
+        {
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+        var styleItem = new MenuFlyoutItem { Text = PageContextMenu.Style };
+        styleItem.Click += async (_, _) => await SetSelectedAnnotationColorAsync();
+        var alignItem = new MenuFlyoutItem { Text = PageContextMenu.Align };
+        alignItem.Click += async (_, _) => await SetSelectedTextQuaddingAsync();
+        var duplicateItem = new MenuFlyoutItem { Text = PageContextMenu.Duplicate };
+        duplicateItem.Click += async (_, _) => await DuplicateSelectedAnnotationAsync();
+        var editItem = new MenuFlyoutItem { Text = PageContextMenu.Edit };
+        editItem.Click += async (_, _) => await EditSelectedAnnotationContentsAsync();
+        var copyItem = new MenuFlyoutItem { Text = PageContextMenu.Copy };
+        copyItem.Click += (_, _) => CopySelectedAnnotationToClipboard();
+        var deleteItem = new MenuFlyoutItem { Text = PageContextMenu.Delete };
+        deleteItem.Click += async (_, _) => await RemoveSelectedAnnotationAsync();
+        flyout.Items.Add(styleItem);
+        if (TryGetSelectedAnnotation(out var selected) && selected.IsTextBox)
+        {
+            flyout.Items.Add(alignItem);
+        }
+
+        flyout.Items.Add(duplicateItem);
+        flyout.Items.Add(editItem);
+        flyout.Items.Add(copyItem);
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(deleteItem);
+        flyout.ShowAt(target, e.GetPosition(target));
+        e.Handled = true;
+    }
+
+    private void BookmarkList_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (_bookmarkList.SelectedItem is not BookmarkListItem)
+        {
+            _status.Text = AnnotationSelectionStatus.BookmarkContextHint;
+            return;
+        }
+
+        if (sender is not FrameworkElement target)
+        {
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+        var goItem = new MenuFlyoutItem { Text = PdfViewerTextLabels.GoToPage };
+        goItem.Click += async (_, _) =>
+        {
+            if (_bookmarkList.SelectedItem is BookmarkListItem item)
+            {
+                await GoToPageAsync(item.PageIndex, recordHistory: true);
+            }
+        };
+        var renameItem = new MenuFlyoutItem { Text = PdfViewerTextLabels.RenameEllipsis };
+        renameItem.Click += async (_, _) => await RenameSelectedBookmarkAsync();
+        var upItem = new MenuFlyoutItem { Text = PdfViewerTextLabels.MoveUp };
+        upItem.Click += (_, _) => MoveSelectedBookmark(-1);
+        var downItem = new MenuFlyoutItem { Text = PdfViewerTextLabels.MoveDown };
+        downItem.Click += (_, _) => MoveSelectedBookmark(1);
+        var deleteItem = new MenuFlyoutItem { Text = PdfViewerTextLabels.Delete };
+        deleteItem.Click += (_, _) => DeleteSelectedBookmark();
+        flyout.Items.Add(goItem);
+        flyout.Items.Add(renameItem);
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(upItem);
+        flyout.Items.Add(downItem);
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(deleteItem);
+        flyout.ShowAt(target, e.GetPosition(target));
+        e.Handled = true;
+    }
+
+    private void SearchResults_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (_hits.Count == 0)
+        {
+            _status.Text = PdfFindStatus.NoResults;
+            return;
+        }
+
+        if (sender is not FrameworkElement target)
+        {
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+        var goItem = new MenuFlyoutItem { Text = PdfViewerTextLabels.GoToMatch };
+        goItem.Click += async (_, _) =>
+        {
+            var index = _searchResults.SelectedIndex >= 0 ? _searchResults.SelectedIndex : _activeHitIndex;
+            await GoToHitAsync(index);
+        };
+        var clearItem = new MenuFlyoutItem { Text = PdfViewerTextLabels.ClearSearch };
+        clearItem.Click += async (_, _) => await ClearSearchAsync();
+        flyout.Items.Add(goItem);
+        flyout.Items.Add(clearItem);
+        flyout.ShowAt(target, e.GetPosition(target));
+        e.Handled = true;
+    }
+
     private void Thumbnail_DragStarting(UIElement sender, DragStartingEventArgs args)
     {
         if (sender is not Border { Tag: int index })
@@ -818,9 +1703,7 @@ public sealed class PdfDocumentView : UserControl
         var payload = new PageDragPayload(_documentKey, indexes);
         args.Data.SetText(payload.Format());
         args.Data.RequestedOperation = DataPackageOperation.Copy | DataPackageOperation.Move;
-        args.Data.Properties.Title = indexes.Count == 1
-            ? "PDF page"
-            : $"{indexes.Count} PDF pages";
+        args.Data.Properties.Title = PageDragDisplay.DragTitle(indexes.Count);
 
         // Deferred StorageItems so Explorer (and other apps) receive an extracted PDF on drop.
         var pageIndexes = indexes;
@@ -835,9 +1718,9 @@ public sealed class PdfDocumentView : UserControl
         var deferral = request.GetDeferral();
         try
         {
-            var tempPath = System.IO.Path.Combine(
+            var tempPath = PageExtractFileNames.TempPdfPath(
                 System.IO.Path.GetTempPath(),
-                "Glyph-pages-" + Guid.NewGuid().ToString("N") + ".pdf");
+                Guid.NewGuid());
             await using (var extracted = await _pageEditor.ExtractPagesAsync(_document, pageIndexes))
             {
                 await _pageEditor.SaveAsync(extracted, tempPath);
@@ -870,7 +1753,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (sender is Border border)
         {
-            var insertAfter = e.GetPosition(border).Y > border.ActualHeight / 2;
+            var insertAfter = PageDropPlacement.IsInsertAfter(e.GetPosition(border).Y, border.ActualHeight);
             ShowDropHighlight(border, insertAfter);
         }
     }
@@ -903,7 +1786,8 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var insertBefore = e.GetPosition((UIElement)sender).Y > ((FrameworkElement)sender).ActualHeight / 2
+        var fe = (FrameworkElement)sender;
+        var insertBefore = PageDropPlacement.IsInsertAfter(e.GetPosition((UIElement)sender).Y, fe.ActualHeight)
             ? dropIndex + 1
             : dropIndex;
         await HandleThumbnailDropAsync(e, insertBefore);
@@ -917,7 +1801,7 @@ public sealed class PdfDocumentView : UserControl
     private async Task HandleThumbnailDropAsync(DragEventArgs e, int insertBefore)
     {
         ClearDropHighlight();
-        insertBefore = Math.Clamp(insertBefore, 0, _document.PageCount);
+        insertBefore = PageInsertIndex.Clamp(insertBefore, _document.PageCount);
 
         try
         {
@@ -926,9 +1810,7 @@ public sealed class PdfDocumentView : UserControl
                 var text = await e.DataView.GetTextAsync();
                 if (PageDragPayload.TryParse(text, out var payload) && payload is not null)
                 {
-                    var sameDocument = string.IsNullOrEmpty(payload.DocumentKey)
-                        || string.Equals(payload.DocumentKey, _documentKey, StringComparison.Ordinal);
-                    if (sameDocument)
+                    if (PageDragSemantics.IsSameDocument(payload.DocumentKey, _documentKey))
                     {
                         await ReorderFromDragAsync(payload.PageIndexes.ToList(), insertBefore);
                         e.Handled = true;
@@ -960,21 +1842,23 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Drop failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Drop, ex.Message);
         }
     }
 
     private static bool CanAcceptPageDrop(DataPackageView data) =>
-        data.Contains(StandardDataFormats.Text) || data.Contains(StandardDataFormats.StorageItems);
+        PageDropPlacement.AcceptsDrop(
+            data.Contains(StandardDataFormats.Text),
+            data.Contains(StandardDataFormats.StorageItems));
 
     private static DataPackageOperation PreferredDropOperation(DragEventArgs e)
     {
-        if (e.Modifiers.HasFlag(DragDropModifiers.Control))
-        {
-            return DataPackageOperation.Copy;
-        }
-
-        if (e.DataView.Contains(StandardDataFormats.StorageItems) && !e.DataView.Contains(StandardDataFormats.Text))
+        var hasText = e.DataView.Contains(StandardDataFormats.Text);
+        var hasStorage = e.DataView.Contains(StandardDataFormats.StorageItems);
+        if (PageDropPlacement.PreferCopyOperation(
+                e.Modifiers.HasFlag(DragDropModifiers.Control),
+                hasStorage,
+                hasText))
         {
             return DataPackageOperation.Copy;
         }
@@ -983,9 +1867,9 @@ public sealed class PdfDocumentView : UserControl
     }
 
     private static string DropCaption(DataPackageView data) =>
-        data.Contains(StandardDataFormats.StorageItems) && !data.Contains(StandardDataFormats.Text)
-            ? "Insert PDF pages"
-            : "Move or copy pages here";
+        PageDropPlacement.Caption(
+            data.Contains(StandardDataFormats.StorageItems),
+            data.Contains(StandardDataFormats.Text));
 
     private void ShowDropHighlight(Border border, bool insertAfter)
     {
@@ -996,9 +1880,8 @@ public sealed class PdfDocumentView : UserControl
         }
 
         border.BorderBrush = new SolidColorBrush(Colors.Orange);
-        border.BorderThickness = insertAfter
-            ? new Thickness(2, 2, 2, 5)
-            : new Thickness(2, 5, 2, 2);
+        var t = PageDropPlacement.HighlightThickness(insertAfter);
+        border.BorderThickness = new Thickness(t.Left, t.Top, t.Right, t.Bottom);
     }
 
     private void ClearDropHighlight()
@@ -1021,7 +1904,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        _status.Text = "Reordering…";
+        _status.Text = PageEditStatus.Reordering;
         await RunPageEditAsync(() => _pageEditor.ReorderPagesAsync(_document, order));
 
         var remap = new Dictionary<int, int>();
@@ -1042,7 +1925,7 @@ public sealed class PdfDocumentView : UserControl
             await GoToPageAsync(_pageSelection.SelectedIndexes.Min(), recordHistory: false);
         }
 
-        _status.Text = "Pages reordered.";
+        _status.Text = PageEditStatus.PagesReordered;
     }
 
     private async Task InsertPagesFromDocumentAsync(
@@ -1057,7 +1940,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var count = sourceIndexes.Count;
-        _status.Text = count == 1 ? "Inserting page…" : $"Inserting {count} pages…";
+        _status.Text = PageEditStatus.FormatInserting(count);
         await RunPageEditAsync(() => _pageEditor.InsertPagesAsync(_document, source, sourceIndexes, insertBefore));
 
         _pageSelection.Clear();
@@ -1068,7 +1951,7 @@ public sealed class PdfDocumentView : UserControl
 
         await ReloadAfterPageEditAsync();
         await GoToPageAsync(insertBefore, recordHistory: true);
-        _status.Text = count == 1 ? "Inserted 1 page." : $"Inserted {count} pages.";
+        _status.Text = PageEditStatus.FormatInserted(count);
     }
 
     private async Task InsertPdfFilesAsync(IReadOnlyList<StorageFile> pdfFiles, int insertBefore)
@@ -1077,7 +1960,7 @@ public sealed class PdfDocumentView : UserControl
         var totalInserted = 0;
         foreach (var file in pdfFiles)
         {
-            _status.Text = $"Inserting {file.Name}…";
+            _status.Text = PageClipboardStatus.FormatInserting(file.Name);
             await using var source = await _documentFactory.OpenAsync(file.Path);
             var indexes = Enumerable.Range(0, source.PageCount).ToList();
             if (indexes.Count == 0)
@@ -1093,7 +1976,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (totalInserted == 0)
         {
-            _status.Text = "No pages to insert.";
+            _status.Text = PageEditStatus.NoPagesToInsert;
             return;
         }
 
@@ -1105,9 +1988,7 @@ public sealed class PdfDocumentView : UserControl
 
         await ReloadAfterPageEditAsync();
         await GoToPageAsync(insertBefore, recordHistory: true);
-        _status.Text = totalInserted == 1
-            ? "Inserted 1 page from file."
-            : $"Inserted {totalInserted} pages from file{(pdfFiles.Count == 1 ? string.Empty : "s")}.";
+        _status.Text = PageEditStatus.FormatInsertedFromFile(totalInserted, pdfFiles.Count);
     }
 
     private async void SearchBox_KeyDown(object sender, KeyRoutedEventArgs e)
@@ -1131,9 +2012,9 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (int.TryParse(_gotoBox.Text, out var pageNumber))
+        if (PageGotoParser.TryParseZeroBased(_gotoBox.Text, _document.PageCount) is { } pageIndex)
         {
-            await GoToPageAsync(pageNumber - 1, recordHistory: true);
+            await GoToPageAsync(pageIndex, recordHistory: true);
         }
     }
 
@@ -1146,11 +2027,41 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (_highlightMode && e.Key == VirtualKey.Escape)
+        if (_zoomAreaMode && e.Key == VirtualKey.Escape)
+        {
+            ClearZoomAreaMode();
+            e.Handled = true;
+            return;
+        }
+
+        if (_viewLoupeMode && e.Key == VirtualKey.Escape)
+        {
+            ClearViewLoupeMode();
+            e.Handled = true;
+            return;
+        }
+
+        if (_presentationMode && e.Key == VirtualKey.Escape)
+        {
+            await ExitPresentationModeAsync();
+            e.Handled = true;
+            return;
+        }
+
+        if (PersistentHighlightMode.ExitOnEscape(_highlightMode) && e.Key == VirtualKey.Escape)
         {
             ClearHighlightMode();
             RefreshToolButtonChrome();
-            _status.Text = "Highlight mode off.";
+            _status.Text = AnnotationToolModeStatus.HighlightOff;
+            e.Handled = true;
+            return;
+        }
+
+        if (_redactionMode && e.Key == VirtualKey.Escape)
+        {
+            ClearRedactionMode();
+            RefreshToolButtonChrome();
+            _status.Text = PdfRedactionUiCopy.ModeOff;
             e.Handled = true;
             return;
         }
@@ -1159,7 +2070,40 @@ public sealed class PdfDocumentView : UserControl
         {
             ClearFormOverlayMode();
             RefreshToolButtonChrome();
-            _status.Text = "Form overlay off.";
+            _status.Text = FormOverlayModePolicy.Exited;
+            e.Handled = true;
+            return;
+        }
+
+        if (_eraserMode && e.Key == VirtualKey.Escape)
+        {
+            ClearEraserMode();
+            RefreshToolButtonChrome();
+            _status.Text = AnnotationToolModeStatus.EraserOff;
+            e.Handled = true;
+            return;
+        }
+
+        if (_calloutTipEditMode && e.Key == VirtualKey.Escape)
+        {
+            ClearCalloutTipEditMode();
+            _status.Text = AnnotationToolModeStatus.CalloutTipEditCancelled;
+            e.Handled = true;
+            return;
+        }
+
+        if (_polygonMode && e.Key == VirtualKey.Escape)
+        {
+            ClearPolygonMode();
+            RefreshToolButtonChrome();
+            _status.Text = AnnotationToolModeStatus.PolygonCancelled;
+            e.Handled = true;
+            return;
+        }
+
+        if (_polygonMode && e.Key == VirtualKey.Enter)
+        {
+            await FinishPolygonAsync();
             e.Handled = true;
             return;
         }
@@ -1197,10 +2141,14 @@ public sealed class PdfDocumentView : UserControl
 
         if (ctrlDown && e.Key == VirtualKey.C)
         {
-            // Prefer text when the user has a text selection; otherwise copy selected pages.
+            // Prefer text, then selected annotation, then selected pages.
             if (!string.IsNullOrEmpty(_selectedText))
             {
                 await CopyTextAsync();
+            }
+            else if (TryGetSelectedAnnotation(out _))
+            {
+                CopySelectedAnnotationToClipboard();
             }
             else
             {
@@ -1211,27 +2159,58 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (ctrlDown && e.Key == VirtualKey.P)
+        {
+            await PrintDocumentAsync();
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrlDown && e.Key == VirtualKey.X)
+        {
+            if (TryGetSelectedAnnotation(out _))
+            {
+                CutSelectedAnnotationToClipboard();
+                e.Handled = true;
+                return;
+            }
+        }
+
         if (ctrlDown && e.Key == VirtualKey.V)
         {
-            await PastePagesAsync();
+            if (_annotClipboard is not null)
+            {
+                await PasteAnnotationClipboardAsync();
+            }
+            else
+            {
+                await PastePagesAsync();
+            }
+
             e.Handled = true;
             return;
         }
 
         if (ctrlDown && e.Key == VirtualKey.A)
         {
-            _pageSelection.SelectAll(_document.PageCount);
-            RefreshThumbnailSelectionChrome();
-            _status.Text = _document.PageCount == 1
-                ? "Selected 1 page."
-                : $"Selected {_document.PageCount} pages.";
+            // Ctrl+Shift+A always selects all pages. Plain Ctrl+A prefers full-page text
+            // when the current page has extractable glyphs (F07-05); otherwise pages (F52-13).
+            if (shiftDown)
+            {
+                SelectAllPages();
+            }
+            else
+            {
+                await SelectAllTextOrPagesAsync();
+            }
+
             e.Handled = true;
             return;
         }
 
         if (ctrlDown && e.Key == VirtualKey.Z)
         {
-            await UndoPageEditAsync();
+            await UndoMostRecentAsync();
             e.Handled = true;
             return;
         }
@@ -1243,16 +2222,74 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (e.Key is VirtualKey.Delete or VirtualKey.Back)
+        if (ctrlDown && e.Key == VirtualKey.F)
         {
-            await DeleteSelectedAsync();
+            _searchBox.Focus(FocusState.Programmatic);
             e.Handled = true;
             return;
         }
 
-        if (e.Key is VirtualKey.Up or VirtualKey.Down)
+        if (ctrlDown && (e.Key == VirtualKey.Add || e.Key == (VirtualKey)187 /* OEM plus */))
         {
-            var delta = e.Key == VirtualKey.Up ? -1 : 1;
+            await SetScaleAsync(PdfZoomCalculator.ZoomIn(_scale));
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrlDown && (e.Key == VirtualKey.Subtract || e.Key == (VirtualKey)189 /* OEM minus */))
+        {
+            await SetScaleAsync(PdfZoomCalculator.ZoomOut(_scale));
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrlDown && e.Key == VirtualKey.Number0)
+        {
+            await FitPageAsync();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == VirtualKey.F3)
+        {
+            await GoToHitAsync(_activeHitIndex + (shiftDown ? -1 : 1));
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == VirtualKey.F11)
+        {
+            ToggleFullscreen();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key is VirtualKey.Delete or VirtualKey.Back)
+        {
+            if (TryGetSelectedAnnotation(out _))
+            {
+                await RemoveSelectedAnnotationAsync();
+            }
+            else
+            {
+                await DeleteSelectedAsync();
+            }
+
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key is VirtualKey.Up or VirtualKey.Down or VirtualKey.Left or VirtualKey.Right)
+        {
+            var delta = e.Key is VirtualKey.Up or VirtualKey.Left ? -1 : 1;
+            if (_presentationMode || e.Key is VirtualKey.Left or VirtualKey.Right)
+            {
+                var next = Math.Clamp(CurrentPageIndex + delta, 0, Math.Max(0, _document.PageCount - 1));
+                await GoToPageAsync(next, recordHistory: true);
+                e.Handled = true;
+                return;
+            }
+
             var focus = _pageSelection.SelectedIndexes.DefaultIfEmpty(CurrentPageIndex).Max();
             if (shiftDown && _pageSelection.Count > 0)
             {
@@ -1261,10 +2298,10 @@ public sealed class PdfDocumentView : UserControl
                     : _pageSelection.SelectedIndexes.Max();
             }
 
-            var next = Math.Clamp(focus + delta, 0, Math.Max(0, _document.PageCount - 1));
-            _pageSelection.ApplyKeyboardMove(next, extendRange: shiftDown);
+            var moveTo = Math.Clamp(focus + delta, 0, Math.Max(0, _document.PageCount - 1));
+            _pageSelection.ApplyKeyboardMove(moveTo, extendRange: shiftDown);
             RefreshThumbnailSelectionChrome();
-            await GoToPageAsync(next, recordHistory: !shiftDown);
+            await GoToPageAsync(moveTo, recordHistory: !shiftDown);
             e.Handled = true;
             return;
         }
@@ -1284,11 +2321,15 @@ public sealed class PdfDocumentView : UserControl
                 e.Handled = true;
                 break;
             case VirtualKey.Home:
-                await GoToPageAsync(0, recordHistory: true);
+                await GoToPageAsync(
+                    PageLayoutCalculator.FirstPageIndex(_layoutMode, _document.PageCount),
+                    recordHistory: true);
                 e.Handled = true;
                 break;
             case VirtualKey.End:
-                await GoToPageAsync(_document.PageCount - 1, recordHistory: true);
+                await GoToPageAsync(
+                    PageLayoutCalculator.LastPageIndex(_layoutMode, _document.PageCount),
+                    recordHistory: true);
                 e.Handled = true;
                 break;
         }
@@ -1322,7 +2363,7 @@ public sealed class PdfDocumentView : UserControl
         var tree = new TreeViewNode
         {
             Content = new OutlineItem(node.Title, node.DestinationPageIndex),
-            IsExpanded = true,
+            IsExpanded = OutlineExpandPolicy.DefaultIsExpanded,
         };
         foreach (var child in node.Children)
         {
@@ -1341,10 +2382,131 @@ public sealed class PdfDocumentView : UserControl
             _ => null,
         };
 
-        if (item?.PageIndex is int page)
+        if (OutlineNavigation.TryGetPageIndex(item?.PageIndex, out var page))
         {
             await GoToPageAsync(page, recordHistory: true);
         }
+    }
+
+    private async void OutlineTree_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        // Arrow keys expand/collapse and move focus via TreeView defaults.
+        // Enter/Space navigate to the selected outline destination (F05-05).
+        if (e.Key is not (VirtualKey.Enter or VirtualKey.Space))
+        {
+            return;
+        }
+
+        var selected = _outlineTree.SelectedNodes.FirstOrDefault()?.Content as OutlineItem;
+        if (OutlineNavigation.TryGetPageIndex(selected?.PageIndex, out var page))
+        {
+            await GoToPageAsync(page, recordHistory: true);
+            e.Handled = true;
+        }
+    }
+
+    private void SelectAllPages()
+    {
+        _pageSelection.SelectAll(_document.PageCount);
+        RefreshThumbnailSelectionChrome();
+        _status.Text = PageEditStatus.FormatSelectedPages(_document.PageCount);
+    }
+
+    private async Task SelectAllTextOrPagesAsync()
+    {
+        // Second Ctrl+A after a full-page text selection expands to the whole document (copy buffer).
+        var fullPageText = _pageChars.TryGetValue(CurrentPageIndex, out var currentChars) && currentChars.Count > 0
+            ? PdfTextSelection.CopyAll(currentChars)
+            : null;
+        if (PdfTextSelectAllPolicy.ShouldExpandToDocument(
+                _selectionPageIndex,
+                CurrentPageIndex,
+                _selectedText,
+                fullPageText,
+                _document.PageCount))
+        {
+            await SelectAllTextInDocumentAsync();
+            return;
+        }
+
+        if (await TrySelectAllTextOnPageAsync(CurrentPageIndex))
+        {
+            return;
+        }
+
+        SelectAllPages();
+    }
+
+    private async Task SelectAllTextInDocumentAsync()
+    {
+        var parts = new List<string>();
+        for (var i = 0; i < _document.PageCount; i++)
+        {
+            if (!_pageChars.ContainsKey(i))
+            {
+                _pageChars[i] = await _textExtractor.GetCharsAsync(_document, i);
+            }
+
+            var pageText = PdfTextSelection.CopyAll(_pageChars[i]);
+            if (!string.IsNullOrWhiteSpace(pageText))
+            {
+                parts.Add(pageText);
+            }
+        }
+
+        if (parts.Count == 0)
+        {
+            _status.Text = PdfFindStatus.NoExtractableText;
+            return;
+        }
+
+        _selectedText = PdfTextSelectAllPolicy.JoinDocumentParts(parts);
+        // Keep a visual selection on the current page when it has glyphs.
+        _ = await TrySelectAllTextOnPageAsync(CurrentPageIndex);
+        // Restore the document-wide clipboard buffer after page select overwrote it.
+        _selectedText = PdfTextSelectAllPolicy.JoinDocumentParts(parts);
+        _status.Text = PdfTextSelectAllPolicy.DocumentStatus(parts.Count, _selectedText.Length);
+    }
+
+    private async Task<bool> TrySelectAllTextOnPageAsync(int pageIndex)
+    {
+        if (pageIndex < 0 || pageIndex >= _document.PageCount)
+        {
+            return false;
+        }
+
+        if (!_pageChars.ContainsKey(pageIndex))
+        {
+            _pageChars[pageIndex] = await _textExtractor.GetCharsAsync(_document, pageIndex);
+        }
+
+        var chars = _pageChars[pageIndex];
+        if (chars.Count == 0)
+        {
+            return false;
+        }
+
+        _selectedText = PdfTextSelection.CopyAll(chars);
+        if (string.IsNullOrWhiteSpace(_selectedText))
+        {
+            _selectedText = string.Empty;
+            return false;
+        }
+
+        _selectionPageIndex = pageIndex;
+        _selectionQuads = PdfTextMarkupQuads.FromChars(chars);
+        _pageSelection.Clear();
+        RefreshThumbnailSelectionChrome();
+
+        if (_pageOverlays.TryGetValue(pageIndex, out var overlay))
+        {
+            overlay.Children.Clear();
+        }
+
+        await RefreshSearchHighlightsAsync();
+        DrawSelectionOverlayFromRange(pageIndex, chars, 0, chars.Count - 1);
+        _status.Text = PdfTextSelectAllPolicy.PageStatus(pageIndex, _selectedText.Length);
+        return true;
     }
 
     private async Task CopyTextAsync()
@@ -1356,14 +2518,14 @@ public sealed class PdfDocumentView : UserControl
 
         if (string.IsNullOrEmpty(_selectedText))
         {
-            _status.Text = "No extractable text to copy.";
+            _status.Text = PdfFindStatus.NoExtractableTextToCopy;
             return;
         }
 
         var package = new DataPackage();
         package.SetText(_selectedText);
         Clipboard.SetContent(package);
-        _status.Text = $"Copied {_selectedText.Length} characters.";
+        _status.Text = PdfTextInteractionUi.CopiedCharacters(_selectedText.Length);
     }
 
     private async Task CopySelectedPagesAsync()
@@ -1377,26 +2539,38 @@ public sealed class PdfDocumentView : UserControl
         try
         {
             await PdfPageClipboard.SetFromDocumentAsync(_pageEditor, _document, indexes);
-            _status.Text = indexes.Count == 1
-                ? "Copied 1 page."
-                : $"Copied {indexes.Count} pages.";
+            _status.Text = PageDragDisplay.CopiedPagesStatus(indexes.Count);
         }
         catch (Exception ex)
         {
-            _status.Text = "Copy pages failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.CopyPages, ex.Message);
         }
+    }
+
+    /// <summary>Paste annotation clipboard if set; otherwise paste copied PDF pages.</summary>
+    public async Task PasteFromClipboardAsync()
+    {
+        if (_annotClipboard is not null)
+        {
+            await PasteAnnotationClipboardAsync();
+            return;
+        }
+
+        await PastePagesAsync();
     }
 
     private async Task PastePagesAsync()
     {
         if (!PdfPageClipboard.HasPages)
         {
-            _status.Text = "No pages on the clipboard.";
+            _status.Text = PageClipboardStatus.NoPagesOnClipboard;
             return;
         }
 
-        var insertAt = SelectedOrCurrentPages().DefaultIfEmpty(CurrentPageIndex).Max() + 1;
-        insertAt = Math.Clamp(insertAt, 0, _document.PageCount);
+        var insertAt = PagePastePlacement.InsertAfterSelection(
+            SelectedOrCurrentPages(),
+            CurrentPageIndex,
+            _document.PageCount);
         string? tempPath = null;
         try
         {
@@ -1404,14 +2578,14 @@ public sealed class PdfDocumentView : UserControl
             tempPath = path;
             if (source is null || source.PageCount == 0)
             {
-                _status.Text = "Clipboard pages unavailable.";
+                _status.Text = PageClipboardStatus.ClipboardPagesUnavailable;
                 return;
             }
 
             await using (source)
             {
                 var indexes = Enumerable.Range(0, source.PageCount).ToList();
-                _status.Text = indexes.Count == 1 ? "Pasting page…" : $"Pasting {indexes.Count} pages…";
+                _status.Text = PageDragDisplay.PastingPagesStatus(indexes.Count);
                 await RunPageEditAsync(() => _pageEditor.InsertPagesAsync(_document, source, indexes, insertAt));
 
                 _pageSelection.Clear();
@@ -1422,12 +2596,12 @@ public sealed class PdfDocumentView : UserControl
 
                 await ReloadAfterPageEditAsync();
                 await GoToPageAsync(insertAt, recordHistory: true);
-                _status.Text = indexes.Count == 1 ? "Pasted 1 page." : $"Pasted {indexes.Count} pages.";
+                _status.Text = PageDragDisplay.PastedPagesStatus(indexes.Count);
             }
         }
         catch (Exception ex)
         {
-            _status.Text = "Paste pages failed: " + ex.Message;
+            _status.Text = PageEditStatus.FormatPastePagesFailed(ex.Message);
         }
         finally
         {
@@ -1438,7 +2612,7 @@ public sealed class PdfDocumentView : UserControl
         }
     }
 
-    private void PageBorder_PointerPressed(object sender, PointerRoutedEventArgs e)
+    private async void PageBorder_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
         if (sender is not Border { Tag: int pageIndex } border)
         {
@@ -1458,6 +2632,23 @@ public sealed class PdfDocumentView : UserControl
                 BeginCropPointerDrag(border, e);
             }
 
+            e.Handled = true;
+            return;
+        }
+
+        if (_zoomAreaMode)
+        {
+            _dragSelecting = true;
+            _dragPageIndex = pageIndex;
+            _dragStart = e.GetCurrentPoint(border).Position;
+            border.CapturePointer(e.Pointer);
+            e.Handled = true;
+            return;
+        }
+
+        if (_redactionMode)
+        {
+            BeginRedactionDrag(border, pageIndex, e);
             e.Handled = true;
             return;
         }
@@ -1487,6 +2678,27 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (_polygonMode)
+        {
+            await AddPolygonVertexAsync(border, pageIndex, e);
+            e.Handled = true;
+            return;
+        }
+
+        if (_eraserMode)
+        {
+            await EraseAnnotationAtAsync(border, pageIndex, e);
+            e.Handled = true;
+            return;
+        }
+
+        if (_calloutTipEditMode && _calloutTipTarget is not null)
+        {
+            await FinishCalloutTipEditAsync(border, pageIndex, e);
+            e.Handled = true;
+            return;
+        }
+
         if (_shapeMode is not null || _calloutMode)
         {
             BeginShapeDrag(border, pageIndex, e);
@@ -1511,6 +2723,14 @@ public sealed class PdfDocumentView : UserControl
         var hit = PdfAnnotationHitTest.HitTest(_annotationItems, pageIndex, pdfX, pdfY);
         if (hit is not null)
         {
+            var ctrl = (e.KeyModifiers & VirtualKeyModifiers.Control) != 0;
+            if (ctrl)
+            {
+                ToggleAnnotInSelection(hit);
+                e.Handled = true;
+                return;
+            }
+
             BeginAnnotDrag(border, hit, pressPoint, e);
             e.Handled = true;
             return;
@@ -1518,6 +2738,7 @@ public sealed class PdfDocumentView : UserControl
 
         ClearAnnotSelectionVisual();
         _selectedAnnot = null;
+        _selectedAnnots.Clear();
         _dragSelecting = true;
         _dragPageIndex = pageIndex;
         _dragStart = pressPoint;
@@ -1531,28 +2752,87 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var hasText = !string.IsNullOrWhiteSpace(_selectedText);
-        var hasRegion = _regionCopyPageIndex >= 0
-            && _regionCopyDisplayRect.Width >= 4
-            && _regionCopyDisplayRect.Height >= 4;
-        if (!hasText && !hasRegion)
+        var hasText = !string.IsNullOrWhiteSpace(_selectedText)
+            && _selectionPageIndex >= 0
+            && _selectionQuads.Count > 0;
+        var hasRegion = PdfRegionCopyPolicy.HasValidRegion(
+            _regionCopyPageIndex,
+            _regionCopyDisplayRect.Width,
+            _regionCopyDisplayRect.Height);
+        var hasAnnot = TryGetSelectedAnnotation(out _);
+        var pageIndex = target is Border { Tag: int taggedPage }
+            ? taggedPage
+            : CurrentPageIndex;
+
+        var flyout = new MenuFlyout();
+        var selectAllItem = new MenuFlyoutItem { Text = PdfTextInteractionUi.SelectAllText };
+        selectAllItem.Click += async (_, _) =>
         {
-            _status.Text = "Select text or drag a region, then right-click for actions.";
+            if (!await TrySelectAllTextOnPageAsync(pageIndex))
+            {
+                _status.Text = PdfTextInteractionUi.NoExtractableText;
+            }
+        };
+        flyout.Items.Add(selectAllItem);
+        if (_document.PageCount > 1)
+        {
+            var selectDocItem = new MenuFlyoutItem { Text = PdfTextInteractionUi.SelectAllTextInDocument };
+            selectDocItem.Click += async (_, _) => await SelectAllTextInDocumentAsync();
+            flyout.Items.Add(selectDocItem);
+        }
+
+        if (!hasText && !hasRegion && !hasAnnot)
+        {
+            flyout.ShowAt(target, e.GetPosition(target));
+            e.Handled = true;
             return;
         }
 
-        var flyout = new MenuFlyout();
         if (hasText)
         {
-            var copyItem = new MenuFlyoutItem { Text = "Copy" };
+            flyout.Items.Add(new MenuFlyoutSeparator());
+            var copyItem = new MenuFlyoutItem { Text = PdfTextInteractionUi.Copy };
             copyItem.Click += async (_, _) => await CopyTextAsync();
-            var findItem = new MenuFlyoutItem { Text = "Find selection" };
+            var highlightItem = new MenuFlyoutItem { Text = PageContextMenu.Highlight };
+            highlightItem.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.Highlight);
+            var underlineItem = new MenuFlyoutItem { Text = PageContextMenu.Underline };
+            underlineItem.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.Underline);
+            var strikeItem = new MenuFlyoutItem { Text = PageContextMenu.Strikethrough };
+            strikeItem.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.StrikeOut);
+            var findItem = new MenuFlyoutItem { Text = PdfTextInteractionUi.FindSelection };
             findItem.Click += async (_, _) => await SearchSelectedTextAsync();
-            var webItem = new MenuFlyoutItem { Text = "Search web" };
+            var webItem = new MenuFlyoutItem { Text = PdfTextInteractionUi.SearchWeb };
             webItem.Click += async (_, _) => await SearchWebAsync(_selectedText);
+            var redactTextItem = new MenuFlyoutItem { Text = PdfRedactionUiCopy.MarkForRedactionMenu };
+            redactTextItem.Click += (_, _) => MarkSelectionForRedaction();
             flyout.Items.Add(copyItem);
+            flyout.Items.Add(highlightItem);
+            flyout.Items.Add(underlineItem);
+            flyout.Items.Add(strikeItem);
             flyout.Items.Add(findItem);
             flyout.Items.Add(webItem);
+            flyout.Items.Add(redactTextItem);
+        }
+
+        if (hasAnnot)
+        {
+            if (flyout.Items.Count > 0)
+            {
+                flyout.Items.Add(new MenuFlyoutSeparator());
+            }
+
+            var styleItem = new MenuFlyoutItem { Text = PageContextMenu.Style };
+            styleItem.Click += async (_, _) => await SetSelectedAnnotationColorAsync();
+            var duplicateItem = new MenuFlyoutItem { Text = PageContextMenu.Duplicate };
+            duplicateItem.Click += async (_, _) => await DuplicateSelectedAnnotationAsync();
+            var deleteItem = new MenuFlyoutItem { Text = PageContextMenu.Delete };
+            deleteItem.Click += async (_, _) => await RemoveSelectedAnnotationAsync();
+            var copyAnnotItem = new MenuFlyoutItem { Text = PdfViewerTextLabels.CopyAnnotation };
+            copyAnnotItem.Click += (_, _) => CopySelectedAnnotationToClipboard();
+            flyout.Items.Add(styleItem);
+            flyout.Items.Add(duplicateItem);
+            flyout.Items.Add(deleteItem);
+            flyout.Items.Add(copyAnnotItem);
         }
 
         if (hasRegion)
@@ -1562,9 +2842,12 @@ public sealed class PdfDocumentView : UserControl
                 flyout.Items.Add(new MenuFlyoutSeparator());
             }
 
-            var imageItem = new MenuFlyoutItem { Text = "Copy region as image" };
+            var imageItem = new MenuFlyoutItem { Text = PdfTextInteractionUi.CopyRegionAsImage };
             imageItem.Click += async (_, _) => await CopyRegionAsBitmapAsync();
+            var redactRegionItem = new MenuFlyoutItem { Text = PdfRedactionUiCopy.MarkRegionForRedactionMenu };
+            redactRegionItem.Click += (_, _) => MarkRegionForRedaction();
             flyout.Items.Add(imageItem);
+            flyout.Items.Add(redactRegionItem);
         }
 
         flyout.ShowAt(target, e.GetPosition(target));
@@ -1573,7 +2856,7 @@ public sealed class PdfDocumentView : UserControl
 
     private void PageBorder_DragStarting(UIElement sender, DragStartingEventArgs args)
     {
-        if (string.IsNullOrWhiteSpace(_selectedText))
+        if (!PdfTextDragPolicy.CanStartTextDrag(_selectedText))
         {
             args.Cancel = true;
             return;
@@ -1581,11 +2864,16 @@ public sealed class PdfDocumentView : UserControl
 
         args.Data.SetText(_selectedText);
         args.Data.RequestedOperation = DataPackageOperation.Copy;
-        _status.Text = "Dragging selected text…";
+        _status.Text = PdfTextDragPolicy.DraggingStatus;
     }
 
     private void PageBorder_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
+        if (_viewLoupeMode && sender is Border { Tag: int loupePage } loupeBorder)
+        {
+            UpdateViewLoupe(loupeBorder, loupePage, e.GetCurrentPoint(loupeBorder).Position);
+        }
+
         if (_cropMode)
         {
             if (sender is Border { Tag: int cropPage } cropBorder &&
@@ -1593,6 +2881,17 @@ public sealed class PdfDocumentView : UserControl
                 _cropDragHandle is not null)
             {
                 UpdateCropPointerDrag(cropBorder, e);
+                e.Handled = true;
+            }
+
+            return;
+        }
+
+        if (_redactionMode && _redactionDrawing)
+        {
+            if (sender is Border { Tag: int redactPage } redactBorder && redactPage == _redactionPageIndex)
+            {
+                ContinueRedactionDrag(redactBorder, e);
                 e.Handled = true;
             }
 
@@ -1696,6 +2995,13 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (_redactionMode && _redactionDrawing && pageIndex == _redactionPageIndex)
+        {
+            EndRedactionDrag(border, e);
+            e.Handled = true;
+            return;
+        }
+
         if ((_inkMode || _freeformMode || _signatureMode) && _inkDrawing && pageIndex == _inkPageIndex)
         {
             if (_signatureMode)
@@ -1745,8 +3051,35 @@ public sealed class PdfDocumentView : UserControl
         var page = _document.GetPage(pageIndex);
         var wasDragging = _dragSelecting;
         var dragStart = _dragStart;
+        var zoomAreaActive = _zoomAreaMode;
         _dragSelecting = false;
         border.ReleasePointerCapture(e.Pointer);
+
+        var dragDistance = Math.Abs(point.Position.X - dragStart.X) + Math.Abs(point.Position.Y - dragStart.Y);
+        if (zoomAreaActive)
+        {
+            if (wasDragging && dragDistance >= 8)
+            {
+                var leftUi = Math.Min(dragStart.X, point.Position.X);
+                var topUi = Math.Min(dragStart.Y, point.Position.Y);
+                var widthUi = Math.Max(1, Math.Abs(point.Position.X - dragStart.X));
+                var heightUi = Math.Max(1, Math.Abs(point.Position.Y - dragStart.Y));
+                await ZoomToDisplayAreaAsync(pageIndex, leftUi, topUi, widthUi, heightUi);
+            }
+            else
+            {
+                ClearZoomAreaMode();
+                _status.Text = PdfZoomAreaStatus.CancelledTooSmall;
+            }
+
+            if (_pageOverlays.TryGetValue(pageIndex, out var zoomOverlay))
+            {
+                zoomOverlay.Children.Clear();
+            }
+
+            e.Handled = true;
+            return;
+        }
 
         var pdfX = point.Position.X / _scale;
         var pdfY = page.HeightPoints - (point.Position.Y / _scale);
@@ -1756,14 +3089,15 @@ public sealed class PdfDocumentView : UserControl
             _pageLinks[pageIndex] = await _linkService.GetPageLinksAsync(_document, pageIndex);
         }
 
-        var dragDistance = Math.Abs(point.Position.X - dragStart.X) + Math.Abs(point.Position.Y - dragStart.Y);
         if (!wasDragging || dragDistance < 4)
         {
             var link = _pageLinks[pageIndex].FirstOrDefault(l => l.Bounds.ContainsPoint(pdfX, pdfY));
-            if (link?.DestinationPageIndex is int dest)
+            if (link is not null
+                && PdfLinkAction.Resolve(link.DestinationPageIndex, link.Uri) == PdfLinkAction.Kind.GoToPage
+                && link.DestinationPageIndex is int dest)
             {
                 await GoToPageAsync(dest, recordHistory: true);
-                _status.Text = $"Followed link to page {dest + 1}.";
+                _status.Text = PdfFindStatus.FormatFollowedLink(dest + 1);
                 return;
             }
         }
@@ -1787,21 +3121,35 @@ public sealed class PdfDocumentView : UserControl
                 Math.Max(1, rightUi - leftUi),
                 Math.Max(1, bottomUi - topUi));
 
-            var left = leftUi / _scale;
-            var right = rightUi / _scale;
-            var top = page.HeightPoints - (bottomUi / _scale);
-            var bottom = page.HeightPoints - (topUi / _scale);
-            var selection = new PdfRect(left, bottom, right, top);
+            var selection = PdfPageCoordinates.FromDisplayRect(
+                leftUi,
+                topUi,
+                rightUi,
+                bottomUi,
+                page.HeightPoints,
+                _scale);
 
-            var startPdfX = dragStart.X / _scale;
-            var startPdfY = page.HeightPoints - (dragStart.Y / _scale);
-            var endPdfX = point.Position.X / _scale;
-            var endPdfY = page.HeightPoints - (point.Position.Y / _scale);
+            var startPdf = PdfPageCoordinates.FromDisplayPoint(
+                dragStart.X,
+                dragStart.Y,
+                page.HeightPoints,
+                _scale);
+            var endPdf = PdfPageCoordinates.FromDisplayPoint(
+                point.Position.X,
+                point.Position.Y,
+                page.HeightPoints,
+                _scale);
+            var startPdfX = startPdf.X;
+            var startPdfY = startPdf.Y;
+            var endPdfX = endPdf.X;
+            var endPdfY = endPdf.Y;
             var rectW = selection.Width;
             var rectH = selection.Height;
             // Alt or a wide short-tall drag prefers column/region geometry; otherwise stream across lines.
-            var columnMode = e.KeyModifiers.HasFlag(VirtualKeyModifiers.Menu)
-                || (rectW > Math.Max(40, rectH * 1.75) && rectH > 18);
+            var columnMode = PdfTextSelection.PreferColumnMode(
+                e.KeyModifiers.HasFlag(VirtualKeyModifiers.Menu),
+                rectW,
+                rectH);
 
             if (columnMode)
             {
@@ -1829,31 +3177,15 @@ public sealed class PdfDocumentView : UserControl
             }
 
             _status.Text = string.IsNullOrEmpty(_selectedText)
-                ? "Region selected — right-click to copy as image."
-                : $"Selected “{TrimForStatus(_selectedText)}”";
+                ? AnnotationMutationStatus.RegionSelectedCopyHint
+                : AnnotationMutationStatus.FormatSelectedText(TrimForStatus(_selectedText));
             return;
         }
 
         // Click selects nearest character word-ish: expand to nearby chars on the same line.
-        var hit = chars
-            .Select((c, idx) => (c, idx, dist: Math.Abs(c.Bounds.Left - pdfX) + Math.Abs(c.Bounds.Bottom - pdfY)))
-            .OrderBy(x => x.dist)
-            .FirstOrDefault();
-        if (hit.c is null)
+        if (!PdfTextSelection.TryExpandWordAt(chars, pdfX, pdfY, out var start, out var end))
         {
             return;
-        }
-
-        var start = hit.idx;
-        var end = hit.idx;
-        while (start > 0 && !char.IsWhiteSpace(chars[start - 1].Value.FirstOrDefault()))
-        {
-            start--;
-        }
-
-        while (end + 1 < chars.Count && !char.IsWhiteSpace(chars[end + 1].Value.FirstOrDefault()))
-        {
-            end++;
         }
 
         _selectedText = PdfTextSelection.CopyText(chars, start, end);
@@ -1877,8 +3209,8 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _status.Text = string.IsNullOrEmpty(_selectedText)
-            ? $"Page {pageIndex + 1}"
-            : $"Selected “{TrimForStatus(_selectedText)}”";
+            ? AnnotationMutationStatus.FormatPageIndex(pageIndex + 1)
+            : AnnotationMutationStatus.FormatSelectedText(TrimForStatus(_selectedText));
 
         if (_highlightMode && !string.IsNullOrEmpty(_selectedText))
         {
@@ -1947,7 +3279,12 @@ public sealed class PdfDocumentView : UserControl
                 var end = Math.Min(chars.Count - 1, found + _searchQuery.Length - 1);
                 for (var i = found; i <= end && i < chars.Count; i++)
                 {
-                    AddHighlightRect(overlay, page.HeightPoints, chars[i].Bounds, Windows.UI.Color.FromArgb(90, 255, 215, 0));
+                    AddHighlightRect(overlay, page.HeightPoints, chars[i].Bounds,
+                        Windows.UI.Color.FromArgb(
+                            PdfSearchHighlightStyle.Alpha,
+                            PdfSearchHighlightStyle.Red,
+                            PdfSearchHighlightStyle.Green,
+                            PdfSearchHighlightStyle.Blue));
                 }
 
                 searchFrom = found + Math.Max(1, _searchQuery.Length);
@@ -1973,11 +3310,7 @@ public sealed class PdfDocumentView : UserControl
         overlay.Children.Add(rect);
     }
 
-    private static string TrimForStatus(string text)
-    {
-        var flat = text.Replace('\n', ' ').Replace('\r', ' ').Trim();
-        return flat.Length <= 42 ? flat : flat[..42] + "…";
-    }
+    private static string TrimForStatus(string text) => PdfAnnotationListLabel.TrimPreview(text);
 
     private sealed record OutlineItem(string Title, int? PageIndex)
     {
@@ -1986,7 +3319,7 @@ public sealed class PdfDocumentView : UserControl
 
     private async void ScrollViewer_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
-        if (!e.KeyModifiers.HasFlag(VirtualKeyModifiers.Control))
+        if (!WheelInputPolicy.PreferZoomOverScroll(e.KeyModifiers.HasFlag(VirtualKeyModifiers.Control)))
         {
             return;
         }
@@ -2003,7 +3336,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        await SetScaleAsync(_scale * e.Delta.Scale);
+        await SetScaleAsync(PdfZoomCalculator.ApplyManipulationScale(_scale, e.Delta.Scale));
         e.Handled = true;
     }
 
@@ -2015,7 +3348,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _ocrCts.Cancel();
-        _status.Text = "Cancelling OCR…";
+        _status.Text = OcrResultDialog.Cancelling;
     }
 
     private void BeginOcrJob()
@@ -2024,6 +3357,7 @@ public sealed class PdfDocumentView : UserControl
         _ocrCts?.Dispose();
         _ocrCts = new CancellationTokenSource();
         _ocrCancelButton.Visibility = Visibility.Visible;
+        ShowJobProgress(0, determinate: true);
     }
 
     private void EndOcrJob()
@@ -2031,32 +3365,48 @@ public sealed class PdfDocumentView : UserControl
         _ocrCancelButton.Visibility = Visibility.Collapsed;
         _ocrCts?.Dispose();
         _ocrCts = null;
+        HideJobProgress();
+    }
+
+    private void ShowJobProgress(double percent, bool determinate = true)
+    {
+        _jobProgress.IsIndeterminate = !determinate;
+        if (determinate)
+        {
+            _jobProgress.Value = Math.Clamp(percent, 0, 100);
+        }
+
+        _jobProgress.Visibility = Visibility.Visible;
+    }
+
+    private void HideJobProgress()
+    {
+        _jobProgress.IsIndeterminate = false;
+        _jobProgress.Value = 0;
+        _jobProgress.Visibility = Visibility.Collapsed;
     }
 
     private async Task OnOcrButtonClickAsync()
     {
         if (_ocr is null)
         {
-            _status.Text = "OCR engine unavailable.";
+            _status.Text = OcrResultDialog.EngineUnavailable;
             return;
         }
 
         var selected = SelectedOrCurrentPages();
-        var selectedLabel = selected.Count == 1
-            ? $"Selected / current (page {selected[0] + 1})"
-            : $"Selected pages ({selected.Count})";
-
         var chooser = new ContentDialog
         {
-            Title = "OCR",
+            Title = PdfDialogTitles.Ocr,
             Content = new TextBlock
             {
-                Text = $"Recognize text offline.\n\n• {selectedLabel}\n• Entire document ({_document.PageCount} pages)",
+                Text =
+                    $"Recognize text offline.\n\n• {OcrPageRangeChooser.SelectedLabel(selected)}\n• {OcrPageRangeChooser.EntireDocumentLabel(_document.PageCount)}",
                 TextWrapping = TextWrapping.Wrap,
             },
-            PrimaryButtonText = selected.Count == 1 ? "Current page" : "Selected pages",
-            SecondaryButtonText = "Entire document",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = OcrPageRangeChooser.PrimaryButton(selected.Count),
+            SecondaryButtonText = OcrPageRangeChooser.SecondaryButton,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
         };
@@ -2068,8 +3418,7 @@ public sealed class PdfDocumentView : UserControl
         }
         else if (choice == ContentDialogResult.Secondary)
         {
-            var all = Enumerable.Range(0, _document.PageCount).ToList();
-            await RunOcrPagesAsync(all);
+            await RunOcrPagesAsync(OcrPageRangeChooser.EntireDocumentPages(_document.PageCount));
         }
     }
 
@@ -2077,13 +3426,13 @@ public sealed class PdfDocumentView : UserControl
     {
         if (_ocr is null)
         {
-            _status.Text = "OCR engine unavailable.";
+            _status.Text = OcrResultDialog.EngineUnavailable;
             return;
         }
 
         if (pages.Count == 0)
         {
-            _status.Text = "No pages selected for OCR.";
+            _status.Text = OcrResultDialog.NoPagesSelected;
             return;
         }
 
@@ -2099,9 +3448,8 @@ public sealed class PdfDocumentView : UserControl
             {
                 token.ThrowIfCancellationRequested();
                 var pageIndex = pages[i];
-                _status.Text = pages.Count == 1
-                    ? $"Running OCR on page {pageIndex + 1}… (1/1)"
-                    : $"Running OCR on page {pageIndex + 1} ({i + 1}/{pages.Count})…";
+                ShowJobProgress(pages.Count <= 1 ? 5 : (100.0 * i / pages.Count));
+                _status.Text = OcrPageRangeChooser.ProgressStatus(pageIndex, i + 1, pages.Count);
 
                 using var rendered = await _renderer.RenderPageAsync(
                     _document,
@@ -2115,7 +3463,11 @@ public sealed class PdfDocumentView : UserControl
                 token.ThrowIfCancellationRequested();
                 var pixels = rendered.Pixels.ToArray();
                 var result = await _ocr.RecognizeAsync(
-                    new OcrRequest(rendered.Width, rendered.Height, pixels),
+                    new OcrRequest(
+                        rendered.Width,
+                        rendered.Height,
+                        pixels,
+                        LanguageTag: TryGetSettings()?.OcrLanguageTag),
                     token);
 
                 totalLines += result.Lines.Count;
@@ -2136,7 +3488,8 @@ public sealed class PdfDocumentView : UserControl
 
                 sections.Add(pages.Count == 1
                     ? body
-                    : $"--- Page {pageIndex + 1} ---\n{body}");
+                    : OcrResultDialog.PageSectionHeader(pageIndex, body));
+                ShowJobProgress(100.0 * (i + 1) / pages.Count);
             }
 
             UpdateOcrOverlayChrome();
@@ -2150,18 +3503,16 @@ public sealed class PdfDocumentView : UserControl
                 Width = 480,
                 Height = 320,
             };
-            var copy = new Button { Content = "Copy text", Margin = new Thickness(0, 8, 0, 0) };
+            var copy = new Button { Content = OcrResultDialog.CopyButton, Margin = new Thickness(0, 8, 0, 0) };
             copy.Click += (_, _) =>
             {
                 var package = new DataPackage();
                 package.SetText(combined);
                 Clipboard.SetContent(package);
-                _status.Text = "OCR text copied.";
+                _status.Text = OcrResultDialog.TextCopied;
             };
 
-            var summary = pages.Count == 1
-                ? $"Page {pages[0] + 1} · {totalLines} line(s) · {totalWords} word(s)"
-                : $"{pages.Count} pages · {totalLines} line(s) · {totalWords} word(s)";
+            var summary = OcrResultDialog.Summary(pages.Count, pages[0], totalLines, totalWords);
 
             var panel = new StackPanel
             {
@@ -2176,27 +3527,21 @@ public sealed class PdfDocumentView : UserControl
 
             var dialog = new ContentDialog
             {
-                Title = pages.Count == 1 ? "OCR result" : "OCR results",
+                Title = OcrResultDialog.Title(pages.Count),
                 Content = panel,
-                CloseButtonText = "Close",
+                CloseButtonText = DialogButtons.Close,
                 XamlRoot = XamlRoot,
             };
             await dialog.ShowAsync();
-            _status.Text = totalLines == 0
-                ? (pages.Count == 1
-                    ? $"OCR page {pages[0] + 1} — no text."
-                    : $"OCR {pages.Count} pages — no text.")
-                : (pages.Count == 1
-                    ? $"OCR page {pages[0] + 1} — {totalLines} line(s). Click words to select."
-                    : $"OCR {pages.Count} pages — {totalLines} line(s). Click words to select.");
+            _status.Text = OcrResultDialog.CompletionStatus(pages.Count, pages[0], totalLines);
         }
         catch (OperationCanceledException)
         {
-            _status.Text = "OCR cancelled.";
+            _status.Text = OcrResultDialog.Cancelled;
         }
         catch (Exception ex)
         {
-            _status.Text = "OCR failed: " + ex.Message;
+            _status.Text = OcrResultDialog.Failed(ex.Message);
         }
         finally
         {
@@ -2274,7 +3619,7 @@ public sealed class PdfDocumentView : UserControl
         var key = (pageIndex, wordIndex);
         var ctrl = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
             .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-        if (!ctrl)
+        if (OcrWordSelectionPolicy.ShouldClearBeforeToggle(ctrl))
         {
             _selectedOcrIndices.Clear();
             foreach (var page in _ocrVisualsByPage.Keys.ToList())
@@ -2295,8 +3640,8 @@ public sealed class PdfDocumentView : UserControl
             && wordIndex < visuals.Count)
         {
             _status.Text = _selectedOcrIndices.Count == 0
-                ? "OCR selection cleared."
-                : $"Selected OCR: {visuals[wordIndex].Word.Text}";
+                ? OcrWordSelectionPolicy.Cleared
+                : OcrWordSelectionPolicy.SelectedWord(visuals[wordIndex].Word.Text);
         }
     }
 
@@ -2334,13 +3679,13 @@ public sealed class PdfDocumentView : UserControl
     {
         if (_ocrPageData.Count == 0)
         {
-            _status.Text = "Run OCR before exporting a searchable PDF.";
+            _status.Text = OcrResultDialog.SearchableExportNeedsOcr;
             return;
         }
 
         try
         {
-            _status.Text = "Building searchable OCR PDF…";
+            _status.Text = OcrResultDialog.BuildingSearchablePdf;
             var pages = new List<(byte[] ImageBytes, bool IsJpeg, int PixelWidth, int PixelHeight, IEnumerable<SearchablePdfWord> Words)>();
             foreach (var pageIndex in _ocrPageData.Keys.OrderBy(i => i))
             {
@@ -2364,26 +3709,26 @@ public sealed class PdfDocumentView : UserControl
             var pdfBytes = OcrSearchablePdfWriter.BuildPages(pages);
             var window = _ownerWindow
                 ?? App.CurrentApp.MainWindowInstance
-                ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+                ?? throw new InvalidOperationException(MainWindowRequiredMessages.SavePicker);
             var picker = new FileSavePicker();
             var hwnd = WindowNative.GetWindowHandle(window);
             InitializeWithWindow.Initialize(picker, hwnd);
             picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
-            picker.SuggestedFileName = "OCR searchable";
+            picker.SuggestedFileName = DocumentExportFormats.SuggestedOcrSearchable;
             picker.FileTypeChoices.Add("PDF", [".pdf"]);
             var file = await picker.PickSaveFileAsync();
             if (file is null)
             {
-                _status.Text = "OCR→PDF cancelled.";
+                _status.Text = OcrResultDialog.SearchablePdfCancelled;
                 return;
             }
 
             await FileIO.WriteBytesAsync(file, pdfBytes);
-            _status.Text = $"Saved searchable OCR PDF ({pages.Count} page(s)): {file.Name}";
+            _status.Text = OcrResultDialog.SavedSearchablePdf(pages.Count, file.Name);
         }
         catch (Exception ex)
         {
-            _status.Text = "OCR→PDF failed: " + ex.Message;
+            _status.Text = OcrResultDialog.SearchablePdfFailed(ex.Message);
         }
     }
 
@@ -2440,16 +3785,14 @@ public sealed class PdfDocumentView : UserControl
 
         if (string.IsNullOrWhiteSpace(text))
         {
-            _status.Text = "No OCR text to copy.";
+            _status.Text = OcrWordSelectionPolicy.NothingToCopy;
             return;
         }
 
         var package = new DataPackage();
         package.SetText(text);
         Clipboard.SetContent(package);
-        _status.Text = _selectedOcrIndices.Count == 0
-            ? "All OCR text copied."
-            : $"Copied {_selectedOcrIndices.Count} OCR word(s).";
+        _status.Text = OcrWordSelectionPolicy.CopiedWords(_selectedOcrIndices.Count);
     }
 
     private void ClearOcrOverlays()
@@ -2466,7 +3809,7 @@ public sealed class PdfDocumentView : UserControl
         _clearOcrOverlayButton.Visibility = Visibility.Collapsed;
         _ocrSavePdfButton.Visibility = _ocrPageData.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         _ocrEntitiesButton.Visibility = _ocrPageData.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        _status.Text = "OCR overlays cleared.";
+        _status.Text = OcrResultDialog.OverlaysCleared;
     }
 
     private async Task ShowOcrEntitiesAsync()
@@ -2475,7 +3818,7 @@ public sealed class PdfDocumentView : UserControl
         var entities = OcrEntityDetector.Detect(text);
         if (entities.Count == 0)
         {
-            _status.Text = "No URLs, emails, phones, addresses, dates, or times detected.";
+            _status.Text = PdfFindStatus.NoEntitiesDetected;
             return;
         }
 
@@ -2486,9 +3829,9 @@ public sealed class PdfDocumentView : UserControl
             MaxHeight = 320,
             ItemsSource = entities.Select(e => $"{e.Kind}: {e.Value}").ToList(),
         };
-        var copy = new Button { Content = "Copy value", Margin = new Thickness(0, 8, 8, 0) };
-        var open = new Button { Content = "Open / act", Margin = new Thickness(0, 8, 8, 0) };
-        var searchWeb = new Button { Content = "Search web", Margin = new Thickness(0, 8, 0, 0) };
+        var copy = new Button { Content = PdfViewerChromeLabels.CopyValue, Margin = new Thickness(0, 8, 8, 0) };
+        var open = new Button { Content = PdfViewerChromeLabels.OpenOrAct, Margin = new Thickness(0, 8, 8, 0) };
+        var searchWeb = new Button { Content = PdfViewerChromeLabels.SearchWeb, Margin = new Thickness(0, 8, 0, 0) };
         copy.Click += (_, _) =>
         {
             if (list.SelectedIndex < 0 || list.SelectedIndex >= entities.Count)
@@ -2499,7 +3842,7 @@ public sealed class PdfDocumentView : UserControl
             var package = new DataPackage();
             package.SetText(entities[list.SelectedIndex].Value);
             Clipboard.SetContent(package);
-            _status.Text = $"Copied {entities[list.SelectedIndex].Kind}.";
+            _status.Text = PdfFindStatus.FormatCopiedEntity(entities[list.SelectedIndex].Kind.ToString());
         };
         open.Click += async (_, _) =>
         {
@@ -2536,9 +3879,9 @@ public sealed class PdfDocumentView : UserControl
         };
         var dialog = new ContentDialog
         {
-            Title = "OCR entities",
+            Title = PdfDialogTitles.OcrEntities,
             Content = panel,
-            CloseButtonText = "Close",
+            CloseButtonText = DialogButtons.Close,
             XamlRoot = XamlRoot,
         };
         await dialog.ShowAsync();
@@ -2552,22 +3895,18 @@ public sealed class PdfDocumentView : UserControl
             {
                 case OcrEntityKind.Url:
                     {
-                        var href = entity.Value.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                            ? entity.Value
-                            : "https://" + entity.Value;
-                        await Launcher.LaunchUriAsync(new Uri(href));
-                        _status.Text = "Opened URL.";
+                        await Launcher.LaunchUriAsync(new Uri(OcrEntityActionUris.NormalizeUrl(entity.Value)));
+                        _status.Text = OcrEntityActionUris.OpenedUrl;
                         break;
                     }
                 case OcrEntityKind.Email:
-                    await Launcher.LaunchUriAsync(new Uri("mailto:" + entity.Value));
-                    _status.Text = "Opened mail compose.";
+                    await Launcher.LaunchUriAsync(new Uri(OcrEntityActionUris.Mailto(entity.Value)));
+                    _status.Text = OcrEntityActionUris.OpenedMail;
                     break;
                 case OcrEntityKind.Address:
                     {
-                        var maps = "https://www.bing.com/maps?q=" + Uri.EscapeDataString(entity.Value);
-                        await Launcher.LaunchUriAsync(new Uri(maps));
-                        _status.Text = "Opened address in Maps.";
+                        await Launcher.LaunchUriAsync(new Uri(OcrEntityActionUris.BingMaps(entity.Value)));
+                        _status.Text = OcrEntityActionUris.OpenedMaps;
                         break;
                     }
                 case OcrEntityKind.Date:
@@ -2580,14 +3919,14 @@ public sealed class PdfDocumentView : UserControl
                         var package = new DataPackage();
                         package.SetText(entity.Value);
                         Clipboard.SetContent(package);
-                        _status.Text = $"Copied {entity.Kind}.";
+                        _status.Text = OcrEntityActionUris.CopiedKind(entity.Kind.ToString());
                         break;
                     }
             }
         }
         catch (Exception ex)
         {
-            _status.Text = "Entity action failed: " + ex.Message;
+            _status.Text = OcrEntityActionUris.ActionFailed(ex.Message);
         }
     }
 
@@ -2610,7 +3949,7 @@ public sealed class PdfDocumentView : UserControl
             var package = new DataPackage();
             package.SetText(entity.Value);
             Clipboard.SetContent(package);
-            _status.Text = $"Copied {entity.Kind} (could not parse for calendar).";
+            _status.Text = PdfFindStatus.FormatCopiedEntityUnparsed(entity.Kind.ToString());
             return;
         }
 
@@ -2620,42 +3959,42 @@ public sealed class PdfDocumentView : UserControl
         await System.IO.File.WriteAllTextAsync(path, ics);
         var file = await StorageFile.GetFileFromPathAsync(path);
         await Launcher.LaunchFileAsync(file);
-        _status.Text = "Opened calendar invite.";
+        _status.Text = PdfFindStatus.OpenedCalendarInvite;
     }
 
     private async Task SearchWebAsync(string query)
     {
         if (string.IsNullOrWhiteSpace(query))
         {
-            _status.Text = "Nothing to search.";
+            _status.Text = OcrEntityActionUris.NothingToSearch;
             return;
         }
 
         try
         {
-            var url = "https://www.bing.com/search?q=" + Uri.EscapeDataString(query.Trim());
-            await Launcher.LaunchUriAsync(new Uri(url));
-            _status.Text = "Opened web search.";
+            await Launcher.LaunchUriAsync(new Uri(OcrEntityActionUris.BingWebSearch(query)));
+            _status.Text = OcrEntityActionUris.OpenedWebSearch;
         }
         catch (Exception ex)
         {
-            _status.Text = "Search web failed: " + ex.Message;
+            _status.Text = OcrEntityActionUris.SearchFailed(ex.Message);
         }
     }
 
     private async Task CopyRegionAsBitmapAsync()
     {
-        if (_regionCopyPageIndex < 0
-            || _regionCopyDisplayRect.Width < 4
-            || _regionCopyDisplayRect.Height < 4)
+        if (!PdfRegionCopyPolicy.HasValidRegion(
+                _regionCopyPageIndex,
+                _regionCopyDisplayRect.Width,
+                _regionCopyDisplayRect.Height))
         {
-            _status.Text = "Drag a region on the page first.";
+            _status.Text = PdfRegionCopyPolicy.DragRegionFirst;
             return;
         }
 
         try
         {
-            _status.Text = "Copying region…";
+            _status.Text = PdfRegionCopyPolicy.Copying;
             using var rendered = await _renderer.RenderPageAsync(
                 _document,
                 _regionCopyPageIndex,
@@ -2679,7 +4018,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 var srcOffset = ((srcY + y) * rendered.Width + srcX) * 4;
                 var dstOffset = y * srcW * 4;
-                Buffer.BlockCopy(full, srcOffset, cropped, dstOffset, srcW * 4);
+                System.Buffer.BlockCopy(full, srcOffset, cropped, dstOffset, srcW * 4);
             }
 
             var png = await EncodeBgraPngAsync(cropped, srcW, srcH);
@@ -2693,11 +4032,11 @@ public sealed class PdfDocumentView : UserControl
             var package = new DataPackage();
             package.SetBitmap(Windows.Storage.Streams.RandomAccessStreamReference.CreateFromStream(stream));
             Clipboard.SetContent(package);
-            _status.Text = $"Copied region ({srcW}×{srcH}) to clipboard.";
+            _status.Text = PdfRegionCopyPolicy.FormatCopied(srcW, srcH);
         }
         catch (Exception ex)
         {
-            _status.Text = "Copy region failed: " + ex.Message;
+            _status.Text = PdfRegionCopyPolicy.FormatFailed(ex.Message);
         }
     }
 
@@ -2705,7 +4044,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (string.IsNullOrWhiteSpace(_selectedText))
         {
-            _status.Text = "Select text on the page first.";
+            _status.Text = AnnotationSelectionStatus.SelectTextFirst;
             return;
         }
 
@@ -2744,12 +4083,12 @@ public sealed class PdfDocumentView : UserControl
     {
         if (_document.Path is null)
         {
-            ClearSearchResults("Document path is unavailable for search.");
+            ClearSearchResults(PdfTextInteractionUi.PathUnavailableForSearch);
             return;
         }
 
         var query = _searchBox.Text ?? string.Empty;
-        _status.Text = "Searching…";
+        _status.Text = PdfFindStatus.Searching;
         _searchQuery = query.Trim();
         _searchCaseSensitive = _caseSensitiveBox.IsChecked == true;
 
@@ -2763,8 +4102,10 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        ShowSidebarMode(SidebarModeCombo.SearchIndex); // Search results panel
+
         var ocrHits = PdfPageTextSearch.Find(_ocrPageTexts, query, _searchCaseSensitive);
-        var merged = MergeSearchHits(result.Hits, ocrHits);
+        var merged = PdfPageTextSearch.Merge(result.Hits, ocrHits);
         var usedOcr = ocrHits.Count > 0;
         var status = result.Status;
         string? message = result.Message;
@@ -2781,14 +4122,16 @@ public sealed class PdfDocumentView : UserControl
         else if (status == PdfSearchStatus.NoExtractableText && _ocrPageTexts.Count == 0)
         {
             message = result.Message ?? "OCR required.";
-            if (_ocr is not null && !string.IsNullOrWhiteSpace(query))
+            if (_ocr is not null
+                && !string.IsNullOrWhiteSpace(query)
+                && FindOcrFallbackPolicy.ShouldOfferOcr(message))
             {
                 var offer = new ContentDialog
                 {
-                    Title = "OCR required",
-                    Content = "This PDF has no extractable text. Run OCR on the current page so Find can search recognized text?",
-                    PrimaryButtonText = "OCR page",
-                    CloseButtonText = "Not now",
+                    Title = FindOcrFallbackPolicy.DialogTitle,
+                    Content = FindOcrFallbackPolicy.DialogMessage,
+                    PrimaryButtonText = FindOcrFallbackPolicy.PrimaryButton,
+                    CloseButtonText = DialogButtons.NotNow,
                     DefaultButton = ContentDialogButton.Primary,
                     XamlRoot = XamlRoot,
                 };
@@ -2808,7 +4151,7 @@ public sealed class PdfDocumentView : UserControl
                  && !string.IsNullOrWhiteSpace(query))
         {
             status = PdfSearchStatus.NoMatches;
-            message = "No matches in document text or OCR cache.";
+            message = PdfTextInteractionUi.NoMatchesInTextOrOcr;
         }
 
         _hits = merged;
@@ -2834,16 +4177,7 @@ public sealed class PdfDocumentView : UserControl
             })
             .ToList();
 
-        _status.Text = status switch
-        {
-            PdfSearchStatus.EmptyQuery => message ?? "Enter search text.",
-            PdfSearchStatus.NoMatches => message ?? "No matches.",
-            PdfSearchStatus.NoExtractableText => message ?? "OCR required.",
-            PdfSearchStatus.DocumentEncrypted => message ?? "Password required.",
-            PdfSearchStatus.Failed => message ?? "Search failed.",
-            PdfSearchStatus.Success => message ?? $"{_hits.Count} match{(_hits.Count == 1 ? string.Empty : "es")}",
-            _ => message ?? _status.Text,
-        };
+        _status.Text = PdfSearchStatusText.Format(status, _hits.Count, message);
 
         if (_activeHitIndex >= 0)
         {
@@ -2852,36 +4186,6 @@ public sealed class PdfDocumentView : UserControl
         }
 
         await RefreshSearchHighlightsAsync();
-    }
-
-    private static IReadOnlyList<PdfSearchHit> MergeSearchHits(
-        IReadOnlyList<PdfSearchHit> nativeHits,
-        IReadOnlyList<PdfSearchHit> ocrHits)
-    {
-        if (ocrHits.Count == 0)
-        {
-            return nativeHits;
-        }
-
-        if (nativeHits.Count == 0)
-        {
-            return ocrHits;
-        }
-
-        var seen = new HashSet<(int Page, int Start, int Length)>();
-        var merged = new List<PdfSearchHit>(nativeHits.Count + ocrHits.Count);
-        foreach (var hit in nativeHits.Concat(ocrHits).OrderBy(h => h.PageIndex).ThenBy(h => h.MatchStart))
-        {
-            var key = (hit.PageIndex, hit.MatchStart, hit.MatchLength);
-            if (!seen.Add(key))
-            {
-                continue;
-            }
-
-            merged.Add(hit);
-        }
-
-        return merged;
     }
 
     private void ClearSearchResults(string status)
@@ -2897,7 +4201,7 @@ public sealed class PdfDocumentView : UserControl
     private async Task ClearSearchAsync()
     {
         _searchBox.Text = string.Empty;
-        ClearSearchResults("Search cleared.");
+        ClearSearchResults(PdfSearchHighlightStyle.ClearedStatus);
         foreach (var overlay in _pageOverlays.Values)
         {
             overlay.Children.Clear();
@@ -2913,11 +4217,16 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var wrapped = (hitIndex % _hits.Count + _hits.Count) % _hits.Count;
+        var wrapped = PdfSearchHitNav.WrapIndex(hitIndex, _hits.Count);
+        if (wrapped < 0)
+        {
+            return;
+        }
+
         _activeHitIndex = wrapped;
         _searchResults.SelectedIndex = wrapped;
         await GoToPageAsync(_hits[wrapped].PageIndex, recordHistory: true);
-        _status.Text = $"Match {wrapped + 1} / {_hits.Count} · p.{_hits[wrapped].PageIndex + 1}";
+        _status.Text = PdfSearchHitNav.FormatStatus(wrapped, _hits.Count, _hits[wrapped].PageIndex);
     }
 
     private async void SearchResults_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -2937,6 +4246,314 @@ public sealed class PdfDocumentView : UserControl
         SyncViewState();
         UpdateStatus();
         await RenderVisibleAsync();
+    }
+
+    private void ToggleZoomAreaMode()
+    {
+        if (_zoomAreaMode)
+        {
+            ClearZoomAreaMode();
+            return;
+        }
+
+        _zoomAreaMode = true;
+        if (_zoomAreaButton is not null)
+        {
+            _zoomAreaButton.Background = new SolidColorBrush(Colors.DodgerBlue);
+        }
+
+        _status.Text = PdfZoomAreaStatus.Prompt;
+    }
+
+    private void ClearZoomAreaMode()
+    {
+        _zoomAreaMode = false;
+        if (_zoomAreaButton is not null)
+        {
+            _zoomAreaButton.Background = null;
+        }
+    }
+
+    private void ToggleViewLoupeMode()
+    {
+        if (_viewLoupeMode)
+        {
+            ClearViewLoupeMode();
+            return;
+        }
+
+        if (_presentationMode)
+        {
+            _ = ExitPresentationModeAsync();
+        }
+
+        ClearZoomAreaMode();
+        _viewLoupeMode = true;
+        if (_viewLoupeButton is not null)
+        {
+            _viewLoupeButton.Background = new SolidColorBrush(Colors.DodgerBlue);
+        }
+
+        EnsureViewLoupePopup();
+        _status.Text = AnnotationToolModeStatus.MagnifierOn;
+    }
+
+    private void ClearViewLoupeMode()
+    {
+        _viewLoupeMode = false;
+        if (_viewLoupeButton is not null)
+        {
+            _viewLoupeButton.Background = null;
+        }
+
+        if (_viewLoupePopup is not null)
+        {
+            _viewLoupePopup.Visibility = Visibility.Collapsed;
+        }
+
+        _status.Text = AnnotationToolModeStatus.MagnifierOff;
+    }
+
+    private void EnsureViewLoupePopup()
+    {
+        if (_viewLoupeHost is null)
+        {
+            return;
+        }
+
+        if (_viewLoupePopup is not null)
+        {
+            return;
+        }
+
+        var outSize = (int)PdfLoupeMagnifier.PopupSizeDip;
+        _viewLoupePopup = new Border
+        {
+            Width = outSize + 4,
+            Height = outSize + 4,
+            CornerRadius = new CornerRadius((outSize + 4) / 2.0),
+            BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 30, 100, 180)),
+            BorderThickness = new Thickness(2),
+            Background = new SolidColorBrush(Colors.White),
+            IsHitTestVisible = false,
+            Visibility = Visibility.Collapsed,
+            Child = new Image
+            {
+                Width = outSize,
+                Height = outSize,
+                Stretch = Stretch.UniformToFill,
+            },
+        };
+        _viewLoupeHost.Children.Add(_viewLoupePopup);
+    }
+
+    private void UpdateViewLoupe(Border pageBorder, int pageIndex, Windows.Foundation.Point pagePoint)
+    {
+        EnsureViewLoupePopup();
+        if (_viewLoupePopup is null || _viewLoupeHost is null || _bodyGrid is null)
+        {
+            return;
+        }
+
+        if (!_pageImages.TryGetValue(pageIndex, out var pageImage)
+            || pageImage.Source is not WriteableBitmap bitmap)
+        {
+            _viewLoupePopup.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var page = _document.GetPage(pageIndex);
+        var halfPts = 36 / Math.Max(_scale, 0.25); // ~36 DIP sample radius in page space
+        var pdfX = pagePoint.X / _scale;
+        var pdfYFromBottom = page.HeightPoints - (pagePoint.Y / _scale);
+        var magnified = PdfLoupeMagnifier.CropAndScale(
+            bitmap,
+            page.WidthPoints,
+            page.HeightPoints,
+            pdfX - halfPts,
+            pdfYFromBottom - halfPts,
+            pdfX + halfPts,
+            pdfYFromBottom + halfPts,
+            PdfLoupeMagnifier.DefaultZoom,
+            (int)PdfLoupeMagnifier.PopupSizeDip);
+        if (magnified is null)
+        {
+            _viewLoupePopup.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        if (_viewLoupePopup.Child is Image img)
+        {
+            img.Source = magnified;
+        }
+
+        // Position popup near the pointer in the body overlay.
+        var inBody = pageBorder.TransformToVisual(_bodyGrid).TransformPoint(pagePoint);
+        var size = PdfLoupeMagnifier.PopupSizeDip + 4;
+        var left = inBody.X + 24;
+        var top = inBody.Y - size / 2;
+        if (left + size > _bodyGrid.ActualWidth)
+        {
+            left = inBody.X - size - 24;
+        }
+
+        left = Math.Max(0, left);
+        top = Math.Clamp(top, 0, Math.Max(0, _bodyGrid.ActualHeight - size));
+        Canvas.SetLeft(_viewLoupePopup, left);
+        Canvas.SetTop(_viewLoupePopup, top);
+        _viewLoupePopup.Visibility = Visibility.Visible;
+    }
+
+    private async Task TogglePresentationModeAsync()
+    {
+        if (_presentationMode)
+        {
+            await ExitPresentationModeAsync();
+            return;
+        }
+
+        ClearViewLoupeMode();
+        ClearZoomAreaMode();
+        _presentationMode = true;
+        _layoutBeforePresentation = _layoutMode;
+        _scaleBeforePresentation = _scale;
+        _toolbarWasVisible = IsToolbarVisible;
+        if (_toolbar is not null && _toolbar.Visibility == Visibility.Visible)
+        {
+            _toolbar.Visibility = Visibility.Collapsed;
+        }
+
+        if (_sidePanel is not null)
+        {
+            _sidePanel.Visibility = Visibility.Collapsed;
+        }
+
+        if (_bodyGrid is not null && _bodyGrid.ColumnDefinitions.Count > 0)
+        {
+            _bodyGrid.ColumnDefinitions[0].Width = new GridLength(0);
+        }
+
+        await SetLayoutModeAsync(PageLayoutMode.SinglePage);
+        await FitPageAsync();
+        if (App.CurrentApp.MainWindowInstance is MainWindow mw
+            && mw.AppWindow.Presenter.Kind != AppWindowPresenterKind.FullScreen)
+        {
+            mw.ToggleFullscreen();
+        }
+
+        if (_presentButton is not null)
+        {
+            _presentButton.Background = new SolidColorBrush(Colors.DodgerBlue);
+            _presentButton.Content = PdfViewerChromeLabels.ExitPresent;
+        }
+
+        _presentationTimer?.Stop();
+        _presentationTimer = new DispatcherTimer { Interval = PresentationModeDefaults.AutoAdvanceInterval };
+        _presentationTimer.Tick += async (_, _) =>
+        {
+            if (!_presentationMode || _document.PageCount == 0)
+            {
+                return;
+            }
+
+            var next = PageLayoutCalculator.NextPageIndex(_layoutMode, CurrentPageIndex, _document.PageCount);
+            if (next == CurrentPageIndex)
+            {
+                next = 0;
+            }
+
+            await GoToPageAsync(next, recordHistory: true);
+        };
+        _presentationTimer.Start();
+        _status.Text = PresentationModeDefaults.StatusMessage;
+    }
+
+    private async Task ExitPresentationModeAsync()
+    {
+        if (!_presentationMode)
+        {
+            return;
+        }
+
+        _presentationMode = false;
+        _presentationTimer?.Stop();
+        _presentationTimer = null;
+        if (_presentButton is not null)
+        {
+            _presentButton.Background = null;
+            _presentButton.Content = PdfViewerChromeLabels.Present;
+        }
+
+        if (_sidePanel is not null)
+        {
+            _sidePanel.Visibility = Visibility.Visible;
+        }
+
+        if (_bodyGrid is not null && _bodyGrid.ColumnDefinitions.Count > 0)
+        {
+            _bodyGrid.ColumnDefinitions[0].Width = new GridLength(170);
+        }
+
+        if (_toolbar is not null && _toolbarWasVisible)
+        {
+            _toolbar.Visibility = Visibility.Visible;
+        }
+
+        if (App.CurrentApp.MainWindowInstance is MainWindow mw
+            && mw.AppWindow.Presenter.Kind == AppWindowPresenterKind.FullScreen)
+        {
+            mw.ToggleFullscreen();
+        }
+
+        await SetLayoutModeAsync(_layoutBeforePresentation);
+        await SetScaleAsync(_scaleBeforePresentation);
+        _status.Text = AnnotationToolModeStatus.ExitedPresentation;
+    }
+
+    private async Task ZoomToDisplayAreaAsync(int pageIndex, double leftUi, double topUi, double widthUi, double heightUi)
+    {
+        var pdfLeft = leftUi / _scale;
+        var pdfTopFromTop = topUi / _scale;
+        var pdfWidth = widthUi / _scale;
+        var pdfHeight = heightUi / _scale;
+
+        var newScale = PdfZoomCalculator.ZoomToArea(
+            _scale,
+            widthUi,
+            heightUi,
+            _scrollViewer.ViewportWidth,
+            _scrollViewer.ViewportHeight);
+
+        ClearZoomAreaMode();
+        await SetScaleAsync(newScale);
+        await GoToPageAsync(pageIndex, recordHistory: true);
+
+        // After rebuild, scroll so the selected region is centered in the viewport.
+        await Task.Yield();
+        var pageEl = _continuousHost.Children.OfType<FrameworkElement>()
+                .FirstOrDefault(fe => fe.Tag is int tag && tag == pageIndex)
+            ?? _spreadHost.Children.OfType<FrameworkElement>()
+                .FirstOrDefault(fe => fe.Tag is int tag && tag == pageIndex);
+        if (pageEl is null || _scrollViewer.Content is not UIElement scrollContent)
+        {
+            _status.Text = PdfZoomAreaStatus.FormatZoomed(newScale);
+            return;
+        }
+
+        try
+        {
+            var origin = pageEl.TransformToVisual(scrollContent).TransformPoint(new Windows.Foundation.Point(0, 0));
+            var targetLeft = origin.X + pdfLeft * newScale;
+            var targetTop = origin.Y + pdfTopFromTop * newScale;
+            var centerX = targetLeft + (pdfWidth * newScale) / 2 - _scrollViewer.ViewportWidth / 2;
+            var centerY = targetTop + (pdfHeight * newScale) / 2 - _scrollViewer.ViewportHeight / 2;
+            _scrollViewer.ChangeView(Math.Max(0, centerX), Math.Max(0, centerY), null, disableAnimation: false);
+            _status.Text = PdfZoomAreaStatus.FormatZoomedToArea(newScale);
+        }
+        catch
+        {
+            _status.Text = PdfZoomAreaStatus.FormatZoomed(newScale);
+        }
     }
 
     private async Task FitWidthAsync()
@@ -3045,10 +4662,10 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        _status.Text = "Rotating…";
+        _status.Text = PageEditStatus.Rotating;
         await RunPageEditAsync(() => _pageEditor.RotatePagesAsync(_document, indexes, deltaDegrees));
         await ReloadAfterPageEditAsync();
-        _status.Text = $"Rotated {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")}.";
+        _status.Text = PageEditStatus.FormatRotated(indexes.Count);
     }
 
     private async Task DeleteSelectedAsync()
@@ -3061,14 +4678,14 @@ public sealed class PdfDocumentView : UserControl
 
         if (indexes.Count >= _document.PageCount)
         {
-            _status.Text = "Cannot delete every page.";
+            _status.Text = PageEditStatus.CannotDeleteEveryPage;
             return;
         }
 
-        _status.Text = "Deleting…";
+        _status.Text = PageEditStatus.Deleting;
         await RunPageEditAsync(() => _pageEditor.DeletePagesAsync(_document, indexes));
         await ReloadAfterPageEditAsync();
-        _status.Text = $"Deleted {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")}.";
+        _status.Text = PageEditStatus.FormatDeleted(indexes.Count);
     }
 
     private async Task MoveSelectedAsync(int delta)
@@ -3112,7 +4729,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        _status.Text = "Reordering…";
+        _status.Text = PageEditStatus.Reordering;
         await RunPageEditAsync(() => _pageEditor.ReorderPagesAsync(_document, order));
         // Remap selection to new indexes.
         var remap = new Dictionary<int, int>();
@@ -3134,24 +4751,17 @@ public sealed class PdfDocumentView : UserControl
             await GoToPageAsync(moved[0], recordHistory: false);
         }
 
-        _status.Text = "Pages reordered.";
+        _status.Text = PageEditStatus.PagesReordered;
     }
 
-    private List<int> SelectedOrCurrentPages()
-    {
-        if (_pageSelection.Count > 0)
-        {
-            return _pageSelection.SelectedIndexes.OrderBy(i => i).ToList();
-        }
-
-        return [CurrentPageIndex];
-    }
+    private List<int> SelectedOrCurrentPages() =>
+        _pageSelection.SelectedOrFallback(CurrentPageIndex).ToList();
 
     private async Task InsertBlankAfterSelectionAsync()
     {
         var insertAt = SelectedOrCurrentPages().DefaultIfEmpty(CurrentPageIndex).Max() + 1;
         var template = _document.GetPage(Math.Clamp(CurrentPageIndex, 0, _document.PageCount - 1));
-        _status.Text = "Inserting blank page…";
+        _status.Text = PageEditStatus.InsertingBlankPage;
         await RunPageEditAsync(() => _pageEditor.InsertBlankPageAsync(
             _document,
             insertAt,
@@ -3160,7 +4770,7 @@ public sealed class PdfDocumentView : UserControl
         _pageSelection.SelectOnly(insertAt);
         await ReloadAfterPageEditAsync();
         await GoToPageAsync(insertAt, recordHistory: true);
-        _status.Text = "Inserted blank page.";
+        _status.Text = PageEditStatus.InsertedBlankPage;
     }
 
     private async Task DuplicateSelectedAsync()
@@ -3171,10 +4781,10 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        _status.Text = "Duplicating…";
+        _status.Text = PageEditStatus.Duplicating;
         await RunPageEditAsync(() => _pageEditor.DuplicatePagesAsync(_document, indexes));
         await ReloadAfterPageEditAsync();
-        _status.Text = $"Duplicated {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")}.";
+        _status.Text = PageEditStatus.FormatDuplicated(indexes.Count);
     }
 
     private async Task OnHighlightButtonClickAsync()
@@ -3194,18 +4804,19 @@ public sealed class PdfDocumentView : UserControl
 
     private async Task ToggleHighlightModeAsync()
     {
+        ClearRedactionMode();
         if (_highlightMode)
         {
             ClearHighlightMode();
             RefreshToolButtonChrome();
-            _status.Text = "Highlight mode off.";
+            _status.Text = AnnotationToolModeStatus.HighlightOff;
             return;
         }
 
         var picked = await PickHighlightColorAsync();
         if (picked is null)
         {
-            _status.Text = "Highlight mode cancelled.";
+            _status.Text = AnnotationToolModeStatus.HighlightCancelled;
             return;
         }
 
@@ -3224,6 +4835,7 @@ public sealed class PdfDocumentView : UserControl
 
         ClearCalloutMode();
         ClearFreeformMode();
+        ClearPolygonMode();
         if (_inkMode)
         {
             _inkMode = false;
@@ -3235,10 +4847,10 @@ public sealed class PdfDocumentView : UserControl
             CancelCropMode();
         }
 
-        _highlightMode = true;
+        _highlightMode = PersistentHighlightMode.Toggle(false);
         _highlightModeColor = picked.Value;
         RefreshToolButtonChrome();
-        _status.Text = "Highlight mode on — select text to highlight (Esc to exit).";
+        _status.Text = AnnotationToolModeStatus.HighlightOn;
 
         if (_selectionPageIndex >= 0
             && _selectionQuads.Count > 0
@@ -3258,8 +4870,8 @@ public sealed class PdfDocumentView : UserControl
         if (_selectionPageIndex < 0 || _selectionQuads.Count == 0 || string.IsNullOrEmpty(_selectedText))
         {
             _status.Text = _highlightMode && kind == PdfTextMarkupKind.Highlight
-                ? "Highlight mode on — select text to highlight."
-                : "Select text first, then apply markup.";
+                ? AnnotationToolModeStatus.HighlightOnShort
+                : AnnotationToolModeStatus.SelectTextThenMarkup;
             return;
         }
 
@@ -3275,7 +4887,7 @@ public sealed class PdfDocumentView : UserControl
                 var picked = await PickHighlightColorAsync();
                 if (picked is null)
                 {
-                    _status.Text = "Highlight cancelled.";
+                    _status.Text = AnnotationToolModeStatus.HighlightMarkCancelled;
                     return;
                 }
 
@@ -3297,17 +4909,20 @@ public sealed class PdfDocumentView : UserControl
         {
             _status.Text = kind switch
             {
-                PdfTextMarkupKind.Highlight => "Highlighting…",
-                PdfTextMarkupKind.Underline => "Underlining…",
-                _ => "Striking through…",
+                PdfTextMarkupKind.Highlight => AnnotationToolModeStatus.Highlighting,
+                PdfTextMarkupKind.Underline => AnnotationToolModeStatus.Underlining,
+                _ => AnnotationToolModeStatus.StrikingThrough,
             };
 
-            await _annotations.AddTextMarkupAsync(
+            var created = await _annotations.AddTextMarkupAsync(
                 _document,
                 _selectionPageIndex,
                 kind,
                 _selectionQuads,
                 color);
+            RememberAnnotationForUndo(created);
+
+            NotifyEdited();
 
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
@@ -3317,15 +4932,15 @@ public sealed class PdfDocumentView : UserControl
             _status.Text = kind switch
             {
                 PdfTextMarkupKind.Highlight => _highlightMode
-                    ? "Highlight added — select more text, or Esc to exit mode."
-                    : "Highlight added.",
-                PdfTextMarkupKind.Underline => "Underline added.",
-                _ => "Strikethrough added.",
+                    ? AnnotationToolModeStatus.HighlightAddedContinue
+                    : AnnotationToolModeStatus.HighlightAdded,
+                PdfTextMarkupKind.Underline => AnnotationToolModeStatus.UnderlineAdded,
+                _ => AnnotationToolModeStatus.StrikethroughAdded,
             };
         }
         catch (Exception ex)
         {
-            _status.Text = "Markup failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Markup, ex.Message);
         }
     }
 
@@ -3333,7 +4948,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for color dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.ColorDialog);
 
         var list = new ListView
         {
@@ -3344,10 +4959,10 @@ public sealed class PdfDocumentView : UserControl
         list.SelectedIndex = 0;
         var dialog = new ContentDialog
         {
-            Title = "Highlight color",
+            Title = PdfDialogTitles.HighlightColor,
             Content = list,
-            PrimaryButtonText = "Apply",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Apply,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -3361,11 +4976,135 @@ public sealed class PdfDocumentView : UserControl
         return PdfAnnotationColor.HighlightPresets[index].Color;
     }
 
+    private void BeginCalloutTipEdit()
+    {
+        if (!TryGetSelectedAnnotation(out var item) || !item.IsCallout)
+        {
+            _status.Text = AnnotationSelectionStatus.CalloutTip;
+            return;
+        }
+
+        ClearShapeMode();
+        ClearInkMode();
+        ClearFreeformMode();
+        ClearPolygonMode();
+        ClearSignatureMode();
+        ClearHighlightMode();
+        ClearCalloutMode();
+        ClearEraserMode();
+        _calloutTipEditMode = true;
+        _calloutTipTarget = item;
+        _status.Text = AnnotationToolModeStatus.CalloutTipPrompt;
+    }
+
+    private async Task FinishCalloutTipEditAsync(Border border, int pageIndex, PointerRoutedEventArgs e)
+    {
+        var target = _calloutTipTarget;
+        ClearCalloutTipEditMode();
+        if (target is null || pageIndex != target.PageIndex)
+        {
+            _status.Text = AnnotationToolModeStatus.CalloutTipWrongPage;
+            return;
+        }
+
+        var page = _document.GetPage(pageIndex);
+        var pt = e.GetCurrentPoint(border).Position;
+        var tip = PdfPageCoordinates.FromDisplayPoint(pt.X, pt.Y, page.HeightPoints, _scale);
+
+        try
+        {
+            _status.Text = AnnotationPersistStatus.MovingCalloutTip;
+            await _annotations.SetCalloutTipAsync(
+                _document,
+                pageIndex,
+                target.AnnotIndex,
+                tip,
+                pointerWidthPoints: Math.Max(1f, _drawStrokeWidth));
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            var refreshed = _annotationItems.FirstOrDefault(a => a.IsCallout && a.PageIndex == pageIndex)
+                ?? target;
+            _selectedAnnot = refreshed;
+            SyncSidebarSelection(refreshed);
+            DrawAnnotSelection(refreshed);
+            _status.Text = AnnotationToolModeStatus.CalloutTipMoved;
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.CalloutTip, ex.Message);
+        }
+    }
+
+    private async Task SetSelectedAnnotationFillAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.FillDialog);
+
+        if (!TryGetSelectedAnnotation(out var item))
+        {
+            _status.Text = AnnotationSelectionStatus.ShapeOrTextBoxFill;
+            return;
+        }
+
+        if (!(item.IsTextBox || item.ShapeKind is PdfShapeKind.Rectangle
+                or PdfShapeKind.RoundedRectangle
+                or PdfShapeKind.HighlightRectangle
+                or PdfShapeKind.Ellipse
+                or PdfShapeKind.Loupe))
+        {
+            _status.Text = AnnotationPersistStatus.FillAppliesHint;
+            return;
+        }
+
+        var fills = PdfAnnotationColorPresets.FillChoices.ToArray();
+        var list = new ListView
+        {
+            Height = 220,
+            SelectionMode = ListViewSelectionMode.Single,
+            ItemsSource = fills.Select(f => f.Name).ToList(),
+            SelectedIndex = 1,
+        };
+        var dialog = new ContentDialog
+        {
+            Title = PdfAnnotationColorPresets.FormatFillTitle(PdfAnnotationListLabel.Format(item)),
+            Content = list,
+            PrimaryButtonText = DialogButtons.Apply,
+            CloseButtonText = DialogButtons.Cancel,
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var fill = fills[Math.Clamp(list.SelectedIndex, 0, fills.Length - 1)].Color;
+        try
+        {
+            await _annotations.SetFillColorAsync(_document, item.PageIndex, item.AnnotIndex, fill);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = fill is null ? AnnotationMutationStatus.FillCleared : AnnotationMutationStatus.FillColorUpdated;
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Fill, ex.Message);
+        }
+    }
+
     private async Task SetSelectedAnnotationColorAsync()
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for color dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.ColorDialog);
 
         var index = _annotationList.SelectedIndex;
         PdfAnnotationInfo? item = index >= 0 && index < _annotationItems.Count
@@ -3373,7 +5112,7 @@ public sealed class PdfDocumentView : UserControl
             : _selectedAnnot;
         if (item is null)
         {
-            _status.Text = "Select an annotation to change color.";
+            _status.Text = AnnotationSelectionStatus.AnnotationColor;
             return;
         }
 
@@ -3399,10 +5138,10 @@ public sealed class PdfDocumentView : UserControl
             list.SelectedIndex = 0;
             var dialog = new ContentDialog
             {
-                Title = $"Note color — {FormatAnnotationLabel(item)}",
+                Title = $"Note color — {PdfAnnotationListLabel.Format(item)}",
                 Content = list,
-                PrimaryButtonText = "Apply",
-                CloseButtonText = "Cancel",
+                PrimaryButtonText = DialogButtons.Apply,
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = window.Content.XamlRoot,
             };
@@ -3417,14 +5156,7 @@ public sealed class PdfDocumentView : UserControl
         else
         {
             // Simple presets for non-highlight annots.
-            var presets = new (string Name, PdfAnnotationColor Color)[]
-            {
-                ("Dodger blue", new PdfAnnotationColor(30, 144, 255)),
-                ("Red", new PdfAnnotationColor(220, 50, 50)),
-                ("Green", new PdfAnnotationColor(40, 160, 60)),
-                ("Orange", new PdfAnnotationColor(255, 140, 0)),
-                ("Purple", new PdfAnnotationColor(140, 60, 200)),
-            };
+            var presets = PdfAnnotationColorPresets.StrokePresets.ToArray();
             var list = new ListView
             {
                 Height = 220,
@@ -3434,10 +5166,10 @@ public sealed class PdfDocumentView : UserControl
             list.SelectedIndex = 0;
             var dialog = new ContentDialog
             {
-                Title = $"Color — {FormatAnnotationLabel(item)}",
+                Title = $"Color — {PdfAnnotationListLabel.Format(item)}",
                 Content = list,
-                PrimaryButtonText = "Apply",
-                CloseButtonText = "Cancel",
+                PrimaryButtonText = DialogButtons.Apply,
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = window.Content.XamlRoot,
             };
@@ -3457,11 +5189,11 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = "Annotation color updated.";
+            _status.Text = AnnotationMutationStatus.ColorUpdated;
         }
         catch (Exception ex)
         {
-            _status.Text = "Color failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Color, ex.Message);
         }
     }
 
@@ -3473,85 +5205,63 @@ public sealed class PdfDocumentView : UserControl
             _annotationItems = all
                 .Where(a =>
                     (a.TextMarkupKind is not null || a.IsStickyNote || a.IsInk || a.ShapeKind is not null || a.IsTextBox || a.IsStamp)
-                    && !(a.IsInk && a.Contents == "CalloutPointer"))
+                    && !(a.IsInk && (a.Contents == "CalloutPointer"
+                        || (a.Contents?.StartsWith("CalloutPointer:", StringComparison.Ordinal) == true)
+                        || a.Contents == "GlyphTextUnderline"
+                        || (a.Contents?.StartsWith("GlyphTextUnderline:", StringComparison.Ordinal) == true))))
                 .OrderBy(a => a.PageIndex)
                 .ThenBy(a => a.AnnotIndex)
                 .ToList();
 
             _suppressAnnotationNav = true;
             _annotationList.ItemsSource = _annotationItems
-                .Select(FormatAnnotationLabel)
+                .Select(PdfAnnotationListLabel.Format)
                 .ToList();
             _suppressAnnotationNav = false;
         }
         catch (Exception ex)
         {
-            _status.Text = "Annotation list failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.AnnotationList, ex.Message);
         }
     }
 
-    private static string FormatAnnotationLabel(PdfAnnotationInfo info)
+    /// <summary>
+    /// When a note/textbox dialog opens empty, seed from clipboard text (F40-09).
+    /// Native TextBox Ctrl+V also works once the field is focused.
+    /// </summary>
+    private static async Task SeedTextBoxFromClipboardAsync(TextBox box)
     {
-        if (info.IsCallout)
+        if (box is null || !ClipboardTextSeedPolicy.ShouldSeed(box.Text))
         {
-            var preview = string.IsNullOrWhiteSpace(info.Contents)
-                ? "(empty)"
-                : TrimForStatus(info.Contents);
-            return $"Callout · p.{info.PageIndex + 1}: {preview}";
+            return;
         }
 
-        if (info.IsStickyNote)
+        try
         {
-            var preview = string.IsNullOrWhiteSpace(info.Contents)
-                ? "(empty)"
-                : TrimForStatus(info.Contents);
-            return $"Note · p.{info.PageIndex + 1}: {preview}";
-        }
-
-        if (info.IsTextBox)
-        {
-            var preview = string.IsNullOrWhiteSpace(info.Contents)
-                ? "(empty)"
-                : TrimForStatus(info.Contents);
-            return $"Text · p.{info.PageIndex + 1}: {preview}";
-        }
-
-        if (info.IsStamp)
-        {
-            return $"Signature · p.{info.PageIndex + 1}";
-        }
-
-        if (info.ShapeKind is { } shape)
-        {
-            var shapeName = shape switch
+            var content = Clipboard.GetContent();
+            if (!content.Contains(StandardDataFormats.Text))
             {
-                PdfShapeKind.Rectangle => "Rect",
-                PdfShapeKind.Ellipse => "Ellipse",
-                PdfShapeKind.Line => "Line",
-                PdfShapeKind.Arrow => "Arrow",
-                PdfShapeKind.Freeform => "Freeform",
-                _ => "Shape",
-            };
-            return $"{shapeName} · p.{info.PageIndex + 1}";
-        }
+                return;
+            }
 
-        if (info.IsInk)
-        {
-            return $"Ink · p.{info.PageIndex + 1}";
+            var text = await content.GetTextAsync();
+            var seeded = ClipboardTextSeedPolicy.ApplyClipboardText(box.Text, text);
+            if (!ReferenceEquals(seeded, box.Text) && seeded is not null)
+            {
+                box.Text = seeded;
+            }
         }
-
-        var kind = info.TextMarkupKind switch
+        catch
         {
-            PdfTextMarkupKind.Highlight => "Highlight",
-            PdfTextMarkupKind.Underline => "Underline",
-            PdfTextMarkupKind.StrikeOut => "Strike",
-            _ => "Markup",
-        };
-        return $"{kind} · p.{info.PageIndex + 1}";
+            // Clipboard may be locked by another app; leave the box empty.
+        }
     }
+
 
     private void ToggleCalloutMode()
     {
+        ClearRedactionMode();
+        ClearCalloutTipEditMode();
         if (_inkMode)
         {
             _inkMode = false;
@@ -3562,6 +5272,7 @@ public sealed class PdfDocumentView : UserControl
         ClearSignatureMode();
         ClearHighlightMode();
         ClearFreeformMode();
+        ClearPolygonMode();
         if (_formOverlayMode)
         {
             ClearFormOverlayMode();
@@ -3571,7 +5282,7 @@ public sealed class PdfDocumentView : UserControl
         {
             _calloutMode = false;
             CancelShapeDrag();
-            _status.Text = "Callout mode off.";
+            _status.Text = AnnotationToolModeStatus.CalloutOff;
             RefreshToolButtonChrome();
             return;
         }
@@ -3584,7 +5295,7 @@ public sealed class PdfDocumentView : UserControl
         CancelShapeDrag();
         _calloutMode = true;
         RefreshToolButtonChrome();
-        _status.Text = "Callout mode — drag from tip to where the text box should sit.";
+        _status.Text = AnnotationToolModeStatus.CalloutOn;
     }
 
     private async Task EndCalloutDragAsync(Border border, PointerRoutedEventArgs e)
@@ -3603,75 +5314,142 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var page = _document.GetPage(pageIndex);
-        double ToPdfX(double x) => x / _scale;
-        double ToPdfY(double y) => page.HeightPoints - (y / _scale);
-        var tip = new PdfPagePoint(ToPdfX(start.X), ToPdfY(start.Y));
-        var boxCenterX = ToPdfX(end.X);
-        var boxCenterY = ToPdfY(end.Y);
+        var tip = PdfPageCoordinates.FromDisplayPoint(start.X, start.Y, page.HeightPoints, _scale);
+        var boxCenter = PdfPageCoordinates.FromDisplayPoint(end.X, end.Y, page.HeightPoints, _scale);
         var boxWidth = Math.Min(180, page.WidthPoints * 0.4);
         var boxHeight = 56;
-        var left = Math.Clamp(boxCenterX - (boxWidth / 2), 8, Math.Max(8, page.WidthPoints - boxWidth - 8));
-        var bottom = Math.Clamp(boxCenterY - (boxHeight / 2), 8, Math.Max(8, page.HeightPoints - boxHeight - 8));
+        var left = Math.Clamp(boxCenter.X - (boxWidth / 2), 8, Math.Max(8, page.WidthPoints - boxWidth - 8));
+        var bottom = Math.Clamp(boxCenter.Y - (boxHeight / 2), 8, Math.Max(8, page.HeightPoints - boxHeight - 8));
         var textBounds = new PdfRect(left, bottom, left + boxWidth, bottom + boxHeight);
 
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for callout dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.CalloutDialog);
         var box = new TextBox
         {
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
             Height = 100,
-            PlaceholderText = "Callout text",
+            PlaceholderText = PdfDialogPlaceholders.CalloutText,
+        };
+        await SeedTextBoxFromClipboardAsync(box);
+        var fontSizeBox = new NumberBox
+        {
+            Header = PdfDialogHeaders.FontSizePt,
+            Value = 12,
+            Minimum = 6,
+            Maximum = 72,
+            SmallChange = 1,
+            LargeChange = 2,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
+        };
+        var fontFamilyBox = new ComboBox
+        {
+            Header = PdfDialogHeaders.Font,
+            ItemsSource = PdfDialogOptions.StandardFonts.ToList(),
+            SelectedIndex = 0,
+            Width = 220,
+        };
+        var boldCheck = new CheckBox { Content = PdfViewerChromeLabels.Bold, IsChecked = false };
+        var italicCheck = new CheckBox { Content = PdfViewerChromeLabels.Italic, IsChecked = false };
+        var underlineCheck = new CheckBox { Content = PdfViewerChromeLabels.Underline, IsChecked = false };
+        var alignBox = new ComboBox
+        {
+            Header = PdfDialogHeaders.Align,
+            ItemsSource = PdfDialogOptions.HorizontalAlignments.ToList(),
+            SelectedIndex = 0,
+            Width = 220,
+        };
+        var textColorList = new ListView
+        {
+            Height = 100,
+            SelectionMode = ListViewSelectionMode.Single,
+            ItemsSource = PdfAnnotationColor.StrokePresets.Select(p => p.Name).ToList(),
+            SelectedIndex = 5, // Black
+        };
+        var panel = new StackPanel
+        {
+            Spacing = 6,
+            Children =
+            {
+                box,
+                fontSizeBox,
+                fontFamilyBox,
+                alignBox,
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 12,
+                    Children = { boldCheck, italicCheck, underlineCheck },
+                },
+                new TextBlock { Text = PdfViewerTextLabels.TextColor, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                textColorList,
+            },
         };
         var dialog = new ContentDialog
         {
-            Title = "Callout",
-            Content = box,
-            PrimaryButtonText = "Add",
-            CloseButtonText = "Cancel",
+            Title = PdfDialogTitles.Callout,
+            Content = panel,
+            PrimaryButtonText = DialogButtons.Add,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
         {
-            _status.Text = "Callout cancelled.";
+            _status.Text = AnnotationToolModeStatus.CalloutCancelled;
             return;
         }
 
+        var textColor = PdfAnnotationColor.StrokePresets[
+            Math.Clamp(textColorList.SelectedIndex, 0, PdfAnnotationColor.StrokePresets.Count - 1)].Color;
+        var fontSize = (float)(double.IsNaN(fontSizeBox.Value) ? 12 : Math.Clamp(fontSizeBox.Value, 6, 72));
+        var fontResource = PdfFreeTextFont.ResolveResourceName(
+            (PdfFreeTextFontFamily)Math.Clamp(fontFamilyBox.SelectedIndex, 0, 2),
+            boldCheck.IsChecked == true,
+            italicCheck.IsChecked == true);
+        var quadding = (PdfTextQuadding)Math.Clamp(alignBox.SelectedIndex, 0, 2);
+
         try
         {
-            _status.Text = "Adding callout…";
+            _status.Text = AnnotationGroupStatus.AddingCallout;
             await _annotations.AddCalloutAsync(
                 _document,
                 pageIndex,
                 textBounds,
                 tip,
                 box.Text ?? string.Empty,
-                new PdfAnnotationColor(20, 20, 20),
+                textColor,
                 borderColor: _drawStrokeColor,
                 fillColor: new PdfAnnotationColor(255, 255, 230),
-                pointerWidthPoints: _drawStrokeWidth);
+                fontSizePoints: fontSize,
+                fontResourceName: fontResource,
+                pointerWidthPoints: _drawStrokeWidth,
+                underline: underlineCheck.IsChecked == true,
+                quadding: quadding);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = "Callout added.";
+            _status.Text = AnnotationToolModeStatus.CalloutAdded;
         }
         catch (Exception ex)
         {
-            _status.Text = "Callout failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Callout, ex.Message);
         }
     }
 
     private async Task ToggleInkModeAsync()
     {
+        ClearRedactionMode();
         ClearShapeMode();
         ClearSignatureMode();
         ClearHighlightMode();
         ClearCalloutMode();
         ClearFreeformMode();
+        ClearPolygonMode();
+        ClearEraserMode();
         if (_formOverlayMode)
         {
             ClearFormOverlayMode();
@@ -3681,7 +5459,7 @@ public sealed class PdfDocumentView : UserControl
         {
             _inkMode = false;
             CancelInkStroke();
-            _status.Text = "Ink mode off.";
+            _status.Text = AnnotationToolModeStatus.InkOff;
             RefreshToolButtonChrome();
             return;
         }
@@ -3689,7 +5467,7 @@ public sealed class PdfDocumentView : UserControl
         var picked = await PickStrokeStyleAsync("Ink stroke");
         if (picked is null)
         {
-            _status.Text = "Ink mode cancelled.";
+            _status.Text = AnnotationToolModeStatus.InkCancelled;
             return;
         }
 
@@ -3702,15 +5480,110 @@ public sealed class PdfDocumentView : UserControl
 
         _inkMode = true;
         RefreshToolButtonChrome();
-        _status.Text = "Ink mode on — draw on the page.";
+        _status.Text = AnnotationToolModeStatus.InkOn;
     }
 
-    private async Task ToggleFreeformModeAsync()
+    private void ToggleEraserMode()
     {
+        ClearRedactionMode();
         ClearShapeMode();
         ClearSignatureMode();
         ClearHighlightMode();
         ClearCalloutMode();
+        ClearFreeformMode();
+        ClearPolygonMode();
+        if (_inkMode)
+        {
+            _inkMode = false;
+            CancelInkStroke();
+        }
+
+        if (_formOverlayMode)
+        {
+            ClearFormOverlayMode();
+        }
+
+        if (_eraserMode)
+        {
+            ClearEraserMode();
+            _status.Text = AnnotationToolModeStatus.EraserOff;
+            RefreshToolButtonChrome();
+            return;
+        }
+
+        if (_cropMode)
+        {
+            CancelCropMode();
+        }
+
+        _eraserMode = true;
+        ClearAnnotSelectionVisual();
+        _selectedAnnot = null;
+        _selectedAnnots.Clear();
+        RefreshToolButtonChrome();
+        _status.Text = AnnotationToolModeStatus.EraserOn;
+    }
+
+    private void ClearEraserMode()
+    {
+        _eraserMode = false;
+    }
+
+    private async Task EraseAnnotationAtAsync(Border border, int pageIndex, PointerRoutedEventArgs e)
+    {
+        var pressPoint = e.GetCurrentPoint(border).Position;
+        var page = _document.GetPage(pageIndex);
+        var pdfX = pressPoint.X / _scale;
+        var pdfY = page.HeightPoints - (pressPoint.Y / _scale);
+        const double pad = 8.0;
+
+        var onPage = _annotationItems.Where(a => a.PageIndex == pageIndex).ToList();
+        // Prefer ink strokes (F18-05), then any annotation under/near the cursor.
+        var hit = PdfAnnotationHitTest.HitTestWithPad(onPage.Where(a => a.IsInk), pdfX, pdfY, pad)
+            ?? PdfAnnotationHitTest.HitTestWithPad(onPage, pdfX, pdfY, pad);
+
+        if (hit is null)
+        {
+            _status.Text = AnnotationToolModeStatus.EraserMiss;
+            return;
+        }
+
+        try
+        {
+            await _annotations.RemoveAsync(_document, hit.PageIndex, hit.AnnotIndex);
+            if (_annotClipboard is { } clip
+                && clip.PageIndex == hit.PageIndex
+                && clip.AnnotIndex == hit.AnnotIndex)
+            {
+                _annotClipboard = null;
+                _annotClipboardIsCut = false;
+            }
+
+            ClearAnnotSelectionVisual();
+            _selectedAnnot = null;
+            _selectedAnnots.Clear();
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = AnnotationMutationStatus.FormatErased(PdfAnnotationListLabel.Format(hit));
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Eraser, ex.Message);
+        }
+    }
+
+    private async Task ToggleFreeformModeAsync()
+    {
+        ClearRedactionMode();
+        ClearShapeMode();
+        ClearSignatureMode();
+        ClearHighlightMode();
+        ClearCalloutMode();
+        ClearEraserMode();
+        ClearPolygonMode();
         if (_inkMode)
         {
             _inkMode = false;
@@ -3725,7 +5598,7 @@ public sealed class PdfDocumentView : UserControl
         if (_freeformMode)
         {
             ClearFreeformMode();
-            _status.Text = "Freeform mode off.";
+            _status.Text = AnnotationToolModeStatus.FreeformOff;
             RefreshToolButtonChrome();
             return;
         }
@@ -3733,7 +5606,7 @@ public sealed class PdfDocumentView : UserControl
         var picked = await PickStrokeStyleAsync("Freeform stroke");
         if (picked is null)
         {
-            _status.Text = "Freeform mode cancelled.";
+            _status.Text = AnnotationToolModeStatus.FreeformCancelled;
             return;
         }
 
@@ -3746,7 +5619,7 @@ public sealed class PdfDocumentView : UserControl
 
         _freeformMode = true;
         RefreshToolButtonChrome();
-        _status.Text = "Freeform mode on — draw a closed shape.";
+        _status.Text = AnnotationToolModeStatus.FreeformOn;
     }
 
     private void ClearFreeformMode()
@@ -3760,8 +5633,199 @@ public sealed class PdfDocumentView : UserControl
         CancelInkStroke();
     }
 
+    private async Task TogglePolygonModeAsync()
+    {
+        ClearRedactionMode();
+        ClearShapeMode();
+        ClearSignatureMode();
+        ClearHighlightMode();
+        ClearCalloutMode();
+        ClearEraserMode();
+        ClearFreeformMode();
+        ClearPolygonMode();
+        if (_inkMode)
+        {
+            _inkMode = false;
+            CancelInkStroke();
+        }
+
+        if (_formOverlayMode)
+        {
+            ClearFormOverlayMode();
+        }
+
+        if (_polygonMode)
+        {
+            ClearPolygonMode();
+            _status.Text = AnnotationToolModeStatus.PolygonOff;
+            RefreshToolButtonChrome();
+            return;
+        }
+
+        var picked = await PickStrokeStyleAsync("Polygon stroke");
+        if (picked is null)
+        {
+            _status.Text = AnnotationToolModeStatus.PolygonModeCancelled;
+            return;
+        }
+
+        _drawStrokeColor = picked.Value.Color;
+        _drawStrokeWidth = picked.Value.WidthPoints;
+        if (_cropMode)
+        {
+            CancelCropMode();
+        }
+
+        _polygonMode = true;
+        _polygonPageIndex = -1;
+        _polygonVertices.Clear();
+        ClearPolygonPreview();
+        RefreshToolButtonChrome();
+        _status.Text = AnnotationToolModeStatus.PolygonOn;
+    }
+
+    private void ClearPolygonMode()
+    {
+        if (!_polygonMode && _polygonVertices.Count == 0 && _polygonPreview is null)
+        {
+            return;
+        }
+
+        _polygonMode = false;
+        _polygonPageIndex = -1;
+        _polygonVertices.Clear();
+        ClearPolygonPreview();
+    }
+
+    private void ClearPolygonPreview()
+    {
+        if (_polygonPreview is not null &&
+            _polygonPageIndex >= 0 &&
+            _pageOverlays.TryGetValue(_polygonPageIndex, out var overlay))
+        {
+            overlay.Children.Remove(_polygonPreview);
+        }
+
+        _polygonPreview = null;
+    }
+
+    private async Task AddPolygonVertexAsync(Border border, int pageIndex, PointerRoutedEventArgs e)
+    {
+        var page = _document.GetPage(pageIndex);
+        var ui = e.GetCurrentPoint(border).Position;
+        var pdf = PdfPageCoordinates.FromDisplayPoint(ui.X, ui.Y, page.HeightPoints, _scale);
+
+        if (_polygonPageIndex >= 0 && _polygonPageIndex != pageIndex)
+        {
+            _status.Text = AnnotationGroupStatus.FinishPolygonFirst;
+            return;
+        }
+
+        if (_polygonVertices.Count >= 3)
+        {
+            var first = _polygonVertices[0];
+            var dx = pdf.X - first.X;
+            var dy = pdf.Y - first.Y;
+            if (((dx * dx) + (dy * dy)) <= 64) // within ~8 pt of first vertex → close
+            {
+                await FinishPolygonAsync();
+                return;
+            }
+        }
+
+        _polygonPageIndex = pageIndex;
+        _polygonVertices.Add(pdf);
+        RedrawPolygonPreview();
+        _status.Text = AnnotationToolModeStatus.FormatPolygonVertex(_polygonVertices.Count);
+    }
+
+    private void RedrawPolygonPreview()
+    {
+        ClearPolygonPreview();
+        if (_polygonPageIndex < 0 ||
+            _polygonVertices.Count == 0 ||
+            !_pageOverlays.TryGetValue(_polygonPageIndex, out var overlay))
+        {
+            return;
+        }
+
+        var page = _document.GetPage(_polygonPageIndex);
+        var points = new PointCollection();
+        foreach (var p in _polygonVertices)
+        {
+            points.Add(new Windows.Foundation.Point(p.X * _scale, (page.HeightPoints - p.Y) * _scale));
+        }
+
+        if (_polygonVertices.Count >= 3)
+        {
+            var first = _polygonVertices[0];
+            points.Add(new Windows.Foundation.Point(first.X * _scale, (page.HeightPoints - first.Y) * _scale));
+        }
+
+        var stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(
+            _drawStrokeColor.A,
+            _drawStrokeColor.R,
+            _drawStrokeColor.G,
+            _drawStrokeColor.B));
+        _polygonPreview = new Microsoft.UI.Xaml.Shapes.Polyline
+        {
+            Points = points,
+            Stroke = stroke,
+            StrokeThickness = Math.Max(1, _drawStrokeWidth * _scale / 1.5),
+            Fill = null,
+        };
+        overlay.Children.Add(_polygonPreview);
+    }
+
+    private async Task FinishPolygonAsync()
+    {
+        if (!_polygonMode)
+        {
+            return;
+        }
+
+        if (_polygonVertices.Count < 3 || _polygonPageIndex < 0)
+        {
+            _status.Text = AnnotationToolModeStatus.PolygonNeedsVertices;
+            return;
+        }
+
+        var pageIndex = _polygonPageIndex;
+        var vertices = _polygonVertices.ToList();
+        var color = _drawStrokeColor;
+        var width = _drawStrokeWidth;
+        ClearPolygonMode();
+        RefreshToolButtonChrome();
+
+        try
+        {
+            _status.Text = AnnotationPersistStatus.SavingPolygon;
+            await _annotations.AddPolygonAsync(_document, pageIndex, vertices, color, width);
+            // Re-list to capture the created annot for stroke undo.
+            var listed = await _annotations.ListAsync(_document, pageIndex);
+            var created = listed.LastOrDefault(a => a.ShapeKind == PdfShapeKind.Polygon && a.IsInk);
+            if (created is not null)
+            {
+                _strokeUndoStack.Push(created);
+                NotifyEdited();
+            }
+
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = AnnotationToolModeStatus.PolygonAdded;
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Polygon, ex.Message);
+        }
+    }
+
     private async Task ToggleShapeModeAsync(PdfShapeKind kind)
     {
+        ClearRedactionMode();
         if (_inkMode)
         {
             _inkMode = false;
@@ -3769,9 +5833,11 @@ public sealed class PdfDocumentView : UserControl
         }
 
         ClearFreeformMode();
+        ClearPolygonMode();
         ClearSignatureMode();
         ClearHighlightMode();
         ClearCalloutMode();
+        ClearEraserMode();
         if (_formOverlayMode)
         {
             ClearFormOverlayMode();
@@ -3780,20 +5846,46 @@ public sealed class PdfDocumentView : UserControl
         if (_shapeMode == kind)
         {
             ClearShapeMode();
-            _status.Text = "Shape mode off.";
+            _status.Text = AnnotationToolModeStatus.ShapeOff;
             RefreshToolButtonChrome();
             return;
         }
 
-        var picked = await PickStrokeStyleAsync("Shape stroke");
-        if (picked is null)
+        if (kind == PdfShapeKind.HighlightRectangle)
         {
-            _status.Text = "Shape mode cancelled.";
-            return;
-        }
+            var hiColor = await PickHighlightColorAsync();
+            if (hiColor is null)
+            {
+                _status.Text = AnnotationGroupStatus.AreaHighlightCancelled;
+                return;
+            }
 
-        _drawStrokeColor = picked.Value.Color;
-        _drawStrokeWidth = picked.Value.WidthPoints;
+            _drawStrokeColor = hiColor.Value;
+            _drawStrokeWidth = 0.5f;
+        }
+        else if (kind == PdfShapeKind.Loupe)
+        {
+            // Fixed lens styling — skip stroke dialog for a one-click loupe tool.
+            _drawStrokeColor = new PdfAnnotationColor(30, 100, 180);
+            _drawStrokeWidth = 2f;
+        }
+        else
+        {
+            var picked = await PickStrokeStyleAsync(
+                "Shape stroke",
+                includeInkLineStyle: kind is PdfShapeKind.Line or PdfShapeKind.Arrow,
+                includeArrowheadStyle: kind == PdfShapeKind.Arrow);
+            if (picked is null)
+            {
+                _status.Text = AnnotationToolModeStatus.ShapeCancelled;
+                return;
+            }
+
+            _drawStrokeColor = picked.Value.Color;
+            _drawStrokeWidth = picked.Value.WidthPoints;
+            _drawInkLineStyle = picked.Value.InkLineStyle;
+            _drawArrowheadStyle = picked.Value.ArrowheadStyle;
+        }
 
         if (_cropMode)
         {
@@ -3805,20 +5897,28 @@ public sealed class PdfDocumentView : UserControl
         RefreshToolButtonChrome();
         _status.Text = kind switch
         {
-            PdfShapeKind.Rectangle => "Rectangle mode — drag on the page.",
-            PdfShapeKind.Ellipse => "Ellipse mode — drag on the page.",
-            PdfShapeKind.Arrow => "Arrow mode — drag from tail to tip.",
-            _ => "Line mode — drag on the page.",
+            PdfShapeKind.Rectangle => AnnotationToolModeStatus.RectangleMode,
+            PdfShapeKind.RoundedRectangle => AnnotationToolModeStatus.RoundedRectangleMode,
+            PdfShapeKind.HighlightRectangle => AnnotationToolModeStatus.AreaHighlightMode,
+            PdfShapeKind.Ellipse => AnnotationToolModeStatus.EllipseMode,
+            PdfShapeKind.Arrow => AnnotationToolModeStatus.ArrowMode,
+            PdfShapeKind.Star => AnnotationToolModeStatus.StarMode,
+            PdfShapeKind.SpeechBubble => AnnotationToolModeStatus.BubbleMode,
+            PdfShapeKind.Loupe => AnnotationToolModeStatus.LoupeMode,
+            _ => AnnotationToolModeStatus.LineMode,
         };
     }
 
-    private async Task<(PdfAnnotationColor Color, float WidthPoints)?> PickStrokeStyleAsync(string title)
+    private async Task<(PdfAnnotationColor Color, float WidthPoints, PdfInkLineStyle InkLineStyle, PdfArrowheadStyle ArrowheadStyle)?> PickStrokeStyleAsync(
+        string title,
+        bool includeInkLineStyle = false,
+        bool includeArrowheadStyle = false)
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for stroke style dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.StrokeStyleDialog);
 
-        float[] widths = [1f, 2f, 3f, 5f, 8f];
+        float[] widths = PdfStrokeWidthPresets.Points.ToArray();
         var colorList = new ListView
         {
             Height = 180,
@@ -3833,29 +5933,55 @@ public sealed class PdfDocumentView : UserControl
         {
             Height = 140,
             SelectionMode = ListViewSelectionMode.Single,
-            ItemsSource = widths.Select(w => $"{w:0} pt").ToList(),
+            ItemsSource = widths.Select(PdfStrokeWidthPresets.FormatLabel).ToList(),
         };
-        var currentWidth = Array.FindIndex(widths, w => Math.Abs(w - _drawStrokeWidth) < 0.01f);
-        widthList.SelectedIndex = currentWidth >= 0 ? currentWidth : 1;
+        widthList.SelectedIndex = PdfStrokeWidthPresets.DefaultSelectedIndex(_drawStrokeWidth);
 
-        var panel = new StackPanel
+        ComboBox? lineStyleBox = null;
+        if (includeInkLineStyle)
         {
-            Spacing = 8,
-            Children =
+            lineStyleBox = new ComboBox
             {
-                new TextBlock { Text = "Color", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
-                colorList,
-                new TextBlock { Text = "Width", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
-                widthList,
-            },
-        };
+                Header = PdfDialogHeaders.LineStyle,
+                ItemsSource = PdfDialogOptions.LineStyles.ToList(),
+                SelectedIndex = (int)_drawInkLineStyle,
+                Width = 220,
+            };
+        }
+
+        ComboBox? arrowheadBox = null;
+        if (includeArrowheadStyle)
+        {
+            arrowheadBox = new ComboBox
+            {
+                Header = PdfDialogHeaders.Arrowhead,
+                ItemsSource = PdfDialogOptions.Arrowheads.ToList(),
+                SelectedIndex = (int)_drawArrowheadStyle,
+                Width = 220,
+            };
+        }
+
+        var panel = new StackPanel { Spacing = 8, Children = { } };
+        panel.Children.Add(new TextBlock { Text = PdfViewerTextLabels.Color, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        panel.Children.Add(colorList);
+        panel.Children.Add(new TextBlock { Text = PdfViewerTextLabels.Width, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        panel.Children.Add(widthList);
+        if (lineStyleBox is not null)
+        {
+            panel.Children.Add(lineStyleBox);
+        }
+
+        if (arrowheadBox is not null)
+        {
+            panel.Children.Add(arrowheadBox);
+        }
 
         var dialog = new ContentDialog
         {
             Title = title,
             Content = panel,
-            PrimaryButtonText = "Use",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Use,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -3867,13 +5993,30 @@ public sealed class PdfDocumentView : UserControl
 
         var colorIndex = Math.Clamp(colorList.SelectedIndex, 0, PdfAnnotationColor.StrokePresets.Count - 1);
         var widthIndex = Math.Clamp(widthList.SelectedIndex, 0, widths.Length - 1);
-        return (PdfAnnotationColor.StrokePresets[colorIndex].Color, widths[widthIndex]);
+        var lineStyle = lineStyleBox is null
+            ? _drawInkLineStyle
+            : (PdfInkLineStyle)Math.Clamp(lineStyleBox.SelectedIndex, 0, 2);
+        var arrowhead = arrowheadBox is null
+            ? _drawArrowheadStyle
+            : (PdfArrowheadStyle)Math.Clamp(arrowheadBox.SelectedIndex, 0, 2);
+        return (PdfAnnotationColor.StrokePresets[colorIndex].Color, widths[widthIndex], lineStyle, arrowhead);
     }
 
     private void ClearShapeMode()
     {
         CancelShapeDrag();
         _shapeMode = null;
+    }
+
+    private void ClearInkMode()
+    {
+        if (!_inkMode)
+        {
+            return;
+        }
+
+        _inkMode = false;
+        CancelInkStroke();
     }
 
     private void ClearCalloutMode()
@@ -3885,6 +6028,12 @@ public sealed class PdfDocumentView : UserControl
 
         _calloutMode = false;
         CancelShapeDrag();
+    }
+
+    private void ClearCalloutTipEditMode()
+    {
+        _calloutTipEditMode = false;
+        _calloutTipTarget = null;
     }
 
     private void ClearSignatureMode()
@@ -3911,6 +6060,16 @@ public sealed class PdfDocumentView : UserControl
             _freeformButton.Background = _freeformMode ? active : null;
         }
 
+        if (_polygonButton is not null)
+        {
+            _polygonButton.Background = _polygonMode ? active : null;
+        }
+
+        if (_eraserButton is not null)
+        {
+            _eraserButton.Background = _eraserMode ? active : null;
+        }
+
         if (_highlightButton is not null)
         {
             _highlightButton.Background = _highlightMode ? active : null;
@@ -3931,6 +6090,16 @@ public sealed class PdfDocumentView : UserControl
             _rectButton.Background = _shapeMode == PdfShapeKind.Rectangle ? active : null;
         }
 
+        if (_roundRectButton is not null)
+        {
+            _roundRectButton.Background = _shapeMode == PdfShapeKind.RoundedRectangle ? active : null;
+        }
+
+        if (_hiRectButton is not null)
+        {
+            _hiRectButton.Background = _shapeMode == PdfShapeKind.HighlightRectangle ? active : null;
+        }
+
         if (_ellipseButton is not null)
         {
             _ellipseButton.Background = _shapeMode == PdfShapeKind.Ellipse ? active : null;
@@ -3946,9 +6115,29 @@ public sealed class PdfDocumentView : UserControl
             _arrowButton.Background = _shapeMode == PdfShapeKind.Arrow ? active : null;
         }
 
+        if (_starButton is not null)
+        {
+            _starButton.Background = _shapeMode == PdfShapeKind.Star ? active : null;
+        }
+
+        if (_bubbleButton is not null)
+        {
+            _bubbleButton.Background = _shapeMode == PdfShapeKind.SpeechBubble ? active : null;
+        }
+
+        if (_loupeButton is not null)
+        {
+            _loupeButton.Background = _shapeMode == PdfShapeKind.Loupe ? active : null;
+        }
+
         if (_calloutButton is not null)
         {
             _calloutButton.Background = _calloutMode ? active : null;
+        }
+
+        if (_redactButton is not null)
+        {
+            _redactButton.Background = _redactionMode ? active : null;
         }
     }
 
@@ -3980,13 +6169,26 @@ public sealed class PdfDocumentView : UserControl
         var top = Math.Min(_shapeStart.Y, current.Y);
         var width = Math.Abs(current.X - _shapeStart.X);
         var height = Math.Abs(current.Y - _shapeStart.Y);
+        if (_shapeMode == PdfShapeKind.Loupe)
+        {
+            // Force a circle: diameter from the larger axis, anchored at drag start.
+            var diameter = Math.Max(width, height);
+            width = diameter;
+            height = diameter;
+            left = current.X >= _shapeStart.X ? _shapeStart.X : _shapeStart.X - diameter;
+            top = current.Y >= _shapeStart.Y ? _shapeStart.Y : _shapeStart.Y - diameter;
+        }
+
         var stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(
             _drawStrokeColor.A,
             _drawStrokeColor.R,
             _drawStrokeColor.G,
             _drawStrokeColor.B));
+        var fillAlpha = (byte)(_shapeMode == PdfShapeKind.HighlightRectangle
+            ? 70
+            : _shapeMode == PdfShapeKind.Loupe ? 28 : 40);
         var fill = new SolidColorBrush(Windows.UI.Color.FromArgb(
-            40,
+            fillAlpha,
             _drawStrokeColor.R,
             _drawStrokeColor.G,
             _drawStrokeColor.B));
@@ -4001,13 +6203,15 @@ public sealed class PdfDocumentView : UserControl
                 _shapeStart,
                 current,
                 stroke,
-                strokeThickness);
+                strokeThickness,
+                _drawInkLineStyle,
+                PdfArrowheadStyle.Open);
         }
         else
         {
             preview = _shapeMode switch
             {
-                PdfShapeKind.Ellipse => new Microsoft.UI.Xaml.Shapes.Ellipse
+                PdfShapeKind.Ellipse or PdfShapeKind.Loupe => new Microsoft.UI.Xaml.Shapes.Ellipse
                 {
                     Width = Math.Max(1, width),
                     Height = Math.Max(1, height),
@@ -4019,6 +6223,22 @@ public sealed class PdfDocumentView : UserControl
                     _shapeMode.Value,
                     _shapeStart,
                     current,
+                    stroke,
+                    strokeThickness,
+                    _drawInkLineStyle,
+                    _drawArrowheadStyle),
+                PdfShapeKind.Star => CreateStarPreview(
+                    left,
+                    top,
+                    width,
+                    height,
+                    stroke,
+                    strokeThickness),
+                PdfShapeKind.SpeechBubble => CreateSpeechBubblePreview(
+                    left,
+                    top,
+                    width,
+                    height,
                     stroke,
                     strokeThickness),
                 _ => new Microsoft.UI.Xaml.Shapes.Rectangle
@@ -4059,44 +6279,56 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var page = _document.GetPage(pageIndex);
-        double ToPdfX(double x) => x / _scale;
-        double ToPdfY(double y) => page.HeightPoints - (y / _scale);
 
         PdfRect bounds;
         if (kind is PdfShapeKind.Line or PdfShapeKind.Arrow)
         {
-            bounds = new PdfRect(
-                ToPdfX(start.X),
-                ToPdfY(start.Y),
-                ToPdfX(end.X),
-                ToPdfY(end.Y));
+            var startPdf = PdfPageCoordinates.FromDisplayPoint(start.X, start.Y, page.HeightPoints, _scale);
+            var endPdf = PdfPageCoordinates.FromDisplayPoint(end.X, end.Y, page.HeightPoints, _scale);
+            // Line/Arrow store endpoints in the rect corners (not necessarily normalized).
+            bounds = new PdfRect(startPdf.X, startPdf.Y, endPdf.X, endPdf.Y);
         }
         else
         {
-            var left = Math.Min(ToPdfX(start.X), ToPdfX(end.X));
-            var right = Math.Max(ToPdfX(start.X), ToPdfX(end.X));
-            var bottom = Math.Min(ToPdfY(start.Y), ToPdfY(end.Y));
-            var top = Math.Max(ToPdfY(start.Y), ToPdfY(end.Y));
-            bounds = new PdfRect(left, bottom, right, top);
+            var uiLeft = Math.Min(start.X, end.X);
+            var uiTop = Math.Min(start.Y, end.Y);
+            var uiWidth = Math.Abs(end.X - start.X);
+            var uiHeight = Math.Abs(end.Y - start.Y);
+            if (kind == PdfShapeKind.Loupe)
+            {
+                var diameter = Math.Max(uiWidth, uiHeight);
+                uiWidth = diameter;
+                uiHeight = diameter;
+                uiLeft = end.X >= start.X ? start.X : start.X - diameter;
+                uiTop = end.Y >= start.Y ? start.Y : start.Y - diameter;
+            }
+
+            bounds = PdfPageCoordinates.FromDisplayRectXywh(
+                uiLeft,
+                uiTop,
+                uiWidth,
+                uiHeight,
+                page.HeightPoints,
+                _scale);
         }
 
         try
         {
-            _status.Text = "Saving shape…";
+            _status.Text = AnnotationPersistStatus.SavingShape;
             await _annotations.AddShapeAsync(
                 _document,
                 pageIndex,
                 kind.Value,
                 bounds,
                 _drawStrokeColor,
-                fillColor: kind is PdfShapeKind.Line or PdfShapeKind.Arrow
-                    ? null
-                    : new PdfAnnotationColor(
-                        _drawStrokeColor.R,
-                        _drawStrokeColor.G,
-                        _drawStrokeColor.B,
-                        40),
-                borderWidthPoints: _drawStrokeWidth);
+                fillColor: PdfShapeFillPolicy.FromStroke(kind.Value, _drawStrokeColor),
+                borderWidthPoints: _drawStrokeWidth,
+                inkLineStyle: kind is PdfShapeKind.Line or PdfShapeKind.Arrow
+                    ? _drawInkLineStyle
+                    : PdfInkLineStyle.Solid,
+                arrowheadStyle: kind == PdfShapeKind.Arrow
+                    ? _drawArrowheadStyle
+                    : PdfArrowheadStyle.Open);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
@@ -4104,16 +6336,98 @@ public sealed class PdfDocumentView : UserControl
             await RefreshAnnotationSidebarAsync();
             _status.Text = kind switch
             {
-                PdfShapeKind.Rectangle => "Rectangle added.",
-                PdfShapeKind.Ellipse => "Ellipse added.",
-                PdfShapeKind.Arrow => "Arrow added.",
-                _ => "Line added.",
+                PdfShapeKind.Rectangle => AnnotationToolModeStatus.RectangleAdded,
+                PdfShapeKind.RoundedRectangle => AnnotationToolModeStatus.RoundedRectangleAdded,
+                PdfShapeKind.HighlightRectangle => AnnotationToolModeStatus.AreaHighlightAdded,
+                PdfShapeKind.Ellipse => AnnotationToolModeStatus.EllipseAdded,
+                PdfShapeKind.Arrow => AnnotationToolModeStatus.ArrowAdded,
+                PdfShapeKind.Star => AnnotationToolModeStatus.StarAdded,
+                PdfShapeKind.SpeechBubble => AnnotationToolModeStatus.SpeechBubbleAdded,
+                PdfShapeKind.Loupe => AnnotationToolModeStatus.LoupeAdded,
+                _ => AnnotationToolModeStatus.LineAdded,
             };
         }
         catch (Exception ex)
         {
-            _status.Text = "Shape failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Shape, ex.Message);
         }
+    }
+
+    private static FrameworkElement CreateSpeechBubblePreview(
+        double left,
+        double top,
+        double width,
+        double height,
+        SolidColorBrush stroke,
+        double strokeThickness)
+    {
+        // Map PDF bubble geometry (Y-up) into UI space (Y-down) within the drag rect.
+        var pdfBounds = new PdfRect(0, 0, Math.Max(width, 1), Math.Max(height, 1));
+        var pdfPoints = PdfSpeechBubbleGeometry.BuildPoints(pdfBounds);
+        var points = new PointCollection();
+        foreach (var p in pdfPoints)
+        {
+            points.Add(new Windows.Foundation.Point(left + p.X, top + (height - p.Y)));
+        }
+
+        return new Microsoft.UI.Xaml.Shapes.Polyline
+        {
+            Points = points,
+            Stroke = stroke,
+            StrokeThickness = strokeThickness,
+            Fill = null,
+        };
+    }
+
+    private static FrameworkElement CreateStarPreview(
+        double left,
+        double top,
+        double width,
+        double height,
+        SolidColorBrush stroke,
+        double strokeThickness)
+    {
+        var cx = left + (width / 2);
+        var cy = top + (height / 2);
+        var rx = Math.Max(width / 2, 0.5);
+        var ry = Math.Max(height / 2, 0.5);
+        const double innerScale = 0.38;
+        var points = new PointCollection();
+        for (var i = 0; i < 10; i++)
+        {
+            // UI Y grows downward; tip-up star uses −π/2 for the first outer vertex.
+            var angle = (-Math.PI / 2) + (i * Math.PI / 5);
+            var scale = (i % 2 == 0) ? 1.0 : innerScale;
+            points.Add(new Windows.Foundation.Point(
+                cx + (Math.Cos(angle) * rx * scale),
+                cy + (Math.Sin(angle) * ry * scale)));
+        }
+
+        points.Add(points[0]);
+        return new Microsoft.UI.Xaml.Shapes.Polyline
+        {
+            Points = points,
+            Stroke = stroke,
+            StrokeThickness = strokeThickness,
+            Fill = null,
+        };
+    }
+
+    private static DoubleCollection? InkLineDashArray(PdfInkLineStyle style)
+    {
+        var pattern = PdfInkLineStyleDashPattern.ForPreview(style);
+        if (pattern is null)
+        {
+            return null;
+        }
+
+        var dashes = new DoubleCollection();
+        foreach (var value in pattern)
+        {
+            dashes.Add(value);
+        }
+
+        return dashes;
     }
 
     private static FrameworkElement CreateLineOrArrowPreview(
@@ -4121,8 +6435,11 @@ public sealed class PdfDocumentView : UserControl
         Windows.Foundation.Point start,
         Windows.Foundation.Point end,
         SolidColorBrush stroke,
-        double strokeThickness = 2)
+        double strokeThickness = 2,
+        PdfInkLineStyle inkLineStyle = PdfInkLineStyle.Solid,
+        PdfArrowheadStyle arrowheadStyle = PdfArrowheadStyle.Open)
     {
+        var dash = InkLineDashArray(inkLineStyle);
         if (kind == PdfShapeKind.Line)
         {
             return new Microsoft.UI.Xaml.Shapes.Line
@@ -4133,6 +6450,7 @@ public sealed class PdfDocumentView : UserControl
                 Y2 = end.Y,
                 Stroke = stroke,
                 StrokeThickness = strokeThickness,
+                StrokeDashArray = dash,
             };
         }
 
@@ -4152,33 +6470,27 @@ public sealed class PdfDocumentView : UserControl
             };
         }
 
-        var ux = dx / length;
-        var uy = dy / length;
-        var head = Math.Clamp(length * 0.22, 10.0, 28.0);
-        const double wingRadians = Math.PI / 7;
-        var cos = Math.Cos(wingRadians);
-        var sin = Math.Sin(wingRadians);
-        var backX = -ux * head;
-        var backY = -uy * head;
-        var wing1 = new Windows.Foundation.Point(
-            end.X + (backX * cos) - (backY * sin),
-            end.Y + (backX * sin) + (backY * cos));
-        var wing2 = new Windows.Foundation.Point(
-            end.X + (backX * cos) + (backY * sin),
-            end.Y + (-backX * sin) + (backY * cos));
+        var pdfStart = new PdfPagePoint(start.X, start.Y);
+        var pdfEnd = new PdfPagePoint(end.X, end.Y);
+        var headLen = PdfArrowGeometry.ComputeHeadLength(length);
+        var (shaftEndPdf, headStrokes) = PdfArrowGeometry.Build(pdfStart, pdfEnd, arrowheadStyle, headLen);
+        var shaftEnd = new Windows.Foundation.Point(shaftEndPdf.X, shaftEndPdf.Y);
+
+        var points = new PointCollection { start, shaftEnd };
+        foreach (var headStroke in headStrokes)
+        {
+            foreach (var p in headStroke)
+            {
+                points.Add(new Windows.Foundation.Point(p.X, p.Y));
+            }
+        }
 
         return new Microsoft.UI.Xaml.Shapes.Polyline
         {
-            Points =
-            [
-                start,
-                end,
-                wing1,
-                end,
-                wing2,
-            ],
+            Points = points,
             Stroke = stroke,
             StrokeThickness = strokeThickness,
+            StrokeDashArray = dash,
             Fill = null,
         };
     }
@@ -4220,9 +6532,8 @@ public sealed class PdfDocumentView : UserControl
     private void AppendInkPoint(Border border, int pageIndex, Windows.Foundation.Point uiPoint)
     {
         var page = _document.GetPage(pageIndex);
-        var pdfX = uiPoint.X / _scale;
-        var pdfY = page.HeightPoints - (uiPoint.Y / _scale);
-        _inkPoints.Add(new PdfPagePoint(pdfX, pdfY));
+        var pdf = PdfPageCoordinates.FromDisplayPoint(uiPoint.X, uiPoint.Y, page.HeightPoints, _scale);
+        _inkPoints.Add(pdf);
 
         if (!_pageOverlays.TryGetValue(pageIndex, out var overlay))
         {
@@ -4260,33 +6571,181 @@ public sealed class PdfDocumentView : UserControl
 
         if ((_freeformMode && points.Count < 3) || (!_freeformMode && points.Count < 2) || pageIndex < 0)
         {
-            _status.Text = _freeformMode ? "Freeform needs at least three points." : "Ink stroke too short.";
+            _status.Text = _freeformMode ? AnnotationToolModeStatus.FreeformNeedsPoints : AnnotationToolModeStatus.InkStrokeTooShort;
             return;
         }
 
         try
         {
+            PdfAnnotationInfo created;
             if (_freeformMode)
             {
-                _status.Text = "Saving freeform…";
-                await _annotations.AddFreeformAsync(
+                _status.Text = AnnotationPersistStatus.SavingFreeform;
+                created = await _annotations.AddFreeformAsync(
                     _document,
                     pageIndex,
                     points,
                     _drawStrokeColor,
                     borderWidthPoints: _drawStrokeWidth);
-                _status.Text = "Freeform shape added.";
+                _status.Text = AnnotationPersistStatus.FreeformShapeAdded;
             }
             else
             {
-                _status.Text = "Saving ink…";
-                await _annotations.AddInkAsync(
+                _status.Text = AnnotationPersistStatus.SavingInk;
+                created = await _annotations.AddInkAsync(
                     _document,
                     pageIndex,
                     points,
                     _drawStrokeColor,
                     borderWidthPoints: _drawStrokeWidth);
-                _status.Text = "Ink stroke added.";
+                _status.Text = AnnotationGroupStatus.InkStrokeAdded;
+            }
+
+            _strokeUndoStack.Push(created);
+            NotifyEdited();
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+
+            // Optional smart drawing: offer cleaned shape for freehand strokes.
+            await MaybeOfferStrokeCleanupAsync(pageIndex, points, created);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.FormatFreeformOrInk(_freeformMode, ex.Message);
+        }
+    }
+
+    private async Task MaybeOfferStrokeCleanupAsync(
+        int pageIndex,
+        IReadOnlyList<PdfPagePoint> points,
+        PdfAnnotationInfo original)
+    {
+        var recognized = PdfStrokeShapeRecognizer.Recognize(points);
+        if (recognized.Shape == PdfRecognizedStrokeShape.None)
+        {
+            return;
+        }
+
+        var window = _ownerWindow ?? App.CurrentApp.MainWindowInstance;
+        if (window?.Content?.XamlRoot is null)
+        {
+            return;
+        }
+
+        var label = recognized.Shape switch
+        {
+            PdfRecognizedStrokeShape.Line => "line",
+            PdfRecognizedStrokeShape.Rectangle => "rectangle",
+            PdfRecognizedStrokeShape.Ellipse => "ellipse",
+            PdfRecognizedStrokeShape.Triangle => "triangle",
+            _ => "shape",
+        };
+        var dialog = new ContentDialog
+        {
+            Title = PdfDialogTitles.SmartDrawing,
+            Content = $"That looked like a {label}. Use a cleaned-up shape, or keep the original stroke?",
+            PrimaryButtonText = DialogButtons.UseCleaned,
+            SecondaryButtonText = DialogButtons.KeepOriginal,
+            CloseButtonText = DialogButtons.KeepOriginal,
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        try
+        {
+            await _annotations.RemoveAsync(_document, original.PageIndex, original.AnnotIndex);
+            _strokeUndoStack.TryPopIfMatches(original.PageIndex, original.AnnotIndex);
+
+            PdfAnnotationInfo cleaned;
+            switch (recognized.Shape)
+            {
+                case PdfRecognizedStrokeShape.Line:
+                    cleaned = await _annotations.AddShapeAsync(
+                        _document,
+                        pageIndex,
+                        PdfShapeKind.Line,
+                        recognized.Bounds,
+                        _drawStrokeColor,
+                        borderWidthPoints: _drawStrokeWidth);
+                    break;
+                case PdfRecognizedStrokeShape.Rectangle:
+                    cleaned = await _annotations.AddShapeAsync(
+                        _document,
+                        pageIndex,
+                        PdfShapeKind.Rectangle,
+                        recognized.Bounds,
+                        _drawStrokeColor,
+                        fillColor: PdfShapeFillPolicy.FromStroke(PdfShapeKind.Rectangle, _drawStrokeColor),
+                        borderWidthPoints: _drawStrokeWidth);
+                    break;
+                case PdfRecognizedStrokeShape.Ellipse:
+                    cleaned = await _annotations.AddShapeAsync(
+                        _document,
+                        pageIndex,
+                        PdfShapeKind.Ellipse,
+                        recognized.Bounds,
+                        _drawStrokeColor,
+                        fillColor: PdfShapeFillPolicy.FromStroke(PdfShapeKind.Ellipse, _drawStrokeColor),
+                        borderWidthPoints: _drawStrokeWidth);
+                    break;
+                case PdfRecognizedStrokeShape.Triangle:
+                    cleaned = await _annotations.AddPolygonAsync(
+                        _document,
+                        pageIndex,
+                        recognized.Vertices ?? [],
+                        _drawStrokeColor,
+                        borderWidthPoints: _drawStrokeWidth);
+                    break;
+                default:
+                    return;
+            }
+
+            _strokeUndoStack.Push(cleaned);
+            NotifyEdited();
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = AnnotationGroupStatus.FormatReplacedStroke(label);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Cleanup, ex.Message);
+        }
+    }
+
+    private async Task UndoLastStrokeAsync()
+    {
+        if (!_strokeUndoStack.TryPop(out var stroke))
+        {
+            _status.Text = DocumentUndoRedoStatus.NothingToUndo;
+            return;
+        }
+
+        try
+        {
+            // Prefer the live sidebar entry in case indices shifted after other edits.
+            var live = _annotationItems.FirstOrDefault(a =>
+                a.PageIndex == stroke.PageIndex
+                && a.AnnotIndex == stroke.AnnotIndex);
+            var target = live ?? stroke;
+            await _annotations.RemoveAsync(_document, target.PageIndex, target.AnnotIndex);
+            if (_selectedAnnot is not null
+                && _selectedAnnot.PageIndex == target.PageIndex
+                && _selectedAnnot.AnnotIndex == target.AnnotIndex)
+            {
+                ClearAnnotSelectionVisual();
+                _selectedAnnot = null;
+                _selectedAnnots.Clear();
             }
 
             _cache.ClearDocument(_documentKey);
@@ -4294,10 +6753,87 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
+            _status.Text = AnnotationMutationStatus.FormatUndid(PdfAnnotationListLabel.Format(target));
         }
         catch (Exception ex)
         {
-            _status.Text = (_freeformMode ? "Freeform" : "Ink") + " failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.UndoAnnotation, ex.Message);
+        }
+    }
+
+    private void RememberAnnotationForUndo(PdfAnnotationInfo created) => _strokeUndoStack.Push(created);
+
+    private void RememberFormValueForUndo(PdfFormFieldInfo field) =>
+        _formUndoStack.Push(field);
+
+    private async Task UndoLastFormFillAsync()
+    {
+        if (!_formUndoStack.TryPop(out var entry))
+        {
+            _status.Text = FormOverlayModePolicy.NoChangeToUndo;
+            return;
+        }
+
+        try
+        {
+            switch (entry.Kind)
+            {
+                case PdfFormFieldKind.CheckBox:
+                    {
+                        var wasOn = !string.Equals(entry.PreviousValue, "Off", StringComparison.OrdinalIgnoreCase)
+                            && !string.IsNullOrEmpty(entry.PreviousValue);
+                        await _forms.SetCheckBoxAsync(
+                            _document,
+                            entry.PageIndex,
+                            entry.AnnotIndex,
+                            isChecked: wasOn);
+                        break;
+                    }
+                case PdfFormFieldKind.RadioButton:
+                    // Best-effort: re-select if previous was on; otherwise leave as-is after annot undo path.
+                    if (!string.Equals(entry.PreviousValue, "Off", StringComparison.OrdinalIgnoreCase)
+                        && !string.IsNullOrEmpty(entry.PreviousValue))
+                    {
+                        await _forms.SetRadioButtonAsync(
+                            _document,
+                            entry.PageIndex,
+                            entry.AnnotIndex);
+                    }
+                    else
+                    {
+                        // Cannot cleanly turn off a radio without a sibling; restore text state if API allows.
+                        await _forms.SetTextValueAsync(
+                            _document,
+                            entry.PageIndex,
+                            entry.AnnotIndex,
+                            "Off",
+                            autoFontSize: false);
+                    }
+
+                    break;
+                default:
+                    await _forms.SetTextValueAsync(
+                        _document,
+                        entry.PageIndex,
+                        entry.AnnotIndex,
+                        entry.PreviousValue);
+                    break;
+            }
+
+            NotifyEdited();
+            _cache.ClearDocument(_documentKey);
+            await RenderVisibleAsync();
+            if (_formOverlayMode)
+            {
+                _formOverlayFields = await _forms.ListFieldsAsync(_document);
+                DrawFormOverlays();
+            }
+
+            _status.Text = FormOverlayModePolicy.UndidFieldChange;
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.UndoFormFill, ex.Message);
         }
     }
 
@@ -4320,49 +6856,382 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for signature dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.SignatureDialog);
 
         if (_signatureMode)
         {
             ClearSignatureMode();
             RefreshToolButtonChrome();
-            _status.Text = "Signature draw cancelled.";
+            _status.Text = SignatureLibraryUi.DrawCancelled;
+            return;
+        }
+
+        var library = (await _signatures.ListAsync()).ToList();
+        if (library.Count > 0)
+        {
+            await ShowSignatureLibraryDialogAsync(window, library);
             return;
         }
 
         var dialog = new ContentDialog
         {
-            Title = "Signature",
-            Content = "Draw with the mouse on the page, or import a transparent PNG/JPEG.",
-            PrimaryButtonText = "Draw",
-            SecondaryButtonText = "Import image",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
+            Title = PdfDialogTitles.Signature,
+            CloseButtonText = DialogButtons.Cancel,
+            DefaultButton = ContentDialogButton.Close,
             XamlRoot = window.Content.XamlRoot,
         };
 
-        var result = await dialog.ShowAsync();
-        if (result == ContentDialogResult.Primary)
+        var drawBtn = new Button { Content = PdfViewerChromeLabels.DrawWithMouse, HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 4, 0, 0) };
+        var importBtn = new Button { Content = PdfViewerChromeLabels.ImportImageEllipsis, HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 4, 0, 0) };
+        var webcamBtn = new Button { Content = PdfViewerChromeLabels.WebcamEllipsis, HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 4, 0, 0) };
+        ToolTipService.SetToolTip(webcamBtn, PdfViewerTooltips.PhotographASignatureOnPaperWith);
+        var picked = 0; // 1=draw, 2=import, 3=webcam
+        drawBtn.Click += (_, _) => { picked = 1; dialog.Hide(); };
+        importBtn.Click += (_, _) => { picked = 2; dialog.Hide(); };
+        webcamBtn.Click += (_, _) => { picked = 3; dialog.Hide(); };
+        dialog.Content = new StackPanel
+        {
+            Spacing = 4,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = PdfViewerTextLabels.SignatureDrawHint,
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(0, 0, 0, 8),
+                },
+                drawBtn,
+                importBtn,
+                webcamBtn,
+            },
+        };
+
+        await dialog.ShowAsync();
+        if (picked == 1)
         {
             StartSignatureDrawMode();
             return;
         }
 
-        if (result == ContentDialogResult.Secondary)
+        if (picked == 2)
         {
             await ImportSignatureImageAsync(window);
             return;
         }
 
-        _status.Text = "Signature cancelled.";
+        if (picked == 3)
+        {
+            await CaptureWebcamSignatureAsync(window);
+            return;
+        }
+
+        _status.Text = SignatureLibraryUi.Cancelled;
+    }
+
+    private async Task ShowSignatureLibraryDialogAsync(Window window, List<SignatureEntry> library)
+    {
+        var list = new ListView
+        {
+            Height = 200,
+            SelectionMode = ListViewSelectionMode.Single,
+            SelectedIndex = 0,
+        };
+        var descBox = new TextBox
+        {
+            Header = PdfDialogHeaders.AccessibilityDescriptionF5610,
+            PlaceholderText = PdfDialogPlaceholders.SignatureOfExample,
+            Width = 360,
+        };
+        var up = new Button { Content = PdfViewerChromeLabels.MoveUp, Padding = new Thickness(10, 4, 10, 4) };
+        var down = new Button { Content = PdfViewerChromeLabels.MoveDown, Padding = new Thickness(10, 4, 10, 4) };
+        var del = new Button { Content = PdfViewerChromeLabels.Delete, Padding = new Thickness(10, 4, 10, 4) };
+        var saveDesc = new Button { Content = PdfViewerChromeLabels.SaveDescription, Padding = new Thickness(10, 4, 10, 4) };
+        ToolTipService.SetToolTip(up, PdfViewerTooltips.MoveSelectedSignatureEarlierInThe);
+        ToolTipService.SetToolTip(down, PdfViewerTooltips.MoveSelectedSignatureLaterInThe);
+        ToolTipService.SetToolTip(del, PdfViewerTooltips.DeleteSelectedSignatureFromTheLibrary);
+        ToolTipService.SetToolTip(saveDesc, PdfViewerTooltips.SaveAccessibilityDescriptionForTheSelected);
+        AutomationProperties.SetName(up, PdfViewerAutomationNames.MoveSignatureUp);
+        AutomationProperties.SetName(down, PdfViewerAutomationNames.MoveSignatureDown);
+        AutomationProperties.SetName(del, PdfViewerAutomationNames.DeleteSignature);
+        AutomationProperties.SetName(saveDesc, PdfViewerAutomationNames.SaveSignatureDescription);
+        AutomationProperties.SetName(descBox, PdfViewerAutomationNames.SignatureAccessibilityDescription);
+        AutomationProperties.SetName(list, PdfViewerAutomationNames.SavedSignatures);
+
+        void RefreshList(int selectIndex)
+        {
+            list.ItemsSource = library.Select(SignatureDisplayText.ListLabel).ToList();
+            list.SelectedIndex = library.Count == 0
+                ? -1
+                : Math.Clamp(selectIndex, 0, library.Count - 1);
+            if (list.SelectedIndex >= 0 && list.SelectedIndex < library.Count)
+            {
+                descBox.Text = library[list.SelectedIndex].Description;
+            }
+            else
+            {
+                descBox.Text = string.Empty;
+            }
+        }
+
+        list.SelectionChanged += (_, _) =>
+        {
+            if (list.SelectedIndex >= 0 && list.SelectedIndex < library.Count)
+            {
+                descBox.Text = library[list.SelectedIndex].Description;
+            }
+        };
+        RefreshList(0);
+
+        up.Click += async (_, _) =>
+        {
+            var i = list.SelectedIndex;
+            if (i <= 0 || i >= library.Count)
+            {
+                return;
+            }
+
+            (library[i - 1], library[i]) = (library[i], library[i - 1]);
+            try
+            {
+                await _signatures.ReorderAsync(library.Select(e => e.Id).ToList());
+                RefreshList(i - 1);
+                _status.Text = SignatureLibraryUi.OrderUpdated;
+            }
+            catch (Exception ex)
+            {
+                _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Reorder, ex.Message);
+            }
+        };
+        down.Click += async (_, _) =>
+        {
+            var i = list.SelectedIndex;
+            if (i < 0 || i >= library.Count - 1)
+            {
+                return;
+            }
+
+            (library[i + 1], library[i]) = (library[i], library[i + 1]);
+            try
+            {
+                await _signatures.ReorderAsync(library.Select(e => e.Id).ToList());
+                RefreshList(i + 1);
+                _status.Text = SignatureLibraryUi.OrderUpdated;
+            }
+            catch (Exception ex)
+            {
+                _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Reorder, ex.Message);
+            }
+        };
+        del.Click += async (_, _) =>
+        {
+            var i = list.SelectedIndex;
+            if (i < 0 || i >= library.Count)
+            {
+                return;
+            }
+
+            var entry = library[i];
+            try
+            {
+                await _signatures.DeleteAsync(entry.Id);
+                library.RemoveAt(i);
+                RefreshList(i);
+                _status.Text = SignatureLibraryUi.FormatDeleted(entry.Name);
+            }
+            catch (Exception ex)
+            {
+                _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Delete, ex.Message);
+            }
+        };
+        saveDesc.Click += async (_, _) =>
+        {
+            var i = list.SelectedIndex;
+            if (i < 0 || i >= library.Count)
+            {
+                return;
+            }
+
+            try
+            {
+                var text = descBox.Text?.Trim() ?? string.Empty;
+                await _signatures.UpdateDescriptionAsync(library[i].Id, text);
+                library[i] = library[i] with { Description = text };
+                RefreshList(i);
+                _status.Text = SignatureLibraryUi.DescriptionSaved;
+            }
+            catch (Exception ex)
+            {
+                _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.DescriptionSave, ex.Message);
+            }
+        };
+
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock { Text = PdfViewerTextLabels.SavedSignaturesHint },
+                list,
+                descBox,
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 8,
+                    Children = { up, down, del, saveDesc },
+                },
+            },
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = PdfDialogTitles.Signatures,
+            Content = panel,
+            PrimaryButtonText = DialogButtons.Insert,
+            SecondaryButtonText = DialogButtons.DrawNew,
+            CloseButtonText = DialogButtons.Cancel,
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        var importBtn = new Button { Content = PdfViewerChromeLabels.ImportImageEllipsis, HorizontalAlignment = HorizontalAlignment.Left };
+        var webcamBtn = new Button { Content = PdfViewerChromeLabels.WebcamEllipsis, HorizontalAlignment = HorizontalAlignment.Left };
+        ToolTipService.SetToolTip(webcamBtn, PdfViewerTooltips.PhotographASignatureOnPaperWith);
+        var importRequested = false;
+        var webcamRequested = false;
+        importBtn.Click += (_, _) =>
+        {
+            importRequested = true;
+            dialog.Hide();
+        };
+        webcamBtn.Click += (_, _) =>
+        {
+            webcamRequested = true;
+            dialog.Hide();
+        };
+        panel.Children.Add(new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Children = { importBtn, webcamBtn },
+        });
+
+        var result = await dialog.ShowAsync();
+        if (importRequested)
+        {
+            await ImportSignatureImageAsync(window);
+            return;
+        }
+
+        if (webcamRequested)
+        {
+            await CaptureWebcamSignatureAsync(window);
+            return;
+        }
+
+        if (result == ContentDialogResult.Primary)
+        {
+            if (library.Count == 0 || list.SelectedIndex < 0 || list.SelectedIndex >= library.Count)
+            {
+                _status.Text = SignatureLibraryUi.SelectToInsert;
+                return;
+            }
+
+            await InsertLibrarySignatureAsync(library[list.SelectedIndex]);
+            return;
+        }
+
+        if (result == ContentDialogResult.Secondary)
+        {
+            StartSignatureDrawMode();
+            return;
+        }
+
+        _status.Text = SignatureLibraryUi.Cancelled;
+    }
+
+    private async Task InsertLibrarySignatureAsync(SignatureEntry entry)
+    {
+        try
+        {
+            _status.Text = SignatureLibraryUi.Inserting;
+            await using var stream = await _signatures.OpenImageAsync(entry.Id);
+            using var mem = new MemoryStream();
+            await stream.CopyToAsync(mem);
+            mem.Position = 0;
+            using var rasStream = mem.AsRandomAccessStream();
+            var decoder = await BitmapDecoder.CreateAsync(rasStream);
+            var pixelData = await decoder.GetPixelDataAsync(
+                BitmapPixelFormat.Bgra8,
+                BitmapAlphaMode.Straight,
+                new BitmapTransform(),
+                ExifOrientationMode.IgnoreExifOrientation,
+                ColorManagementMode.DoNotColorManage);
+            var pixels = pixelData.DetachPixelData();
+            var width = (int)decoder.PixelWidth;
+            var height = (int)decoder.PixelHeight;
+            if (width <= 0 || height <= 0)
+            {
+                _status.Text = SignatureLibraryUi.ImageEmpty;
+                return;
+            }
+
+            var page = _document.GetPage(CurrentPageIndex);
+            var targetWidth = Math.Min(180, page.WidthPoints * 0.35);
+            var aspect = height / (double)width;
+            var targetHeight = Math.Clamp(targetWidth * aspect, 24, page.HeightPoints * 0.25);
+            var left = Math.Max(36, page.WidthPoints - targetWidth - 48);
+            var bottom = Math.Max(36, 48.0);
+            var bounds = new PdfRect(left, bottom, left + targetWidth, bottom + targetHeight);
+
+            var stamp = await _annotations.AddStampAsync(
+                _document,
+                CurrentPageIndex,
+                bounds,
+                pixels,
+                width,
+                height);
+            RememberAnnotationForUndo(stamp);
+            await ApplySignatureContentsAsync(CurrentPageIndex, SignatureDisplayText.Contents(entry));
+
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = SignatureLibraryUi.FormatInserted(entry.Name);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.InsertSignature, ex.Message);
+        }
+    }
+
+
+    private async Task ApplySignatureContentsAsync(int pageIndex, string contents)
+    {
+        try
+        {
+            var annots = await _annotations.ListAsync(_document, pageIndex);
+            var stamp = annots.LastOrDefault(a => a.IsStamp);
+            if (stamp is not null)
+            {
+                await _annotations.SetContentsAsync(_document, stamp.PageIndex, stamp.AnnotIndex, contents);
+            }
+        }
+        catch
+        {
+            // Contents is accessibility metadata; insertion already succeeded.
+        }
     }
 
     private void StartSignatureDrawMode()
     {
+        ClearRedactionMode();
         ClearShapeMode();
         ClearHighlightMode();
         ClearCalloutMode();
         ClearFreeformMode();
+        ClearPolygonMode();
         if (_formOverlayMode)
         {
             ClearFormOverlayMode();
@@ -4380,7 +7249,7 @@ public sealed class PdfDocumentView : UserControl
 
         _signatureMode = true;
         RefreshToolButtonChrome();
-        _status.Text = "Signature draw — draw on the page, then release to save.";
+        _status.Text = SignatureLibraryUi.DrawPrompt;
     }
 
     private async Task EndSignatureStrokeAsync(Border border, PointerRoutedEventArgs e)
@@ -4396,46 +7265,55 @@ public sealed class PdfDocumentView : UserControl
 
         if (points.Count < 2 || pageIndex < 0)
         {
-            _status.Text = "Signature stroke too short.";
+            _status.Text = SignatureLibraryUi.StrokeTooShort;
             return;
         }
 
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for signature name.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.SignatureName);
 
         var nameBox = new TextBox
         {
-            Text = "Signature",
-            PlaceholderText = "Signature name",
+            Text = PdfViewerTextLabels.Signature,
+            PlaceholderText = PdfDialogPlaceholders.SignatureName,
+            Header = PdfDialogHeaders.Name,
         };
+        var descBox = new TextBox
+        {
+            PlaceholderText = PdfDialogPlaceholders.SignatureOfExample,
+            Header = PdfDialogHeaders.AccessibilityDescription,
+        };
+        AutomationProperties.SetName(nameBox, PdfViewerAutomationNames.SignatureName);
+        AutomationProperties.SetName(descBox, PdfViewerAutomationNames.SignatureAccessibilityDescription);
         var nameDialog = new ContentDialog
         {
-            Title = "Save signature",
-            Content = nameBox,
-            PrimaryButtonText = "Insert",
-            CloseButtonText = "Cancel",
+            Title = PdfDialogTitles.SaveSignature,
+            Content = new StackPanel { Spacing = 8, Children = { nameBox, descBox } },
+            PrimaryButtonText = DialogButtons.Insert,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
 
         if (await nameDialog.ShowAsync() != ContentDialogResult.Primary)
         {
-            _status.Text = "Signature cancelled.";
+            _status.Text = SignatureLibraryUi.Cancelled;
             return;
         }
 
         var name = string.IsNullOrWhiteSpace(nameBox.Text) ? "Signature" : nameBox.Text.Trim();
+        var description = descBox.Text?.Trim() ?? string.Empty;
 
         try
         {
-            _status.Text = "Saving signature…";
+            _status.Text = SignatureLibraryUi.Saving;
             var stroke = points.Select(p => (p.X, p.Y)).ToList();
             var raster = SignatureStrokeRasterizer.Rasterize(stroke);
             var png = SignaturePngEncoder.EncodeBgra(raster.BgraPixels, raster.PixelWidth, raster.PixelHeight);
             await using (var pngStream = new MemoryStream(png))
             {
-                await _signatures.SaveAsync(name, pngStream);
+                await _signatures.SaveAsync(name, pngStream, description);
             }
 
             var minX = points.Min(p => p.X);
@@ -4445,24 +7323,26 @@ public sealed class PdfDocumentView : UserControl
             var pad = raster.PaddingPoints;
             var bounds = new PdfRect(minX - pad, minY - pad, maxX + pad, maxY + pad);
 
-            await _annotations.AddStampAsync(
+            var stamp = await _annotations.AddStampAsync(
                 _document,
                 pageIndex,
                 bounds,
                 raster.BgraPixels,
                 raster.PixelWidth,
                 raster.PixelHeight);
+            RememberAnnotationForUndo(stamp);
+            await ApplySignatureContentsAsync(pageIndex, SignatureDisplayText.Contents(name, description));
 
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = "Signature inserted.";
+            _status.Text = SignatureLibraryUi.Inserted;
         }
         catch (Exception ex)
         {
-            _status.Text = "Signature failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Signature, ex.Message);
         }
     }
 
@@ -4479,13 +7359,13 @@ public sealed class PdfDocumentView : UserControl
         var file = await picker.PickSingleFileAsync();
         if (file is null)
         {
-            _status.Text = "Signature cancelled.";
+            _status.Text = SignatureLibraryUi.Cancelled;
             return;
         }
 
         try
         {
-            _status.Text = "Loading signature…";
+            _status.Text = SignatureLibraryUi.Loading;
             using var winStream = await file.OpenAsync(FileAccessMode.Read);
             var decoder = await BitmapDecoder.CreateAsync(winStream);
             var pixelData = await decoder.GetPixelDataAsync(
@@ -4499,7 +7379,7 @@ public sealed class PdfDocumentView : UserControl
             var height = (int)decoder.PixelHeight;
             if (width <= 0 || height <= 0)
             {
-                _status.Text = "Signature image is empty.";
+                _status.Text = SignatureLibraryUi.ImageEmpty;
                 return;
             }
 
@@ -4509,40 +7389,154 @@ public sealed class PdfDocumentView : UserControl
                 await using var copy = await file.OpenStreamForReadAsync();
                 await _signatures.SaveAsync(
                     System.IO.Path.GetFileNameWithoutExtension(file.Name),
-                    copy);
+                    copy,
+                    description: SignatureLibraryUi.FormatImageContents(file.Name));
             }
             catch
             {
                 // Library save is best-effort; insertion can still proceed.
             }
 
-            var page = _document.GetPage(CurrentPageIndex);
-            var targetWidth = Math.Min(180, page.WidthPoints * 0.35);
-            var aspect = height / (double)width;
-            var targetHeight = Math.Clamp(targetWidth * aspect, 24, page.HeightPoints * 0.25);
-            var left = Math.Max(36, page.WidthPoints - targetWidth - 48);
-            var bottom = Math.Max(36, 48.0);
-            var bounds = new PdfRect(left, bottom, left + targetWidth, bottom + targetHeight);
-
-            await _annotations.AddStampAsync(
-                _document,
-                CurrentPageIndex,
-                bounds,
+            await InsertSignaturePixelsAsync(
                 pixels,
                 width,
-                height);
-
-            _cache.ClearDocument(_documentKey);
-            _cache.ClearDocument(_thumbnailKey);
-            await RenderVisibleAsync();
-            await RenderThumbnailsAsync();
-            await RefreshAnnotationSidebarAsync();
-            _status.Text = "Signature inserted.";
+                height,
+                statusOnSuccess: SignatureLibraryUi.Inserted,
+                contents: SignatureLibraryUi.FormatImageContents(file.Name));
         }
         catch (Exception ex)
         {
-            _status.Text = "Signature failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Signature, ex.Message);
         }
+    }
+
+    private async Task CaptureCameraIntoDocumentAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.Camera);
+        try
+        {
+            _status.Text = WebcamCaptureUi.StartingCamera;
+            var captured = await WebcamCaptureHelper.CaptureAsync(
+                window.Content.XamlRoot,
+                title: "Capture into PDF",
+                hint: "Frame the page or photo, then Capture. It will be stamped on the current PDF page.");
+            if (captured is null)
+            {
+                _status.Text = WebcamCaptureUi.CaptureCancelledOrUnavailable;
+                return;
+            }
+
+            await InsertSignaturePixelsAsync(
+                captured.BgraPixels,
+                captured.Width,
+                captured.Height,
+                statusOnSuccess: "Camera capture inserted on page.");
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.CameraInsert, ex.Message);
+        }
+    }
+
+    private async Task CaptureWebcamSignatureAsync(Window window)
+    {
+        try
+        {
+            _status.Text = WebcamCaptureUi.StartingWebcam;
+            var captured = await WebcamCaptureHelper.CaptureAsync(
+                window.Content.XamlRoot,
+                title: SignatureLibraryUi.PhotographSignatureTitle,
+                hint: SignatureLibraryUi.PhotographSignatureHint);
+            if (captured is null)
+            {
+                var fallback = new ContentDialog
+                {
+                    Title = PdfDialogTitles.WebcamUnavailable,
+                    Content = PdfDialogBodies.WebcamUnavailableImport,
+                    PrimaryButtonText = DialogButtons.ImportImageEllipsis,
+                    CloseButtonText = DialogButtons.Cancel,
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = window.Content.XamlRoot,
+                };
+                if (await fallback.ShowAsync() == ContentDialogResult.Primary)
+                {
+                    await ImportSignatureImageAsync(window);
+                }
+                else
+                {
+                    _status.Text = SignatureLibraryUi.WebcamCancelled;
+                }
+
+                return;
+            }
+
+            var pixels = captured.BgraPixels;
+            var width = captured.Width;
+            var height = captured.Height;
+            SignaturePaperKeying.KeyOutNearWhite(pixels, width, height);
+
+            try
+            {
+                var png = SignaturePngEncoder.EncodeBgra(pixels, width, height);
+                await using var pngStream = new MemoryStream(png);
+                await _signatures.SaveAsync(
+                    SignatureLibraryUi.FormatWebcamName(DateTime.Now),
+                    pngStream,
+                    description: SignatureLibraryUi.WebcamPaperSignature);
+            }
+            catch
+            {
+                // Library save is best-effort.
+            }
+
+            await InsertSignaturePixelsAsync(
+                pixels,
+                width,
+                height,
+                statusOnSuccess: SignatureLibraryUi.WebcamInserted,
+                contents: SignatureLibraryUi.WebcamPaperSignature);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.WebcamSignature, ex.Message);
+        }
+    }
+
+    private async Task InsertSignaturePixelsAsync(
+        byte[] pixels,
+        int width,
+        int height,
+        string statusOnSuccess,
+        string? contents = null)
+    {
+        var page = _document.GetPage(CurrentPageIndex);
+        var targetWidth = Math.Min(180, page.WidthPoints * 0.35);
+        var aspect = height / (double)width;
+        var targetHeight = Math.Clamp(targetWidth * aspect, 24, page.HeightPoints * 0.25);
+        var left = Math.Max(36, page.WidthPoints - targetWidth - 48);
+        var bottom = Math.Max(36, 48.0);
+        var bounds = new PdfRect(left, bottom, left + targetWidth, bottom + targetHeight);
+
+        var stamp = await _annotations.AddStampAsync(
+            _document,
+            CurrentPageIndex,
+            bounds,
+            pixels,
+            width,
+            height);
+        RememberAnnotationForUndo(stamp);
+        await ApplySignatureContentsAsync(
+            CurrentPageIndex,
+            string.IsNullOrWhiteSpace(contents) ? "Signature" : contents);
+
+        _cache.ClearDocument(_documentKey);
+        _cache.ClearDocument(_thumbnailKey);
+        await RenderVisibleAsync();
+        await RenderThumbnailsAsync();
+        await RefreshAnnotationSidebarAsync();
+        _status.Text = statusOnSuccess;
     }
 
     private async Task OnFormButtonClickAsync()
@@ -4551,51 +7545,185 @@ public sealed class PdfDocumentView : UserControl
         {
             ClearFormOverlayMode();
             RefreshToolButtonChrome();
-            _status.Text = "Form overlay off.";
+            _status.Text = FormOverlayModePolicy.Exited;
             return;
         }
 
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for form dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.FormDialog);
 
         if (!await _forms.HasFormAsync(_document))
         {
-            _status.Text = "No AcroForm fields in this document.";
+            _status.Text = FormOverlayModePolicy.NoAcroFormFields;
             return;
         }
 
+        var options = new ListView
+        {
+            Height = 180,
+            SelectionMode = ListViewSelectionMode.Single,
+            ItemsSource = PdfDialogOptions.FormOverlayModes.ToList(),
+            SelectedIndex = 0,
+        };
         var chooser = new ContentDialog
         {
-            Title = "Form fill",
-            Content = "Overlay draws clickable field boxes on the page. List opens the classic field picker.",
-            PrimaryButtonText = "Overlay",
-            SecondaryButtonText = "List fields",
-            CloseButtonText = "Cancel",
+            Title = PdfDialogTitles.FormFill,
+            Content = options,
+            PrimaryButtonText = DialogButtons.Go,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
 
-        var choice = await chooser.ShowAsync();
-        if (choice == ContentDialogResult.Primary)
+        if (await chooser.ShowAsync() != ContentDialogResult.Primary)
         {
-            await BeginFormOverlayModeAsync();
             return;
         }
 
-        if (choice == ContentDialogResult.Secondary)
+        switch (options.SelectedIndex)
         {
-            await EditFormFieldsAsync();
+            case 0:
+                await BeginFormOverlayModeAsync();
+                break;
+            case 1:
+                await EditFormFieldsAsync();
+                break;
+            case 2:
+                await AutoFillFromProfileAsync();
+                break;
+            case 3:
+                await EditFormAutofillProfileAsync();
+                break;
         }
+    }
+
+    private async Task EditFormAutofillProfileAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.ProfileDialog);
+
+        var current = _formProfile.Current;
+        var nameBox = new TextBox { Header = PdfDialogHeaders.Name, Text = current.Name, Width = 320 };
+        var addressBox = new TextBox
+        {
+            Header = PdfDialogHeaders.Address,
+            Text = current.Address,
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            Height = 72,
+            Width = 320,
+        };
+        var emailBox = new TextBox { Header = PdfDialogHeaders.Email, Text = current.Email, Width = 320 };
+        var phoneBox = new TextBox { Header = PdfDialogHeaders.Phone, Text = current.Phone, Width = 320 };
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children = { nameBox, addressBox, emailBox, phoneBox },
+        };
+        var dialog = new ContentDialog
+        {
+            Title = PdfDialogTitles.AutoFillProfile,
+            Content = panel,
+            PrimaryButtonText = DialogButtons.Save,
+            CloseButtonText = DialogButtons.Cancel,
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            _status.Text = FormFieldActionStatus.ProfileEditCancelled;
+            return;
+        }
+
+        var profile = new FormAutofillProfile(
+            nameBox.Text?.Trim() ?? string.Empty,
+            addressBox.Text?.Trim() ?? string.Empty,
+            emailBox.Text?.Trim() ?? string.Empty,
+            phoneBox.Text?.Trim() ?? string.Empty);
+        await _formProfile.SaveAsync(profile);
+        _status.Text = profile.HasAnyValue
+            ? AnnotationMutationStatus.AutoFillProfileSaved
+            : AnnotationMutationStatus.AutoFillProfileCleared;
+    }
+
+    private async Task AutoFillFromProfileAsync()
+    {
+        var profile = _formProfile.Current;
+        if (!profile.HasAnyValue)
+        {
+            _status.Text = FormFieldActionStatus.AutoFillEmpty;
+            await EditFormAutofillProfileAsync();
+            profile = _formProfile.Current;
+            if (!profile.HasAnyValue)
+            {
+                return;
+            }
+        }
+
+        var fields = await _forms.ListFieldsAsync(_document);
+        var filled = 0;
+        foreach (var field in fields)
+        {
+            if (field.Kind is not (PdfFormFieldKind.TextField
+                or PdfFormFieldKind.ComboBox
+                or PdfFormFieldKind.ListBox))
+            {
+                continue;
+            }
+
+            var value = FormAutofillMatcher.ResolveValue(profile, field.Name);
+            if (value is null)
+            {
+                continue;
+            }
+
+            // Skip fields that already have a non-empty value.
+            if (!string.IsNullOrWhiteSpace(field.Value))
+            {
+                continue;
+            }
+
+            try
+            {
+                RememberFormValueForUndo(field);
+                await _forms.SetTextValueAsync(_document, field.PageIndex, field.AnnotIndex, value);
+                await _formValueHistory.RememberAsync(field.Name, value);
+                filled++;
+            }
+            catch
+            {
+                // Continue filling other fields.
+            }
+        }
+
+        if (filled > 0)
+        {
+            _cache.ClearDocument(_documentKey);
+            await RenderVisibleAsync();
+            if (_formOverlayMode)
+            {
+                _formOverlayFields = await _forms.ListFieldsAsync(_document);
+                DrawFormOverlays();
+            }
+        }
+
+        _status.Text = filled == 0
+            ? AnnotationMutationStatus.AutoFillNoEmptyFields
+            : AnnotationMutationStatus.FormatAutoFillUpdated(filled);
     }
 
     private async Task BeginFormOverlayModeAsync()
     {
+        ClearRedactionMode();
         ClearShapeMode();
         ClearSignatureMode();
         ClearHighlightMode();
         ClearCalloutMode();
         ClearFreeformMode();
+        ClearPolygonMode();
         if (_inkMode)
         {
             _inkMode = false;
@@ -4610,7 +7738,7 @@ public sealed class PdfDocumentView : UserControl
         var fields = await _forms.ListFieldsAsync(_document);
         if (fields.Count == 0)
         {
-            _status.Text = "AcroForm present but no widget fields found.";
+            _status.Text = FormOverlayModePolicy.NoFields;
             return;
         }
 
@@ -4620,7 +7748,7 @@ public sealed class PdfDocumentView : UserControl
         RefreshToolButtonChrome();
         DrawFormOverlays();
         await GoToPageAsync(fields[0].PageIndex, recordHistory: true);
-        _status.Text = "Form overlay on — click a field, Tab/Shift+Tab to move, Enter to edit, Esc to exit.";
+        _status.Text = FormOverlayModePolicy.Started;
     }
 
     private void ClearFormOverlayMode()
@@ -4753,14 +7881,14 @@ public sealed class PdfDocumentView : UserControl
         _formOverlayFocusIndex = nextIndex;
         DrawFormOverlays();
         await GoToPageAsync(next.PageIndex, recordHistory: true);
-        _status.Text = $"Focused {next.Name} ({next.Kind}).";
+        _status.Text = FormFieldActionStatus.FormatFocused(next.Name, next.Kind.ToString());
     }
 
     private async Task EditFocusedFormOverlayFieldAsync()
     {
         if (_formOverlayFocusIndex < 0 || _formOverlayFocusIndex >= _formOverlayFields.Count)
         {
-            _status.Text = "No form field focused.";
+            _status.Text = FormOverlayModePolicy.NoFieldFocused;
             return;
         }
 
@@ -4790,18 +7918,18 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for form dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.FormDialog);
 
         if (!await _forms.HasFormAsync(_document))
         {
-            _status.Text = "No AcroForm fields in this document.";
+            _status.Text = FormOverlayModePolicy.NoAcroFormFields;
             return;
         }
 
         var fields = await _forms.ListFieldsAsync(_document);
         if (fields.Count == 0)
         {
-            _status.Text = "AcroForm present but no widget fields found.";
+            _status.Text = FormOverlayModePolicy.NoFields;
             return;
         }
 
@@ -4817,11 +7945,11 @@ public sealed class PdfDocumentView : UserControl
 
         var dialog = new ContentDialog
         {
-            Title = "Form fields",
+            Title = PdfDialogTitles.FormFields,
             Content = list,
-            PrimaryButtonText = "Edit",
-            SecondaryButtonText = "Next (Tab)",
-            CloseButtonText = "Close",
+            PrimaryButtonText = DialogButtons.Edit,
+            SecondaryButtonText = DialogButtons.NextTab,
+            CloseButtonText = DialogButtons.Close,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -4831,7 +7959,7 @@ public sealed class PdfDocumentView : UserControl
             var result = await dialog.ShowAsync();
             if (result == ContentDialogResult.None)
             {
-                _status.Text = "Form editor closed.";
+                _status.Text = FormOverlayModePolicy.EditorClosed;
                 return;
             }
 
@@ -4882,13 +8010,262 @@ public sealed class PdfDocumentView : UserControl
     }
 
     /// <summary>
+    /// Activates an AcroForm push button (URI launch or in-doc GoTo when resolvable).
+    /// Does not modify the document.
+    /// </summary>
+    private async Task<bool> ActivatePushButtonAsync(PdfFormFieldInfo field)
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.ButtonDialog);
+
+        var action = field.ButtonAction;
+        var caption = !string.IsNullOrWhiteSpace(action?.Caption)
+            ? action!.Caption!
+            : (!string.IsNullOrWhiteSpace(field.Value) ? field.Value : field.Name);
+
+        if (action?.Kind == PdfFormButtonActionKind.Uri && !string.IsNullOrWhiteSpace(action.Uri))
+        {
+            var confirm = new ContentDialog
+            {
+                Title = caption,
+                Content = $"Open link?\n{action.Uri}",
+                PrimaryButtonText = DialogButtons.Open,
+                CloseButtonText = DialogButtons.Cancel,
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = window.Content.XamlRoot,
+            };
+            if (await confirm.ShowAsync() != ContentDialogResult.Primary)
+            {
+                return false;
+            }
+
+            try
+            {
+                var raw = ExternalLaunchPolicy.LooksLikeHttpUrl(action.Uri)
+                    ? action.Uri!
+                    : ExternalLaunchPolicy.NormalizeHttpUrl(action.Uri!);
+                if (!Uri.TryCreate(raw, UriKind.Absolute, out var uri)
+                    || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps
+                        && uri.Scheme != Uri.UriSchemeMailto))
+                {
+                    _status.Text = FormFieldActionStatus.UnsupportedButtonScheme;
+                    return false;
+                }
+
+                await Launcher.LaunchUriAsync(uri);
+                _status.Text = FormFieldActionStatus.FormatOpened(caption);
+            }
+            catch (Exception ex)
+            {
+                _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.ButtonLink, ex.Message);
+            }
+
+            return false;
+        }
+
+        if (action?.Kind == PdfFormButtonActionKind.GoTo && action.DestPageIndex is int dest
+            && dest >= 0 && dest < _document.PageCount)
+        {
+            await GoToPageAsync(dest, recordHistory: true);
+            _status.Text = FormFieldActionStatus.FormatButtonToPage(caption, dest + 1);
+            return false;
+        }
+
+        var info = action?.Kind switch
+        {
+            PdfFormButtonActionKind.GoTo =>
+                "This button jumps elsewhere in the document, but the destination page could not be resolved.",
+            PdfFormButtonActionKind.Other =>
+                "This button uses an action type Glyph does not activate yet (submit/reset/JS/etc.).",
+            _ => "This button has no resolvable action.",
+        };
+        var dlg = new ContentDialog
+        {
+            Title = caption,
+            Content = info,
+            CloseButtonText = DialogButtons.Close,
+            XamlRoot = window.Content.XamlRoot,
+        };
+        await dlg.ShowAsync();
+        _status.Text = FormFieldActionStatus.FormatButtonNoAction(caption);
+        return false;
+    }
+
+    /// <summary>
+    /// Places a library/drawn/imported signature stamp into an AcroForm signature field rect.
+    /// Cryptographic PKCS#7 signing is out of scope; this is visual fill "where supported".
+    /// </summary>
+    private async Task<bool> FillFormSignatureFieldAsync(PdfFormFieldInfo field)
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.SignatureDialog);
+
+        IReadOnlyList<SignatureEntry> library;
+        try
+        {
+            library = await _signatures.ListAsync();
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.CouldNotOpenSignatureLibrary, ex.Message);
+            return false;
+        }
+
+        ContentDialog pick;
+        ListView? list = null;
+        if (library.Count > 0)
+        {
+            list = new ListView
+            {
+                Height = 200,
+                SelectionMode = ListViewSelectionMode.Single,
+                ItemsSource = library.Select(e => e.Name).ToList(),
+                SelectedIndex = 0,
+            };
+            pick = new ContentDialog
+            {
+                Title = $"Sign {field.Name}",
+                Content = new StackPanel
+                {
+                    Spacing = 8,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = PdfViewerTextLabels.FormSignatureHint,
+                            TextWrapping = TextWrapping.Wrap,
+                        },
+                        list,
+                    },
+                },
+                PrimaryButtonText = DialogButtons.Insert,
+                SecondaryButtonText = DialogButtons.DrawNew,
+                CloseButtonText = DialogButtons.Cancel,
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = window.Content.XamlRoot,
+            };
+        }
+        else
+        {
+            pick = new ContentDialog
+            {
+                Title = $"Sign {field.Name}",
+                Content = PdfViewerChromeLabels.NoSavedSignaturesHint,
+                PrimaryButtonText = DialogButtons.Draw,
+                CloseButtonText = DialogButtons.Cancel,
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = window.Content.XamlRoot,
+            };
+        }
+
+        var result = await pick.ShowAsync();
+        if (result == ContentDialogResult.None)
+        {
+            return false;
+        }
+
+        if (library.Count == 0 || result == ContentDialogResult.Secondary)
+        {
+            // Fall back to normal signature draw; user can then re-open the field.
+            StartSignatureDrawMode();
+            _status.Text = SignatureLibraryUi.DrawThenChooseFormField;
+            return false;
+        }
+
+        if (list is null || list.SelectedIndex < 0 || list.SelectedIndex >= library.Count)
+        {
+            return false;
+        }
+
+        try
+        {
+            await InsertSignatureIntoFieldAsync(library[list.SelectedIndex], field);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.FormSignature, ex.Message);
+            return false;
+        }
+    }
+
+    private async Task InsertSignatureIntoFieldAsync(SignatureEntry entry, PdfFormFieldInfo field)
+    {
+        _status.Text = SignatureLibraryUi.SigningFormField;
+        await using var stream = await _signatures.OpenImageAsync(entry.Id);
+        using var mem = new MemoryStream();
+        await stream.CopyToAsync(mem);
+        mem.Position = 0;
+        using var rasStream = mem.AsRandomAccessStream();
+        var decoder = await BitmapDecoder.CreateAsync(rasStream);
+        var pixelData = await decoder.GetPixelDataAsync(
+            BitmapPixelFormat.Bgra8,
+            BitmapAlphaMode.Straight,
+            new BitmapTransform(),
+            ExifOrientationMode.IgnoreExifOrientation,
+            ColorManagementMode.DoNotColorManage);
+        var pixels = pixelData.DetachPixelData();
+        var width = (int)decoder.PixelWidth;
+        var height = (int)decoder.PixelHeight;
+        if (width <= 0 || height <= 0)
+        {
+            throw new InvalidOperationException(MainWindowRequiredMessages.SignatureImageEmpty);
+        }
+
+        var fieldW = Math.Max(1, field.Bounds.Width);
+        var fieldH = Math.Max(1, field.Bounds.Height);
+        var aspect = height / (double)width;
+        var targetWidth = fieldW;
+        var targetHeight = targetWidth * aspect;
+        if (targetHeight > fieldH)
+        {
+            targetHeight = fieldH;
+            targetWidth = targetHeight / aspect;
+        }
+
+        var left = field.Bounds.Left + ((fieldW - targetWidth) / 2);
+        var bottom = field.Bounds.Bottom + ((fieldH - targetHeight) / 2);
+        var bounds = new PdfRect(left, bottom, left + targetWidth, bottom + targetHeight);
+
+        var stamp = await _annotations.AddStampAsync(
+            _document,
+            field.PageIndex,
+            bounds,
+            pixels,
+            width,
+            height);
+        RememberAnnotationForUndo(stamp);
+        await ApplySignatureContentsAsync(field.PageIndex, SignatureDisplayText.Contents(entry));
+
+        _cache.ClearDocument(_documentKey);
+        _cache.ClearDocument(_thumbnailKey);
+        await RenderVisibleAsync();
+        await RenderThumbnailsAsync();
+        await RefreshAnnotationSidebarAsync();
+        _status.Text = FormOverlayModePolicy.FormatSignedField(field.Name, entry.Name);
+    }
+
+    /// <summary>
     /// Opens the appropriate edit UI for one field. Returns true when the document was modified.
     /// </summary>
     private async Task<bool> TryEditFormFieldAsync(PdfFormFieldInfo field)
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for form dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.FormDialog);
+
+        if (field.Kind == PdfFormFieldKind.PushButton)
+        {
+            return await ActivatePushButtonAsync(field);
+        }
+
+        if (field.Kind == PdfFormFieldKind.Signature
+            || SignatureFormPlacementPolicy.IsSignatureWidget(field.Kind.ToString()))
+        {
+            return await FillFormSignatureFieldAsync(field);
+        }
 
         if (field.Kind == PdfFormFieldKind.RadioButton)
         {
@@ -4914,16 +8291,18 @@ public sealed class PdfDocumentView : UserControl
 
             try
             {
+                RememberFormValueForUndo(field);
                 await _forms.SetRadioButtonAsync(
                     _document,
                     field.PageIndex,
                     field.AnnotIndex);
-                _status.Text = $"Selected radio {field.Name}.";
+                NotifyEdited();
+                _status.Text = FormFieldActionStatus.FormatSelectedRadio(field.Name);
                 return true;
             }
             catch (Exception ex)
             {
-                _status.Text = "Form fill failed: " + ex.Message;
+                _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.FormFill, ex.Message);
                 return false;
             }
         }
@@ -4937,7 +8316,7 @@ public sealed class PdfDocumentView : UserControl
                 Title = field.Name,
                 Content = currentlyOn ? "Checkbox is checked." : "Checkbox is unchecked.",
                 PrimaryButtonText = currentlyOn ? "Uncheck" : "Check",
-                CloseButtonText = "Cancel",
+                CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = window.Content.XamlRoot,
             };
@@ -4949,17 +8328,19 @@ public sealed class PdfDocumentView : UserControl
 
             try
             {
+                RememberFormValueForUndo(field);
                 await _forms.SetCheckBoxAsync(
                     _document,
                     field.PageIndex,
                     field.AnnotIndex,
                     isChecked: !currentlyOn);
-                _status.Text = $"Updated {field.Name}.";
+                NotifyEdited();
+                _status.Text = AnnotationMutationStatus.FormatUpdated(field.Name);
                 return true;
             }
             catch (Exception ex)
             {
-                _status.Text = "Form fill failed: " + ex.Message;
+                _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.FormFill, ex.Message);
                 return false;
             }
         }
@@ -4981,8 +8362,8 @@ public sealed class PdfDocumentView : UserControl
                 {
                     Title = $"Select {field.Name}",
                     Content = choiceList,
-                    PrimaryButtonText = "Apply",
-                    CloseButtonText = "Cancel",
+                    PrimaryButtonText = DialogButtons.Apply,
+                    CloseButtonText = DialogButtons.Cancel,
                     DefaultButton = ContentDialogButton.Primary,
                     XamlRoot = window.Content.XamlRoot,
                 };
@@ -4995,17 +8376,20 @@ public sealed class PdfDocumentView : UserControl
                 var choice = choiceList.SelectedItem as string ?? field.Value;
                 try
                 {
+                    RememberFormValueForUndo(field);
                     await _forms.SetTextValueAsync(
                         _document,
                         field.PageIndex,
                         field.AnnotIndex,
                         choice);
-                    _status.Text = $"Updated {field.Name}.";
+                    await _formValueHistory.RememberAsync(field.Name, choice);
+                    NotifyEdited();
+                    _status.Text = AnnotationMutationStatus.FormatUpdated(field.Name);
                     return true;
                 }
                 catch (Exception ex)
                 {
-                    _status.Text = "Form fill failed: " + ex.Message;
+                    _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.FormFill, ex.Message);
                     return false;
                 }
             }
@@ -5015,24 +8399,59 @@ public sealed class PdfDocumentView : UserControl
             or PdfFormFieldKind.ComboBox
             or PdfFormFieldKind.ListBox))
         {
-            _status.Text = $"Editing {field.Kind} fields is not supported yet.";
+            _status.Text = FormFieldActionStatus.FormatUnsupportedEdit(field.Kind.ToString());
             return false;
         }
 
         var box = new TextBox
         {
             Text = field.Value,
-            AcceptsReturn = field.Kind == PdfFormFieldKind.TextField,
+            AcceptsReturn = FormMultilinePolicy.TextFieldAcceptsReturn
+                && field.Kind == PdfFormFieldKind.TextField,
             TextWrapping = TextWrapping.Wrap,
             Height = 100,
             PlaceholderText = field.Name,
         };
+        await SeedTextBoxFromClipboardAsync(box);
+        var suggestions = _formValueHistory.GetSuggestions(field.Name);
+        UIElement content = box;
+        if (suggestions.Count > 0)
+        {
+            var recentList = new ListView
+            {
+                Height = 120,
+                SelectionMode = ListViewSelectionMode.Single,
+                ItemsSource = suggestions.ToList(),
+            };
+            recentList.SelectionChanged += (_, _) =>
+            {
+                if (recentList.SelectedItem is string picked)
+                {
+                    box.Text = picked;
+                }
+            };
+            content = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    box,
+                    new TextBlock
+                    {
+                        Text = PdfViewerTextLabels.RecentValues,
+                        FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    },
+                    recentList,
+                },
+            };
+        }
+
         var edit = new ContentDialog
         {
             Title = $"Edit {field.Name}",
-            Content = box,
-            PrimaryButtonText = "Save",
-            CloseButtonText = "Cancel",
+            Content = content,
+            PrimaryButtonText = DialogButtons.Save,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -5044,17 +8463,21 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
+            var value = box.Text ?? string.Empty;
+            RememberFormValueForUndo(field);
             await _forms.SetTextValueAsync(
                 _document,
                 field.PageIndex,
                 field.AnnotIndex,
-                box.Text ?? string.Empty);
-            _status.Text = $"Updated {field.Name}.";
+                value);
+            await _formValueHistory.RememberAsync(field.Name, value);
+            NotifyEdited();
+            _status.Text = AnnotationMutationStatus.FormatUpdated(field.Name);
             return true;
         }
         catch (Exception ex)
         {
-            _status.Text = "Form fill failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.FormFill, ex.Message);
             return false;
         }
     }
@@ -5063,14 +8486,14 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for flatten dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.FlattenDialog);
 
         var dialog = new ContentDialog
         {
-            Title = "Flatten annotations",
-            Content = "Bake all annotations into page content? This cannot be undone from the annotation layer.",
-            PrimaryButtonText = "Flatten",
-            CloseButtonText = "Cancel",
+            Title = PdfDialogTitles.FlattenAnnotations,
+            Content = PdfDialogBodies.FlattenAnnotationsConfirm,
+            PrimaryButtonText = DialogButtons.Flatten,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -5078,13 +8501,13 @@ public sealed class PdfDocumentView : UserControl
         var result = await dialog.ShowAsync();
         if (result != ContentDialogResult.Primary)
         {
-            _status.Text = "Flatten cancelled.";
+            _status.Text = FormOverlayModePolicy.FlattenCancelled;
             return;
         }
 
         try
         {
-            _status.Text = "Flattening…";
+            _status.Text = FormOverlayModePolicy.Flattening;
             var outcome = await _annotations.FlattenAsync(_document);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
@@ -5095,22 +8518,593 @@ public sealed class PdfDocumentView : UserControl
             if (outcome.PagesFailed > 0)
             {
                 _status.Text =
-                    $"Flattened {outcome.PagesChanged} page(s); {outcome.PagesFailed} failed.";
+                    AnnotationMutationStatus.FormatFlattenedWithFailures(outcome.PagesChanged, outcome.PagesFailed);
             }
             else if (outcome.PagesChanged == 0)
             {
-                _status.Text = "Nothing to flatten.";
+                _status.Text = FormOverlayModePolicy.NothingToFlatten;
             }
             else
             {
-                _status.Text = outcome.PagesChanged == 1
-                    ? "Flattened annotations on 1 page."
-                    : $"Flattened annotations on {outcome.PagesChanged} pages.";
+                _status.Text = AnnotationMutationStatus.FormatFlattenedAnnotations(outcome.PagesChanged);
             }
         }
         catch (Exception ex)
         {
-            _status.Text = "Flatten failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Flatten, ex.Message);
+        }
+    }
+
+    private async Task OnRedactButtonClickAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.RedactionDialog);
+
+        var pending = _redaction.GetPending(_document);
+        var hasSelection = !string.IsNullOrWhiteSpace(_selectedText)
+            && _selectionPageIndex >= 0
+            && _selectionQuads.Count > 0;
+        var hasRegion = PdfRegionCopyPolicy.HasValidRegion(
+            _regionCopyPageIndex,
+            _regionCopyDisplayRect.Width,
+            _regionCopyDisplayRect.Height);
+        var hasFindMatches = !string.IsNullOrWhiteSpace(_searchQuery) && _hits.Count > 0;
+
+        if (_redactionMode)
+        {
+            ClearRedactionMode();
+            RefreshToolButtonChrome();
+            _status.Text = PdfRedactionUiCopy.ModeOffWithPending(pending.Count);
+            return;
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = PdfRedactionUiCopy.DialogTitle,
+            Content = pending.Count == 0
+                ? PdfRedactionUiCopy.EmptyIntro
+                : PdfRedactionUiCopy.FormatPendingStatus(pending.Count),
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (pending.Count > 0)
+        {
+            dialog.PrimaryButtonText = PdfRedactionUiCopy.ApplyButton;
+            dialog.SecondaryButtonText = PdfRedactionUiCopy.DrawMarksButton;
+            dialog.CloseButtonText = DialogButtons.Cancel;
+            dialog.DefaultButton = ContentDialogButton.Close;
+        }
+        else
+        {
+            dialog.PrimaryButtonText = PdfRedactionUiCopy.DrawMarksButton;
+            dialog.CloseButtonText = DialogButtons.Cancel;
+            dialog.DefaultButton = ContentDialogButton.Primary;
+            if (hasFindMatches)
+            {
+                dialog.SecondaryButtonText = PdfRedactionUiCopy.MarkFindMatchesButton(_hits.Count);
+            }
+            else if (hasSelection)
+            {
+                dialog.SecondaryButtonText = PdfRedactionUiCopy.MarkSelectionButton;
+            }
+            else if (hasRegion)
+            {
+                dialog.SecondaryButtonText = PdfRedactionUiCopy.MarkRegionButton;
+            }
+        }
+
+        var result = await dialog.ShowAsync();
+        if (pending.Count > 0)
+        {
+            if (result == ContentDialogResult.Primary)
+            {
+                await ApplyPendingRedactionsAsync();
+                return;
+            }
+
+            if (result == ContentDialogResult.Secondary)
+            {
+                EnterRedactionMode();
+                return;
+            }
+
+            _status.Text = PdfRedactionUiCopy.CancelledStatus;
+            return;
+        }
+
+        if (result == ContentDialogResult.Primary)
+        {
+            EnterRedactionMode();
+            return;
+        }
+
+        if (result == ContentDialogResult.Secondary)
+        {
+            if (hasFindMatches)
+            {
+                await MarkFindMatchesForRedactionAsync();
+            }
+            else if (hasSelection)
+            {
+                MarkSelectionForRedaction();
+            }
+            else if (hasRegion)
+            {
+                MarkRegionForRedaction();
+            }
+        }
+    }
+
+    private void EnterRedactionMode()
+    {
+        ClearShapeMode();
+        ClearSignatureMode();
+        ClearHighlightMode();
+        ClearCalloutMode();
+        ClearFreeformMode();
+        ClearPolygonMode();
+        if (_formOverlayMode)
+        {
+            ClearFormOverlayMode();
+        }
+
+        if (_inkMode)
+        {
+            _inkMode = false;
+            CancelInkStroke();
+        }
+
+        if (_cropMode)
+        {
+            CancelCropMode();
+        }
+
+        _redactionMode = true;
+        RefreshToolButtonChrome();
+        _status.Text = PdfRedactionUiCopy.ModeEnter;
+    }
+
+    private void ClearRedactionMode()
+    {
+        if (!_redactionMode && !_redactionDrawing)
+        {
+            return;
+        }
+
+        CancelRedactionDrag();
+        _redactionMode = false;
+    }
+
+    private void BeginRedactionDrag(Border border, int pageIndex, PointerRoutedEventArgs e)
+    {
+        CancelRedactionDrag();
+        _redactionDrawing = true;
+        _redactionPageIndex = pageIndex;
+        _redactionStart = e.GetCurrentPoint(border).Position;
+        border.CapturePointer(e.Pointer);
+        ContinueRedactionDrag(border, e);
+    }
+
+    private void ContinueRedactionDrag(Border border, PointerRoutedEventArgs e)
+    {
+        if (_redactionPageIndex < 0 || !_pageOverlays.TryGetValue(_redactionPageIndex, out var overlay))
+        {
+            return;
+        }
+
+        var current = e.GetCurrentPoint(border).Position;
+        if (_redactionPreview is not null)
+        {
+            overlay.Children.Remove(_redactionPreview);
+            _redactionPreview = null;
+        }
+
+        var left = Math.Min(_redactionStart.X, current.X);
+        var top = Math.Min(_redactionStart.Y, current.Y);
+        var width = Math.Abs(current.X - _redactionStart.X);
+        var height = Math.Abs(current.Y - _redactionStart.Y);
+        if (width < 2 || height < 2)
+        {
+            return;
+        }
+
+        var preview = new Microsoft.UI.Xaml.Shapes.Rectangle
+        {
+            Width = width,
+            Height = height,
+            Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(140, 0, 0, 0)),
+            Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(220, 180, 0, 0)),
+            StrokeThickness = 1.5,
+            StrokeDashArray = [4, 2],
+        };
+        Canvas.SetLeft(preview, left);
+        Canvas.SetTop(preview, top);
+        overlay.Children.Add(preview);
+        _redactionPreview = preview;
+    }
+
+    private void EndRedactionDrag(Border border, PointerRoutedEventArgs e)
+    {
+        try { border.ReleasePointerCapture(e.Pointer); } catch { /* ignore */ }
+        ContinueRedactionDrag(border, e);
+
+        var pageIndex = _redactionPageIndex;
+        var start = _redactionStart;
+        var end = e.GetCurrentPoint(border).Position;
+        CancelRedactionDrag();
+
+        if (pageIndex < 0)
+        {
+            return;
+        }
+
+        var width = Math.Abs(end.X - start.X);
+        var height = Math.Abs(end.Y - start.Y);
+        if (width < 4 || height < 4)
+        {
+            _status.Text = PdfRedactionUiCopy.MarkTooSmallStatus;
+            return;
+        }
+
+        var page = _document.GetPage(pageIndex);
+        var bounds = PdfPageCoordinates.FromDisplayRect(
+            start.X,
+            start.Y,
+            end.X,
+            end.Y,
+            page.HeightPoints,
+            _scale);
+
+        try
+        {
+            _redaction.MarkRectangle(_document, pageIndex, bounds);
+            RefreshPendingRedactionOverlay(pageIndex);
+            var count = _redaction.GetPending(_document).Count;
+            _status.Text = PdfRedactionUiCopy.FormatMarkedStatus(count);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfRedactionUiCopy.FormatMarkFailed(ex.Message);
+        }
+    }
+
+    private void CancelRedactionDrag()
+    {
+        if (_redactionPreview is not null &&
+            _redactionPageIndex >= 0 &&
+            _pageOverlays.TryGetValue(_redactionPageIndex, out var overlay))
+        {
+            overlay.Children.Remove(_redactionPreview);
+        }
+
+        _redactionPreview = null;
+        _redactionDrawing = false;
+        _redactionPageIndex = -1;
+    }
+
+    private void MarkSelectionForRedaction()
+    {
+        if (_selectionPageIndex < 0 || _selectionQuads.Count == 0 || string.IsNullOrWhiteSpace(_selectedText))
+        {
+            _status.Text = PdfRedactionUiCopy.SelectTextPrompt;
+            return;
+        }
+
+        try
+        {
+            var union = _selectionQuads[0].Bounds;
+            foreach (var quad in _selectionQuads.Skip(1))
+            {
+                var b = quad.Bounds;
+                union = new PdfRect(
+                    Math.Min(union.Left, b.Left),
+                    Math.Min(union.Bottom, b.Bottom),
+                    Math.Max(union.Right, b.Right),
+                    Math.Max(union.Top, b.Top));
+            }
+
+            // Pad slightly so glyph objects fully intersect.
+            union = new PdfRect(union.Left - 1, union.Bottom - 1, union.Right + 1, union.Top + 1);
+            _redaction.MarkTextRegion(_document, _selectionPageIndex, union, TrimForStatus(_selectedText));
+            RefreshPendingRedactionOverlay(_selectionPageIndex);
+            var count = _redaction.GetPending(_document).Count;
+            _status.Text = PdfRedactionUiCopy.FormatMarkedTextStatus(count);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfRedactionUiCopy.FormatMarkFailed(ex.Message);
+        }
+    }
+
+    private async Task MarkFindMatchesForRedactionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_searchQuery) || _hits.Count == 0)
+        {
+            _status.Text = PdfRedactionUiCopy.SelectTextPrompt;
+            return;
+        }
+
+        try
+        {
+            var marked = 0;
+            var pages = _hits.Select(h => h.PageIndex).Distinct().OrderBy(i => i).ToList();
+            foreach (var pageIndex in pages)
+            {
+                var chars = await _textExtractor.GetCharsAsync(_document, pageIndex);
+                if (chars.Count == 0)
+                {
+                    continue;
+                }
+
+                var pageText = string.Concat(chars.Select(c => c.Value));
+                var from = 0;
+                while (true)
+                {
+                    var found = pageText.IndexOf(_searchQuery, from, StringComparison.OrdinalIgnoreCase);
+                    if (found < 0)
+                    {
+                        break;
+                    }
+
+                    var end = Math.Min(chars.Count - 1, found + _searchQuery.Length - 1);
+                    var union = chars[found].Bounds;
+                    for (var i = found; i <= end; i++)
+                    {
+                        var b = chars[i].Bounds;
+                        union = new PdfRect(
+                            Math.Min(union.Left, b.Left),
+                            Math.Min(union.Bottom, b.Bottom),
+                            Math.Max(union.Right, b.Right),
+                            Math.Max(union.Top, b.Top));
+                    }
+
+                    _redaction.MarkTextRegion(
+                        _document,
+                        pageIndex,
+                        new PdfRect(union.Left - 1, union.Bottom - 1, union.Right + 1, union.Top + 1),
+                        TrimForStatus(_searchQuery));
+                    marked++;
+                    from = found + Math.Max(1, _searchQuery.Length);
+                }
+
+                RefreshPendingRedactionOverlay(pageIndex);
+            }
+
+            var count = _redaction.GetPending(_document).Count;
+            _status.Text = marked > 0
+                ? PdfRedactionUiCopy.FormatMarkedTextStatus(count)
+                : PdfRedactionUiCopy.SelectTextPrompt;
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfRedactionUiCopy.FormatMarkFailed(ex.Message);
+        }
+    }
+
+    private void MarkRegionForRedaction()
+    {
+        if (!PdfRegionCopyPolicy.HasValidRegion(
+                _regionCopyPageIndex,
+                _regionCopyDisplayRect.Width,
+                _regionCopyDisplayRect.Height))
+        {
+            _status.Text = PdfRedactionUiCopy.DragRegionPrompt;
+            return;
+        }
+
+        try
+        {
+            var page = _document.GetPage(_regionCopyPageIndex);
+            var bounds = PdfPageCoordinates.FromDisplayRectXywh(
+                _regionCopyDisplayRect.X,
+                _regionCopyDisplayRect.Y,
+                _regionCopyDisplayRect.Width,
+                _regionCopyDisplayRect.Height,
+                page.HeightPoints,
+                _scale);
+            _redaction.MarkRectangle(_document, _regionCopyPageIndex, bounds);
+            RefreshPendingRedactionOverlay(_regionCopyPageIndex);
+            var count = _redaction.GetPending(_document).Count;
+            _status.Text = PdfRedactionUiCopy.FormatMarkedRegionStatus(count);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfRedactionUiCopy.FormatMarkFailed(ex.Message);
+        }
+    }
+
+    private void PendingRedactionRect_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is not Microsoft.UI.Xaml.Shapes.Rectangle { Tag: Guid id })
+        {
+            return;
+        }
+
+        if (!_redaction.RemovePending(_document, id))
+        {
+            return;
+        }
+
+        RefreshAllPendingRedactionOverlays();
+        var remaining = _redaction.GetPending(_document).Count;
+        _status.Text = PdfRedactionUiCopy.FormatRemovedStatus(remaining);
+        e.Handled = true;
+    }
+
+    private void RefreshAllPendingRedactionOverlays()
+    {
+        foreach (var pageIndex in _redactionOverlays.Keys.ToList())
+        {
+            RefreshPendingRedactionOverlay(pageIndex);
+        }
+    }
+
+    private void RefreshPendingRedactionOverlay(int pageIndex)
+    {
+        if (!_redactionOverlays.TryGetValue(pageIndex, out var overlay))
+        {
+            return;
+        }
+
+        overlay.Children.Clear();
+        var marks = _redaction.GetPending(_document).Where(m => m.PageIndex == pageIndex).ToList();
+        overlay.IsHitTestVisible = marks.Count > 0;
+        var page = _document.GetPage(pageIndex);
+        foreach (var mark in marks)
+        {
+            if (!PdfRedactionOverlayLayout.TryMapToCanvas(
+                    mark.Bounds,
+                    page.HeightPoints,
+                    _scale,
+                    out var mapped))
+            {
+                continue;
+            }
+
+            var rect = new Microsoft.UI.Xaml.Shapes.Rectangle
+            {
+                Width = mapped.Width,
+                Height = mapped.Height,
+                Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(160, 0, 0, 0)),
+                Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(230, 200, 40, 40)),
+                StrokeThickness = 1.5,
+                Tag = mark.Id,
+            };
+            ToolTipService.SetToolTip(rect, PdfRedactionUiCopy.PendingOverlayTooltip);
+            rect.PointerPressed += PendingRedactionRect_PointerPressed;
+            Canvas.SetLeft(rect, mapped.Left);
+            Canvas.SetTop(rect, mapped.Top);
+            overlay.Children.Add(rect);
+
+            if (!string.IsNullOrWhiteSpace(mark.Label))
+            {
+                var label = new TextBlock
+                {
+                    Text = TrimForStatus(mark.Label!),
+                    FontSize = 11,
+                    Foreground = new SolidColorBrush(Colors.White),
+                    IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(label, mapped.Left + 4);
+                Canvas.SetTop(label, mapped.Top + 2);
+                overlay.Children.Add(label);
+            }
+        }
+    }
+
+    private async Task ApplyPendingRedactionsAsync()
+    {
+        var pending = _redaction.GetPending(_document);
+        if (pending.Count == 0)
+        {
+            _status.Text = PdfRedactionUiCopy.FormatPendingStatus(0);
+            return;
+        }
+
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.RedactionApply);
+
+        var removeAnnotations = new CheckBox
+        {
+            Content = PdfViewerChromeLabels.RemoveIntersectingAnnotations,
+            IsChecked = true,
+        };
+        var removeAttachments = new CheckBox
+        {
+            Content = PdfViewerChromeLabels.RemoveEmbeddedAttachments,
+            IsChecked = true,
+        };
+        var removeMetadata = new CheckBox
+        {
+            Content = PdfViewerChromeLabels.ClearInfoMetadata,
+            IsChecked = true,
+        };
+
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock
+                {
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 420,
+                    Text =
+                        PdfRedactionUiCopy.FormatApplyBody(pending.Count),
+                },
+                removeAnnotations,
+                removeAttachments,
+                removeMetadata,
+            },
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = PdfRedactionUiCopy.ApplyDialogTitle,
+            Content = panel,
+            PrimaryButtonText = DialogButtons.Apply,
+            SecondaryButtonText = DialogButtons.ClearMarks,
+            CloseButtonText = DialogButtons.Cancel,
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        var applyChoice = await dialog.ShowAsync();
+        if (applyChoice == ContentDialogResult.Secondary)
+        {
+            _redaction.ClearPending(_document);
+            RefreshAllPendingRedactionOverlays();
+            _status.Text = PdfRedactionUiCopy.ClearedPendingStatus;
+            return;
+        }
+
+        if (applyChoice != ContentDialogResult.Primary)
+        {
+            _status.Text = FormFieldActionStatus.ApplyCancelled;
+            return;
+        }
+
+        try
+        {
+            _status.Text = PdfRedactionUiCopy.ApplyingStatus;
+            var result = await _redaction.ApplyAsync(
+                _document,
+                new PdfRedactionApplyOptions(
+                    RemoveIntersectingTextObjects: true,
+                    RemoveIntersectingImageObjects: true,
+                    RemoveIntersectingAnnotations: removeAnnotations.IsChecked == true,
+                    RemoveEmbeddedAttachments: removeAttachments.IsChecked == true,
+                    RemoveMetadata: removeMetadata.IsChecked == true));
+            ClearRedactionMode();
+            RefreshToolButtonChrome();
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            _pageChars.Clear();
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            RefreshAllPendingRedactionOverlays();
+            if (result.MarksApplied == 0)
+            {
+                _status.Text = PdfRedactionUiCopy.NothingToApplyStatus;
+            }
+            else
+            {
+                _status.Text = PdfRedactionUiCopy.FormatAppliedStatus(
+                    result.MarksApplied,
+                    result.PagesChanged,
+                    result.TextObjectsRemoved,
+                    result.ImageObjectsRemoved,
+                    result.AnnotationsRemoved,
+                    result.AttachmentsRemoved,
+                    result.MetadataCleared);
+            }
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfRedactionUiCopy.FormatApplyFailed(ex.Message);
         }
     }
 
@@ -5118,21 +9112,30 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for note dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.NoteDialog);
 
         var box = new TextBox
         {
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
             Height = 120,
-            PlaceholderText = "Note text",
+            PlaceholderText = PdfDialogPlaceholders.NoteText,
+        };
+        await SeedTextBoxFromClipboardAsync(box);
+        var authorBox = new TextBox
+        {
+            Text = _annotationAuthor,
+            PlaceholderText = PdfDialogPlaceholders.Author,
+            Width = 220,
         };
         var colorList = new ListView
         {
             Height = 140,
             SelectionMode = ListViewSelectionMode.Single,
             ItemsSource = PdfAnnotationColor.StickyNotePresets.Select(p => p.Name).ToList(),
-            SelectedIndex = 0,
+            SelectedIndex = Math.Max(0, PdfAnnotationColor.StickyNotePresets
+                .ToList()
+                .FindIndex(p => string.Equals(p.Name, ResolveDefaultStickyNoteColorName(), StringComparison.OrdinalIgnoreCase))),
         };
         var panel = new StackPanel
         {
@@ -5140,16 +9143,18 @@ public sealed class PdfDocumentView : UserControl
             Children =
             {
                 box,
-                new TextBlock { Text = "Color", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                new TextBlock { Text = PdfViewerTextLabels.Author, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                authorBox,
+                new TextBlock { Text = PdfViewerTextLabels.Color, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                 colorList,
             },
         };
         var dialog = new ContentDialog
         {
-            Title = "Sticky note",
+            Title = PdfDialogTitles.StickyNote,
             Content = panel,
-            PrimaryButtonText = "Add",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Add,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -5157,36 +9162,43 @@ public sealed class PdfDocumentView : UserControl
         var result = await dialog.ShowAsync();
         if (result != ContentDialogResult.Primary)
         {
-            _status.Text = "Note cancelled.";
+            _status.Text = StickyNoteExpandPolicy.NoteCancelled;
             return;
         }
 
         var colorIndex = Math.Clamp(colorList.SelectedIndex, 0, PdfAnnotationColor.StickyNotePresets.Count - 1);
         var color = PdfAnnotationColor.StickyNotePresets[colorIndex].Color;
+        if (!string.IsNullOrWhiteSpace(authorBox.Text))
+        {
+            _annotationAuthor = authorBox.Text.Trim();
+        }
+
         var page = _document.GetPage(CurrentPageIndex);
         var x = Math.Max(24, page.WidthPoints * 0.5 - 10);
         var y = Math.Max(24, page.HeightPoints * 0.5 - 10);
 
         try
         {
-            _status.Text = "Adding note…";
-            await _annotations.AddStickyNoteAsync(
+            _status.Text = StickyNoteExpandPolicy.Adding;
+            var created = await _annotations.AddStickyNoteAsync(
                 _document,
                 CurrentPageIndex,
                 x,
                 y,
                 box.Text ?? string.Empty,
-                color);
+                color,
+                author: _annotationAuthor);
+            RememberAnnotationForUndo(created);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = "Sticky note added.";
+            _status.Text = StickyNoteExpandPolicy.Added;
         }
         catch (Exception ex)
         {
-            _status.Text = "Note failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Note, ex.Message);
         }
     }
 
@@ -5194,20 +9206,55 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for text box dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.TextBoxDialog);
 
         var box = new TextBox
         {
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
             Height = 120,
-            PlaceholderText = "Text box contents",
+            PlaceholderText = PdfDialogPlaceholders.TextBoxContents,
+        };
+        await SeedTextBoxFromClipboardAsync(box);
+        var fontSizeBox = new NumberBox
+        {
+            Header = PdfDialogHeaders.FontSizePt,
+            Value = 12,
+            Minimum = 6,
+            Maximum = 72,
+            SmallChange = 1,
+            LargeChange = 2,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
+        };
+        var fontFamilyBox = new ComboBox
+        {
+            Header = PdfDialogHeaders.Font,
+            ItemsSource = PdfDialogOptions.StandardFonts.ToList(),
+            SelectedIndex = 0,
+            Width = 220,
+        };
+        var boldCheck = new CheckBox { Content = PdfViewerChromeLabels.Bold, IsChecked = false };
+        var italicCheck = new CheckBox { Content = PdfViewerChromeLabels.Italic, IsChecked = false };
+        var underlineCheck = new CheckBox { Content = PdfViewerChromeLabels.Underline, IsChecked = false };
+        var alignBox = new ComboBox
+        {
+            Header = PdfDialogHeaders.Align,
+            ItemsSource = PdfDialogOptions.HorizontalAlignments.ToList(),
+            SelectedIndex = 0,
+            Width = 220,
+        };
+        var textColorList = new ListView
+        {
+            Height = 100,
+            SelectionMode = ListViewSelectionMode.Single,
+            ItemsSource = PdfAnnotationColor.StrokePresets.Select(p => p.Name).ToList(),
+            SelectedIndex = 5, // Black
         };
         var fillList = new ListView
         {
             Height = 120,
             SelectionMode = ListViewSelectionMode.Single,
-            ItemsSource = new[] { "None", "White", "Yellow", "Light blue", "Light green" }.ToList(),
+            ItemsSource = PdfDialogOptions.NoteColors.ToList(),
             SelectedIndex = 1,
         };
         var borderList = new ListView
@@ -5223,18 +9270,29 @@ public sealed class PdfDocumentView : UserControl
             Children =
             {
                 box,
-                new TextBlock { Text = "Fill", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                fontSizeBox,
+                fontFamilyBox,
+                alignBox,
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 12,
+                    Children = { boldCheck, italicCheck, underlineCheck },
+                },
+                new TextBlock { Text = PdfViewerTextLabels.TextColor, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                textColorList,
+                new TextBlock { Text = PdfViewerTextLabels.Fill, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                 fillList,
-                new TextBlock { Text = "Border", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                new TextBlock { Text = PdfViewerTextLabels.Border, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                 borderList,
             },
         };
         var dialog = new ContentDialog
         {
-            Title = "Text box",
+            Title = PdfTextBoxDialogStatus.Title,
             Content = panel,
-            PrimaryButtonText = "Add",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Add,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -5242,7 +9300,7 @@ public sealed class PdfDocumentView : UserControl
         var result = await dialog.ShowAsync();
         if (result != ContentDialogResult.Primary)
         {
-            _status.Text = "Text box cancelled.";
+            _status.Text = PdfTextBoxDialogStatus.Cancelled;
             return;
         }
 
@@ -5256,6 +9314,14 @@ public sealed class PdfDocumentView : UserControl
         };
         var border = PdfAnnotationColor.StrokePresets[
             Math.Clamp(borderList.SelectedIndex, 0, PdfAnnotationColor.StrokePresets.Count - 1)].Color;
+        var textColor = PdfAnnotationColor.StrokePresets[
+            Math.Clamp(textColorList.SelectedIndex, 0, PdfAnnotationColor.StrokePresets.Count - 1)].Color;
+        var fontSize = (float)(double.IsNaN(fontSizeBox.Value) ? 12 : Math.Clamp(fontSizeBox.Value, 6, 72));
+        var fontResource = PdfFreeTextFont.ResolveResourceName(
+            (PdfFreeTextFontFamily)Math.Clamp(fontFamilyBox.SelectedIndex, 0, 2),
+            boldCheck.IsChecked == true,
+            italicCheck.IsChecked == true);
+        var quadding = (PdfTextQuadding)Math.Clamp(alignBox.SelectedIndex, 0, 2);
 
         var page = _document.GetPage(CurrentPageIndex);
         var width = Math.Min(240, page.WidthPoints * 0.45);
@@ -5266,25 +9332,30 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
-            _status.Text = "Adding text box…";
-            await _annotations.AddTextBoxAsync(
+            _status.Text = PdfTextBoxDialogStatus.Adding;
+            var created = await _annotations.AddTextBoxAsync(
                 _document,
                 CurrentPageIndex,
                 bounds,
                 box.Text ?? string.Empty,
-                new PdfAnnotationColor(20, 20, 20),
+                textColor,
                 borderColor: border,
-                fillColor: fill);
+                fillColor: fill,
+                fontSizePoints: fontSize,
+                fontResourceName: fontResource,
+                underline: underlineCheck.IsChecked == true,
+                quadding: quadding);
+            RememberAnnotationForUndo(created);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = "Text box added.";
+            _status.Text = PdfTextBoxDialogStatus.Added;
         }
         catch (Exception ex)
         {
-            _status.Text = "Text box failed: " + ex.Message;
+            _status.Text = PdfTextBoxDialogStatus.Failed(ex.Message);
         }
     }
 
@@ -5295,17 +9366,91 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var index = _annotationList.SelectedIndex;
-        if (index < 0 || index >= _annotationItems.Count)
+        if (_annotationList.SelectedItems.Count == 0)
         {
             return;
         }
 
-        var item = _annotationItems[index];
-        _selectedAnnot = item;
-        DrawAnnotSelection(item);
-        await GoToPageAsync(item.PageIndex, recordHistory: true);
-        _status.Text = $"Jumped to {FormatAnnotationLabel(item)}.";
+        _selectedAnnots.Clear();
+        foreach (var selected in _annotationList.SelectedItems)
+        {
+            if (selected is not string label)
+            {
+                continue;
+            }
+
+            var index = _annotationItems.ToList().FindIndex(a => PdfAnnotationListLabel.Format(a) == label);
+            if (index >= 0)
+            {
+                _selectedAnnots.Add(_annotationItems[index]);
+            }
+        }
+
+        if (_selectedAnnots.Count == 0)
+        {
+            return;
+        }
+
+        // Prefer the last SelectedIndex as primary when available.
+        var primaryIndex = _annotationList.SelectedIndex;
+        _selectedAnnot = primaryIndex >= 0 && primaryIndex < _annotationItems.Count
+            ? _annotationItems[primaryIndex]
+            : _selectedAnnots[^1];
+        DrawAnnotSelection(_selectedAnnot);
+        if (_selectedAnnot.IsStickyNote)
+        {
+            ExpandStickyNote(_selectedAnnot);
+        }
+
+        await GoToPageAsync(_selectedAnnot.PageIndex, recordHistory: true);
+        _status.Text = _selectedAnnots.Count == 1
+            ? AnnotationJumpStatus.JumpedTo(PdfAnnotationListLabel.Format(_selectedAnnot))
+            : AnnotationMultiSelectPolicy.StatusAfterSelect(_selectedAnnots.Count);
+    }
+
+
+    private void ToggleAnnotInSelection(PdfAnnotationInfo hit)
+    {
+        var existing = _selectedAnnots.FindIndex(a => PdfAnnotationHitTest.SameIdentity(a, hit));
+        if (existing >= 0)
+        {
+            _selectedAnnots.RemoveAt(existing);
+            if (_selectedAnnot is not null && PdfAnnotationHitTest.SameIdentity(_selectedAnnot, hit))
+            {
+                _selectedAnnot = _selectedAnnots.Count > 0 ? _selectedAnnots[^1] : null;
+            }
+        }
+        else
+        {
+            _selectedAnnots.Add(hit);
+            _selectedAnnot = hit;
+        }
+
+        SyncSidebarSelectionMulti();
+        if (_selectedAnnot is not null)
+        {
+            DrawAnnotSelection(_selectedAnnot);
+            if (_selectedAnnot.IsStickyNote)
+            {
+                ExpandStickyNote(_selectedAnnot);
+            }
+
+            _status.Text = _selectedAnnots.Count == 1
+                ? AnnotationMutationStatus.FormatSelectedAnnotation(PdfAnnotationListLabel.Format(_selectedAnnot))
+                : AnnotationMultiSelectPolicy.StatusAfterToggle(_selectedAnnots.Count);
+        }
+        else
+        {
+            ClearAnnotSelectionVisual();
+            _status.Text = AnnotationMultiSelectPolicy.StatusAfterToggle(0);
+        }
+    }
+
+    private void ReplaceAnnotSelection(PdfAnnotationInfo hit)
+    {
+        _selectedAnnots.Clear();
+        _selectedAnnots.Add(hit);
+        _selectedAnnot = hit;
     }
 
     private void BeginAnnotDrag(
@@ -5314,15 +9459,134 @@ public sealed class PdfDocumentView : UserControl
         Windows.Foundation.Point uiPoint,
         PointerRoutedEventArgs e)
     {
-        _selectedAnnot = hit;
+        var alreadyInSelection = _selectedAnnots.Exists(a => PdfAnnotationHitTest.SameIdentity(a, hit));
+        if (!alreadyInSelection)
+        {
+            // Selecting one member of a group selects the whole group on that page.
+            if (!string.IsNullOrEmpty(hit.GroupId))
+            {
+                var members = _annotationItems
+                    .Where(a => a.PageIndex == hit.PageIndex
+                        && string.Equals(a.GroupId, hit.GroupId, StringComparison.Ordinal))
+                    .ToList();
+                _selectedAnnots.Clear();
+                _selectedAnnots.AddRange(members.Count > 0 ? members : [hit]);
+                _selectedAnnot = hit;
+            }
+            else
+            {
+                ReplaceAnnotSelection(hit);
+            }
+        }
+        else
+        {
+            _selectedAnnot = hit;
+        }
+
         _annotDragging = true;
         _annotResizeHandle = null;
         _annotDragOriginBounds = hit.Bounds;
         _annotDragOriginUi = uiPoint;
+        _multiDragOrigins.Clear();
+        foreach (var a in _selectedAnnots)
+        {
+            _multiDragOrigins.Add((a, a.Bounds));
+        }
+
         border.CapturePointer(e.Pointer);
-        SyncSidebarSelection(hit);
+        SyncSidebarSelectionMulti();
         DrawAnnotSelection(hit);
-        _status.Text = $"Selected {FormatAnnotationLabel(hit)}. Drag to move; handles resize.";
+        if (hit.IsStickyNote)
+        {
+            ExpandStickyNote(hit);
+        }
+
+        _status.Text = _selectedAnnots.Count > 1
+            ? AnnotationMutationStatus.FormatSelectedAnnotationsMoveTogether(_selectedAnnots.Count)
+            : AnnotationMutationStatus.FormatSelectedAnnotationDrag(PdfAnnotationListLabel.Format(hit));
+    }
+
+    private async Task GroupSelectedAnnotationsAsync()
+    {
+        var members = _selectedAnnots.Count > 0
+            ? _selectedAnnots.ToList()
+            : TryGetSelectedAnnotation(out var one) ? [one] : [];
+        if (members.Count < 2)
+        {
+            _status.Text = AnnotationSelectionStatus.GroupAtLeastTwo;
+            return;
+        }
+
+        if (members.Select(m => m.PageIndex).Distinct().Count() > 1)
+        {
+            _status.Text = AnnotationGroupStatus.SamePageOnly;
+            return;
+        }
+
+        var groupId = Guid.NewGuid().ToString("N");
+        try
+        {
+            await _annotations.SetGroupAsync(
+                _document,
+                members.Select(m => (m.PageIndex, m.AnnotIndex)).ToList(),
+                groupId);
+            await RefreshAnnotationSidebarAsync();
+            RestoreSelectionAfterRefresh(members[0].PageIndex, members[0].AnnotIndex);
+            _status.Text = AnnotationGroupStatus.FormatGrouped(members.Count);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Group, ex.Message);
+        }
+    }
+
+    private async Task UngroupSelectedAnnotationsAsync()
+    {
+        var members = _selectedAnnots.Count > 0
+            ? _selectedAnnots.ToList()
+            : TryGetSelectedAnnotation(out var one) ? [one] : [];
+        if (members.Count == 0)
+        {
+            _status.Text = AnnotationSelectionStatus.Ungroup;
+            return;
+        }
+
+        // Expand to full group if any member has a group id.
+        var groupIds = members
+            .Where(m => !string.IsNullOrEmpty(m.GroupId))
+            .Select(m => m.GroupId!)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (groupIds.Count == 0)
+        {
+            _status.Text = AnnotationGroupStatus.SelectionNotGrouped;
+            return;
+        }
+
+        var toClear = _annotationItems
+            .Where(a => a.GroupId is not null && groupIds.Contains(a.GroupId))
+            .Select(a => (a.PageIndex, a.AnnotIndex))
+            .ToList();
+        if (toClear.Count == 0)
+        {
+            toClear = members.Select(m => (m.PageIndex, m.AnnotIndex)).ToList();
+        }
+
+        try
+        {
+            await _annotations.SetGroupAsync(_document, toClear, groupId: null);
+            await RefreshAnnotationSidebarAsync();
+            if (members.Count > 0)
+            {
+                RestoreSelectionAfterRefresh(members[0].PageIndex, members[0].AnnotIndex);
+            }
+
+            _status.Text = AnnotationGroupStatus.FormatUngrouped(toClear.Count);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Ungroup, ex.Message);
+        }
     }
 
     private void BeginAnnotResize(
@@ -5332,15 +9596,28 @@ public sealed class PdfDocumentView : UserControl
         Windows.Foundation.Point uiPoint,
         PointerRoutedEventArgs e)
     {
-        _selectedAnnot = hit;
+        if (!_selectedAnnots.Exists(a => PdfAnnotationHitTest.SameIdentity(a, hit)))
+        {
+            ReplaceAnnotSelection(hit);
+        }
+        else
+        {
+            _selectedAnnot = hit;
+        }
+
         _annotDragging = true;
         _annotResizeHandle = handle;
         _annotDragOriginBounds = hit.Bounds;
+        _annotDragOriginEndpointA = hit.EndpointA ?? new PdfPagePoint(hit.Bounds.Left, hit.Bounds.Bottom);
+        _annotDragOriginEndpointB = hit.EndpointB ?? new PdfPagePoint(hit.Bounds.Right, hit.Bounds.Top);
         _annotDragOriginUi = uiPoint;
+        _multiDragOrigins.Clear();
         border.CapturePointer(e.Pointer);
-        SyncSidebarSelection(hit);
+        SyncSidebarSelectionMulti();
         DrawAnnotSelection(hit);
-        _status.Text = $"Resizing {FormatAnnotationLabel(hit)}…";
+        _status.Text = PdfAnnotationResize.IsEndpointHandle(handle)
+            ? AnnotationMutationStatus.FormatAdjustingEndpoint(PdfAnnotationListLabel.Format(hit))
+            : AnnotationMutationStatus.FormatResizing(PdfAnnotationListLabel.Format(hit));
     }
 
     private void ContinueAnnotDrag(Border border, PointerRoutedEventArgs e)
@@ -5353,6 +9630,12 @@ public sealed class PdfDocumentView : UserControl
         var current = e.GetCurrentPoint(border).Position;
         var dx = (current.X - _annotDragOriginUi.X) / _scale;
         var dy = (_annotDragOriginUi.Y - current.Y) / _scale; // UI Y down → PDF Y up
+        if (_multiDragOrigins.Count > 1)
+        {
+            DrawMultiAnnotSelectionPreview(dx, dy);
+            return;
+        }
+
         var moved = new PdfRect(
             _annotDragOriginBounds.Left + dx,
             _annotDragOriginBounds.Bottom + dy,
@@ -5371,6 +9654,29 @@ public sealed class PdfDocumentView : UserControl
         var current = e.GetCurrentPoint(border).Position;
         var dx = (current.X - _annotDragOriginUi.X) / _scale;
         var dy = (_annotDragOriginUi.Y - current.Y) / _scale;
+        if (PdfAnnotationResize.IsEndpointHandle(_annotResizeHandle)
+            && _selectedAnnot.UsesEndpointHandles)
+        {
+            var (a, b) = PdfAnnotationResize.ComputeEndpoints(
+                _annotDragOriginEndpointA,
+                _annotDragOriginEndpointB,
+                _annotResizeHandle,
+                dx,
+                dy);
+            var previewBounds = new PdfRect(
+                Math.Min(a.X, b.X),
+                Math.Min(a.Y, b.Y),
+                Math.Max(a.X, b.X),
+                Math.Max(a.Y, b.Y));
+            DrawAnnotSelection(_selectedAnnot with
+            {
+                Bounds = previewBounds,
+                EndpointA = a,
+                EndpointB = b,
+            });
+            return;
+        }
+
         var resized = PdfAnnotationResize.ComputeBounds(_annotDragOriginBounds, _annotResizeHandle, dx, dy);
         DrawAnnotSelection(_selectedAnnot with { Bounds = resized });
     }
@@ -5404,28 +9710,45 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
-            _status.Text = "Moving annotation…";
-            await _annotations.MoveAsync(
-                _document,
-                _selectedAnnot.PageIndex,
-                _selectedAnnot.AnnotIndex,
-                moved);
+            if (_multiDragOrigins.Count > 1)
+            {
+                _status.Text = AnnotationPersistStatus.FormatMovingAnnotations(_multiDragOrigins.Count);
+                foreach (var (info, origin) in _multiDragOrigins
+                             .Where(o => o.Info.PageIndex == _selectedAnnot.PageIndex)
+                             .OrderByDescending(o => o.Info.AnnotIndex))
+                {
+                    var target = new PdfRect(
+                        origin.Left + dx,
+                        origin.Bottom + dy,
+                        origin.Right + dx,
+                        origin.Top + dy);
+                    await _annotations.MoveAsync(_document, info.PageIndex, info.AnnotIndex, target);
+                }
+            }
+            else
+            {
+                _status.Text = AnnotationPersistStatus.MovingAnnotation;
+                await _annotations.MoveAsync(
+                    _document,
+                    _selectedAnnot.PageIndex,
+                    _selectedAnnot.AnnotIndex,
+                    moved);
+            }
+
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _selectedAnnot = _annotationItems.FirstOrDefault(
-                a => a.PageIndex == _selectedAnnot.PageIndex && a.AnnotIndex == _selectedAnnot.AnnotIndex)
-                ?? _selectedAnnot with { Bounds = moved };
-            SyncSidebarSelection(_selectedAnnot);
-            DrawAnnotSelection(_selectedAnnot);
-            _status.Text = "Annotation moved.";
+            RestoreSelectionAfterRefresh(_selectedAnnot.PageIndex, _selectedAnnot.AnnotIndex, moved);
+            _status.Text = _selectedAnnots.Count > 1
+                ? AnnotationMutationStatus.FormatMovedAnnotations(_selectedAnnots.Count)
+                : AnnotationMutationStatus.AnnotationMoved;
         }
         catch (Exception ex)
         {
             DrawAnnotSelection(_selectedAnnot);
-            _status.Text = "Move failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Move, ex.Message);
         }
     }
 
@@ -5451,11 +9774,45 @@ public sealed class PdfDocumentView : UserControl
 
         var dx = dxUi / _scale;
         var dy = -dyUi / _scale;
+        if (PdfAnnotationResize.IsEndpointHandle(handle) && _selectedAnnot.UsesEndpointHandles)
+        {
+            var (a, b) = PdfAnnotationResize.ComputeEndpoints(
+                _annotDragOriginEndpointA,
+                _annotDragOriginEndpointB,
+                handle,
+                dx,
+                dy);
+            try
+            {
+                _status.Text = AnnotationGroupStatus.UpdatingLineEndpoints;
+                var updated = await _annotations.SetLineEndpointsAsync(
+                    _document,
+                    _selectedAnnot.PageIndex,
+                    _selectedAnnot.AnnotIndex,
+                    a,
+                    b);
+                _cache.ClearDocument(_documentKey);
+                _cache.ClearDocument(_thumbnailKey);
+                await RenderVisibleAsync();
+                await RenderThumbnailsAsync();
+                await RefreshAnnotationSidebarAsync();
+                RestoreSelectionAfterRefresh(updated.PageIndex, updated.AnnotIndex, updated.Bounds);
+                _status.Text = AnnotationGroupStatus.LineEndpointsUpdated;
+            }
+            catch (Exception ex)
+            {
+                DrawAnnotSelection(_selectedAnnot);
+                _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.EndpointAdjust, ex.Message);
+            }
+
+            return;
+        }
+
         var resized = PdfAnnotationResize.ComputeBounds(_annotDragOriginBounds, handle, dx, dy);
 
         try
         {
-            _status.Text = "Resizing annotation…";
+            _status.Text = AnnotationGroupStatus.Resizing;
             await _annotations.MoveAsync(
                 _document,
                 _selectedAnnot.PageIndex,
@@ -5466,17 +9823,13 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _selectedAnnot = _annotationItems.FirstOrDefault(
-                a => a.PageIndex == _selectedAnnot.PageIndex && a.AnnotIndex == _selectedAnnot.AnnotIndex)
-                ?? _selectedAnnot with { Bounds = resized };
-            SyncSidebarSelection(_selectedAnnot);
-            DrawAnnotSelection(_selectedAnnot);
-            _status.Text = "Annotation resized.";
+            RestoreSelectionAfterRefresh(_selectedAnnot.PageIndex, _selectedAnnot.AnnotIndex, resized);
+            _status.Text = AnnotationMutationStatus.Resized;
         }
         catch (Exception ex)
         {
             DrawAnnotSelection(_selectedAnnot);
-            _status.Text = "Resize failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Resize, ex.Message);
         }
     }
 
@@ -5501,6 +9854,15 @@ public sealed class PdfDocumentView : UserControl
         PdfAnnotationInfo info,
         IPdfPage page)
     {
+        if (info.UsesEndpointHandles
+            && info.EndpointA is { } a
+            && info.EndpointB is { } b)
+        {
+            yield return ("p0", a.X * _scale, (page.HeightPoints - a.Y) * _scale);
+            yield return ("p1", b.X * _scale, (page.HeightPoints - b.Y) * _scale);
+            yield break;
+        }
+
         var left = info.Bounds.Left * _scale;
         var top = (page.HeightPoints - info.Bounds.Top) * _scale;
         var right = info.Bounds.Right * _scale;
@@ -5517,23 +9879,127 @@ public sealed class PdfDocumentView : UserControl
         yield return ("w", left, midY);
     }
 
-    private void SyncSidebarSelection(PdfAnnotationInfo info)
+    private void RestoreSelectionAfterRefresh(int primaryPage, int primaryIndex, PdfRect? primaryBounds = null)
     {
-        var index = _annotationItems.ToList().FindIndex(
-            a => a.PageIndex == info.PageIndex && a.AnnotIndex == info.AnnotIndex);
-        if (index < 0)
+        var keys = _selectedAnnots
+            .Select(a => (a.PageIndex, a.AnnotIndex))
+            .ToList();
+        if (keys.Count == 0)
         {
-            return;
+            keys.Add((primaryPage, primaryIndex));
         }
 
+        _selectedAnnots.Clear();
+        foreach (var (page, index) in keys)
+        {
+            var live = _annotationItems.FirstOrDefault(a => a.PageIndex == page && a.AnnotIndex == index);
+            if (live is not null)
+            {
+                _selectedAnnots.Add(live);
+            }
+        }
+
+        _selectedAnnot = _selectedAnnots.FirstOrDefault(a => a.PageIndex == primaryPage && a.AnnotIndex == primaryIndex)
+            ?? (_selectedAnnots.Count > 0 ? _selectedAnnots[^1] : null);
+        if (_selectedAnnot is null && primaryBounds is { } bounds)
+        {
+            _selectedAnnot = new PdfAnnotationInfo(primaryPage, primaryIndex, null, bounds, null);
+            _selectedAnnots.Add(_selectedAnnot);
+        }
+
+        if (_selectedAnnot is not null)
+        {
+            SyncSidebarSelectionMulti();
+            DrawAnnotSelection(_selectedAnnot);
+        }
+        else
+        {
+            ClearAnnotSelectionVisual();
+        }
+    }
+
+    private void SyncSidebarSelection(PdfAnnotationInfo info)
+    {
+        ReplaceAnnotSelection(info);
+        SyncSidebarSelectionMulti();
+    }
+
+    private void SyncSidebarSelectionMulti()
+    {
         _suppressAnnotationNav = true;
-        _annotationList.SelectedIndex = index;
-        _suppressAnnotationNav = false;
+        try
+        {
+            _annotationList.SelectedItems.Clear();
+            foreach (var a in _selectedAnnots)
+            {
+                var index = _annotationItems.ToList().FindIndex(x => PdfAnnotationHitTest.SameIdentity(x, a));
+                if (index >= 0 && index < _annotationList.Items.Count)
+                {
+                    _annotationList.SelectedItems.Add(_annotationList.Items[index]);
+                }
+            }
+
+            if (_selectedAnnot is not null)
+            {
+                var primary = _annotationItems.ToList().FindIndex(x => PdfAnnotationHitTest.SameIdentity(x, _selectedAnnot));
+                if (primary >= 0)
+                {
+                    _annotationList.SelectedIndex = primary;
+                }
+            }
+        }
+        finally
+        {
+            _suppressAnnotationNav = false;
+        }
+    }
+
+    private void DrawMultiAnnotSelectionPreview(double dxPoints, double dyPoints)
+    {
+        ClearAnnotSelectionVisual();
+        foreach (var (info, origin) in _multiDragOrigins)
+        {
+            var preview = info with
+            {
+                Bounds = new PdfRect(
+                    origin.Left + dxPoints,
+                    origin.Bottom + dyPoints,
+                    origin.Right + dxPoints,
+                    origin.Top + dyPoints),
+            };
+            AddAnnotSelectionChrome(preview, primary: _selectedAnnot is not null && PdfAnnotationHitTest.SameIdentity(info, _selectedAnnot));
+        }
     }
 
     private void DrawAnnotSelection(PdfAnnotationInfo info)
     {
         ClearAnnotSelectionVisual();
+        if (_selectedAnnots.Count == 0)
+        {
+            ReplaceAnnotSelection(info);
+        }
+
+        var drawn = false;
+        foreach (var a in _selectedAnnots)
+        {
+            var boundsInfo = PdfAnnotationHitTest.SameIdentity(a, info) ? info : a;
+            AddAnnotSelectionChrome(boundsInfo, primary: _selectedAnnot is not null && PdfAnnotationHitTest.SameIdentity(a, _selectedAnnot));
+            drawn = true;
+        }
+
+        if (!drawn)
+        {
+            AddAnnotSelectionChrome(info, primary: true);
+        }
+
+        if (info.ShapeKind == PdfShapeKind.Loupe)
+        {
+            ShowLoupeMagnifier(info);
+        }
+    }
+
+    private void AddAnnotSelectionChrome(PdfAnnotationInfo info, bool primary)
+    {
         if (!_pageOverlays.TryGetValue(info.PageIndex, out var overlay))
         {
             return;
@@ -5544,67 +10010,720 @@ public sealed class PdfDocumentView : UserControl
         var top = (page.HeightPoints - info.Bounds.Top) * _scale;
         var width = Math.Max(4, info.Bounds.Width * _scale);
         var height = Math.Max(4, info.Bounds.Height * _scale);
-        _annotSelectionRect = new Microsoft.UI.Xaml.Shapes.Rectangle
+        var rect = new Microsoft.UI.Xaml.Shapes.Rectangle
         {
             Width = width,
             Height = height,
-            Stroke = new SolidColorBrush(Colors.DodgerBlue),
-            StrokeThickness = 2,
-            Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 30, 144, 255)),
+            Stroke = new SolidColorBrush(primary ? Colors.DodgerBlue : Colors.CornflowerBlue),
+            StrokeThickness = primary ? 2 : 1.5,
+            StrokeDashArray = primary ? null : new DoubleCollection { 3, 2 },
+            Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(primary ? (byte)40 : (byte)24, 30, 144, 255)),
             IsHitTestVisible = false,
         };
-        Canvas.SetLeft(_annotSelectionRect, left);
-        Canvas.SetTop(_annotSelectionRect, top);
-        overlay.Children.Add(_annotSelectionRect);
-
-        foreach (var (_, hx, hy) in EnumerateAnnotHandleCenters(info, page))
+        Canvas.SetLeft(rect, left);
+        Canvas.SetTop(rect, top);
+        overlay.Children.Add(rect);
+        _annotSelectionVisuals.Add(rect);
+        if (primary)
         {
-            var handle = new Microsoft.UI.Xaml.Shapes.Ellipse
+            _annotSelectionRect = rect;
+            foreach (var (_, hx, hy) in EnumerateAnnotHandleCenters(info, page))
             {
-                Width = 10,
-                Height = 10,
-                Fill = new SolidColorBrush(Colors.White),
-                Stroke = new SolidColorBrush(Colors.DodgerBlue),
-                StrokeThickness = 2,
-                IsHitTestVisible = false,
-            };
-            Canvas.SetLeft(handle, hx - 5);
-            Canvas.SetTop(handle, hy - 5);
-            overlay.Children.Add(handle);
-            _annotResizeHandleVisuals.Add(handle);
+                var handle = new Microsoft.UI.Xaml.Shapes.Ellipse
+                {
+                    Width = 10,
+                    Height = 10,
+                    Fill = new SolidColorBrush(Colors.White),
+                    Stroke = new SolidColorBrush(Colors.DodgerBlue),
+                    StrokeThickness = 2,
+                    IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(handle, hx - 5);
+                Canvas.SetTop(handle, hy - 5);
+                overlay.Children.Add(handle);
+                _annotResizeHandleVisuals.Add(handle);
+            }
         }
     }
 
     private void ClearAnnotSelectionVisual()
     {
-        void RemoveFrom(Canvas overlay)
+        ClearLoupeMagnifier();
+        foreach (var visual in _annotSelectionVisuals)
         {
-            if (_annotSelectionRect is not null)
+            foreach (var overlay in _pageOverlays.Values)
             {
-                overlay.Children.Remove(_annotSelectionRect);
+                overlay.Children.Remove(visual);
             }
+        }
 
-            foreach (var handle in _annotResizeHandleVisuals)
+        foreach (var handle in _annotResizeHandleVisuals)
+        {
+            foreach (var overlay in _pageOverlays.Values)
             {
                 overlay.Children.Remove(handle);
             }
         }
 
-        if (_selectedAnnot is not null &&
-            _pageOverlays.TryGetValue(_selectedAnnot.PageIndex, out var overlay))
+        _annotSelectionVisuals.Clear();
+        _annotSelectionRect = null;
+        _annotResizeHandleVisuals.Clear();
+    }
+
+    private void ClearLoupeMagnifier()
+    {
+        foreach (var visual in _loupePopupVisuals)
         {
-            RemoveFrom(overlay);
-        }
-        else
-        {
-            foreach (var pageOverlay in _pageOverlays.Values)
+            foreach (var overlay in _pageOverlays.Values)
             {
-                RemoveFrom(pageOverlay);
+                overlay.Children.Remove(visual);
             }
         }
 
-        _annotSelectionRect = null;
-        _annotResizeHandleVisuals.Clear();
+        _loupePopupVisuals.Clear();
+    }
+
+    private void ShowLoupeMagnifier(PdfAnnotationInfo loupe)
+    {
+        ClearLoupeMagnifier();
+        if (loupe.ShapeKind != PdfShapeKind.Loupe)
+        {
+            return;
+        }
+
+        if (!_pageOverlays.TryGetValue(loupe.PageIndex, out var overlay)
+            || !_pageImages.TryGetValue(loupe.PageIndex, out var pageImage)
+            || pageImage.Source is not WriteableBitmap bitmap)
+        {
+            return;
+        }
+
+        var page = _document.GetPage(loupe.PageIndex);
+        var outSize = (int)PdfLoupeMagnifier.PopupSizeDip;
+        var magnified = PdfLoupeMagnifier.CropAndScale(
+            bitmap,
+            page.WidthPoints,
+            page.HeightPoints,
+            loupe.Bounds.Left,
+            loupe.Bounds.Bottom,
+            loupe.Bounds.Right,
+            loupe.Bounds.Top,
+            PdfLoupeMagnifier.DefaultZoom,
+            outSize);
+        if (magnified is null)
+        {
+            return;
+        }
+
+        var ring = new Border
+        {
+            Width = outSize + 4,
+            Height = outSize + 4,
+            CornerRadius = new CornerRadius((outSize + 4) / 2.0),
+            BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 30, 100, 180)),
+            BorderThickness = new Thickness(2),
+            Background = new SolidColorBrush(Colors.White),
+            IsHitTestVisible = false,
+            Child = new Image
+            {
+                Source = magnified,
+                Width = outSize,
+                Height = outSize,
+                Stretch = Stretch.UniformToFill,
+            },
+        };
+
+        // Place popup to the right of the loupe circle (or left if near page edge).
+        var loupeRight = loupe.Bounds.Right * _scale;
+        var loupeTop = (page.HeightPoints - loupe.Bounds.Top) * _scale;
+        var pageDisplayWidth = page.WidthPoints * _scale;
+        var popupLeft = loupeRight + 12;
+        if (popupLeft + outSize + 4 > pageDisplayWidth)
+        {
+            popupLeft = loupe.Bounds.Left * _scale - outSize - 16;
+        }
+
+        popupLeft = Math.Max(0, popupLeft);
+        var popupTop = Math.Max(0, loupeTop - 8);
+        Canvas.SetLeft(ring, popupLeft);
+        Canvas.SetTop(ring, popupTop);
+        overlay.Children.Add(ring);
+        _loupePopupVisuals.Add(ring);
+    }
+
+    private void ExpandSelectedStickyNote()
+    {
+        if (!TryGetSelectedAnnotation(out var item) || !item.IsStickyNote)
+        {
+            _status.Text = StickyNoteExpandPolicy.SelectToExpand;
+            return;
+        }
+
+        ExpandStickyNote(item);
+        _status.Text = StickyNoteExpandPolicy.Expanded(PdfAnnotationListLabel.Format(item));
+    }
+
+    private void CollapseSelectedStickyNote()
+    {
+        var hasSelectedSticky = TryGetSelectedAnnotation(out var item) && item.IsStickyNote;
+        if (!hasSelectedSticky)
+        {
+            if (!StickyNoteExpandPolicy.ShouldCollapseAll(false, _expandedStickyNotes.Count))
+            {
+                _status.Text = StickyNoteExpandPolicy.NoExpandedNotes;
+                return;
+            }
+
+            _expandedStickyNotes.Clear();
+            RedrawStickyNotePopups();
+            _status.Text = StickyNoteExpandPolicy.CollapsedAll;
+            return;
+        }
+
+        var key = (item.PageIndex, item.AnnotIndex);
+        if (!_expandedStickyNotes.Remove(key))
+        {
+            _status.Text = StickyNoteExpandPolicy.AlreadyCollapsed;
+            return;
+        }
+
+        RedrawStickyNotePopups();
+        _status.Text = StickyNoteExpandPolicy.Collapsed(PdfAnnotationListLabel.Format(item));
+    }
+
+    private async Task ExportNotesAsync()
+    {
+        IReadOnlyList<PdfAnnotationInfo> annotations;
+        try
+        {
+            annotations = await _annotations.ListAsync(_document);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.CouldNotListNotes, ex.Message);
+            return;
+        }
+
+        var noteCount = annotations.Count(a => a.IsStickyNote);
+        if (noteCount == 0)
+        {
+            _status.Text = StickyNoteExpandPolicy.NoNotesToExport;
+            return;
+        }
+
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.SavePicker);
+        var baseName = _document.Path is null
+            ? "Glyph"
+            : System.IO.Path.GetFileNameWithoutExtension(_document.Path);
+        var picker = new Windows.Storage.Pickers.FileSavePicker();
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+        picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+        picker.SuggestedFileName = $"{baseName}-notes";
+        picker.FileTypeChoices.Add("Text", [".txt"]);
+
+        var file = await picker.PickSaveFileAsync();
+        if (file is null)
+        {
+            _status.Text = StickyNoteExpandPolicy.ExportCancelled;
+            return;
+        }
+
+        var title = _document.Path is null
+            ? baseName
+            : System.IO.Path.GetFileName(_document.Path);
+        var text = PdfNotesExport.Format(annotations, documentTitle: title);
+        await Windows.Storage.FileIO.WriteTextAsync(file, text);
+        _status.Text = StickyNoteExpandPolicy.FormatExported(noteCount, file.Name);
+    }
+
+    private async Task RotateSelectedAnnotationAsync()
+    {
+        if (!TryGetSelectedAnnotation(out var item))
+        {
+            _status.Text = AnnotationSelectionStatus.Rotate;
+            return;
+        }
+
+        if (item.IsStickyNote || item.TextMarkupKind is not null)
+        {
+            _status.Text = StickyNoteExpandPolicy.CannotRotateMarkup;
+            return;
+        }
+
+        try
+        {
+            _status.Text = AnnotationGroupStatus.Rotating;
+            var updated = await _annotations.RotateAsync(
+                _document,
+                item.PageIndex,
+                item.AnnotIndex,
+                degreesClockwise: 90);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            RestoreSelectionAfterRefresh(updated.PageIndex, updated.AnnotIndex, updated.Bounds);
+            _status.Text = AnnotationMutationStatus.Rotated90;
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Rotate, ex.Message);
+        }
+    }
+
+    private async Task ToggleSelectedTextUnderlineAsync()
+    {
+        if (!TryGetSelectedAnnotation(out var item) || !item.IsTextBox)
+        {
+            _status.Text = AnnotationSelectionStatus.UnderlineTextBoxOrCallout;
+            return;
+        }
+
+        try
+        {
+            var updated = await _annotations.SetUnderlineAsync(
+                _document,
+                item.PageIndex,
+                item.AnnotIndex,
+                underline: !item.IsUnderlined);
+            _selectedAnnot = updated;
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = updated.IsUnderlined ? AnnotationMutationStatus.UnderlineOn : AnnotationMutationStatus.UnderlineOff;
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Underline, ex.Message);
+        }
+    }
+
+    private async Task SetSelectedTextQuaddingAsync()
+    {
+        if (!TryGetSelectedAnnotation(out var item) || !item.IsTextBox)
+        {
+            _status.Text = AnnotationSelectionStatus.AlignmentTextBoxOrCallout;
+            return;
+        }
+
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.AlignmentDialog);
+
+        var alignBox = new ComboBox
+        {
+            Header = PdfDialogHeaders.Align,
+            ItemsSource = PdfDialogOptions.HorizontalAlignments.ToList(),
+            SelectedIndex = Math.Clamp((int)(item.TextQuadding ?? PdfTextQuadding.Left), 0, 2),
+            Width = 220,
+        };
+        var dialog = new ContentDialog
+        {
+            Title = PdfDialogTitles.TextAlignment,
+            Content = alignBox,
+            PrimaryButtonText = DialogButtons.Apply,
+            CloseButtonText = DialogButtons.Cancel,
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var quadding = (PdfTextQuadding)Math.Clamp(alignBox.SelectedIndex, 0, 2);
+        try
+        {
+            var updated = await _annotations.SetTextQuaddingAsync(
+                _document,
+                item.PageIndex,
+                item.AnnotIndex,
+                quadding);
+            _selectedAnnot = updated;
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            RestoreSelectionAfterRefresh(updated.PageIndex, updated.AnnotIndex, updated.Bounds);
+            _status.Text = AnnotationGroupStatus.FormatAlignment(quadding.ToString());
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Alignment, ex.Message);
+        }
+    }
+
+    private void ExpandStickyNote(PdfAnnotationInfo note)
+    {
+        if (!note.IsStickyNote)
+        {
+            return;
+        }
+
+        _expandedStickyNotes.Add((note.PageIndex, note.AnnotIndex));
+        RedrawStickyNotePopups();
+    }
+
+    private void RedrawStickyNotePopups()
+    {
+        foreach (var visual in _stickyNotePopupVisuals)
+        {
+            foreach (var overlay in _pageOverlays.Values)
+            {
+                overlay.Children.Remove(visual);
+            }
+        }
+
+        _stickyNotePopupVisuals.Clear();
+        if (_expandedStickyNotes.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var key in _expandedStickyNotes.ToList())
+        {
+            var note = _annotationItems.FirstOrDefault(a =>
+                a.IsStickyNote && a.PageIndex == key.PageIndex && a.AnnotIndex == key.AnnotIndex);
+            if (note is null)
+            {
+                _expandedStickyNotes.Remove(key);
+                continue;
+            }
+
+            if (!_pageOverlays.TryGetValue(note.PageIndex, out var overlay))
+            {
+                continue;
+            }
+
+            var page = _document.GetPage(note.PageIndex);
+            var left = note.Bounds.Right * _scale + 8;
+            var top = (page.HeightPoints - note.Bounds.Top) * _scale;
+            var author = string.IsNullOrWhiteSpace(note.Author) ? null : note.Author;
+            var body = string.IsNullOrWhiteSpace(note.Contents) ? "(empty note)" : note.Contents!;
+            var fill = note.Color is { } c
+                ? Windows.UI.Color.FromArgb(230, c.R, c.G, c.B)
+                : Windows.UI.Color.FromArgb(230, 255, 240, 150);
+
+            var panel = new Border
+            {
+                Width = Math.Clamp(180 * _scale / 1.25, 140, 280),
+                Background = new SolidColorBrush(fill),
+                BorderBrush = new SolidColorBrush(Colors.DimGray),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(8),
+                CornerRadius = new CornerRadius(4),
+                IsHitTestVisible = false,
+                Child = new StackPanel
+                {
+                    Spacing = 4,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = author ?? "Note",
+                            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                            FontSize = 12,
+                            TextWrapping = TextWrapping.Wrap,
+                        },
+                        new TextBlock
+                        {
+                            Text = body,
+                            FontSize = 12,
+                            TextWrapping = TextWrapping.Wrap,
+                            MaxHeight = 160,
+                        },
+                    },
+                },
+            };
+            Canvas.SetLeft(panel, left);
+            Canvas.SetTop(panel, top);
+            overlay.Children.Add(panel);
+            _stickyNotePopupVisuals.Add(panel);
+        }
+    }
+
+    private async Task ConfigureAnnotationAuthorAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.AuthorDialog);
+
+        var box = new TextBox
+        {
+            Text = _annotationAuthor,
+            PlaceholderText = PdfDialogPlaceholders.AuthorName,
+            Width = 260,
+        };
+        var dialog = new ContentDialog
+        {
+            Title = PdfDialogTitles.AnnotationAuthor,
+            Content = box,
+            PrimaryButtonText = DialogButtons.Save,
+            CloseButtonText = DialogButtons.Cancel,
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        _annotationAuthor = string.IsNullOrWhiteSpace(box.Text)
+            ? Environment.UserName
+            : box.Text.Trim();
+        try
+        {
+            var store = App.Services.GetService<ISettingsStore>();
+            if (store is not null)
+            {
+                var settings = store.Current;
+                settings.AnnotationAuthor = _annotationAuthor;
+                await store.SaveAsync(settings);
+            }
+        }
+        catch
+        {
+            // Preference persist is best-effort.
+        }
+
+        _status.Text = AnnotationMutationStatus.FormatAuthorSet(_annotationAuthor);
+    }
+
+    private static AppSettings? TryGetSettings()
+    {
+        try
+        {
+            return App.Services.GetService<ISettingsStore>()?.Current;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private void ApplyAnnotationDefaults(AppSettings? settings)
+    {
+        if (settings is null)
+        {
+            return;
+        }
+
+        var highlight = PdfAnnotationColor.HighlightPresets
+            .FirstOrDefault(p => string.Equals(p.Name, settings.DefaultHighlightColor, StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrEmpty(highlight.Name))
+        {
+            _highlightModeColor = highlight.Color;
+        }
+
+        var stroke = PdfAnnotationColor.StrokePresets
+            .FirstOrDefault(p => string.Equals(p.Name, settings.DefaultStrokeColor, StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrEmpty(stroke.Name))
+        {
+            _drawStrokeColor = stroke.Color;
+        }
+
+        _drawStrokeWidth = (float)Math.Clamp(settings.DefaultStrokeWidthPoints, 0.5, 12);
+    }
+
+    private UIElement BuildPagesHeader()
+    {
+        var small = new Button { Content = PdfViewerChromeLabels.SizeSmall, Width = 28, Padding = new Thickness(0), Tag = ThumbnailWidthConstraints.Min };
+        var medium = new Button { Content = PdfViewerChromeLabels.SizeMedium, Width = 28, Padding = new Thickness(0), Tag = ThumbnailWidthConstraints.Default };
+        var large = new Button { Content = PdfViewerChromeLabels.SizeLarge, Width = 28, Padding = new Thickness(0), Tag = 156.0 };
+        ToolTipService.SetToolTip(small, PdfViewerTooltips.SmallPageThumbnails);
+        ToolTipService.SetToolTip(medium, PdfViewerTooltips.MediumPageThumbnails);
+        ToolTipService.SetToolTip(large, PdfViewerTooltips.LargePageThumbnails);
+        AutomationProperties.SetName(small, PdfViewerAutomationNames.SmallPageThumbnails);
+        AutomationProperties.SetName(medium, PdfViewerAutomationNames.MediumPageThumbnails);
+        AutomationProperties.SetName(large, PdfViewerAutomationNames.LargePageThumbnails);
+
+        async void OnSizeClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button { Tag: double width })
+            {
+                await SetThumbnailWidthAsync(width);
+            }
+        }
+
+        small.Click += OnSizeClick;
+        medium.Click += OnSizeClick;
+        large.Click += OnSizeClick;
+
+        return new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            Margin = new Thickness(8, 8, 8, 4),
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = PdfViewerTextLabels.Pages,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+                small,
+                medium,
+                large,
+            },
+        };
+    }
+
+    private void ApplySidebarMode()
+    {
+        var selected = SidebarModeCombo.ClampIndex(_sidebarModeBox?.SelectedIndex ?? 0);
+        _viewState.SidebarMode = SidebarModeCombo.ToSidebarMode(selected);
+        for (var i = 0; i < _sidebarSections.Count; i++)
+        {
+            _sidebarSections[i].Visibility = i == selected ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
+    private void ShowSidebarMode(int modeIndex)
+    {
+        if (_sidebarModeBox is null || !SidebarModeCombo.IsValidIndex(modeIndex))
+        {
+            return;
+        }
+
+        if (_sidebarModeBox.SelectedIndex != modeIndex)
+        {
+            _sidebarModeBox.SelectedIndex = modeIndex;
+        }
+        else
+        {
+            ApplySidebarMode();
+        }
+    }
+
+    private async Task SetThumbnailWidthAsync(double width)
+    {
+        var clamped = ThumbnailWidthConstraints.Clamp(width);
+        if (Math.Abs(clamped - _thumbnailWidth) < 0.5)
+        {
+            return;
+        }
+
+        _thumbnailWidth = clamped;
+        try
+        {
+            var settings = TryGetSettings();
+            if (settings is not null)
+            {
+                settings.ThumbnailWidth = clamped;
+                var store = App.Services.GetService<ISettingsStore>();
+                if (store is not null)
+                {
+                    await store.SaveAsync(settings);
+                }
+            }
+        }
+        catch
+        {
+            // Persistence is best-effort.
+        }
+
+        _cache.ClearDocument(_thumbnailKey);
+        if (_sidePanel is not null)
+        {
+            _sidePanel.Width = Math.Max(180, _thumbnailWidth + 48);
+        }
+
+        BuildThumbnailPlaceholders();
+        RefreshThumbnailSelectionChrome();
+        _ = RenderThumbnailsAsync();
+        _status.Text = AnnotationGroupStatus.FormatThumbnailSize(_thumbnailWidth);
+    }
+
+    private string ResolveDefaultStickyNoteColorName()
+    {
+        var settings = TryGetSettings();
+        var name = settings?.DefaultStickyNoteColor;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "Yellow";
+        }
+
+        return PdfAnnotationColor.StickyNotePresets.Any(p =>
+            string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))
+            ? name
+            : "Yellow";
+    }
+
+    private async Task EditSelectedAnnotationContentsAsync()
+    {
+        if (!TryGetSelectedAnnotation(out var item))
+        {
+            _status.Text = StickyNoteExpandPolicy.SelectToEdit;
+            return;
+        }
+
+        if (!item.IsStickyNote && !item.IsTextBox && !item.IsCallout)
+        {
+            _status.Text = StickyNoteExpandPolicy.EditAppliesToNotes;
+            return;
+        }
+
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.EditDialog);
+
+        var box = new TextBox
+        {
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            Height = 140,
+            Text = item.Contents ?? string.Empty,
+            PlaceholderText = item.IsStickyNote ? PdfDialogPlaceholders.NoteText : PdfDialogPlaceholders.TextContents,
+        };
+        await SeedTextBoxFromClipboardAsync(box);
+        var title = item.IsCallout ? "Edit callout" : item.IsStickyNote ? "Edit sticky note" : "Edit text box";
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = box,
+            PrimaryButtonText = DialogButtons.Save,
+            CloseButtonText = DialogButtons.Cancel,
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            _status.Text = AnnotationMutationStatus.EditCancelled;
+            return;
+        }
+
+        try
+        {
+            await _annotations.SetContentsAsync(
+                _document,
+                item.PageIndex,
+                item.AnnotIndex,
+                box.Text ?? string.Empty);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            var updated = item with { Contents = box.Text ?? string.Empty };
+            _selectedAnnot = updated;
+            SyncSidebarSelection(updated);
+            DrawAnnotSelection(updated);
+            _status.Text = AnnotationMutationStatus.FormatUpdated(PdfAnnotationListLabel.Format(updated));
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.EditAnnotation, ex.Message);
+        }
     }
 
     private async Task DuplicateSelectedAnnotationAsync()
@@ -5614,7 +10733,7 @@ public sealed class PdfDocumentView : UserControl
         {
             if (_selectedAnnot is null)
             {
-                _status.Text = "Select an annotation to duplicate.";
+                _status.Text = AnnotationSelectionStatus.Duplicate;
                 return;
             }
         }
@@ -5633,11 +10752,174 @@ public sealed class PdfDocumentView : UserControl
             _selectedAnnot = copy;
             SyncSidebarSelection(copy);
             DrawAnnotSelection(copy);
-            _status.Text = $"Duplicated {FormatAnnotationLabel(item)}.";
+            _status.Text = AnnotationMutationStatus.FormatDuplicated(PdfAnnotationListLabel.Format(item));
         }
         catch (Exception ex)
         {
-            _status.Text = "Duplicate annotation failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.DuplicateAnnotation, ex.Message);
+        }
+    }
+
+    private bool TryGetSelectedAnnotation(out PdfAnnotationInfo item)
+    {
+        var index = _annotationList.SelectedIndex;
+        if (index >= 0 && index < _annotationItems.Count)
+        {
+            item = _annotationItems[index];
+            return true;
+        }
+
+        if (_selectedAnnot is not null)
+        {
+            item = _selectedAnnot;
+            return true;
+        }
+
+        item = null!;
+        return false;
+    }
+
+    private void CopySelectedAnnotationToClipboard()
+    {
+        if (!TryGetSelectedAnnotation(out var item))
+        {
+            _status.Text = AnnotationClipboardPolicy.SelectToCopy;
+            return;
+        }
+
+        _annotClipboard = (item.PageIndex, item.AnnotIndex);
+        _annotClipboardIsCut = false;
+        _status.Text = AnnotationClipboardPolicy.Copied(PdfAnnotationListLabel.Format(item));
+    }
+
+    private void CutSelectedAnnotationToClipboard()
+    {
+        if (!TryGetSelectedAnnotation(out var item))
+        {
+            _status.Text = AnnotationClipboardPolicy.SelectToCut;
+            return;
+        }
+
+        _annotClipboard = (item.PageIndex, item.AnnotIndex);
+        _annotClipboardIsCut = true;
+        _status.Text = AnnotationClipboardPolicy.Cut(PdfAnnotationListLabel.Format(item));
+    }
+
+    private async Task PasteAnnotationClipboardAsync()
+    {
+        if (_annotClipboard is not { } clip)
+        {
+            _status.Text = AnnotationClipboardPolicy.EmptyClipboard;
+            return;
+        }
+
+        try
+        {
+            var copy = await _annotations.DuplicateAsync(_document, clip.PageIndex, clip.AnnotIndex);
+            var copyPage = copy.PageIndex;
+            var copyIndex = copy.AnnotIndex;
+            var wasCut = _annotClipboardIsCut;
+            if (wasCut)
+            {
+                await _annotations.RemoveAsync(_document, clip.PageIndex, clip.AnnotIndex);
+                copyIndex = AnnotationClipboardPolicy.AdjustIndexAfterCutRemove(
+                    clip.PageIndex,
+                    clip.AnnotIndex,
+                    copyPage,
+                    copyIndex);
+
+                if (AnnotationClipboardPolicy.ClearClipboardAfterPaste(wasCut))
+                {
+                    _annotClipboard = null;
+                    _annotClipboardIsCut = false;
+                }
+            }
+
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            var pasted = _annotationItems.FirstOrDefault(a => a.PageIndex == copyPage && a.AnnotIndex == copyIndex)
+                ?? copy with { AnnotIndex = copyIndex };
+            _selectedAnnot = pasted;
+            SyncSidebarSelection(pasted);
+            DrawAnnotSelection(pasted);
+            _status.Text = AnnotationClipboardPolicy.Pasted(PdfAnnotationListLabel.Format(pasted), wasCut);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = AnnotationClipboardPolicy.PasteFailed(ex.Message);
+        }
+    }
+
+    private async Task SetSelectedAnnotationBorderWidthAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.WidthDialog);
+
+        if (!TryGetSelectedAnnotation(out var item))
+        {
+            _status.Text = AnnotationSelectionStatus.InkOrShapeWidth;
+            return;
+        }
+
+        float initial = _drawStrokeWidth;
+        try
+        {
+            var current = await _annotations.GetBorderWidthAsync(_document, item.PageIndex, item.AnnotIndex);
+            if (current is > 0)
+            {
+                initial = current.Value;
+            }
+        }
+        catch
+        {
+            // Use default when read fails.
+        }
+
+        var widthBox = new NumberBox
+        {
+            Header = PdfDialogHeaders.WidthPt,
+            Value = initial,
+            Minimum = 0.5,
+            Maximum = 24,
+            SmallChange = 0.5,
+            LargeChange = 1,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
+            Width = 280,
+        };
+        var dialog = new ContentDialog
+        {
+            Title = $"Stroke width — {PdfAnnotationListLabel.Format(item)}",
+            Content = widthBox,
+            PrimaryButtonText = DialogButtons.Apply,
+            CloseButtonText = DialogButtons.Cancel,
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var width = (float)(double.IsNaN(widthBox.Value) ? initial : Math.Clamp(widthBox.Value, 0.5, 24));
+
+        try
+        {
+            await _annotations.SetBorderWidthAsync(_document, item.PageIndex, item.AnnotIndex, width);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = AnnotationGroupStatus.FormatStrokeWidth(width);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Width, ex.Message);
         }
     }
 
@@ -5645,7 +10927,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for opacity dialog.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.OpacityDialog);
 
         var index = _annotationList.SelectedIndex;
         PdfAnnotationInfo? item = index >= 0 && index < _annotationItems.Count
@@ -5653,7 +10935,7 @@ public sealed class PdfDocumentView : UserControl
             : _selectedAnnot;
         if (item is null)
         {
-            _status.Text = "Select an annotation to change opacity.";
+            _status.Text = AnnotationSelectionStatus.Opacity;
             return;
         }
 
@@ -5675,10 +10957,10 @@ public sealed class PdfDocumentView : UserControl
         var panel = new StackPanel { Spacing = 4, Children = { label, slider } };
         var dialog = new ContentDialog
         {
-            Title = $"Opacity — {FormatAnnotationLabel(item)}",
+            Title = $"Opacity — {PdfAnnotationListLabel.Format(item)}",
             Content = panel,
-            PrimaryButtonText = "Apply",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Apply,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -5700,71 +10982,196 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = $"Opacity set to {(int)slider.Value}%.";
+            _status.Text = AnnotationGroupStatus.FormatOpacity((int)slider.Value);
         }
         catch (Exception ex)
         {
-            _status.Text = "Opacity failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Opacity, ex.Message);
         }
     }
 
     private async Task RemoveSelectedAnnotationAsync()
     {
-        var index = _annotationList.SelectedIndex;
-        if (index < 0 || index >= _annotationItems.Count)
+        var toRemove = _selectedAnnots.Count > 0
+            ? _selectedAnnots.ToList()
+            : TryGetSelectedAnnotation(out var one) ? [one] : [];
+        if (toRemove.Count == 0)
         {
-            _status.Text = "Select an annotation to delete.";
+            _status.Text = AnnotationSelectionStatus.Delete;
             return;
         }
 
-        var item = _annotationItems[index];
         try
         {
-            await _annotations.RemoveAsync(_document, item.PageIndex, item.AnnotIndex);
+            foreach (var item in toRemove
+                         .OrderByDescending(a => a.PageIndex)
+                         .ThenByDescending(a => a.AnnotIndex))
+            {
+                await _annotations.RemoveAsync(_document, item.PageIndex, item.AnnotIndex);
+            }
+
+            ClearAnnotSelectionVisual();
+            _selectedAnnot = null;
+            _selectedAnnots.Clear();
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = $"Deleted {FormatAnnotationLabel(item)}.";
+            _status.Text = toRemove.Count == 1
+                ? AnnotationMutationStatus.FormatDeletedAnnotation(PdfAnnotationListLabel.Format(toRemove[0]))
+                : AnnotationMutationStatus.FormatDeletedAnnotations(toRemove.Count);
         }
         catch (Exception ex)
         {
-            _status.Text = "Delete annotation failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.DeleteAnnotation, ex.Message);
         }
     }
 
     private async Task RunPageEditAsync(Func<Task> mutation)
     {
         await _editHistory.ExecuteAsync(_document, _pageEditor, mutation);
+        NotifyEdited();
+    }
+
+    /// <summary>True when page edits or other mutations have not been saved (F50).</summary>
+    public bool HasUnsavedEdits => _hasUnsavedContent || _editHistory.CanUndo;
+
+    public void NotifyEdited()
+    {
+        _hasUnsavedContent = true;
+        _onEdited?.Invoke();
+    }
+
+    public void ClearUnsavedEdits()
+    {
+        _hasUnsavedContent = false;
+        _editHistory.Clear();
+    }
+
+    /// <summary>Write current in-memory PDF bytes for crash recovery (F50-02).</summary>
+    public async Task WriteRecoverySnapshotAsync(
+        Glyph.Infrastructure.Session.ICrashRecoveryStore store,
+        string originalPath,
+        CancellationToken cancellationToken = default)
+    {
+        var bytes = await _pageEditor.SaveToBytesAsync(_document, cancellationToken);
+        await using var stream = new MemoryStream(bytes);
+        await store.SaveSnapshotAsync(originalPath, stream, ".pdf", cancellationToken);
+    }
+
+    /// <summary>Heuristic: in-memory PDF length differs from on-disk file (catches annotations).</summary>
+    public async Task<bool> DiffersFromDiskAsync(CancellationToken cancellationToken = default)
+    {
+        if (HasUnsavedEdits)
+        {
+            return true;
+        }
+
+        var path = _document.Path;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            return false;
+        }
+
+        try
+        {
+            var bytes = await _pageEditor.SaveToBytesAsync(_document, cancellationToken);
+            return new FileInfo(path).Length != bytes.Length;
+        }
+        catch (Exception)
+        {
+            return HasUnsavedEdits;
+        }
+    }
+
+    private async Task UndoMostRecentAsync()
+    {
+        // Prefer pending redaction undo (F49-13), then stroke, then page-edit history.
+        if (_redaction.GetPending(_document).Count > 0)
+        {
+            var removed = _redaction.UndoLastPending(_document);
+            if (removed is not null)
+            {
+                RefreshPendingRedactionOverlay(removed.PageIndex);
+                var remaining = _redaction.GetPending(_document).Count;
+                _status.Text = PdfRedactionUiCopy.FormatUndidStatus(remaining);
+                return;
+            }
+        }
+
+        if (_strokeUndoStack.Count > 0)
+        {
+            await UndoLastStrokeAsync();
+            return;
+        }
+
+        if (_formUndoStack.Count > 0)
+        {
+            await UndoLastFormFillAsync();
+            return;
+        }
+
+        if (_infoUndoStack.Count > 0)
+        {
+            await UndoLastInfoEditAsync();
+            return;
+        }
+
+        await UndoPageEditAsync();
+    }
+
+    private async Task UndoLastInfoEditAsync()
+    {
+        if (!_infoUndoStack.TryPop(out var previous))
+        {
+            return;
+        }
+
+        try
+        {
+            _documentInfo.SetInfo(_document, previous);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            RefreshPropertiesSidebar();
+            NotifyEdited();
+            _status.Text = PdfDocumentInfoUi.UndidStatus;
+        }
+        catch (Exception ex)
+        {
+            _infoUndoStack.Push(previous);
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.UndoInfoEdit, ex.Message);
+        }
     }
 
     private async Task UndoPageEditAsync()
     {
         if (!_editHistory.CanUndo)
         {
-            _status.Text = "Nothing to undo.";
+            _status.Text = DocumentUndoRedoStatus.NothingToUndo;
             return;
         }
 
-        _status.Text = "Undoing…";
+        _status.Text = DocumentUndoRedoStatus.Undoing;
         await _editHistory.UndoAsync(_document, _pageEditor);
         await ReloadAfterPageEditAsync();
-        _status.Text = "Undid page edit.";
+        _status.Text = PageEditStatus.UndidPageEdit;
     }
 
     private async Task RedoPageEditAsync()
     {
         if (!_editHistory.CanRedo)
         {
-            _status.Text = "Nothing to redo.";
+            _status.Text = DocumentUndoRedoStatus.NothingToRedo;
             return;
         }
 
-        _status.Text = "Redoing…";
+        _status.Text = DocumentUndoRedoStatus.Redoing;
         await _editHistory.RedoAsync(_document, _pageEditor);
         await ReloadAfterPageEditAsync();
-        _status.Text = "Redid page edit.";
+        _status.Text = PageEditStatus.RedidPageEdit;
     }
 
     private async Task ExtractSelectedAsync()
@@ -5777,29 +11184,30 @@ public sealed class PdfDocumentView : UserControl
 
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.SavePicker);
         var picker = new Windows.Storage.Pickers.FileSavePicker();
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
         WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
         picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
-        picker.SuggestedFileName = "Extracted pages";
+        picker.SuggestedFileName = DocumentExportFormats.SuggestedExtractedPages;
         picker.FileTypeChoices.Add("PDF", [".pdf"]);
 
         var file = await picker.PickSaveFileAsync();
         if (file is null)
         {
-            _status.Text = "Extract cancelled.";
+            _status.Text = PageClipboardStatus.ExtractCancelled;
             return;
         }
 
-        _status.Text = "Extracting…";
+        _status.Text = PageClipboardStatus.Extracting;
         await using var extracted = await _pageEditor.ExtractPagesAsync(_document, indexes);
         await _pageEditor.SaveAsync(extracted, file.Path);
-        _status.Text = $"Extracted {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")} to {file.Name}.";
+        _status.Text = PageEditStatus.FormatExtracted(indexes.Count, file.Name);
     }
 
     private async Task BeginCropModeAsync()
     {
+        ClearRedactionMode();
         if (_document.PageCount == 0)
         {
             return;
@@ -5823,7 +11231,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         RedrawCropOverlay();
-        _status.Text = "Crop mode — drag handles, Enter to apply, Esc to cancel.";
+        _status.Text = AnnotationToolModeStatus.CropOn;
     }
 
     private void EnsureCropChrome()
@@ -5834,15 +11242,15 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var apply = new Button { Content = "Apply crop" };
-        var cancel = new Button { Content = "Cancel" };
-        var numeric = new Button { Content = "Numeric…" };
-        var exportCropped = new Button { Content = "Export cropped…" };
+        var apply = new Button { Content = PdfViewerChromeLabels.ApplyCrop };
+        var cancel = new Button { Content = PdfViewerChromeLabels.Cancel };
+        var numeric = new Button { Content = PdfViewerChromeLabels.NumericEllipsis };
+        var exportCropped = new Button { Content = PdfViewerChromeLabels.ExportCroppedEllipsis };
         apply.Click += async (_, _) => await ApplyCropModeAsync();
         cancel.Click += (_, _) => CancelCropMode();
         numeric.Click += async (_, _) => await CropNumericDialogAsync();
         exportCropped.Click += async (_, _) => await ExportCroppedAsync();
-        ToolTipService.SetToolTip(exportCropped, "Export selected pages with a permanent MediaBox crop");
+        ToolTipService.SetToolTip(exportCropped, PdfViewerTooltips.ExportSelectedPagesWithAPermanent);
         _cropChrome = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -5852,7 +11260,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 new TextBlock
                 {
-                    Text = "Crop handles",
+                    Text = PdfViewerTextLabels.CropHandles,
                     VerticalAlignment = VerticalAlignment.Center,
                     FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                 },
@@ -5887,7 +11295,7 @@ public sealed class PdfDocumentView : UserControl
             _cropChrome.Visibility = Visibility.Collapsed;
         }
 
-        _status.Text = "Crop cancelled.";
+        _status.Text = PageEditStatus.CropCancelled;
     }
 
     private async Task ApplyCropModeAsync()
@@ -5911,24 +11319,22 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
-            _status.Text = "Cropping…";
+            _status.Text = PageEditStatus.Cropping;
             await RunPageEditAsync(() => _pageEditor.CropPagesAsync(_document, indexes, margins));
             CancelCropMode();
             await ReloadAfterPageEditAsync();
-            _status.Text = indexes.Count == 1
-                ? "Cropped 1 page."
-                : $"Cropped {indexes.Count} pages.";
+            _status.Text = PageEditStatus.FormatCropped(indexes.Count);
         }
         catch (Exception ex)
         {
-            _status.Text = "Crop failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Crop, ex.Message);
         }
     }
 
     private async Task MergePdfsAsync()
     {
         var window = App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for open picker.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.OpenPicker);
         var picker = new Windows.Storage.Pickers.FileOpenPicker();
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
         WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
@@ -5938,11 +11344,11 @@ public sealed class PdfDocumentView : UserControl
         var files = await picker.PickMultipleFilesAsync();
         if (files is null || files.Count == 0)
         {
-            _status.Text = "Merge cancelled.";
+            _status.Text = PageEditStatus.MergeCancelled;
             return;
         }
 
-        var insertAt = _document.PageCount;
+        var insertAt = PageInsertIndex.Append(_document.PageCount);
         var opened = new List<IPdfDocument>();
         try
         {
@@ -5952,11 +11358,11 @@ public sealed class PdfDocumentView : UserControl
             }
 
             var before = _document.PageCount;
-            _status.Text = files.Count == 1 ? "Merging PDF…" : $"Merging {files.Count} PDFs…";
+            _status.Text = PageEditStatus.FormatMerging(files.Count);
             await RunPageEditAsync(() => _pageEditor.MergeDocumentsAsync(_document, opened, insertAt));
             await ReloadAfterPageEditAsync();
             var added = _document.PageCount - before;
-            _status.Text = added == 1 ? "Merged 1 page." : $"Merged {added} pages.";
+            _status.Text = PageEditStatus.FormatMerged(added);
             if (added > 0)
             {
                 await GoToPageAsync(insertAt, recordHistory: true);
@@ -5964,7 +11370,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Merge failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Merge, ex.Message);
         }
         finally
         {
@@ -5984,7 +11390,7 @@ public sealed class PdfDocumentView : UserControl
         {
             if (_document.PageCount < 2)
             {
-                _status.Text = "Need at least two pages to split.";
+                _status.Text = PageClipboardStatus.NeedTwoPagesToSplit;
                 return;
             }
 
@@ -5994,12 +11400,12 @@ public sealed class PdfDocumentView : UserControl
         var ranges = PdfSplitRanges.BuildRanges(_document.PageCount, splitBefore);
         if (ranges.Count < 2)
         {
-            _status.Text = "Split would produce a single document.";
+            _status.Text = PageEditStatus.SplitWouldBeSingle;
             return;
         }
 
         var window = App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for folder picker.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.FolderPicker);
         var picker = new Windows.Storage.Pickers.FolderPicker();
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
         WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
@@ -6009,11 +11415,11 @@ public sealed class PdfDocumentView : UserControl
         var folder = await picker.PickSingleFolderAsync();
         if (folder is null)
         {
-            _status.Text = "Split cancelled.";
+            _status.Text = PageEditStatus.SplitCancelled;
             return;
         }
 
-        _status.Text = $"Splitting into {ranges.Count} PDFs…";
+        _status.Text = PageEditStatus.FormatSplitting(ranges.Count);
         var parts = await _pageEditor.SplitDocumentAsync(_document, splitBefore);
         try
         {
@@ -6025,7 +11431,7 @@ public sealed class PdfDocumentView : UserControl
                 await _pageEditor.SaveAsync(parts[i], file.Path);
             }
 
-            _status.Text = $"Split into {parts.Count} PDFs in {folder.Name}.";
+            _status.Text = PageEditStatus.FormatSplitDone(parts.Count, folder.Name);
         }
         finally
         {
@@ -6050,24 +11456,24 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var window = App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.SavePicker);
         var picker = new Windows.Storage.Pickers.FileSavePicker();
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
         WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
         picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
-        picker.SuggestedFileName = "Cropped pages";
+        picker.SuggestedFileName = DocumentExportFormats.SuggestedCroppedPages;
         picker.FileTypeChoices.Add("PDF", [".pdf"]);
 
         var file = await picker.PickSaveFileAsync();
         if (file is null)
         {
-            _status.Text = "Export cancelled.";
+            _status.Text = DocumentExportFormats.CancelledStatus;
             return;
         }
 
         try
         {
-            _status.Text = "Exporting permanently cropped PDF…";
+            _status.Text = DocumentExportFormats.ExportingCroppedPdf;
             await using var extracted = await _pageEditor.ExtractPagesAsync(_document, indexes);
 
             // Stamp in-progress visual margins onto the exported copy without mutating the open doc.
@@ -6090,11 +11496,11 @@ public sealed class PdfDocumentView : UserControl
             var partIndexes = Enumerable.Range(0, extracted.PageCount).ToList();
             await _pageEditor.PermanentCropPagesAsync(extracted, partIndexes);
             await _pageEditor.SaveAsync(extracted, file.Path);
-            _status.Text = $"Exported cropped PDF to {file.Name}.";
+            _status.Text = DocumentExportFormats.FormatExportedCroppedPdf(file.Name);
         }
         catch (Exception ex)
         {
-            _status.Text = "Export failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Export, ex.Message);
         }
     }
 
@@ -6108,43 +11514,43 @@ public sealed class PdfDocumentView : UserControl
 
         var unitBox = new ComboBox
         {
-            Header = "Units",
-            ItemsSource = new[] { "Points (pt)", "Inches (in)", "Centimeters (cm)", "Millimeters (mm)" },
+            Header = PdfDialogHeaders.Units,
+            ItemsSource = PdfDialogOptions.CropUnits.ToList(),
             SelectedIndex = (int)_cropUnit,
             Width = 220,
         };
         var leftBox = new NumberBox
         {
-            Header = "Left",
+            Header = PdfDialogHeaders.Left,
             Value = PdfLengthUnits.FromPoints(_cropMode ? _cropMarginLeftPt : 36, _cropUnit),
             Minimum = 0,
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
         };
         var topBox = new NumberBox
         {
-            Header = "Top",
+            Header = PdfDialogHeaders.Top,
             Value = PdfLengthUnits.FromPoints(_cropMode ? _cropMarginTopPt : 36, _cropUnit),
             Minimum = 0,
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
         };
         var rightBox = new NumberBox
         {
-            Header = "Right",
+            Header = PdfDialogHeaders.Right,
             Value = PdfLengthUnits.FromPoints(_cropMode ? _cropMarginRightPt : 36, _cropUnit),
             Minimum = 0,
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
         };
         var bottomBox = new NumberBox
         {
-            Header = "Bottom",
+            Header = PdfDialogHeaders.Bottom,
             Value = PdfLengthUnits.FromPoints(_cropMode ? _cropMarginBottomPt : 36, _cropUnit),
             Minimum = 0,
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
         };
-        var allPages = new CheckBox { Content = "Apply to all pages", IsChecked = false };
+        var allPages = new CheckBox { Content = PdfViewerChromeLabels.ApplyToAllPages, IsChecked = false };
         var note = new TextBlock
         {
-            Text = "Non-destructive CropBox inset. Visual handles remain available from Crop.",
+            Text = PdfViewerTextLabels.NonDestructiveCropBoxInsetVisualHandlesRemainAvailableFromCrop,
             TextWrapping = TextWrapping.WrapWholeWords,
             Opacity = 0.75,
             FontSize = 12,
@@ -6176,8 +11582,8 @@ public sealed class PdfDocumentView : UserControl
         var dialog = new ContentDialog
         {
             Title = indexes.Count == 1 ? "Crop page" : $"Crop {indexes.Count} pages",
-            PrimaryButtonText = "Crop",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = DialogButtons.Crop,
+            CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
             Content = new StackPanel
@@ -6193,11 +11599,12 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _cropUnit = (PdfLengthUnit)Math.Clamp(unitBox.SelectedIndex, 0, 3);
-        var margins = new PdfCropMargins(
-            PdfLengthUnits.ToPoints(leftBox.Value, _cropUnit),
-            PdfLengthUnits.ToPoints(topBox.Value, _cropUnit),
-            PdfLengthUnits.ToPoints(rightBox.Value, _cropUnit),
-            PdfLengthUnits.ToPoints(bottomBox.Value, _cropUnit));
+        var margins = PdfCropMarginsParser.FromDialogValues(
+            leftBox.Value,
+            topBox.Value,
+            rightBox.Value,
+            bottomBox.Value,
+            _cropUnit);
 
         if (_cropMode)
         {
@@ -6209,23 +11616,22 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (allPages.IsChecked == true)
-        {
-            indexes = Enumerable.Range(0, _document.PageCount).ToList();
-        }
+        indexes = PageSelection.ResolveTargets(
+            allPages.IsChecked == true,
+            _pageSelection,
+            _document.PageCount,
+            CurrentPageIndex).ToList();
 
         try
         {
-            _status.Text = "Cropping…";
+            _status.Text = PageEditStatus.Cropping;
             await RunPageEditAsync(() => _pageEditor.CropPagesAsync(_document, indexes, margins));
             await ReloadAfterPageEditAsync();
-            _status.Text = indexes.Count == 1
-                ? "Cropped 1 page."
-                : $"Cropped {indexes.Count} pages.";
+            _status.Text = PageEditStatus.FormatCropped(indexes.Count);
         }
         catch (Exception ex)
         {
-            _status.Text = "Crop failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Crop, ex.Message);
         }
     }
 
@@ -6268,10 +11674,10 @@ public sealed class PdfDocumentView : UserControl
         switch (_cropDragHandle)
         {
             case "move":
-                left = ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, _cropDragStartRight, minSize);
-                right = ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
-                top = ClampMargin(_cropDragStartTop + dy, page.HeightPoints, _cropDragStartBottom, minSize);
-                bottom = ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
+                left = PdfCropMargins.ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, _cropDragStartRight, minSize);
+                right = PdfCropMargins.ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
+                top = PdfCropMargins.ClampMargin(_cropDragStartTop + dy, page.HeightPoints, _cropDragStartBottom, minSize);
+                bottom = PdfCropMargins.ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
                 // Keep width/height by shifting as a block.
                 left = _cropDragStartLeft + dx;
                 right = _cropDragStartRight - dx;
@@ -6295,32 +11701,32 @@ public sealed class PdfDocumentView : UserControl
 
                 break;
             case "w":
-                left = ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, right, minSize);
+                left = PdfCropMargins.ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, right, minSize);
                 break;
             case "e":
-                right = ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
+                right = PdfCropMargins.ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
                 break;
             case "n":
-                top = ClampMargin(_cropDragStartTop + dy, page.HeightPoints, bottom, minSize);
+                top = PdfCropMargins.ClampMargin(_cropDragStartTop + dy, page.HeightPoints, bottom, minSize);
                 break;
             case "s":
-                bottom = ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
+                bottom = PdfCropMargins.ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
                 break;
             case "nw":
-                left = ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, right, minSize);
-                top = ClampMargin(_cropDragStartTop + dy, page.HeightPoints, bottom, minSize);
+                left = PdfCropMargins.ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, right, minSize);
+                top = PdfCropMargins.ClampMargin(_cropDragStartTop + dy, page.HeightPoints, bottom, minSize);
                 break;
             case "ne":
-                right = ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
-                top = ClampMargin(_cropDragStartTop + dy, page.HeightPoints, bottom, minSize);
+                right = PdfCropMargins.ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
+                top = PdfCropMargins.ClampMargin(_cropDragStartTop + dy, page.HeightPoints, bottom, minSize);
                 break;
             case "sw":
-                left = ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, right, minSize);
-                bottom = ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
+                left = PdfCropMargins.ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, right, minSize);
+                bottom = PdfCropMargins.ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
                 break;
             case "se":
-                right = ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
-                bottom = ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
+                right = PdfCropMargins.ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
+                bottom = PdfCropMargins.ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
                 break;
         }
 
@@ -6331,8 +11737,6 @@ public sealed class PdfDocumentView : UserControl
         RedrawCropOverlay();
     }
 
-    private static double ClampMargin(double value, double pageExtent, double opposite, double minSize) =>
-        Math.Clamp(value, 0, Math.Max(0, pageExtent - opposite - minSize));
 
     private bool IsInsideCropRect(Windows.Foundation.Point pos)
     {
@@ -6469,6 +11873,7 @@ public sealed class PdfDocumentView : UserControl
         _pageImages.Clear();
         _pageOverlays.Clear();
         _ocrOverlays.Clear();
+        _redactionOverlays.Clear();
         _ocrVisualsByPage.Clear();
         _selectedOcrIndices.Clear();
         UpdateOcrOverlayChrome();
@@ -6500,11 +11905,27 @@ public sealed class PdfDocumentView : UserControl
 
     private async void ScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
-        if (!e.IsIntermediate && _layoutMode == PageLayoutMode.Continuous)
+        if (_layoutMode != PageLayoutMode.Continuous)
         {
-            UpdateCurrentPageFromScroll();
-            await RenderVisibleAsync();
+            return;
         }
+
+        // Keep page chrome in sync while flinging; throttle bitmap fills so scroll stays smooth (F57-08).
+        UpdateCurrentPageFromScroll();
+        if (!e.IsIntermediate)
+        {
+            await RenderVisibleAsync();
+            return;
+        }
+
+        var now = Environment.TickCount64;
+        if (!IntermediateScrollThrottle.ShouldRender(now, _lastIntermediateRenderTick))
+        {
+            return;
+        }
+
+        _lastIntermediateRenderTick = now;
+        _ = RenderVisibleAsync();
     }
 
     private void UpdateCurrentPageFromScroll()
@@ -6581,6 +12002,15 @@ public sealed class PdfDocumentView : UserControl
 
                 await RenderPageAsync(i);
             }
+
+            // Drop distant page bitmaps from the visual tree; LRU cache still holds recent renders (F57-11).
+            foreach (var (pageIndex, image) in _pageImages)
+            {
+                if (pageIndex < first - 2 || pageIndex > last + 2)
+                {
+                    image.Source = null;
+                }
+            }
         }
         finally
         {
@@ -6591,11 +12021,38 @@ public sealed class PdfDocumentView : UserControl
         {
             DrawFormOverlays();
         }
+
+        if (_selectedAnnot is not null)
+        {
+            DrawAnnotSelection(_selectedAnnot);
+        }
+
+        RedrawStickyNotePopups();
     }
+    private int _thumbnailGeneration;
+
     private async Task RenderThumbnailsAsync()
     {
-        for (var i = 0; i < _document.PageCount; i++)
+        var generation = ++_thumbnailGeneration;
+        var count = _document.PageCount;
+        if (count <= 0)
         {
+            return;
+        }
+
+        // Prefer pages near the current view so the sidebar fills usefully first (F57-04).
+        var ordered = Enumerable.Range(0, count)
+            .OrderBy(i => Math.Abs(i - CurrentPageIndex))
+            .ThenBy(i => i)
+            .ToList();
+
+        foreach (var i in ordered)
+        {
+            if (generation != _thumbnailGeneration)
+            {
+                return;
+            }
+
             try
             {
                 await RenderThumbnailAsync(i);
@@ -6604,6 +12061,9 @@ public sealed class PdfDocumentView : UserControl
             {
                 // Thumbnail failures must not break viewing.
             }
+
+            // Yield so page renders and input stay responsive on large docs.
+            await Task.Yield();
         }
     }
 
@@ -6639,7 +12099,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var page = _document.GetPage(pageIndex);
-        var thumbScale = ThumbnailWidth / Math.Max(1, page.WidthPoints);
+        var thumbScale = _thumbnailWidth / Math.Max(1, page.WidthPoints);
 
         if (_cache.TryGet(_thumbnailKey, pageIndex, thumbScale, out var cached) && cached is not null)
         {
@@ -6650,7 +12110,7 @@ public sealed class PdfDocumentView : UserControl
         var result = await _renderer.RenderPageAsync(
             _document,
             pageIndex,
-            new PdfRenderRequest(thumbScale, MaxWidthPixels: (int)ThumbnailWidth));
+            new PdfRenderRequest(thumbScale, MaxWidthPixels: (int)_thumbnailWidth));
 
         _cache.Set(_thumbnailKey, pageIndex, thumbScale, result);
         image.Source = await ToWriteableBitmapAsync(result);
@@ -6674,12 +12134,1136 @@ public sealed class PdfDocumentView : UserControl
         _viewState.Zoom = _scale;
         _viewState.CurrentPageIndex = CurrentPageIndex;
         _viewState.PageLayout = _layoutMode;
+        // Bookmarks list is mutated in place on _viewState.Bookmarks.
+    }
+
+    private async Task ExportBookmarksToPdfOutlineAsync()
+    {
+        if (_viewState.Bookmarks.Count == 0)
+        {
+            _status.Text = BookmarkStatus.AddBeforeExport;
+            return;
+        }
+
+        try
+        {
+            _status.Text = BookmarkStatus.WritingOutline;
+            var entries = _viewState.Bookmarks
+                .Select(b => new PdfOutlineExportEntry(b.Title, b.PageIndex))
+                .ToList();
+            await _outlineExport.ExportAsync(_document, entries);
+            NotifyEdited();
+            await LoadOutlineAsync();
+            _status.Text = DocumentExportFormats.FormatExportedBookmarks(_viewState.Bookmarks.Count);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.OutlineExport, ex.Message);
+        }
+    }
+
+    private void RefreshBookmarkList()
+    {
+        var selectedId = (_bookmarkList.SelectedItem as BookmarkListItem)?.Id;
+        _bookmarkList.ItemsSource = _viewState.Bookmarks
+            .Select(b => new BookmarkListItem(b.Id, $"{b.Title} · p.{b.PageIndex + 1}", b.PageIndex))
+            .ToList();
+        if (selectedId is not null)
+        {
+            _bookmarkList.SelectedItem = _bookmarkList.Items
+                .OfType<BookmarkListItem>()
+                .FirstOrDefault(i => i.Id == selectedId);
+        }
+    }
+
+    private async Task AddBookmarkAsync()
+    {
+        var page = CurrentPageIndex;
+        var box = new TextBox
+        {
+            Header = PdfDialogHeaders.BookmarkTitle,
+            Text = $"Page {page + 1}",
+            Width = 280,
+        };
+        var dialog = new ContentDialog
+        {
+            Title = PdfDialogTitles.AddBookmark,
+            Content = box,
+            PrimaryButtonText = DialogButtons.Add,
+            CloseButtonText = DialogButtons.Cancel,
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var title = string.IsNullOrWhiteSpace(box.Text) ? $"Page {page + 1}" : box.Text.Trim();
+        _viewState.Bookmarks.Add(new Glyph.Core.Documents.UserBookmark
+        {
+            Title = title,
+            PageIndex = page,
+        });
+        RefreshBookmarkList();
+        SyncViewState();
+        _status.Text = BookmarkStatus.FormatBookmarked(title);
+    }
+
+    private async Task RenameSelectedBookmarkAsync()
+    {
+        if (_bookmarkList.SelectedItem is not BookmarkListItem item)
+        {
+            _status.Text = AnnotationSelectionStatus.RenameBookmark;
+            return;
+        }
+
+        var bookmark = _viewState.Bookmarks.FirstOrDefault(b => b.Id == item.Id);
+        if (bookmark is null)
+        {
+            return;
+        }
+
+        var box = new TextBox { Header = PdfDialogHeaders.Title, Text = bookmark.Title, Width = 280 };
+        var dialog = new ContentDialog
+        {
+            Title = PdfDialogTitles.RenameBookmark,
+            Content = box,
+            PrimaryButtonText = DialogButtons.Save,
+            CloseButtonText = DialogButtons.Cancel,
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        bookmark.Title = string.IsNullOrWhiteSpace(box.Text) ? bookmark.Title : box.Text.Trim();
+        RefreshBookmarkList();
+        SyncViewState();
+        _status.Text = BookmarkStatus.Renamed;
+    }
+
+    private void DeleteSelectedBookmark()
+    {
+        if (_bookmarkList.SelectedItem is not BookmarkListItem item)
+        {
+            _status.Text = AnnotationSelectionStatus.DeleteBookmark;
+            return;
+        }
+
+        var removed = _viewState.Bookmarks.RemoveAll(b => b.Id == item.Id);
+        if (removed > 0)
+        {
+            RefreshBookmarkList();
+            SyncViewState();
+            _status.Text = BookmarkStatus.Deleted;
+        }
+    }
+
+    private void MoveSelectedBookmark(int delta)
+    {
+        if (_bookmarkList.SelectedItem is not BookmarkListItem item)
+        {
+            return;
+        }
+
+        var index = _viewState.Bookmarks.FindIndex(b => b.Id == item.Id);
+        if (index < 0)
+        {
+            return;
+        }
+
+        var target = index + delta;
+        if (target < 0 || target >= _viewState.Bookmarks.Count)
+        {
+            return;
+        }
+
+        var bookmark = _viewState.Bookmarks[index];
+        _viewState.Bookmarks.RemoveAt(index);
+        _viewState.Bookmarks.Insert(target, bookmark);
+        RefreshBookmarkList();
+        SyncViewState();
+    }
+
+    private sealed record BookmarkListItem(string Id, string Display, int PageIndex)
+    {
+        public override string ToString() => Display;
     }
 
     private void UpdateStatus()
     {
         _gotoBox.Text = (CurrentPageIndex + 1).ToString();
-        _status.Text =
-            $"Page {CurrentPageIndex + 1} / {_document.PageCount}    Zoom {(int)Math.Round(_scale * 100)}%    {_layoutMode}";
+        var encrypted = PdfDocumentPermissions.StatusBarEncryptedSuffix(_document.IsEncrypted);
+        _status.Text = AnnotationMutationStatus.FormatChromeStatus(
+            CurrentPageIndex + 1,
+            _document.PageCount,
+            (int)Math.Round(_scale * 100),
+            _layoutMode.ToString(),
+            encrypted);
+    }
+
+    private async Task PrintDocumentAsync()
+    {
+        try
+        {
+            var info = _documentInfo.GetInfo(_document);
+            if (!info.Permissions.CanPrint)
+            {
+                _status.Text = PrintPageScopeChooser.PrintingNotAllowed;
+                return;
+            }
+
+            var scopeBox = new ComboBox
+            {
+                Width = 220,
+                ItemsSource = PrintPageScopeChooser.Labels.ToList(),
+                SelectedIndex = _pageSelection.Count > 0
+                    ? (int)PrintPageScopeChooser.Scope.SelectedPages
+                    : (int)PrintPageScopeChooser.Scope.CurrentPage,
+            };
+            var rangeBox = new TextBox
+            {
+                Header = PdfDialogHeaders.RangeEG135,
+                Width = 220,
+                Text = $"{CurrentPageIndex + 1}",
+                Visibility = Visibility.Collapsed,
+            };
+            var scaleBox = new ComboBox
+            {
+                Header = PdfDialogHeaders.Scale,
+                Width = 220,
+                ItemsSource = PdfDialogOptions.PrintScales.ToList(),
+                SelectedIndex = 0,
+            };
+            var nUpBox = new ComboBox
+            {
+                Header = PdfDialogHeaders.PagesPerSheet,
+                Width = 220,
+                ItemsSource = PdfDialogOptions.PagesPerSheet.ToList(),
+                SelectedIndex = 0,
+            };
+            var grayscale = new CheckBox { Content = PdfViewerChromeLabels.Grayscale };
+            var center = new CheckBox { Content = PdfViewerChromeLabels.CenterOnPage, IsChecked = true };
+            var autoRotate = new CheckBox { Content = PdfViewerChromeLabels.AutoRotate, IsChecked = true };
+            var includeNotes = new CheckBox { Content = PrintNotesUi.IncludeCheckbox };
+            scopeBox.SelectionChanged += (_, _) =>
+            {
+                rangeBox.Visibility =
+                    PrintPageScopeChooser.FromComboIndex(scopeBox.SelectedIndex)
+                        == PrintPageScopeChooser.Scope.PageRange
+                        ? Visibility.Visible
+                        : Visibility.Collapsed;
+            };
+
+            var dialog = new ContentDialog
+            {
+                Title = PdfDialogTitles.PrintPdf,
+                Content = new StackPanel
+                {
+                    Spacing = 8,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = PdfViewerTextLabels.AnnotationsAreIncludedInThePageRenderSystemDialogSetsPrinterCopiesCollateDuplexAndPaper,
+                            TextWrapping = TextWrapping.Wrap,
+                            MaxWidth = 360,
+                            Opacity = 0.8,
+                        },
+                        scopeBox,
+                        rangeBox,
+                        scaleBox,
+                        nUpBox,
+                        grayscale,
+                        center,
+                        autoRotate,
+                        includeNotes,
+                    },
+                },
+                PrimaryButtonText = DialogButtons.PrintEllipsis,
+                CloseButtonText = DialogButtons.Cancel,
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = XamlRoot,
+            };
+
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            {
+                _status.Text = PrintPageScopeChooser.CancelledStatus;
+                return;
+            }
+
+            var indexes = PrintPageScopeChooser.FromComboIndex(scopeBox.SelectedIndex) switch
+            {
+                PrintPageScopeChooser.Scope.SelectedPages => SelectedOrCurrentPages(),
+                PrintPageScopeChooser.Scope.PageRange =>
+                    PageRangeParser.Parse(rangeBox.Text, _document.PageCount).ToList(),
+                PrintPageScopeChooser.Scope.AllPages =>
+                    Enumerable.Range(0, _document.PageCount).ToList(),
+                _ => [CurrentPageIndex],
+            };
+            if (indexes.Count == 0)
+            {
+                _status.Text = PrintPageScopeChooser.NoPagesToPrint;
+                return;
+            }
+
+            var scaleMode = scaleBox.SelectedIndex switch
+            {
+                1 => DocumentPrintScaleMode.Fill,
+                2 => DocumentPrintScaleMode.ActualSize,
+                _ => DocumentPrintScaleMode.Fit,
+            };
+            var pagesPerSheet = nUpBox.SelectedIndex switch
+            {
+                1 => 2,
+                2 => 4,
+                _ => 1,
+            };
+
+            _status.Text = PrintPageScopeChooser.FormatPreparing(indexes.Count);
+            var bitmaps = new List<WriteableBitmap>();
+            const double printDpi = 150;
+            var renderScale = printDpi / 72.0;
+            foreach (var pageIndex in indexes)
+            {
+                using var rendered = await _renderer.RenderPageAsync(
+                    _document,
+                    pageIndex,
+                    new PdfRenderRequest(renderScale));
+                var pixels = rendered.Pixels.ToArray();
+                if (grayscale.IsChecked == true)
+                {
+                    DocumentPrintHelper.ApplyGrayscale(pixels);
+                }
+
+                bitmaps.Add(await DocumentPrintHelper.ToWriteableBitmapAsync(
+                    rendered.Width,
+                    rendered.Height,
+                    pixels));
+            }
+
+            if (includeNotes.IsChecked == true)
+            {
+                var notesBitmap = await RenderNotesPrintPageAsync();
+                if (notesBitmap is not null)
+                {
+                    bitmaps.Add(notesBitmap);
+                }
+            }
+
+            var window = _ownerWindow
+                ?? App.CurrentApp.MainWindowInstance
+                ?? throw new InvalidOperationException(MainWindowRequiredMessages.Print);
+            using var helper = new DocumentPrintHelper(
+                window,
+                jobName: System.IO.Path.GetFileName(_document.Path) ?? "Glyph PDF",
+                scaleMode: scaleMode,
+                center: center.IsChecked == true,
+                autoRotate: autoRotate.IsChecked == true,
+                pagesPerSheet: pagesPerSheet);
+            await helper.PrintAsync(bitmaps);
+            _status.Text = PrintPageScopeChooser.FormatPrintUiShown(bitmaps.Count, pagesPerSheet);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Print, ex.Message);
+        }
+    }
+
+    private static void ApplyToolbarAccessibleNames(params DependencyObject[] elements)
+    {
+        foreach (var element in elements)
+        {
+            if (ToolTipService.GetToolTip(element) is string tip && tip.Length > 0)
+            {
+                AutomationProperties.SetName(element, tip);
+            }
+        }
+    }
+
+    private async Task<WriteableBitmap?> RenderNotesPrintPageAsync()
+    {
+        try
+        {
+            var annotations = await _annotations.ListAsync(_document);
+            var title = System.IO.Path.GetFileName(_document.Path) ?? "Document";
+            var text = PdfNotesExport.Format(annotations, documentTitle: title);
+            if (string.IsNullOrWhiteSpace(text) || !annotations.Any(a => a.IsStickyNote))
+            {
+                return null;
+            }
+
+            var block = new TextBlock
+            {
+                Text = text,
+                FontSize = 12,
+                TextWrapping = TextWrapping.Wrap,
+                Width = 612,
+                Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 0, 0, 0)),
+            };
+            block.Measure(new Windows.Foundation.Size(612, 20000));
+            var height = (int)Math.Ceiling(Math.Max(792, block.DesiredSize.Height + 24));
+            block.Arrange(new Windows.Foundation.Rect(0, 0, 612, height));
+            var rtb = new RenderTargetBitmap();
+            await rtb.RenderAsync(block, 612, height);
+            var pixels = (await rtb.GetPixelsAsync()).ToArray();
+            return await DocumentPrintHelper.ToWriteableBitmapAsync(rtb.PixelWidth, rtb.PixelHeight, pixels);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task ExportPagesAsImagesAsync()
+    {
+        var indexes = SelectedOrCurrentPages();
+        if (indexes.Count == 0)
+        {
+            return;
+        }
+
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.Export);
+
+        var formatBox = new ComboBox
+        {
+            Width = 180,
+            SelectedIndex = 0,
+        };
+        foreach (var name in DocumentExportFormats.PageImageFormatNames)
+        {
+            formatBox.Items.Add(name);
+        }
+
+        var dpiBox = new TextBox { Width = 80, Text = DocumentExportFormats.DefaultDpi.ToString("0") };
+        var qualityBox = new Slider
+        {
+            Minimum = DocumentExportFormats.MinQuality,
+            Maximum = DocumentExportFormats.MaxQuality,
+            Value = DocumentExportFormats.DefaultQuality,
+            Width = 180,
+            Header = DocumentExportFormats.QualityHeader,
+        };
+
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock { Text = DocumentExportFormats.ExportSummary(indexes.Count) },
+                new TextBlock { Text = PdfViewerTextLabels.Format },
+                formatBox,
+                new TextBlock { Text = DocumentExportFormats.DpiHeader },
+                dpiBox,
+                qualityBox,
+            },
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = DocumentExportFormats.DialogTitle,
+            Content = panel,
+            PrimaryButtonText = DocumentExportFormats.PrimaryButton,
+            CloseButtonText = DialogButtons.Cancel,
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            _status.Text = DocumentExportFormats.CancelledStatus;
+            return;
+        }
+
+        var formatName = formatBox.SelectedItem as string ?? "PNG";
+        var extension = DocumentExportFormats.ExtensionForDisplayName(formatName);
+        var format = ImageEncodeFormatResolver.FromExtension(extension);
+
+        var dpi = DocumentExportFormats.ParseDpi(dpiBox.Text);
+
+        var scale = dpi / 72.0;
+        ImageEncodeOptions? options = format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Webp or ImageEncodeFormat.Avif
+            ? new ImageEncodeOptions(Quality: DocumentExportFormats.ClampQuality(qualityBox.Value), EmbedSrgbProfile: true)
+            : new ImageEncodeOptions(EmbedSrgbProfile: true);
+
+        try
+        {
+            var info = _documentInfo.GetInfo(_document);
+            options = options with
+            {
+                Title = info.Title,
+                Author = info.Author,
+            };
+        }
+        catch
+        {
+            // Export still works without Info metadata.
+        }
+
+        // Transparency: formats with FlattensTransparency flatten via Magick/codec; others keep render alpha.
+
+        var baseName = _document.Path is null
+            ? "page"
+            : System.IO.Path.GetFileNameWithoutExtension(_document.Path);
+
+        try
+        {
+            if (indexes.Count == 1)
+            {
+                var picker = new FileSavePicker();
+                var hwnd = WindowNative.GetWindowHandle(window);
+                InitializeWithWindow.Initialize(picker, hwnd);
+                picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
+                picker.FileTypeChoices.Add(formatName, [extension]);
+                picker.SuggestedFileName = $"{baseName}-p{indexes[0] + 1}";
+                var file = await picker.PickSaveFileAsync();
+                if (file is null)
+                {
+                    _status.Text = DocumentExportFormats.CancelledStatus;
+                    return;
+                }
+
+                _status.Text = DocumentExportFormats.ExportingPage;
+                ShowJobProgress(0, determinate: false);
+                try
+                {
+                    await ExportPageImageAsync(indexes[0], scale, file.Path, format, options);
+                    _status.Text = DocumentExportFormats.FormatExportedPage(indexes[0] + 1, file.Name);
+                }
+                finally
+                {
+                    HideJobProgress();
+                }
+
+                return;
+            }
+
+            var folderPicker = new FolderPicker();
+            var folderHwnd = WindowNative.GetWindowHandle(window);
+            InitializeWithWindow.Initialize(folderPicker, folderHwnd);
+            folderPicker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
+            folderPicker.FileTypeFilter.Add("*");
+            var folder = await folderPicker.PickSingleFolderAsync();
+            if (folder is null)
+            {
+                _status.Text = DocumentExportFormats.CancelledStatus;
+                return;
+            }
+
+            _status.Text = DocumentExportFormats.FormatExportingPages(indexes.Count);
+            ShowJobProgress(0, determinate: true);
+            try
+            {
+                var written = 0;
+                foreach (var pageIndex in indexes)
+                {
+                    var name = $"{baseName}-p{pageIndex + 1}{extension}";
+                    var path = System.IO.Path.Combine(folder.Path, name);
+                    await ExportPageImageAsync(pageIndex, scale, path, format, options);
+                    written++;
+                    ShowJobProgress(100.0 * written / indexes.Count);
+                    _status.Text = DocumentExportFormats.FormatExportProgress(written, indexes.Count);
+                }
+
+                _status.Text = DocumentExportFormats.FormatExportedPages(written, folder.Name);
+            }
+            finally
+            {
+                HideJobProgress();
+            }
+        }
+        catch (Exception ex)
+        {
+            HideJobProgress();
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Export, ex.Message);
+        }
+    }
+
+    private async Task ExportPageImageAsync(
+        int pageIndex,
+        double scale,
+        string path,
+        ImageEncodeFormat format,
+        ImageEncodeOptions? options)
+    {
+        using var rendered = await _renderer.RenderPageAsync(
+            _document,
+            pageIndex,
+            new PdfRenderRequest(scale));
+        await _imageEncoder.WriteBgraAsync(
+            rendered.Pixels.ToArray(),
+            rendered.Width,
+            rendered.Height,
+            path,
+            format,
+            options);
+    }
+
+    private async Task ShowOptimizeDialogAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.Optimize);
+
+        var presetBox = new ComboBox
+        {
+            Width = 260,
+            SelectedIndex = PdfOptimizeDialogUi.DefaultPresetIndex,
+            ItemsSource = PdfOptimizeDialogUi.PresetLabels.ToList(),
+        };
+
+        var aboveDpiBox = new TextBox { Width = 80, Text = "225", IsEnabled = false };
+        var targetDpiBox = new TextBox { Width = 80, Text = "150", IsEnabled = false };
+        var jpegQualityBox = new NumberBox
+        {
+            Header = PdfOptimizeDialogUi.JpegQualityHeader,
+            Width = 140,
+            Value = 75,
+            Minimum = 1,
+            Maximum = 100,
+            SmallChange = 5,
+            LargeChange = 10,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
+            IsEnabled = false,
+        };
+        var stripAttachments = new CheckBox { Content = PdfOptimizeDialogUi.StripAttachmentsLabel, IsEnabled = false };
+        var preserveMono = new CheckBox { Content = PdfOptimizeDialogUi.PreserveMonoLabel, IsChecked = true, IsEnabled = false };
+        var stripMetadata = new CheckBox { Content = PdfOptimizeDialogUi.StripMetadataLabel, IsEnabled = false };
+
+        void SyncCustomEnabled()
+        {
+            var custom = PdfOptimizeDialogUi.IsCustomIndex(presetBox.SelectedIndex);
+            aboveDpiBox.IsEnabled = custom;
+            targetDpiBox.IsEnabled = custom;
+            jpegQualityBox.IsEnabled = custom;
+            stripAttachments.IsEnabled = custom;
+            preserveMono.IsEnabled = custom;
+            stripMetadata.IsEnabled = custom;
+            if (!custom)
+            {
+                var preset = SelectedPreset();
+                var opts = PdfOptimizeOptions.FromPreset(preset);
+                aboveDpiBox.Text = opts.DownsampleAboveDpi.ToString("0");
+                targetDpiBox.Text = opts.TargetDpi.ToString("0");
+                jpegQualityBox.Value = opts.JpegQuality;
+                stripAttachments.IsChecked = opts.RemoveEmbeddedAttachments;
+                preserveMono.IsChecked = opts.PreserveMonochrome;
+                stripMetadata.IsChecked = opts.RemoveMetadata;
+            }
+        }
+
+        presetBox.SelectionChanged += (_, _) => SyncCustomEnabled();
+        SyncCustomEnabled();
+
+        var estimateText = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 420,
+            Text = PdfViewerTextLabels.ChooseAPresetOrCustomThenEstimateOrApplyDownsampledImagesAreRewrittenAsJPEGWhenQualitySettingsApply,
+        };
+
+        PdfOptimizePreset SelectedPreset() => PdfOptimizeDialogUi.FromComboIndex(presetBox.SelectedIndex);
+
+        PdfOptimizeOptions BuildOptions()
+        {
+            var preset = SelectedPreset();
+            if (preset != PdfOptimizePreset.Custom)
+            {
+                return PdfOptimizeOptions.FromPreset(preset);
+            }
+
+            _ = double.TryParse(aboveDpiBox.Text, out var above);
+            _ = double.TryParse(targetDpiBox.Text, out var target);
+            if (above < 36)
+            {
+                above = 225;
+            }
+
+            if (target < 36)
+            {
+                target = 150;
+            }
+
+            var jpegQuality = double.IsNaN(jpegQualityBox.Value)
+                ? 75
+                : (int)Math.Clamp(jpegQualityBox.Value, 1, 100);
+
+            return new PdfOptimizeOptions(
+                Preset: PdfOptimizePreset.Custom,
+                DownsampleImages: true,
+                DownsampleAboveDpi: above,
+                TargetDpi: target,
+                JpegQuality: jpegQuality,
+                PreserveMonochrome: preserveMono.IsChecked == true,
+                RemoveEmbeddedAttachments: stripAttachments.IsChecked == true,
+                RemoveMetadata: stripMetadata.IsChecked == true);
+        }
+
+        var estimateButton = new Button { Content = PdfViewerChromeLabels.Estimate, Margin = new Thickness(0, 8, 8, 0) };
+        estimateButton.Click += (_, _) =>
+        {
+            try
+            {
+                var estimate = _optimize.Estimate(_document, BuildOptions());
+                estimateText.Text =
+                    $"Current: {ByteSizeFormat.Format(estimate.CurrentBytes)} · Estimated: {ByteSizeFormat.Format(estimate.EstimatedBytes)} · "
+                    + $"{estimate.ImagesEligibleForDownsample} image(s) above DPI threshold · "
+                    + $"{estimate.AttachmentCount} embedded file(s).";
+            }
+            catch (Exception ex)
+            {
+                estimateText.Text = PdfViewerTextLabels.EstimateFailed + ex.Message;
+            }
+        };
+
+        var customRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock { Text = PdfViewerTextLabels.AboveDPI, VerticalAlignment = VerticalAlignment.Center },
+                aboveDpiBox,
+                new TextBlock { Text = PdfViewerTextLabels.TargetDPI, VerticalAlignment = VerticalAlignment.Center },
+                targetDpiBox,
+            },
+        };
+
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock { Text = PdfViewerTextLabels.Preset },
+                presetBox,
+                customRow,
+                jpegQualityBox,
+                stripAttachments,
+                preserveMono,
+                stripMetadata,
+                estimateButton,
+                estimateText,
+            },
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = PdfOptimizeDialogUi.DialogTitle,
+            Content = panel,
+            PrimaryButtonText = PdfOptimizeDialogUi.ApplyButton,
+            CloseButtonText = DialogButtons.Cancel,
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            _status.Text = PdfOptimizeDialogUi.CancelledStatus;
+            return;
+        }
+
+        try
+        {
+            _status.Text = PdfOptimizeDialogUi.OptimizingStatus;
+            ShowJobProgress(0, determinate: false);
+            var result = await _optimize.OptimizeAsync(_document, BuildOptions());
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            _status.Text = PdfOptimizeDialogUi.ResultStatus(
+                result,
+                ByteSizeFormat.Format(result.BytesBefore),
+                ByteSizeFormat.Format(result.BytesAfter));
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOptimizeDialogUi.FailedStatus(ex.Message);
+        }
+        finally
+        {
+            HideJobProgress();
+        }
+    }
+
+    private async Task ShowDocumentInfoAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.DocumentInfo);
+
+        PdfDocumentInfo info;
+        try
+        {
+            info = _documentInfo.GetInfo(_document);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Info, ex.Message);
+            return;
+        }
+
+        var annotationCount = 0;
+        try
+        {
+            var annotations = await _annotations.ListAsync(_document);
+            annotationCount = annotations.Count;
+        }
+        catch
+        {
+            // Annotation list optional for inspector.
+        }
+
+        static string Bytes(long? size) => ByteSizeFormat.FormatOptional(size);
+
+        var perms = info.Permissions;
+        var permissionLines = perms.FormatLines();
+
+        var body = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 460,
+            Text = PdfDocumentInfoUi.FormatDialogBody(
+                DisplayValue.OrEmDash(info.Title),
+                DisplayValue.OrEmDash(info.Author),
+                DisplayValue.OrEmDash(info.Subject),
+                DisplayValue.OrEmDash(info.Keywords),
+                DisplayValue.OrEmDash(info.Creator),
+                DisplayValue.OrEmDash(info.Producer),
+                DisplayValue.OrEmDash(info.CreationDate),
+                DisplayValue.OrEmDash(info.ModificationDate),
+                info.PageCount,
+                annotationCount,
+                DisplayValue.OrEmDash(info.PdfVersion),
+                PdfPageSizeFormat.FormatPoints(info.PageWidthPoints, info.PageHeightPoints),
+                info.Fonts.Count == 0 ? DisplayValue.EmDash : string.Join(", ", info.Fonts),
+                info.EmbeddedAttachmentCount,
+                DisplayValue.OrEmDash(info.FilePath),
+                DisplayValue.OrEmDash(info.FilePath is null ? null : System.IO.Path.GetFileName(info.FilePath)),
+                Bytes(info.FileSizeBytes),
+                PdfDocumentPermissions.InfoEncryptedLine(info.IsEncrypted),
+                info.SecurityHandlerRevision < 0 ? "none" : info.SecurityHandlerRevision.ToString(),
+                $"0x{info.PermissionFlags:X8}",
+                perms.FormatSection()),
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = PdfDocumentInfoUi.DialogTitle,
+            Content = new ScrollViewer
+            {
+                Content = body,
+                MaxHeight = 420,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            },
+            PrimaryButtonText = PdfDocumentInfoUi.EditButton,
+            CloseButtonText = PdfDocumentInfoUi.CloseButton,
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            await EditDocumentInfoAsync(info);
+            return;
+        }
+
+        _status.Text = info.IsEncrypted
+            ? PdfDocumentPermissions.EncryptedAdvisoryStatus
+            : AnnotationMutationStatus.DocumentInfo;
+    }
+
+    /// <summary>File → Properties entry point (F48).</summary>
+    public Task ShowPropertiesAsync() => ShowDocumentInfoAsync();
+
+    public void ToggleFullscreen()
+    {
+        if (App.CurrentApp.MainWindowInstance is MainWindow window)
+        {
+            window.ToggleFullscreen();
+            _status.Text = FullscreenTogglePolicy.Toggled;
+            return;
+        }
+
+        _status.Text = FullscreenTogglePolicy.Unavailable;
+    }
+
+    public void ToggleToolbarVisibility()
+    {
+        if (_toolbar is null)
+        {
+            return;
+        }
+
+        _toolbar.Visibility = _toolbar.Visibility == Visibility.Visible
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        _status.Text = _toolbar.Visibility == Visibility.Visible ? AnnotationMutationStatus.ToolbarShown : AnnotationMutationStatus.ToolbarHidden;
+    }
+
+    public bool IsToolbarVisible => _toolbar?.Visibility != Visibility.Collapsed;
+
+    /// <summary>File → Save / Save As (F01-16/17).</summary>
+    public async Task SaveDocumentAsync(bool saveAs)
+    {
+        try
+        {
+            var path = _document.Path;
+            if (saveAs || string.IsNullOrWhiteSpace(path))
+            {
+                var window = _ownerWindow
+                    ?? App.CurrentApp.MainWindowInstance
+                    ?? throw new InvalidOperationException(MainWindowRequiredMessages.SavePicker);
+                var picker = new FileSavePicker();
+                var hwnd = WindowNative.GetWindowHandle(window);
+                InitializeWithWindow.Initialize(picker, hwnd);
+                picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+                picker.FileTypeChoices.Add("PDF", [".pdf"]);
+                picker.SuggestedFileName = string.IsNullOrWhiteSpace(path)
+                    ? "document.pdf"
+                    : System.IO.Path.GetFileName(path);
+                var file = await picker.PickSaveFileAsync();
+                if (file is null)
+                {
+                    _status.Text = DocumentSaveStatus.Cancelled;
+                    return;
+                }
+
+                path = file.Path;
+            }
+
+            await _pageEditor.SaveAsync(_document, path!);
+            ClearUnsavedEdits();
+            _status.Text = DocumentSaveStatus.SavedFileName(System.IO.Path.GetFileName(path));
+            App.CurrentApp.MainWindowInstance?.NotifyActiveDocumentSaved(path!);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Save, ex.Message);
+        }
+    }
+
+    private async Task EditDocumentInfoAsync(PdfDocumentInfo current)
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.DocumentInfoEdit);
+
+        var titleBox = new TextBox { Text = current.Title ?? string.Empty, Width = 320 };
+        var authorBox = new TextBox { Text = current.Author ?? string.Empty, Width = 320 };
+        var subjectBox = new TextBox { Text = current.Subject ?? string.Empty, Width = 320 };
+        var keywordsBox = new TextBox { Text = current.Keywords ?? string.Empty, Width = 320 };
+        var creatorBox = new TextBox { Text = current.Creator ?? string.Empty, Width = 320 };
+        var producerBox = new TextBox { Text = current.Producer ?? string.Empty, Width = 320 };
+
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock { Text = PdfDocumentInfoUi.FieldTitle },
+                titleBox,
+                new TextBlock { Text = PdfDocumentInfoUi.FieldAuthor },
+                authorBox,
+                new TextBlock { Text = PdfDocumentInfoUi.FieldSubject },
+                subjectBox,
+                new TextBlock { Text = PdfDocumentInfoUi.FieldKeywords },
+                keywordsBox,
+                new TextBlock { Text = PdfDocumentInfoUi.FieldCreator },
+                creatorBox,
+                new TextBlock { Text = PdfDocumentInfoUi.FieldProducer },
+                producerBox,
+            },
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = PdfDocumentInfoUi.EditDialogTitle,
+            Content = panel,
+            PrimaryButtonText = PdfDocumentInfoUi.SaveButton,
+            SecondaryButtonText = PdfDocumentInfoUi.ClearAllButton,
+            CloseButtonText = PdfDocumentInfoUi.CloseButton,
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        var choice = await dialog.ShowAsync();
+        if (choice == ContentDialogResult.None)
+        {
+            _status.Text = PdfDocumentInfoUi.EditCancelledStatus;
+            return;
+        }
+
+        try
+        {
+            _infoUndoStack.Push(
+                new PdfDocumentInfoUpdate(
+                    Title: current.Title ?? string.Empty,
+                    Author: current.Author ?? string.Empty,
+                    Subject: current.Subject ?? string.Empty,
+                    Keywords: current.Keywords ?? string.Empty,
+                    Creator: current.Creator ?? string.Empty,
+                    Producer: current.Producer ?? string.Empty));
+
+            if (choice == ContentDialogResult.Secondary)
+            {
+                _documentInfo.SetInfo(_document, new PdfDocumentInfoUpdate(ClearAll: true));
+                _status.Text = PdfDocumentInfoUi.ClearedStatus;
+            }
+            else
+            {
+                _documentInfo.SetInfo(
+                    _document,
+                    new PdfDocumentInfoUpdate(
+                        Title: titleBox.Text,
+                        Author: authorBox.Text,
+                        Subject: subjectBox.Text,
+                        Keywords: keywordsBox.Text,
+                        Creator: creatorBox.Text,
+                        Producer: producerBox.Text));
+                _status.Text = PdfDocumentInfoUi.UpdatedStatus;
+            }
+
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            RefreshPropertiesSidebar();
+            NotifyEdited();
+        }
+        catch (Exception ex)
+        {
+            _infoUndoStack.TryDiscardTop();
+            _status.Text = PdfDocumentInfoUi.FailedStatus(ex.Message);
+        }
+    }
+
+    private void RefreshPropertiesSidebar()
+    {
+        try
+        {
+            var info = _documentInfo.GetInfo(_document);
+            static string Bytes(long? size) => ByteSizeFormat.FormatOptional(size);
+
+            var pageSize = PdfPageSizeFormat.FormatPoints(
+                info.PageWidthPoints,
+                info.PageHeightPoints,
+                separator: "×");
+            var fileName = DisplayValue.OrEmDash(
+                info.FilePath is null ? null : System.IO.Path.GetFileName(info.FilePath));
+
+            _propertiesSummary.Text = PdfDocumentInfoUi.FormatSidebarSummary(
+                DisplayValue.OrEmDash(info.Title),
+                DisplayValue.OrEmDash(info.Author),
+                DisplayValue.OrEmDash(info.Subject),
+                DisplayValue.OrEmDash(info.Creator),
+                DisplayValue.OrEmDash(info.Producer),
+                info.PageCount,
+                pageSize,
+                fileName,
+                Bytes(info.FileSizeBytes),
+                DisplayValue.OrEmDash(info.PdfVersion),
+                PdfDocumentPermissions.PropertiesEncryptedMarker(info.IsEncrypted),
+                info.EmbeddedAttachmentCount);
+        }
+        catch (Exception ex)
+        {
+            _propertiesSummary.Text = PdfDocumentInfoUi.PropertiesUnavailablePrefix + ex.Message;
+        }
+    }
+
+    private void RefreshAttachmentsSidebar()
+    {
+        try
+        {
+            _attachmentItems = _documentInfo.ListAttachments(_document);
+            static string Bytes(long? size) => ByteSizeFormat.FormatOptional(size, "?");
+
+            _attachmentList.ItemsSource = _attachmentItems.Count == 0
+                ? new[] { PdfDialogOptions.NoneChoice }
+                : _attachmentItems
+                    .Select(a => $"{a.Name} · {Bytes(a.SizeBytes)}")
+                    .ToList();
+        }
+        catch (Exception ex)
+        {
+            _attachmentItems = [];
+            _attachmentList.ItemsSource = new[] { "Unavailable: " + ex.Message };
+        }
+    }
+
+    private void AttachmentList_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (_attachmentItems.Count == 0
+            || _attachmentList.SelectedIndex < 0
+            || _attachmentList.SelectedIndex >= _attachmentItems.Count)
+        {
+            _status.Text = AnnotationSelectionStatus.AttachmentContextHint;
+            return;
+        }
+
+        if (sender is not FrameworkElement target)
+        {
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+        var saveItem = new MenuFlyoutItem { Text = PdfViewerTextLabels.SaveAs };
+        saveItem.Click += async (_, _) => await SaveSelectedAttachmentAsync();
+        flyout.Items.Add(saveItem);
+        flyout.ShowAt(target, e.GetPosition(target));
+        e.Handled = true;
+    }
+
+    private async Task SaveSelectedAttachmentAsync()
+    {
+        if (_attachmentItems.Count == 0
+            || _attachmentList.SelectedIndex < 0
+            || _attachmentList.SelectedIndex >= _attachmentItems.Count)
+        {
+            _status.Text = AnnotationSelectionStatus.SaveAttachment;
+            return;
+        }
+
+        var item = _attachmentItems[_attachmentList.SelectedIndex];
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.AttachmentSave);
+
+        try
+        {
+            var bytes = _documentInfo.GetAttachmentBytes(_document, item.Index);
+            var picker = new FileSavePicker();
+            var hwnd = WindowNative.GetWindowHandle(window);
+            InitializeWithWindow.Initialize(picker, hwnd);
+            picker.SuggestedStartLocation = PickerLocationId.Downloads;
+            picker.SuggestedFileName = string.IsNullOrWhiteSpace(item.Name) ? "attachment.bin" : item.Name;
+            var ext = System.IO.Path.GetExtension(item.Name);
+            if (string.IsNullOrWhiteSpace(ext))
+            {
+                ext = ".bin";
+            }
+
+            picker.FileTypeChoices.Add("Attachment", [ext]);
+            var file = await picker.PickSaveFileAsync();
+            if (file is null)
+            {
+                _status.Text = AttachmentSaveStatus.Cancelled;
+                return;
+            }
+
+            await FileIO.WriteBytesAsync(file, bytes);
+            _status.Text = AttachmentSaveStatus.FormatSaved(item.Name, bytes.Length);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.AttachmentSave, ex.Message);
+        }
     }
 }

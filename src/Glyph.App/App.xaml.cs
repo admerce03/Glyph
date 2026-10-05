@@ -35,10 +35,18 @@ public partial class App : Application
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         var settingsStore = Services.GetRequiredService<ISettingsStore>();
         await settingsStore.LoadAsync();
 
-        OpenNewWindow();
+        var window = OpenNewWindow();
+        sw.Stop();
+        var ms = sw.ElapsedMilliseconds;
+        System.Diagnostics.Debug.WriteLine($"Glyph cold start to first window: {ms} ms");
+        var logger = Services.GetService<ILoggerFactory>()?.CreateLogger("Glyph.Startup");
+        logger?.LogInformation("Cold start to first window: {ElapsedMs} ms", ms);
+        // Surface once in the status bar when the window is ready (F57-01).
+        window.ReportStartupDuration(ms);
     }
 
     public MainWindow OpenNewWindow()

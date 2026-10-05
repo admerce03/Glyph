@@ -15,4 +15,19 @@ public sealed record PdfAnnotationInfo(
     PdfShapeKind? ShapeKind = null,
     bool IsTextBox = false,
     bool IsStamp = false,
-    bool IsCallout = false);
+    bool IsCallout = false,
+    string? Author = null,
+    string? GroupId = null,
+    bool IsUnderlined = false,
+    PdfPagePoint? EndpointA = null,
+    PdfPagePoint? EndpointB = null,
+    PdfTextQuadding? TextQuadding = null)
+{
+    /// <summary>
+    /// True when this annotation exposes line/arrow endpoint handles instead of box handles.
+    /// </summary>
+    public bool UsesEndpointHandles =>
+        ShapeKind is PdfShapeKind.Line or PdfShapeKind.Arrow
+        && EndpointA is not null
+        && EndpointB is not null;
+}

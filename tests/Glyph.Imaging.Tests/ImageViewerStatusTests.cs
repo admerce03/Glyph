@@ -1,0 +1,31 @@
+using FluentAssertions;
+using Glyph.Imaging.Abstractions;
+
+namespace Glyph.Imaging.Tests;
+
+public class ImageViewerStatusTests
+{
+    [Fact]
+    public void Mode_selection_and_batch_labels()
+    {
+        ImageViewerStatus.DrawModeOff.Should().Contain("off");
+        ImageSelectionClipboardPolicy.NeedSelection.Should().Contain("selection");
+        ImageViewerStatus.FormatCopiedImage(10, 20).Should().Contain("10");
+        ImageViewerStatus.FormatLassoSelected(3, 4, 5).Should().Contain("5 pts");
+        ImageViewerStatus.FormatMarkupTool("Ink").Should().Contain("Ink");
+        BatchProgressUi.FormatConvertWrote("PNG", 2).Should().Contain("PNG");
+        BatchProgressUi.FormatRenamed(3).Should().Contain("3");
+        BatchProgressUi.FormatAppliesToFolder(5).Should().Contain("5 images");
+        BatchProgressUi.StampPlacementHintWithUndo.Should().Contain("Ctrl+Z");
+        BatchProgressUi.CancelledStatus(BatchProgressUi.BatchResize, 1).Should().Contain("Batch resize");
+        ImageViewerStatus.FormatSelectionRestored("rect", 1, 2).Should().Contain("rect");
+        ImageViewerStatus.FormatPrintUiShown(2, 2).Should().Contain("2-up");
+        ImageViewerStatus.RotatedLeft.Should().Be("Rotated left.");
+        ImageViewerStatus.FlippedHorizontally.Should().Contain("horizontally");
+        ImageViewerStatus.AssignedSrgbIcc.Should().Contain("sRGB");
+        ImageViewerStatus.FormatMovedSelection(1, 2).Should().Contain("(1,2)");
+        ImageViewerStatus.FormatBatchUpdated("orient", 3, true).Should().Contain("(+ current)");
+        ImageViewerStatus.FormatBackgroundRemoved(12, true).Should().Contain("trimmed");
+    }
+}
+

@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Glyph.Ocr.Abstractions;
-using Xunit;
 
 namespace Glyph.Ocr.Tests;
 
