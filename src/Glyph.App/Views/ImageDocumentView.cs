@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.App.Printing;
 using Glyph.Core.Documents;
+using Glyph.Core.Printing;
 using Glyph.Core.IO;
 using Glyph.Core.Ocr;
 using Glyph.Core.Signatures;
@@ -532,7 +533,7 @@ public sealed class ImageDocumentView : UserControl
             && App.Services.GetService<ISettingsStore>()?.Current.AnimationAutoplay == true)
         {
             StartAnimationPlayback();
-            _status.Text = "Animation playing (autoplay).";
+            _status.Text = ImageViewerStatus.AnimationPlayingAutoplay;
         }
     }
 
@@ -598,7 +599,7 @@ public sealed class ImageDocumentView : UserControl
     {
         if (_openSibling is null || string.IsNullOrWhiteSpace(_document.Path))
         {
-            _status.Text = "Folder navigation unavailable.";
+            _status.Text = ImageViewerStatus.FolderNavUnavailable;
             return;
         }
 
@@ -756,7 +757,7 @@ public sealed class ImageDocumentView : UserControl
         }
 
         StartAnimationPlayback();
-        _status.Text = "Animation playing.";
+        _status.Text = ImageViewerStatus.AnimationPlaying;
     }
 
     private void StartAnimationPlayback()
@@ -927,7 +928,7 @@ public sealed class ImageDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Save frame failed: " + ex.Message;
+            _status.Text = ImageViewerStatus.FormatFailed(ImageViewerStatus.SaveFrameFailedPrefix, ex.Message);
         }
     }
 
@@ -980,7 +981,7 @@ public sealed class ImageDocumentView : UserControl
             if (_drawMode)
             {
                 ExitDrawMode();
-                _status.Text = "Draw mode off.";
+                _status.Text = ImageViewerStatus.DrawModeOff;
                 e.Handled = true;
                 return;
             }
@@ -1125,7 +1126,7 @@ public sealed class ImageDocumentView : UserControl
     {
         if (_selectionInverted)
         {
-            _status.Text = "Cannot move an inverted selection — Invert again first.";
+            _status.Text = ImageViewerStatus.CannotMoveInverted;
             return;
         }
 
@@ -1195,7 +1196,7 @@ public sealed class ImageDocumentView : UserControl
                 var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
                 package.SetBitmap(Windows.Storage.Streams.RandomAccessStreamReference.CreateFromFile(file));
                 Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
-                _status.Text = $"Copied image {buffer.Width}×{buffer.Height}.";
+                _status.Text = ImageViewerStatus.FormatCopiedImage(buffer.Width, buffer.Height);
             }
             finally
             {
@@ -1204,7 +1205,7 @@ public sealed class ImageDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Copy image failed: " + ex.Message;
+            _status.Text = ImageViewerStatus.FormatFailed(ImageViewerStatus.CopyImageFailedPrefix, ex.Message);
         }
     }
 
@@ -1249,7 +1250,7 @@ public sealed class ImageDocumentView : UserControl
             // Fall through to internal selection clipboard.
             if (_selectionClipboard is null)
             {
-                _status.Text = "Paste failed: " + ex.Message;
+                _status.Text = ImageViewerStatus.FormatFailed(ImageViewerStatus.PasteFailedPrefix, ex.Message);
                 return;
             }
         }
@@ -1350,7 +1351,7 @@ public sealed class ImageDocumentView : UserControl
     {
         if (_pixelSelection is not { } sel || sel.Width < 1 || sel.Height < 1)
         {
-            _status.Text = "Make a selection first.";
+            _status.Text = ImageSelectionClipboardPolicy.NeedSelection;
             return;
         }
 
@@ -1371,7 +1372,7 @@ public sealed class ImageDocumentView : UserControl
     {
         if (_pixelSelection is not { } sel || sel.Width < 1 || sel.Height < 1)
         {
-            _status.Text = "Make a selection first.";
+            _status.Text = ImageSelectionClipboardPolicy.NeedSelection;
             return;
         }
 
@@ -1405,7 +1406,7 @@ public sealed class ImageDocumentView : UserControl
         catch (Exception ex)
         {
             checkpoint?.Dispose();
-            _status.Text = "Edit failed: " + ex.Message;
+            _status.Text = ImageViewerStatus.FormatFailed(ImageViewerStatus.EditFailedPrefix, ex.Message);
         }
     }
 
@@ -1549,7 +1550,7 @@ public sealed class ImageDocumentView : UserControl
                 return;
             }
 
-            _status.Text = $"Loading full preview… ({nativeMax:N0}px edge)";
+            _status.Text = ImageViewerStatus.FormatLoadingPreview(nativeMax);
             await Task.Yield();
         }
 
@@ -1963,7 +1964,7 @@ public sealed class ImageDocumentView : UserControl
 
         if (_pixelSelection is not { } sel || sel.Width < 1 || sel.Height < 1)
         {
-            _status.Text = "Make a selection first.";
+            _status.Text = ImageSelectionClipboardPolicy.NeedSelection;
             return;
         }
 
@@ -1977,7 +1978,7 @@ public sealed class ImageDocumentView : UserControl
         if (!_selectionInverted && fullImage)
         {
             ClearPixelSelection();
-            _status.Text = "Inverted full selection → empty.";
+            _status.Text = ImageViewerStatus.InvertedFullEmpty;
             return;
         }
 
@@ -2164,7 +2165,7 @@ public sealed class ImageDocumentView : UserControl
         {
             if (_selectionInverted)
             {
-                _status.Text = "Cannot move an inverted selection — Invert again first.";
+                _status.Text = ImageViewerStatus.CannotMoveInverted;
                 e.Handled = true;
                 return;
             }
@@ -2176,7 +2177,7 @@ public sealed class ImageDocumentView : UserControl
             _moveOriginTop = Canvas.GetTop(_cropRect);
             _moveSourcePixels = _pixelSelection;
             _cropOverlay.CapturePointer(e.Pointer);
-            _status.Text = "Moving selection…";
+            _status.Text = ImageViewerStatus.MovingSelection;
             e.Handled = true;
             return;
         }
@@ -2287,7 +2288,7 @@ public sealed class ImageDocumentView : UserControl
                 else
                 {
                     SetPixelSelection(sel);
-                    _status.Text = $"Selected {sel.Width}×{sel.Height} px";
+                    _status.Text = ImageViewerStatus.FormatSelected(sel.Width, sel.Height);
                 }
             }
 
@@ -2431,7 +2432,7 @@ public sealed class ImageDocumentView : UserControl
             (right - x) * (_displayWidth / (double)_document.PixelWidth),
             (bottom - y) * (_displayHeight / (double)_document.PixelHeight));
         ApplySelectionChrome();
-        _status.Text = $"Lasso selected {_pixelSelection.Value.Width}×{_pixelSelection.Value.Height} px ({_lassoDocPoints.Count} pts)";
+        _status.Text = ImageViewerStatus.FormatLassoSelected(_pixelSelection.Value.Width, _pixelSelection.Value.Height, _lassoDocPoints.Count);
     }
 
     private void RebuildLassoPolylineFromDoc(double previewOffsetX = 0, double previewOffsetY = 0)
@@ -2494,7 +2495,7 @@ public sealed class ImageDocumentView : UserControl
             {
                 var mapped = ImageCropMapper.ToDocumentPixels(
                     x, y, w, h, _displayWidth, _displayHeight, _document.PixelWidth, _document.PixelHeight);
-                _status.Text = $"Selection ({SelectionKindLabel()}) → {mapped.Width}×{mapped.Height} px";
+                _status.Text = ImageViewerStatus.FormatSelectionMapped(SelectionKindLabel(), mapped.Width, mapped.Height);
             }
 
             return;
@@ -2564,7 +2565,7 @@ public sealed class ImageDocumentView : UserControl
         var srcH = _document.PixelHeight;
         if (srcW <= 0 || srcH <= 0)
         {
-            _status.Text = "Nothing to resize.";
+            _status.Text = ImageViewerStatus.NothingToResize;
             return;
         }
 
@@ -2798,7 +2799,7 @@ public sealed class ImageDocumentView : UserControl
         var (width, height) = ParsePixelSize();
         if (width <= 0 || height <= 0)
         {
-            _status.Text = "Resize needs positive width and height.";
+            _status.Text = ImageViewerStatus.ResizeNeedsPositive;
             return;
         }
 
@@ -2812,7 +2813,7 @@ public sealed class ImageDocumentView : UserControl
         {
             if (!double.TryParse(percentBox.Text, out var pct) || pct <= 0)
             {
-                _status.Text = "Batch resize needs a positive Scale %.";
+                _status.Text = ImageViewerStatus.BatchResizeNeedsScale;
                 return;
             }
 
@@ -2866,7 +2867,7 @@ public sealed class ImageDocumentView : UserControl
     {
         if (_decoder is null || _siblings.Count < 2 || string.IsNullOrWhiteSpace(_document.Path))
         {
-            _status.Text = "Batch folder ops need a folder with multiple images.";
+            _status.Text = ImageViewerStatus.BatchNeedsFolder;
             return;
         }
 
@@ -3002,21 +3003,21 @@ public sealed class ImageDocumentView : UserControl
                 ? new ImageEncodeOptions(Quality: (int)quality.Value, PreserveMetadata: true)
                 : new ImageEncodeOptions(PreserveMetadata: true);
             var converted = await BatchConvertFolderAsync(format, extension, options);
-            _status.Text = $"Batch convert → {format}: wrote {converted} file(s).";
+            _status.Text = BatchProgressUi.FormatConvertWrote(format, converted);
             return;
         }
 
         if (categoryBox.SelectedIndex == 2)
         {
             var strippedCount = await BatchStripMetadataFolderAsync(includeCurrent: includeCurrent.IsChecked == true);
-            _status.Text = $"Batch strip metadata: updated {strippedCount} folder image(s).";
+            _status.Text = BatchProgressUi.FormatStripMetadata(strippedCount);
             return;
         }
 
         if (categoryBox.SelectedIndex == 3)
         {
             var renamed = await BatchRenameFolderAsync(renamePattern.Text ?? BatchRenamePattern.DefaultPattern);
-            _status.Text = $"Batch rename: renamed {renamed} file(s).";
+            _status.Text = BatchProgressUi.FormatRenamed(renamed);
             RefreshSiblingList();
             return;
         }
@@ -3236,7 +3237,7 @@ public sealed class ImageDocumentView : UserControl
             });
         if (cancelled)
         {
-            _status.Text = $"Batch convert cancelled after {written} file(s).";
+            _status.Text = BatchProgressUi.CancelledStatus("Batch convert", written);
         }
 
         return written;
@@ -3275,7 +3276,7 @@ public sealed class ImageDocumentView : UserControl
             });
         if (cancelled)
         {
-            _status.Text = $"Batch strip cancelled after {updated} file(s).";
+            _status.Text = BatchProgressUi.CancelledStatus("Batch strip", updated);
         }
 
         return updated;
@@ -3512,7 +3513,7 @@ public sealed class ImageDocumentView : UserControl
                         var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
                         package.SetBitmap(Windows.Storage.Streams.RandomAccessStreamReference.CreateFromStream(stream));
                         Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
-                        _status.Text = $"Subject copied ({buffer.Width}×{buffer.Height}).";
+                        _status.Text = ImageViewerStatus.FormatSubjectCopied(buffer.Width, buffer.Height);
                     }
                     finally
                     {
@@ -3561,7 +3562,7 @@ public sealed class ImageDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Background tools failed: " + ex.Message;
+            _status.Text = ImageViewerStatus.FormatFailed(ImageViewerStatus.BackgroundToolsFailedPrefix, ex.Message);
         }
     }
 
@@ -3716,7 +3717,7 @@ public sealed class ImageDocumentView : UserControl
             }
             catch (Exception ex)
             {
-                _status.Text = "Preview failed: " + ex.Message;
+                _status.Text = ImageViewerStatus.FormatFailed(ImageViewerStatus.PreviewFailedPrefix, ex.Message);
             }
             finally
             {
@@ -3811,7 +3812,7 @@ public sealed class ImageDocumentView : UserControl
                     await RefreshAsync();
                 }
 
-                _status.Text = "Adjustments cancelled.";
+                _status.Text = ImageViewerStatus.AdjustmentsCancelled;
                 return;
             }
 
@@ -3825,7 +3826,7 @@ public sealed class ImageDocumentView : UserControl
                     await RefreshAsync();
                 }
 
-                _status.Text = "No adjustments to apply.";
+                _status.Text = ImageViewerStatus.NoAdjustments;
                 return;
             }
 
@@ -3833,7 +3834,7 @@ public sealed class ImageDocumentView : UserControl
             PushUndo(baseline!);
             baseline = null;
             UpdateStatus();
-            _status.Text = "Color adjustments applied.";
+            _status.Text = ImageViewerStatus.AdjustmentsApplied;
         }
         catch (Exception ex)
         {
@@ -3853,7 +3854,7 @@ public sealed class ImageDocumentView : UserControl
                 }
             }
 
-            _status.Text = "Adjust failed: " + ex.Message;
+            _status.Text = ImageViewerStatus.FormatFailed(ImageViewerStatus.AdjustFailedPrefix, ex.Message);
         }
         finally
         {
@@ -3866,7 +3867,7 @@ public sealed class ImageDocumentView : UserControl
     {
         if (_signatures is null)
         {
-            _status.Text = "Signature library unavailable.";
+            _status.Text = ImageViewerStatus.SignatureLibraryUnavailable;
             return;
         }
 
@@ -3875,7 +3876,7 @@ public sealed class ImageDocumentView : UserControl
             var entries = await _signatures.ListAsync();
             if (entries.Count == 0)
             {
-                _status.Text = "No signatures saved — add one from a PDF Sign toolbar first.";
+                _status.Text = ImageViewerStatus.NoSignaturesSaved;
                 return;
             }
 
@@ -3942,7 +3943,7 @@ public sealed class ImageDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Stamp failed: " + ex.Message;
+            _status.Text = ImageViewerStatus.FormatFailed(ImageViewerStatus.StampFailedPrefix, ex.Message);
         }
     }
 
@@ -4011,7 +4012,7 @@ public sealed class ImageDocumentView : UserControl
             };
             if (await dialog.ShowAsync() != ContentDialogResult.Primary)
             {
-                _status.Text = "Print cancelled.";
+                _status.Text = PrintPageScopeChooser.CancelledStatus;
                 return;
             }
 
@@ -4072,7 +4073,7 @@ public sealed class ImageDocumentView : UserControl
                     }
                     catch (Exception ex)
                     {
-                        _status.Text = $"Print skipped {System.IO.Path.GetFileName(sibling)}: {ex.Message}";
+                        _status.Text = ImageViewerStatus.FormatPrintSkipped(System.IO.Path.GetFileName(sibling), ex.Message);
                     }
                 }
             }
@@ -4092,7 +4093,7 @@ public sealed class ImageDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Print failed: " + ex.Message;
+            _status.Text = ImageViewerStatus.FormatFailed(ImageViewerStatus.PrintFailedPrefix, ex.Message);
         }
     }
 
@@ -4473,7 +4474,7 @@ public sealed class ImageDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Metadata failed: " + ex.Message;
+            _status.Text = ImageViewerStatus.FormatFailed(ImageViewerStatus.MetadataFailedPrefix, ex.Message);
         }
     }
 
@@ -4513,7 +4514,7 @@ public sealed class ImageDocumentView : UserControl
             var file = await picker.PickSaveFileAsync();
             if (file is null)
             {
-                _status.Text = "Save cancelled.";
+                _status.Text = DocumentSaveStatus.Cancelled;
                 return;
             }
 
@@ -4524,7 +4525,7 @@ public sealed class ImageDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Save failed: " + ex.Message;
+            _status.Text = ImageViewerStatus.FormatFailed(ImageViewerStatus.SaveFailedPrefix, ex.Message);
         }
     }
 
@@ -4596,7 +4597,7 @@ public sealed class ImageDocumentView : UserControl
     {
         if (_ocr is null)
         {
-            _status.Text = "OCR engine unavailable.";
+            _status.Text = OcrResultDialog.EngineUnavailable;
             return;
         }
 
@@ -4631,7 +4632,7 @@ public sealed class ImageDocumentView : UserControl
 
         try
         {
-            _status.Text = "Running OCR…";
+            _status.Text = ImageViewerStatus.RunningOcr;
             var buffer = await _document.GetPixelsAsync(maxEdge: 4096);
             string? languageTag = null;
             try
@@ -4662,7 +4663,7 @@ public sealed class ImageDocumentView : UserControl
                 var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
                 package.SetText(result.Text ?? string.Empty);
                 Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
-                _status.Text = "OCR text copied.";
+                _status.Text = OcrResultDialog.TextCopied;
             };
 
             var panel = new StackPanel
@@ -4694,7 +4695,7 @@ public sealed class ImageDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "OCR failed: " + ex.Message;
+            _status.Text = OcrResultDialog.Failed(ex.Message);
         }
     }
 
@@ -4702,7 +4703,7 @@ public sealed class ImageDocumentView : UserControl
     {
         if (_ocr is null || _decoder is null || _siblings.Count == 0)
         {
-            _status.Text = "Folder OCR unavailable.";
+            _status.Text = ImageViewerStatus.FolderOcrUnavailable;
             return;
         }
 
@@ -4756,7 +4757,7 @@ public sealed class ImageDocumentView : UserControl
             var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
             package.SetText(combined);
             Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
-            _status.Text = "Folder OCR text copied.";
+            _status.Text = ImageViewerStatus.FolderOcrCopied;
         };
         var panel = new StackPanel
         {
@@ -4807,7 +4808,7 @@ public sealed class ImageDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Save failed: " + ex.Message;
+            _status.Text = ImageViewerStatus.FormatFailed(ImageViewerStatus.SaveFailedPrefix, ex.Message);
         }
     }
 
@@ -4831,7 +4832,7 @@ public sealed class ImageDocumentView : UserControl
             var file = await picker.PickSaveFileAsync();
             if (file is null)
             {
-                _status.Text = "Export cancelled.";
+                _status.Text = DocumentExportFormats.CancelledStatus;
                 return;
             }
 
@@ -4840,7 +4841,7 @@ public sealed class ImageDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Export failed: " + ex.Message;
+            _status.Text = ImageViewerStatus.FormatFailed(ImageViewerStatus.ExportFailedPrefix, ex.Message);
         }
     }
 
@@ -4870,7 +4871,7 @@ public sealed class ImageDocumentView : UserControl
         };
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
         {
-            _status.Text = "Save cancelled — markup still on overlay.";
+            _status.Text = ImageViewerStatus.SaveCancelledMarkup;
             return false;
         }
 
@@ -4883,7 +4884,7 @@ public sealed class ImageDocumentView : UserControl
         if (_drawMode)
         {
             ExitDrawMode();
-            _status.Text = "Draw mode off.";
+            _status.Text = ImageViewerStatus.DrawModeOff;
             return;
         }
 
@@ -4999,7 +5000,7 @@ public sealed class ImageDocumentView : UserControl
         {
             _pendingText = null;
             var toolName = toolBox.SelectedItem as string ?? "Freehand";
-            _status.Text = $"{toolName} markup — drag on image (Esc exits; Ctrl+Z undoes).";
+            _status.Text = ImageViewerStatus.FormatMarkupTool(toolName);
         }
 
         _drawMode = true;
@@ -5467,7 +5468,7 @@ public sealed class ImageDocumentView : UserControl
             _markupUndoWasShape.Add(true);
             RebuildMarkupOverlay();
             UpdateFlattenButtonVisibility();
-            _status.Text = $"Text placed ({_markupStrokes.Count + _markupShapes.Count} total).";
+            _status.Text = ImageViewerStatus.FormatTextPlaced(_markupStrokes.Count + _markupShapes.Count);
             _drawPoints.Clear();
             e.Handled = true;
             return;
@@ -5496,7 +5497,7 @@ public sealed class ImageDocumentView : UserControl
                 _markupUndoWasShape.Add(true);
                 RebuildMarkupOverlay();
                 UpdateFlattenButtonVisibility();
-                _status.Text = $"Markup {kind} added ({_markupStrokes.Count + _markupShapes.Count} total).";
+                _status.Text = ImageViewerStatus.FormatMarkupAdded(kind, _markupStrokes.Count + _markupShapes.Count);
             }
         }
         else if (_drawPoints.Count >= 2)
@@ -5513,7 +5514,7 @@ public sealed class ImageDocumentView : UserControl
                 _drawWidthPixels));
             _markupUndoWasShape.Add(false);
             UpdateFlattenButtonVisibility();
-            _status.Text = $"Markup stroke added ({_markupStrokes.Count + _markupShapes.Count} total).";
+            _status.Text = ImageViewerStatus.FormatMarkupStrokeAdded(_markupStrokes.Count + _markupShapes.Count);
         }
         else if (_activeDrawPolyline is not null)
         {

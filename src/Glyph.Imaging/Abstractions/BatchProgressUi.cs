@@ -16,4 +16,13 @@ public static class BatchProgressUi
 
     public static string CancelledStatus(string operation, int updatedCount) =>
         $"{operation} cancelled after {updatedCount} file(s).";
+
+    public static string FormatConvertWrote(string format, int converted) =>
+        $"Batch convert → {format}: wrote {converted} file(s).";
+
+    public static string FormatStripMetadata(int strippedCount) =>
+        $"Batch strip metadata: updated {strippedCount} folder image(s).";
+
+    public static string FormatRenamed(int renamed) =>
+        $"Batch rename: renamed {renamed} file(s).";
 }
