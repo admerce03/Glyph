@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.Core.Documents;
+using Glyph.Core.Signatures;
 using Glyph.Imaging.Abstractions;
 using Glyph.Ocr.Abstractions;
 using Microsoft.UI.Xaml;
@@ -20,6 +21,7 @@ public sealed class ImageDocumentView : UserControl
     private readonly IImageProcessor _processor;
     private readonly IImageEncoder _encoder;
     private readonly IOcrEngine? _ocr;
+    private readonly ISignatureLibrary? _signatures;
     private readonly DocumentViewState _viewState;
     private readonly Func<string, Task>? _openSibling;
     private readonly ScrollViewer _scrollViewer;
@@ -94,7 +96,8 @@ public sealed class ImageDocumentView : UserControl
         IImageEncoder encoder,
         DocumentViewState? viewState = null,
         Func<string, Task>? openSibling = null,
-        IOcrEngine? ocr = null)
+        IOcrEngine? ocr = null,
+        ISignatureLibrary? signatures = null)
     {
         _document = document;
         _processor = processor;
@@ -102,6 +105,7 @@ public sealed class ImageDocumentView : UserControl
         _viewState = viewState ?? new DocumentViewState();
         _openSibling = openSibling;
         _ocr = ocr;
+        _signatures = signatures;
         _zoom = _viewState.Zoom <= 0 ? 1.0 : _viewState.Zoom;
         IsTabStop = true;
 
@@ -218,6 +222,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(_flattenMarkupButton, "Bake markup strokes into pixels");
         var resize = new Button { Content = "Resize" };
         var adjust = new Button { Content = "Adjust" };
+        var stamp = new Button { Content = "Stamp" };
         var meta = new Button { Content = "Meta" };
         var ocrButton = new Button { Content = "OCR" };
         var rotate180 = new Button { Content = "180°" };
@@ -237,7 +242,8 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(_applyCropButton, "Apply the dragged crop rectangle");
         ToolTipService.SetToolTip(_cancelCropButton, "Cancel interactive crop");
         ToolTipService.SetToolTip(resize, "Resize width/height with optional aspect lock");
-        ToolTipService.SetToolTip(adjust, "Brightness / contrast / saturation");
+        ToolTipService.SetToolTip(adjust, "Brightness / contrast / saturation / levels");
+        ToolTipService.SetToolTip(stamp, "Stamp a signature from the library onto the image");
         ToolTipService.SetToolTip(meta, "Image metadata, EXIF/IPTC/XMP, and GPS");
         ToolTipService.SetToolTip(ocrButton, "Run offline OCR on this image");
         ToolTipService.SetToolTip(rotate180, "Rotate 180°");
@@ -285,6 +291,7 @@ public sealed class ImageDocumentView : UserControl
         _flattenMarkupButton.Click += async (_, _) => await FlattenMarkupAsync();
         resize.Click += async (_, _) => await ResizeAsync();
         adjust.Click += async (_, _) => await AdjustAsync();
+        stamp.Click += async (_, _) => await StampSignatureAsync();
         meta.Click += async (_, _) => await ShowMetadataAsync();
         ocrButton.Click += async (_, _) => await RunOcrAsync();
         save.Click += async (_, _) => await SaveAsync();
@@ -327,7 +334,7 @@ public sealed class ImageDocumentView : UserControl
                 _cropBox, crop, _interactiveCropButton, _cropAspectBox, _applyCropButton, _cancelCropButton,
                 _selectButton, _selectionKindBox, _selectAllButton, _deselectButton, _copySelButton, _cutSelButton, _pasteSelButton, _deleteSelButton, _cropSelButton,
                 _drawButton, _flattenMarkupButton,
-                resize, adjust, meta, ocrButton, save, exportPng, exportJpeg, convert, _status,
+                resize, adjust, stamp, meta, ocrButton, save, exportPng, exportJpeg, convert, _status,
             },
         };
 
@@ -1785,6 +1792,87 @@ public sealed class ImageDocumentView : UserControl
         await MutateAsync(
             () => _processor.AdjustAsync(_document, adjustments),
             "Color adjustments applied.");
+    }
+
+    private async Task StampSignatureAsync()
+    {
+        if (_signatures is null)
+        {
+            _status.Text = "Signature library unavailable.";
+            return;
+        }
+
+        try
+        {
+            var entries = await _signatures.ListAsync();
+            if (entries.Count == 0)
+            {
+                _status.Text = "No signatures saved — add one from a PDF Sign toolbar first.";
+                return;
+            }
+
+            var list = new ListView
+            {
+                ItemsSource = entries.Select(e => e.Name).ToList(),
+                SelectionMode = ListViewSelectionMode.Single,
+                SelectedIndex = 0,
+                MaxHeight = 240,
+                Width = 280,
+            };
+            var dialog = new ContentDialog
+            {
+                Title = "Stamp signature",
+                Content = new StackPanel
+                {
+                    Spacing = 8,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = "Places at selection top-left (or 0,0). Undo with Ctrl+Z.",
+                            Opacity = 0.75,
+                            TextWrapping = TextWrapping.Wrap,
+                        },
+                        list,
+                    },
+                },
+                PrimaryButtonText = "Stamp",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = XamlRoot,
+            };
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary || list.SelectedIndex < 0)
+            {
+                return;
+            }
+
+            var entry = entries[list.SelectedIndex];
+            await using var stream = await _signatures.OpenImageAsync(entry.Id);
+            var temp = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
+                "glyph-stamp-" + Guid.NewGuid().ToString("N") + ".png");
+            try
+            {
+                await using (var file = System.IO.File.Create(temp))
+                {
+                    await stream.CopyToAsync(file);
+                }
+
+                var destX = _pixelSelection?.X ?? 0;
+                var destY = _pixelSelection?.Y ?? 0;
+                await MutateAsync(
+                    () => _processor.PasteFileAsync(_document, temp, destX, destY),
+                    $"Stamped “{entry.Name}” at ({destX},{destY}).");
+            }
+            finally
+            {
+                try { System.IO.File.Delete(temp); } catch { /* ignore */ }
+            }
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Stamp failed: " + ex.Message;
+        }
     }
 
     private async Task ConvertAsync()

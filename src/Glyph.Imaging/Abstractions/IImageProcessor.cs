@@ -79,6 +79,16 @@ public interface IImageProcessor
         IImageDocument document,
         ImageMarkupLayer layer,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Opens an image file and composites it onto <paramref name="document"/> at the destination top-left.
+    /// </summary>
+    Task PasteFileAsync(
+        IImageDocument document,
+        string sourcePath,
+        int destinationX,
+        int destinationY,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

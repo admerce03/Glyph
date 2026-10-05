@@ -532,7 +532,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F34-03 | Image markup | arrows | M5 | Tested | Draw → Line/Arrow overlay with head wings |
 | F34-04 | Image markup | text | M5 | Tested | Draw → Text click-to-place overlay; Flatten draws via Magick Text |
 | F34-05 | Image markup | callouts | M5 | Tested | Draw → Callout box + pointer tip + text; FlattenMarkupAsync |
-| F34-06 | Image markup | signatures | M5 | Not Started |  |
+| F34-06 | Image markup | signatures | M5 | Implemented | Stamp toolbar → signature library PNG via `PasteFileAsync` |
 | F34-07 | Image markup | selection | M5 | Implemented | Reuses Select / F28 tools while drawing remains overlay |
 | F34-08 | Image markup | crop | M5 | Implemented | Reuses Crop… / Crop sel |
 | F34-09 | Image markup | rotate | M5 | Implemented | Reuses rotate L/R/180 toolbar |

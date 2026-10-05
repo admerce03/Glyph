@@ -132,6 +132,27 @@ public class MagickImageProcessorTests
     }
 
     [Fact]
+    public async Task Paste_file_composites_onto_document()
+    {
+        var basePath = CreateSolidPng(40, 30);
+        var stampPath = CreateSolidPng(8, 8);
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            await using var document = await decoder.OpenAsync(basePath);
+            await processor.PasteFileAsync(document, stampPath, 10, 8);
+            document.PixelWidth.Should().Be(40);
+            document.PixelHeight.Should().Be(30);
+        }
+        finally
+        {
+            File.Delete(basePath);
+            File.Delete(stampPath);
+        }
+    }
+
+    [Fact]
     public async Task Flatten_markup_stroke_keeps_dimensions()
     {
         var path = CreateSolidPng(40, 30);

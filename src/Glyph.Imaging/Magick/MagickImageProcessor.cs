@@ -581,6 +581,28 @@ public sealed class MagickImageProcessor : IImageProcessor
         drawables.Draw(image);
     }
 
+    public Task PasteFileAsync(
+        IImageDocument document,
+        string sourcePath,
+        int destinationX,
+        int destinationY,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+        var magick = RequireMagick(document);
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                using var overlay = new MagickImage(sourcePath);
+                overlay.Alpha(AlphaOption.Set);
+                var x = Math.Clamp(destinationX, 0, Math.Max(0, (int)magick.Native.Width - 1));
+                var y = Math.Clamp(destinationY, 0, Math.Max(0, (int)magick.Native.Height - 1));
+                magick.Native.Composite(overlay, x, y, CompositeOperator.Over);
+            },
+            cancellationToken);
+    }
+
     private static MagickImageDocument RequireMagick(IImageDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
