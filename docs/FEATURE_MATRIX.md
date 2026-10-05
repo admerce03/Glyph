@@ -316,14 +316,14 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F17-13 | Shapes | move | M4 | Not Started |  |
 | F17-14 | Shapes | duplicate | M4 | Not Started |  |
 | F17-15 | Shapes | multi-select | M4 | Not Started |  |
-| F17-16 | Shapes | border color | M4 | Not Started |  |
+| F17-16 | Shapes | border color | M4 | Implemented | Stroke picker when entering Rect/Ellipse/Line/Arrow |
 | F17-17 | Shapes | border width | M4 | Not Started |  |
 | F17-18 | Shapes | line style | M4 | Not Started |  |
-| F17-19 | Shapes | fill color | M4 | Not Started |  |
+| F17-19 | Shapes | fill color | M4 | Implemented | Semi-transparent fill from stroke hue |
 | F17-20 | Shapes | opacity | M4 | Not Started |  |
 | F17-21 | Shapes | shape-specific adjustment handles | M4 | Not Started |  |
 | F18-01 | Freehand drawing | Mouse drawing. | M4 | Not Started |  |
-| F18-02 | Freehand drawing | Stroke color. | M4 | Not Started |  |
+| F18-02 | Freehand drawing | Stroke color. | M4 | Implemented | Stroke picker when entering Ink mode |
 | F18-03 | Freehand drawing | Stroke width. | M4 | Not Started |  |
 | F18-04 | Freehand drawing | Stroke opacity. | M4 | Not Started |  |
 | F18-05 | Freehand drawing | Eraser. | M4 | Not Started |  |
