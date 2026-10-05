@@ -3066,7 +3066,7 @@ public sealed class PdfDocumentView : UserControl
             else
             {
                 ClearZoomAreaMode();
-                _status.Text = "Zoom area cancelled — drag a larger rectangle.";
+                _status.Text = PdfZoomAreaStatus.CancelledTooSmall;
             }
 
             if (_pageOverlays.TryGetValue(pageIndex, out var zoomOverlay))
@@ -3985,13 +3985,13 @@ public sealed class PdfDocumentView : UserControl
                 _regionCopyDisplayRect.Width,
                 _regionCopyDisplayRect.Height))
         {
-            _status.Text = "Drag a region on the page first.";
+            _status.Text = PdfRegionCopyPolicy.DragRegionFirst;
             return;
         }
 
         try
         {
-            _status.Text = "Copying region…";
+            _status.Text = PdfRegionCopyPolicy.Copying;
             using var rendered = await _renderer.RenderPageAsync(
                 _document,
                 _regionCopyPageIndex,
@@ -4029,11 +4029,11 @@ public sealed class PdfDocumentView : UserControl
             var package = new DataPackage();
             package.SetBitmap(Windows.Storage.Streams.RandomAccessStreamReference.CreateFromStream(stream));
             Clipboard.SetContent(package);
-            _status.Text = $"Copied region ({srcW}×{srcH}) to clipboard.";
+            _status.Text = PdfRegionCopyPolicy.FormatCopied(srcW, srcH);
         }
         catch (Exception ex)
         {
-            _status.Text = "Copy region failed: " + ex.Message;
+            _status.Text = PdfRegionCopyPolicy.FormatFailed(ex.Message);
         }
     }
 
@@ -4259,7 +4259,7 @@ public sealed class PdfDocumentView : UserControl
             _zoomAreaButton.Background = new SolidColorBrush(Colors.DodgerBlue);
         }
 
-        _status.Text = "Zoom area — drag a rectangle on a page (Esc to cancel).";
+        _status.Text = PdfZoomAreaStatus.Prompt;
     }
 
     private void ClearZoomAreaMode()
@@ -4533,7 +4533,7 @@ public sealed class PdfDocumentView : UserControl
                 .FirstOrDefault(fe => fe.Tag is int tag && tag == pageIndex);
         if (pageEl is null || _scrollViewer.Content is not UIElement scrollContent)
         {
-            _status.Text = $"Zoomed to {newScale * 100:0}%.";
+            _status.Text = PdfZoomAreaStatus.FormatZoomed(newScale);
             return;
         }
 
@@ -4545,11 +4545,11 @@ public sealed class PdfDocumentView : UserControl
             var centerX = targetLeft + (pdfWidth * newScale) / 2 - _scrollViewer.ViewportWidth / 2;
             var centerY = targetTop + (pdfHeight * newScale) / 2 - _scrollViewer.ViewportHeight / 2;
             _scrollViewer.ChangeView(Math.Max(0, centerX), Math.Max(0, centerY), null, disableAnimation: false);
-            _status.Text = $"Zoomed to area at {newScale * 100:0}%.";
+            _status.Text = PdfZoomAreaStatus.FormatZoomedToArea(newScale);
         }
         catch
         {
-            _status.Text = $"Zoomed to {newScale * 100:0}%.";
+            _status.Text = PdfZoomAreaStatus.FormatZoomed(newScale);
         }
     }
 
@@ -11405,13 +11405,13 @@ public sealed class PdfDocumentView : UserControl
         var file = await picker.PickSaveFileAsync();
         if (file is null)
         {
-            _status.Text = "Export cancelled.";
+            _status.Text = DocumentExportFormats.CancelledStatus;
             return;
         }
 
         try
         {
-            _status.Text = "Exporting permanently cropped PDF…";
+            _status.Text = DocumentExportFormats.ExportingCroppedPdf;
             await using var extracted = await _pageEditor.ExtractPagesAsync(_document, indexes);
 
             // Stamp in-progress visual margins onto the exported copy without mutating the open doc.
@@ -11434,7 +11434,7 @@ public sealed class PdfDocumentView : UserControl
             var partIndexes = Enumerable.Range(0, extracted.PageCount).ToList();
             await _pageEditor.PermanentCropPagesAsync(extracted, partIndexes);
             await _pageEditor.SaveAsync(extracted, file.Path);
-            _status.Text = $"Exported cropped PDF to {file.Name}.";
+            _status.Text = DocumentExportFormats.FormatExportedCroppedPdf(file.Name);
         }
         catch (Exception ex)
         {
@@ -12094,7 +12094,7 @@ public sealed class PdfDocumentView : UserControl
             await _outlineExport.ExportAsync(_document, entries);
             NotifyEdited();
             await LoadOutlineAsync();
-            _status.Text = $"Exported {_viewState.Bookmarks.Count} bookmark(s) into the PDF outline.";
+            _status.Text = DocumentExportFormats.FormatExportedBookmarks(_viewState.Bookmarks.Count);
         }
         catch (Exception ex)
         {
@@ -12561,16 +12561,16 @@ public sealed class PdfDocumentView : UserControl
                 var file = await picker.PickSaveFileAsync();
                 if (file is null)
                 {
-                    _status.Text = "Export cancelled.";
+                    _status.Text = DocumentExportFormats.CancelledStatus;
                     return;
                 }
 
-                _status.Text = "Exporting page…";
+                _status.Text = DocumentExportFormats.ExportingPage;
                 ShowJobProgress(0, determinate: false);
                 try
                 {
                     await ExportPageImageAsync(indexes[0], scale, file.Path, format, options);
-                    _status.Text = $"Exported page {indexes[0] + 1} to {file.Name}.";
+                    _status.Text = DocumentExportFormats.FormatExportedPage(indexes[0] + 1, file.Name);
                 }
                 finally
                 {
@@ -12588,11 +12588,11 @@ public sealed class PdfDocumentView : UserControl
             var folder = await folderPicker.PickSingleFolderAsync();
             if (folder is null)
             {
-                _status.Text = "Export cancelled.";
+                _status.Text = DocumentExportFormats.CancelledStatus;
                 return;
             }
 
-            _status.Text = $"Exporting {indexes.Count} pages…";
+            _status.Text = DocumentExportFormats.FormatExportingPages(indexes.Count);
             ShowJobProgress(0, determinate: true);
             try
             {
@@ -12604,10 +12604,10 @@ public sealed class PdfDocumentView : UserControl
                     await ExportPageImageAsync(pageIndex, scale, path, format, options);
                     written++;
                     ShowJobProgress(100.0 * written / indexes.Count);
-                    _status.Text = $"Exporting {written}/{indexes.Count}…";
+                    _status.Text = DocumentExportFormats.FormatExportProgress(written, indexes.Count);
                 }
 
-                _status.Text = $"Exported {written} page image(s) to {folder.Name}.";
+                _status.Text = DocumentExportFormats.FormatExportedPages(written, folder.Name);
             }
             finally
             {

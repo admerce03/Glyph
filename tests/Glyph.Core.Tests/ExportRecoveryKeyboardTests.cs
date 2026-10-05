@@ -15,6 +15,10 @@ public class DocumentExportFormatsExtendedTests
         DocumentExportFormats.FlattensTransparency("JPEG").Should().BeTrue();
         DocumentExportFormats.FlattensTransparency("PNG").Should().BeFalse();
         DocumentExportFormats.ExportSummary(3).Should().Contain("3");
+        DocumentExportFormats.ExportingPage.Should().Contain("Exporting");
+        DocumentExportFormats.FormatExportingPages(4).Should().Contain("4 pages");
+        DocumentExportFormats.FormatExportedPage(2, "a.png").Should().Contain("a.png");
+        DocumentExportFormats.FormatExportedPages(3, "Out").Should().Contain("Out");
     }
 }
 

@@ -29,6 +29,8 @@ public static class DocumentExportFormats
     public const string QualityHeader = "JPEG/WebP/AVIF quality";
     public const string DpiHeader = "Render DPI";
     public const string WebpLosslessLabel = "Lossless WebP";
+    public const string ExportingPage = "Exporting page…";
+    public const string ExportingCroppedPdf = "Exporting permanently cropped PDF…";
     public const double DefaultDpi = 144;
     public const double MinDpi = 36;
     public const double MaxDpi = 600;
@@ -60,4 +62,22 @@ public static class DocumentExportFormats
 
     public static string ExportSummary(int pageCount) =>
         $"Export {pageCount} page(s) as image(s)";
+
+    public static string FormatExportingPages(int pageCount) =>
+        $"Exporting {pageCount} pages…";
+
+    public static string FormatExportProgress(int written, int total) =>
+        $"Exporting {written}/{total}…";
+
+    public static string FormatExportedPage(int pageNumber1Based, string fileName) =>
+        $"Exported page {pageNumber1Based} to {fileName}.";
+
+    public static string FormatExportedPages(int written, string folderName) =>
+        $"Exported {written} page image(s) to {folderName}.";
+
+    public static string FormatExportedCroppedPdf(string fileName) =>
+        $"Exported cropped PDF to {fileName}.";
+
+    public static string FormatExportedBookmarks(int bookmarkCount) =>
+        $"Exported {bookmarkCount} bookmark(s) into the PDF outline.";
 }

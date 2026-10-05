@@ -6,9 +6,17 @@ namespace Glyph.Core.Text;
 public static class PdfRegionCopyPolicy
 {
     public const double MinDisplayEdge = 4;
+    public const string DragRegionFirst = "Drag a region on the page first.";
+    public const string Copying = "Copying region…";
+    public const string FailedPrefix = "Copy region failed: ";
 
     public static bool HasValidRegion(int pageIndex, double width, double height) =>
         pageIndex >= 0 && width >= MinDisplayEdge && height >= MinDisplayEdge;
+
+    public static string FormatCopied(int width, int height) =>
+        $"Copied region ({width}×{height}) to clipboard.";
+
+    public static string FormatFailed(string message) => FailedPrefix + message;
 }
 
 /// <summary>
@@ -35,4 +43,21 @@ public static class FindOcrFallbackPolicy
     public const string DialogMessage =
         "This PDF has no extractable text. Run OCR on the current page so Find can search recognized text?";
     public const string PrimaryButton = "OCR page";
+}
+
+/// <summary>
+/// Zoom-to-area mode status (F02-22).
+/// </summary>
+public static class PdfZoomAreaStatus
+{
+    public const string Prompt =
+        "Zoom area — drag a rectangle on a page (Esc to cancel).";
+    public const string CancelledTooSmall =
+        "Zoom area cancelled — drag a larger rectangle.";
+
+    public static string FormatZoomed(double scale) =>
+        $"Zoomed to {scale * 100:0}%.";
+
+    public static string FormatZoomedToArea(double scale) =>
+        $"Zoomed to area at {scale * 100:0}%.";
 }

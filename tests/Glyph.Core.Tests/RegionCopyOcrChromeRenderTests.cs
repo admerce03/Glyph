@@ -25,6 +25,12 @@ public class PdfRegionCopyAndOcrFallbackTests
         FindOcrFallbackPolicy.ShouldOfferOcr("OCR required.").Should().BeTrue();
         FindOcrFallbackPolicy.ShouldOfferOcr("No matches.").Should().BeFalse();
         FindOcrFallbackPolicy.PrimaryButton.Should().Contain("OCR");
+        PdfRegionCopyPolicy.DragRegionFirst.Should().Contain("region");
+        PdfRegionCopyPolicy.Copying.Should().Contain("Copying");
+        PdfRegionCopyPolicy.FormatCopied(10, 20).Should().Contain("10");
+        PdfZoomAreaStatus.Prompt.Should().Contain("Zoom area");
+        PdfZoomAreaStatus.FormatZoomed(1.5).Should().Contain("150");
+        PdfZoomAreaStatus.FormatZoomedToArea(2).Should().Contain("area");
     }
 }
 
