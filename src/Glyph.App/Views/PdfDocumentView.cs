@@ -5497,6 +5497,25 @@ public sealed class PdfDocumentView : UserControl
         }
     }
 
+    private void PendingRedactionRect_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is not Microsoft.UI.Xaml.Shapes.Rectangle { Tag: Guid id })
+        {
+            return;
+        }
+
+        if (!_redaction.RemovePending(_document, id))
+        {
+            return;
+        }
+
+        RefreshAllPendingRedactionOverlays();
+        var remaining = _redaction.GetPending(_document).Count;
+        _status.Text = remaining == 0
+            ? "Removed redaction mark."
+            : $"Removed redaction mark ({remaining} pending).";
+        e.Handled = true;
+    }
 
     private void RefreshAllPendingRedactionOverlays()
     {
