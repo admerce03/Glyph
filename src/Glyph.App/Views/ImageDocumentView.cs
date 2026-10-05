@@ -2783,7 +2783,7 @@ public sealed class ImageDocumentView : UserControl
 
         var dialog = new ContentDialog
         {
-            Title = "Resize image",
+            Title = ImageDialogTitles.ResizeImage,
             Content = panel,
             PrimaryButtonText = "Resize",
             CloseButtonText = "Cancel",
@@ -2952,7 +2952,7 @@ public sealed class ImageDocumentView : UserControl
 
         var dialog = new ContentDialog
         {
-            Title = "Batch folder images",
+            Title = ImageDialogTitles.BatchFolderImages,
             Content = new StackPanel
             {
                 Spacing = 10,
@@ -3783,7 +3783,7 @@ public sealed class ImageDocumentView : UserControl
 
         var dialog = new ContentDialog
         {
-            Title = "Color adjustments",
+            Title = ImageDialogTitles.ColorAdjustments,
             Content = new ScrollViewer
             {
                 Content = panel,
@@ -3891,7 +3891,7 @@ public sealed class ImageDocumentView : UserControl
             AutomationProperties.SetName(list, SignatureLibraryUi.LibraryTitle);
             var dialog = new ContentDialog
             {
-                Title = "Stamp signature",
+                Title = ImageDialogTitles.StampSignature,
                 Content = new StackPanel
                 {
                     Spacing = 8,
@@ -3985,7 +3985,7 @@ public sealed class ImageDocumentView : UserControl
             };
             var dialog = new ContentDialog
             {
-                Title = "Print image",
+                Title = ImageDialogTitles.PrintImage,
                 Content = new StackPanel
                 {
                     Spacing = 8,
@@ -4167,7 +4167,7 @@ public sealed class ImageDocumentView : UserControl
         };
         var dialog = new ContentDialog
         {
-            Title = "Convert image",
+            Title = ImageDialogTitles.ConvertImage,
             Content = panel,
             PrimaryButtonText = "Export…",
             CloseButtonText = "Cancel",
@@ -4254,7 +4254,7 @@ public sealed class ImageDocumentView : UserControl
         };
         var dialog = new ContentDialog
         {
-            Title = "Export JPEG",
+            Title = ImageDialogTitles.ExportJpeg,
             Content = quality,
             PrimaryButtonText = "Export…",
             CloseButtonText = "Cancel",
@@ -4459,7 +4459,7 @@ public sealed class ImageDocumentView : UserControl
 
             var dialog = new ContentDialog
             {
-                Title = "Image metadata",
+                Title = ImageDialogTitles.ImageMetadata,
                 Content = panel,
                 PrimaryButtonText = "Edit…",
                 CloseButtonText = "Close",
@@ -4552,7 +4552,7 @@ public sealed class ImageDocumentView : UserControl
         var copyright = new TextBox { Header = "Copyright", Text = current.Copyright ?? string.Empty, Width = 360 };
         var editDialog = new ContentDialog
         {
-            Title = "Edit descriptive metadata",
+            Title = ImageDialogTitles.EditDescriptiveMetadata,
             Content = new StackPanel
             {
                 Spacing = 10,
@@ -4682,7 +4682,7 @@ public sealed class ImageDocumentView : UserControl
 
             var dialog = new ContentDialog
             {
-                Title = "OCR result",
+                Title = ImageDialogTitles.OcrResult,
                 Content = panel,
                 CloseButtonText = "Close",
                 XamlRoot = XamlRoot,
@@ -4776,7 +4776,7 @@ public sealed class ImageDocumentView : UserControl
         };
         var dialog = new ContentDialog
         {
-            Title = "Folder OCR results",
+            Title = ImageDialogTitles.FolderOcrResults,
             Content = panel,
             CloseButtonText = "Close",
             XamlRoot = XamlRoot,
@@ -4923,7 +4923,7 @@ public sealed class ImageDocumentView : UserControl
         var panel = new StackPanel { Spacing = 8, Children = { toolBox, colorBox, widthSlider } };
         var dialog = new ContentDialog
         {
-            Title = "Draw markup",
+            Title = ImageDialogTitles.DrawMarkup,
             Content = panel,
             PrimaryButtonText = "Start drawing",
             CloseButtonText = "Cancel",

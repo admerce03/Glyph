@@ -3394,7 +3394,7 @@ public sealed class PdfDocumentView : UserControl
         var selected = SelectedOrCurrentPages();
         var chooser = new ContentDialog
         {
-            Title = "OCR",
+            Title = PdfDialogTitles.Ocr,
             Content = new TextBlock
             {
                 Text =
@@ -3876,7 +3876,7 @@ public sealed class PdfDocumentView : UserControl
         };
         var dialog = new ContentDialog
         {
-            Title = "OCR entities",
+            Title = PdfDialogTitles.OcrEntities,
             Content = panel,
             CloseButtonText = "Close",
             XamlRoot = XamlRoot,
@@ -4956,7 +4956,7 @@ public sealed class PdfDocumentView : UserControl
         list.SelectedIndex = 0;
         var dialog = new ContentDialog
         {
-            Title = "Highlight color",
+            Title = PdfDialogTitles.HighlightColor,
             Content = list,
             PrimaryButtonText = "Apply",
             CloseButtonText = "Cancel",
@@ -5400,7 +5400,7 @@ public sealed class PdfDocumentView : UserControl
         };
         var dialog = new ContentDialog
         {
-            Title = "Callout",
+            Title = PdfDialogTitles.Callout,
             Content = panel,
             PrimaryButtonText = "Add",
             CloseButtonText = "Cancel",
@@ -6637,7 +6637,7 @@ public sealed class PdfDocumentView : UserControl
         };
         var dialog = new ContentDialog
         {
-            Title = "Smart drawing",
+            Title = PdfDialogTitles.SmartDrawing,
             Content = $"That looked like a {label}. Use a cleaned-up shape, or keep the original stroke?",
             PrimaryButtonText = "Use cleaned",
             SecondaryButtonText = "Keep original",
@@ -6867,7 +6867,7 @@ public sealed class PdfDocumentView : UserControl
 
         var dialog = new ContentDialog
         {
-            Title = "Signature",
+            Title = PdfDialogTitles.Signature,
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = window.Content.XamlRoot,
@@ -7077,7 +7077,7 @@ public sealed class PdfDocumentView : UserControl
 
         var dialog = new ContentDialog
         {
-            Title = "Signatures",
+            Title = PdfDialogTitles.Signatures,
             Content = panel,
             PrimaryButtonText = "Insert",
             SecondaryButtonText = "Draw new",
@@ -7281,7 +7281,7 @@ public sealed class PdfDocumentView : UserControl
         AutomationProperties.SetName(descBox, "Signature accessibility description");
         var nameDialog = new ContentDialog
         {
-            Title = "Save signature",
+            Title = PdfDialogTitles.SaveSignature,
             Content = new StackPanel { Spacing = 8, Children = { nameBox, descBox } },
             PrimaryButtonText = "Insert",
             CloseButtonText = "Cancel",
@@ -7446,7 +7446,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 var fallback = new ContentDialog
                 {
-                    Title = "Webcam unavailable",
+                    Title = PdfDialogTitles.WebcamUnavailable,
                     Content = "No camera could be opened (or capture cancelled). Import a photo of your signature instead?",
                     PrimaryButtonText = "Import image…",
                     CloseButtonText = "Cancel",
@@ -7567,7 +7567,7 @@ public sealed class PdfDocumentView : UserControl
         };
         var chooser = new ContentDialog
         {
-            Title = "Form fill",
+            Title = PdfDialogTitles.FormFill,
             Content = options,
             PrimaryButtonText = "Go",
             CloseButtonText = "Cancel",
@@ -7623,7 +7623,7 @@ public sealed class PdfDocumentView : UserControl
         };
         var dialog = new ContentDialog
         {
-            Title = "AutoFill profile",
+            Title = PdfDialogTitles.AutoFillProfile,
             Content = panel,
             PrimaryButtonText = "Save",
             CloseButtonText = "Cancel",
@@ -7944,7 +7944,7 @@ public sealed class PdfDocumentView : UserControl
 
         var dialog = new ContentDialog
         {
-            Title = "Form fields",
+            Title = PdfDialogTitles.FormFields,
             Content = list,
             PrimaryButtonText = "Edit",
             SecondaryButtonText = "Next (Tab)",
@@ -8489,7 +8489,7 @@ public sealed class PdfDocumentView : UserControl
 
         var dialog = new ContentDialog
         {
-            Title = "Flatten annotations",
+            Title = PdfDialogTitles.FlattenAnnotations,
             Content = "Bake all annotations into page content? This cannot be undone from the annotation layer.",
             PrimaryButtonText = "Flatten",
             CloseButtonText = "Cancel",
@@ -9087,7 +9087,7 @@ public sealed class PdfDocumentView : UserControl
         };
         var dialog = new ContentDialog
         {
-            Title = "Sticky note",
+            Title = PdfDialogTitles.StickyNote,
             Content = panel,
             PrimaryButtonText = "Add",
             CloseButtonText = "Cancel",
@@ -10261,7 +10261,7 @@ public sealed class PdfDocumentView : UserControl
         };
         var dialog = new ContentDialog
         {
-            Title = "Text alignment",
+            Title = PdfDialogTitles.TextAlignment,
             Content = alignBox,
             PrimaryButtonText = "Apply",
             CloseButtonText = "Cancel",
@@ -10399,7 +10399,7 @@ public sealed class PdfDocumentView : UserControl
         };
         var dialog = new ContentDialog
         {
-            Title = "Annotation author",
+            Title = PdfDialogTitles.AnnotationAuthor,
             Content = box,
             PrimaryButtonText = "Save",
             CloseButtonText = "Cancel",
@@ -12127,7 +12127,7 @@ public sealed class PdfDocumentView : UserControl
         };
         var dialog = new ContentDialog
         {
-            Title = "Add bookmark",
+            Title = PdfDialogTitles.AddBookmark,
             Content = box,
             PrimaryButtonText = "Add",
             CloseButtonText = "Cancel",
@@ -12167,7 +12167,7 @@ public sealed class PdfDocumentView : UserControl
         var box = new TextBox { Header = "Title", Text = bookmark.Title, Width = 280 };
         var dialog = new ContentDialog
         {
-            Title = "Rename bookmark",
+            Title = PdfDialogTitles.RenameBookmark,
             Content = box,
             PrimaryButtonText = "Save",
             CloseButtonText = "Cancel",
@@ -12296,7 +12296,7 @@ public sealed class PdfDocumentView : UserControl
 
             var dialog = new ContentDialog
             {
-                Title = "Print PDF",
+                Title = PdfDialogTitles.PrintPdf,
                 Content = new StackPanel
                 {
                     Spacing = 8,
