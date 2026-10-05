@@ -396,7 +396,7 @@ public sealed partial class MainWindow : Window
         {
             Title = FindAllOpenPdfsStatus.MatchCount(hits.Count),
             Content = list,
-            PrimaryButtonText = "Go to",
+            PrimaryButtonText = DialogButtons.GoTo,
             CloseButtonText = DialogButtons.Close,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = Content.XamlRoot,
@@ -1163,7 +1163,7 @@ public sealed partial class MainWindow : Window
             {
                 Title = ReadOnlySavePolicy.DialogTitle,
                 Content = ReadOnlySavePolicy.DialogMessage,
-                PrimaryButtonText = "Save As…",
+                PrimaryButtonText = DialogButtons.SaveAsEllipsis,
                 CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = Content.XamlRoot,
@@ -1269,8 +1269,8 @@ public sealed partial class MainWindow : Window
                 {
                     Title = DocumentClosePolicy.UnsavedTitle,
                     Content = DocumentClosePolicy.DuplicateSaveFirstPrompt,
-                    PrimaryButtonText = "Save & duplicate",
-                    SecondaryButtonText = "Duplicate without saving",
+                    PrimaryButtonText = DialogButtons.SaveAndDuplicate,
+                    SecondaryButtonText = DialogButtons.DuplicateWithoutSaving,
                     CloseButtonText = DialogButtons.Cancel,
                     DefaultButton = ContentDialogButton.Primary,
                     XamlRoot = Content.XamlRoot,
@@ -1991,8 +1991,8 @@ public sealed partial class MainWindow : Window
             {
                 Title = DocumentClosePolicy.UnsavedTitle,
                 Content = TabTearOffPolicy.UnsavedChangesPrompt(session.DisplayName),
-                PrimaryButtonText = "Save & move",
-                SecondaryButtonText = "Move recovery copy",
+                PrimaryButtonText = DialogButtons.SaveAndMove,
+                SecondaryButtonText = DialogButtons.MoveRecoveryCopy,
                 CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = RootGrid.XamlRoot,

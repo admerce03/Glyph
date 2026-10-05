@@ -4128,7 +4128,7 @@ public sealed class PdfDocumentView : UserControl
                     Title = FindOcrFallbackPolicy.DialogTitle,
                     Content = FindOcrFallbackPolicy.DialogMessage,
                     PrimaryButtonText = FindOcrFallbackPolicy.PrimaryButton,
-                    CloseButtonText = "Not now",
+                    CloseButtonText = DialogButtons.NotNow,
                     DefaultButton = ContentDialogButton.Primary,
                     XamlRoot = XamlRoot,
                 };
@@ -5994,7 +5994,7 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = title,
             Content = panel,
-            PrimaryButtonText = "Use",
+            PrimaryButtonText = DialogButtons.Use,
             CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
@@ -6639,9 +6639,9 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = PdfDialogTitles.SmartDrawing,
             Content = $"That looked like a {label}. Use a cleaned-up shape, or keep the original stroke?",
-            PrimaryButtonText = "Use cleaned",
-            SecondaryButtonText = "Keep original",
-            CloseButtonText = "Keep original",
+            PrimaryButtonText = DialogButtons.UseCleaned,
+            SecondaryButtonText = DialogButtons.KeepOriginal,
+            CloseButtonText = DialogButtons.KeepOriginal,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -7080,7 +7080,7 @@ public sealed class PdfDocumentView : UserControl
             Title = PdfDialogTitles.Signatures,
             Content = panel,
             PrimaryButtonText = DialogButtons.Insert,
-            SecondaryButtonText = "Draw new",
+            SecondaryButtonText = DialogButtons.DrawNew,
             CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
@@ -7448,7 +7448,7 @@ public sealed class PdfDocumentView : UserControl
                 {
                     Title = PdfDialogTitles.WebcamUnavailable,
                     Content = "No camera could be opened (or capture cancelled). Import a photo of your signature instead?",
-                    PrimaryButtonText = "Import image…",
+                    PrimaryButtonText = DialogButtons.ImportImageEllipsis,
                     CloseButtonText = DialogButtons.Cancel,
                     DefaultButton = ContentDialogButton.Primary,
                     XamlRoot = window.Content.XamlRoot,
@@ -7569,7 +7569,7 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = PdfDialogTitles.FormFill,
             Content = options,
-            PrimaryButtonText = "Go",
+            PrimaryButtonText = DialogButtons.Go,
             CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
@@ -7947,7 +7947,7 @@ public sealed class PdfDocumentView : UserControl
             Title = PdfDialogTitles.FormFields,
             Content = list,
             PrimaryButtonText = DialogButtons.Edit,
-            SecondaryButtonText = "Next (Tab)",
+            SecondaryButtonText = DialogButtons.NextTab,
             CloseButtonText = DialogButtons.Close,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
@@ -8140,7 +8140,7 @@ public sealed class PdfDocumentView : UserControl
                     },
                 },
                 PrimaryButtonText = DialogButtons.Insert,
-                SecondaryButtonText = "Draw new",
+                SecondaryButtonText = DialogButtons.DrawNew,
                 CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = window.Content.XamlRoot,
@@ -8152,7 +8152,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 Title = $"Sign {field.Name}",
                 Content = "No saved signatures. Draw a new one to place in this field.",
-                PrimaryButtonText = "Draw",
+                PrimaryButtonText = DialogButtons.Draw,
                 CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = window.Content.XamlRoot,
@@ -8491,7 +8491,7 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = PdfDialogTitles.FlattenAnnotations,
             Content = "Bake all annotations into page content? This cannot be undone from the annotation layer.",
-            PrimaryButtonText = "Flatten",
+            PrimaryButtonText = DialogButtons.Flatten,
             CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = window.Content.XamlRoot,
@@ -8981,7 +8981,7 @@ public sealed class PdfDocumentView : UserControl
             Title = PdfRedactionUiCopy.ApplyDialogTitle,
             Content = panel,
             PrimaryButtonText = DialogButtons.Apply,
-            SecondaryButtonText = "Clear marks",
+            SecondaryButtonText = DialogButtons.ClearMarks,
             CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = window.Content.XamlRoot,
@@ -11520,7 +11520,7 @@ public sealed class PdfDocumentView : UserControl
         var dialog = new ContentDialog
         {
             Title = indexes.Count == 1 ? "Crop page" : $"Crop {indexes.Count} pages",
-            PrimaryButtonText = "Crop",
+            PrimaryButtonText = DialogButtons.Crop,
             CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,

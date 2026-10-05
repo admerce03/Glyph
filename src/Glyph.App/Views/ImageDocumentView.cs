@@ -2785,7 +2785,7 @@ public sealed class ImageDocumentView : UserControl
         {
             Title = ImageDialogTitles.ResizeImage,
             Content = panel,
-            PrimaryButtonText = "Resize",
+            PrimaryButtonText = DialogButtons.Resize,
             CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
@@ -3908,7 +3908,7 @@ public sealed class ImageDocumentView : UserControl
                         list,
                     },
                 },
-                PrimaryButtonText = "Stamp",
+                PrimaryButtonText = DialogButtons.Stamp,
                 CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = XamlRoot,
@@ -4461,7 +4461,7 @@ public sealed class ImageDocumentView : UserControl
             {
                 Title = ImageDialogTitles.ImageMetadata,
                 Content = panel,
-                PrimaryButtonText = "Edit…",
+                PrimaryButtonText = DialogButtons.EditEllipsis,
                 CloseButtonText = DialogButtons.Close,
                 DefaultButton = ContentDialogButton.Close,
                 XamlRoot = XamlRoot,
@@ -4925,7 +4925,7 @@ public sealed class ImageDocumentView : UserControl
         {
             Title = ImageDialogTitles.DrawMarkup,
             Content = panel,
-            PrimaryButtonText = "Start drawing",
+            PrimaryButtonText = DialogButtons.StartDrawing,
             CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,

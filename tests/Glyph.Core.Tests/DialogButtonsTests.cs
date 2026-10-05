@@ -14,5 +14,8 @@ public class DialogButtonsTests
         DialogButtons.Apply.Should().Be("Apply");
         DialogButtons.Save.Should().Be("Save");
         DialogButtons.ExportEllipsis.Should().Contain("Export");
+        DialogButtons.DrawNew.Should().Be("Draw new");
+        DialogButtons.SaveAndDuplicate.Should().Contain("duplicate");
+        DialogButtons.NotNow.Should().Be("Not now");
     }
 }
