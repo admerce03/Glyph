@@ -6,10 +6,10 @@ namespace Glyph.Core.Tests;
 public class BackgroundSearchIndexPolicyTests
 {
     [Fact]
-    public void Search_stays_on_demand()
+    public void Background_indexing_is_enabled()
     {
-        BackgroundSearchIndexPolicy.BackgroundIndexingEnabled.Should().BeFalse();
+        BackgroundSearchIndexPolicy.BackgroundIndexingEnabled.Should().BeTrue();
         BackgroundSearchIndexPolicy.SearchIsOnDemand.Should().BeTrue();
-        BackgroundSearchIndexPolicy.DeferredReason.Should().Contain("on demand");
+        BackgroundSearchIndexPolicy.Reason.Should().Contain("WarmIndexAsync");
     }
 }

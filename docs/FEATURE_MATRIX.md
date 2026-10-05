@@ -807,7 +807,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F57-02 | Performance behavior | fast first-page PDF display | M2+/M9 | Tested | Visible-page first; `PerformanceBehaviorPolicy.PreferVisiblePageBeforeThumbs` |
 | F57-03 | Performance behavior | render visible pages before off-screen pages | M2+/M9 | Tested | Visible-page biased render + LRU cache (`ContinuousPageWindow` + `PageRenderCache`) |
 | F57-04 | Performance behavior | asynchronous thumbnail generation | M2+/M9 | Tested | Async near-current thumbs; `ContinuousPageWindow` + Yield |
-| F57-05 | Performance behavior | background text indexing | M2+/M9 | Deferred | On-demand Find; `BackgroundSearchIndexPolicy` |
+| F57-05 | Performance behavior | background text indexing | M2+/M9 | Tested | `WarmIndexAsync` page-text cache; `BackgroundSearchIndexPolicy` |
 | F57-06 | Performance behavior | lazy OCR | M2+/M9 | Tested | Explicit OCR only; `PerformanceBehaviorPolicy.LazyOcrRequiresExplicitRequest` |
 | F57-07 | Performance behavior | GPU acceleration where appropriate | M2+/M9 | Deferred | Win2D/Composition not adopted; `GpuAccelerationPolicy` |
 | F57-08 | Performance behavior | smooth scrolling | M2+/M9 | Tested | Continuous: page sync + `IntermediateScrollThrottle` (72ms) while flinging; settle render on idle |
@@ -821,7 +821,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F58-03 | Large-document handling | Progressive rendering. | M2+/M9 | Tested | Image viewer low-res then refine; `NeedsProgressivePreview` unit tests |
 | F58-04 | Large-document handling | Avoid loading entire PDF rasterized into memory. | M2+/M9 | Tested | Visible-window render only + LRU `PageRenderCache` |
 | F58-05 | Large-document handling | Efficient page cache. | M2+/M9 | Tested | `PageRenderCache` LRU (capacity 32) |
-| F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Deferred | Same as F57-05; `BackgroundSearchIndexPolicy` |
+| F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Tested | Same as F57-05; `IPdfTextSearchService.WarmIndexAsync` |
 | F58-07 | Large-document handling | Partial OCR. | M2+/M9 | Tested | OCR selected/current via `OcrPageRangeChooser`; not whole-doc by default |
 | F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | Tested | Search/OCR cancel; `PerformanceBehaviorPolicy.CancelOcrButton` |
 | F59-01 | Multi-document workflow | multiple tabs | M1/M3 | Tested | `WorkspaceState` Open/Activate/Close/Reorder/ActivateNext unit tests |

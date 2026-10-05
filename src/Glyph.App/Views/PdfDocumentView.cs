@@ -276,6 +276,11 @@ public sealed class PdfDocumentView : UserControl
         _renderer = renderer;
         _cache = cache;
         _searchCoordinator = new PdfSearchCoordinator(searchService);
+        if (!string.IsNullOrWhiteSpace(document.Path))
+        {
+            _ = _searchCoordinator.WarmIndexAsync(document.Path);
+        }
+
         _textExtractor = textExtractor;
         _outlineService = outlineService;
         _outlineExport = outlineExport;

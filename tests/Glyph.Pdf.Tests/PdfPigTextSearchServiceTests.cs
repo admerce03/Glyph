@@ -292,6 +292,22 @@ public class PdfPigTextSearchServiceTests
         PdfPigTextSearchService.NormalizeForSearch("hello \n\t world").Should().Be("hello world");
     }
 
+    [Fact]
+    public async Task WarmIndex_then_search_finds_match()
+    {
+        await using var pdf = await SamplePdf.CreateAsync(b =>
+        {
+            b.Page("Warm index alpha page");
+            b.Page("Second bravo page");
+        });
+
+        await _search.WarmIndexAsync(pdf.Path);
+        var result = await _search.SearchAsync(pdf.Path, "bravo");
+        result.Status.Should().Be(PdfSearchStatus.Success);
+        result.Hits.Should().ContainSingle();
+        result.Hits[0].PageIndex.Should().Be(1);
+    }
+
     private static string FixturePath(string fileName) =>
         Path.Combine(AppContext.BaseDirectory, "Fixtures", fileName);
 }
@@ -358,6 +374,9 @@ public sealed class PdfSearchCoordinatorTests
                 new PdfSearchHit(0, query, 0, query.Length),
             ]);
         }
+
+        public Task WarmIndexAsync(string path, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 
     private sealed class ScriptedSearchService : IPdfTextSearchService
@@ -373,6 +392,9 @@ public sealed class PdfSearchCoordinatorTests
                 new PdfSearchHit(0, query, 0, query.Length),
             ]));
         }
+
+        public Task WarmIndexAsync(string path, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 }
 

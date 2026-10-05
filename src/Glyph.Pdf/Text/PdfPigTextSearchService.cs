@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Exceptions;
 
@@ -8,9 +9,24 @@ namespace Glyph.Pdf.Text;
 /// Runs on a thread-pool thread and honors cancellation between pages.
 /// Does not require rasterizing pages. Glyph.App must depend only on
 /// <see cref="IPdfTextSearchService"/>, never on PdfPig types directly.
+/// Optionally warms a per-path page-text index for faster subsequent Finds.
 /// </summary>
 public sealed class PdfPigTextSearchService : IPdfTextSearchService
 {
+    private readonly ConcurrentDictionary<string, PdfPageTextIndex> _indexes =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    public Task WarmIndexAsync(string path, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (_indexes.TryGetValue(path, out var existing) && existing.IsComplete)
+        {
+            return Task.CompletedTask;
+        }
+
+        return Task.Run(() => WarmCore(path, cancellationToken), cancellationToken);
+    }
+
     public Task<PdfSearchResult> SearchAsync(
         string path,
         string query,
@@ -25,9 +41,98 @@ public sealed class PdfPigTextSearchService : IPdfTextSearchService
             return Task.FromResult(PdfSearchResult.EmptyQuery());
         }
 
+        if (_indexes.TryGetValue(path, out var index) && index.IsComplete)
+        {
+            return Task.FromResult(SearchFromIndex(index, query, options));
+        }
+
         return Task.Run(
             () => SearchCore(path, query, options, cancellationToken),
             cancellationToken);
+    }
+
+    private void WarmCore(string path, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var index = _indexes.GetOrAdd(path, _ => new PdfPageTextIndex());
+        if (index.IsComplete)
+        {
+            return;
+        }
+
+        try
+        {
+            using var document = PdfDocument.Open(path);
+            index.SetPageCount(document.NumberOfPages);
+            for (var pageIndex = 0; pageIndex < document.NumberOfPages; pageIndex++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var page = document.GetPage(pageIndex + 1);
+                index.SetPage(pageIndex, page.Text ?? string.Empty);
+            }
+
+            index.MarkComplete();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            // Leave incomplete index; SearchAsync will fall back to live scan.
+            _indexes.TryRemove(path, out _);
+        }
+    }
+
+    private static PdfSearchResult SearchFromIndex(
+        PdfPageTextIndex index,
+        string query,
+        PdfSearchOptions options)
+    {
+        var comparison = options.CaseSensitive
+            ? StringComparison.Ordinal
+            : StringComparison.OrdinalIgnoreCase;
+        var needle = NormalizeForSearch(query);
+        var hits = new List<PdfSearchHit>();
+        var sawAnyText = false;
+
+        foreach (var (pageIndex, raw) in index.Snapshot())
+        {
+            if (raw.Length > 0)
+            {
+                sawAnyText = true;
+            }
+
+            var haystack = NormalizeForSearch(raw);
+            if (haystack.Length == 0 || needle.Length == 0)
+            {
+                continue;
+            }
+
+            if (options.ExactPhrase)
+            {
+                CollectPhraseHits(hits, pageIndex, haystack, raw, needle, comparison);
+            }
+            else
+            {
+                foreach (var token in needle.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    CollectPhraseHits(hits, pageIndex, haystack, raw, token, comparison);
+                }
+            }
+        }
+
+        if (hits.Count > 0)
+        {
+            return PdfSearchResult.Success(hits);
+        }
+
+        if (!sawAnyText && index.PageCount > 0)
+        {
+            return PdfSearchResult.NoExtractableText();
+        }
+
+        return PdfSearchResult.NoMatches();
     }
 
     private static PdfSearchResult SearchCore(
@@ -45,9 +150,7 @@ public sealed class PdfPigTextSearchService : IPdfTextSearchService
                 ? StringComparison.Ordinal
                 : StringComparison.OrdinalIgnoreCase;
 
-            var needle = options.ExactPhrase
-                ? NormalizeForSearch(query)
-                : NormalizeForSearch(query);
+            var needle = NormalizeForSearch(query);
             var hits = new List<PdfSearchHit>();
             var sawAnyText = false;
 
@@ -73,7 +176,6 @@ public sealed class PdfPigTextSearchService : IPdfTextSearchService
                 }
                 else
                 {
-                    // Any-word: each whitespace-separated token is a match candidate.
                     foreach (var token in needle.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                     {
                         CollectPhraseHits(hits, pageIndex, haystack, raw, token, comparison);

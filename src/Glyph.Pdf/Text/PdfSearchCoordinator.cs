@@ -1,3 +1,5 @@
+using Glyph.Core.Documents;
+
 namespace Glyph.Pdf.Text;
 
 /// <summary>
@@ -18,6 +20,24 @@ public sealed class PdfSearchCoordinator : IDisposable
     }
 
     public int Generation => Volatile.Read(ref _generation);
+
+    public async Task WarmIndexAsync(string path, CancellationToken externalToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (string.IsNullOrWhiteSpace(path) || !BackgroundSearchIndexPolicy.BackgroundIndexingEnabled)
+        {
+            return;
+        }
+
+        try
+        {
+            await _searchService.WarmIndexAsync(path, externalToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when the document closes or a newer warm starts.
+        }
+    }
 
     public async Task<PdfSearchResult> SearchAsync(
         string path,
