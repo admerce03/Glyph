@@ -547,7 +547,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F35-07 | Image format conversion | HEIC/HEIF where supported | M5 | Tested | Convert → HEIC (`ImageEncodeFormat.Heic`); skips when Magick lacks codec |
 | F35-08 | Image format conversion | AVIF | M5 | Tested | Convert dialog → AVIF + quality |
 | F35-09 | Image format conversion | JPEG 2000 | M5 | Tested | Convert dialog → JPEG 2000 |
-| F35-10 | Image format conversion | PDF | M5 | Not Started |  |
+| F35-10 | Image format conversion | PDF | M5 | Tested | Convert → PDF via Magick `MagickFormat.Pdf` |
 | F35-11 | Image format conversion | JPEG quality | M5 | Tested | ImageEncodeOptions.Quality + →JPEG dialog |
 | F35-12 | Image format conversion | WebP quality/lossless | M5 | Tested | Convert dialog Quality / Lossless WebP |
 | F35-13 | Image format conversion | AVIF quality | M5 | Tested | Convert dialog Quality slider for AVIF |

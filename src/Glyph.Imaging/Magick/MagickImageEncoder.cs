@@ -44,6 +44,7 @@ public sealed class MagickImageEncoder : IImageEncoder
                     ImageEncodeFormat.Avif => MagickFormat.Avif,
                     ImageEncodeFormat.Jpeg2000 => MagickFormat.Jp2,
                     ImageEncodeFormat.Heic => MagickFormat.Heic,
+                    ImageEncodeFormat.Pdf => MagickFormat.Pdf,
                     _ => MagickFormat.Png,
                 };
 
@@ -56,7 +57,7 @@ public sealed class MagickImageEncoder : IImageEncoder
                 }
 
                 if (options?.PreserveAlpha == false
-                    || format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Jpeg2000)
+                    || format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Jpeg2000 or ImageEncodeFormat.Pdf)
                 {
                     clone.Alpha(AlphaOption.Remove);
                 }
@@ -106,6 +107,7 @@ public sealed class MagickImageEncoder : IImageEncoder
                     ImageEncodeFormat.Avif => MagickFormat.Avif,
                     ImageEncodeFormat.Jpeg2000 => MagickFormat.Jp2,
                     ImageEncodeFormat.Heic => MagickFormat.Heic,
+                    ImageEncodeFormat.Pdf => MagickFormat.Pdf,
                     _ => MagickFormat.Png,
                 };
 
@@ -117,7 +119,7 @@ public sealed class MagickImageEncoder : IImageEncoder
                 ApplyOptions(image, format, options);
 
                 if (options?.PreserveAlpha == false
-                    || format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Jpeg2000)
+                    || format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Jpeg2000 or ImageEncodeFormat.Pdf)
                 {
                     image.Alpha(AlphaOption.Remove);
                 }

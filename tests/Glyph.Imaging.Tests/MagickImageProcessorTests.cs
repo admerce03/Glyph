@@ -406,6 +406,30 @@ public class MagickImageProcessorTests
     }
 
     [Fact]
+    public async Task SaveAs_pdf_writes_single_page_file()
+    {
+        var path = CreateSolidPng(32, 24);
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-pdf-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var encoder = new MagickImageEncoder();
+            await using var document = await decoder.OpenAsync(path);
+            await encoder.SaveAsAsync(document, outPath, ImageEncodeFormat.Pdf);
+            File.Exists(outPath).Should().BeTrue();
+            new FileInfo(outPath).Length.Should().BeGreaterThan(0);
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
     public async Task SaveAs_tiff_with_lzw_compression_writes_file()
     {
         var path = CreateSolidPng(32, 24);

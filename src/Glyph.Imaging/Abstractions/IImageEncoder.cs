@@ -35,6 +35,7 @@ public enum ImageEncodeFormat
     Avif,
     Jpeg2000,
     Heic,
+    Pdf,
 }
 
 /// <summary>

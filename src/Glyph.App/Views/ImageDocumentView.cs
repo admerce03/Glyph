@@ -1974,7 +1974,7 @@ public sealed class ImageDocumentView : UserControl
         {
             Header = "Format",
             Width = 200,
-            ItemsSource = new[] { "WebP", "TIFF", "BMP", "GIF", "AVIF", "JPEG 2000", "HEIC" },
+            ItemsSource = new[] { "WebP", "TIFF", "BMP", "GIF", "AVIF", "JPEG 2000", "HEIC", "PDF" },
             SelectedIndex = 0,
         };
         var quality = new Slider
@@ -2047,6 +2047,7 @@ public sealed class ImageDocumentView : UserControl
             "AVIF" => (ImageEncodeFormat.Avif, ".avif"),
             "JPEG 2000" => (ImageEncodeFormat.Jpeg2000, ".jp2"),
             "HEIC" => (ImageEncodeFormat.Heic, ".heic"),
+            "PDF" => (ImageEncodeFormat.Pdf, ".pdf"),
             _ => (ImageEncodeFormat.Webp, ".webp"),
         };
 
