@@ -636,29 +636,29 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F43-02 | Webcam/camera import | capture image | M8 | Not Started |  |
 | F43-03 | Webcam/camera import | crop result | M8 | Not Started |  |
 | F43-04 | Webcam/camera import | insert into document | M8 | Not Started |  |
-| F44-01 | Printing | print current page | M8 | Not Started |  |
-| F44-02 | Printing | print selected pages | M8 | Not Started |  |
-| F44-03 | Printing | print page range | M8 | Not Started |  |
-| F44-04 | Printing | print all pages | M8 | Not Started |  |
-| F44-05 | Printing | print selected images | M8 | Not Started |  |
-| F44-06 | Printing | copies | M8 | Not Started |  |
-| F44-07 | Printing | collate | M8 | Not Started |  |
-| F44-08 | Printing | duplex | M8 | Not Started |  |
-| F44-09 | Printing | printer selection | M8 | Not Started |  |
-| F44-10 | Printing | paper size | M8 | Not Started |  |
-| F44-11 | Printing | orientation | M8 | Not Started |  |
-| F44-12 | Printing | margins | M8 | Not Started |  |
-| F44-13 | Printing | scale | M8 | Not Started |  |
-| F44-14 | Printing | actual size | M8 | Not Started |  |
-| F44-15 | Printing | fit to printable area | M8 | Not Started |  |
-| F44-16 | Printing | fill page | M8 | Not Started |  |
-| F44-17 | Printing | pages per sheet | M8 | Not Started |  |
-| F44-18 | Printing | auto rotate | M8 | Not Started |  |
-| F44-19 | Printing | center | M8 | Not Started |  |
-| F44-20 | Printing | print annotations | M8 | Not Started |  |
-| F44-21 | Printing | print notes optionally | M8 | Not Started |  |
-| F44-22 | Printing | grayscale | M8 | Not Started |  |
-| F44-23 | Printing | Windows printer properties integration | M8 | Not Started |  |
+| F44-01 | Printing | print current page | M8 | Implemented | Print → Current page; Ctrl+P |
+| F44-02 | Printing | print selected pages | M8 | Implemented | Print → Selected pages |
+| F44-03 | Printing | print page range | M8 | Implemented | Print → Page range (e.g. 1-3,5) |
+| F44-04 | Printing | print all pages | M8 | Implemented | Print → All pages |
+| F44-05 | Printing | print selected images | M8 | Implemented | Image Print; optional folder siblings |
+| F44-06 | Printing | copies | M8 | Implemented | System print UI (PrintTask options) |
+| F44-07 | Printing | collate | M8 | Implemented | System print UI |
+| F44-08 | Printing | duplex | M8 | Implemented | System print UI |
+| F44-09 | Printing | printer selection | M8 | Implemented | System print UI |
+| F44-10 | Printing | paper size | M8 | Implemented | System print UI / printer properties |
+| F44-11 | Printing | orientation | M8 | Implemented | System print UI + auto-rotate option |
+| F44-12 | Printing | margins | M8 | Implemented | Uses ImageableRect printable area |
+| F44-13 | Printing | scale | M8 | Implemented | Fit / Fill / Actual size |
+| F44-14 | Printing | actual size | M8 | Implemented | Print scale → Actual size |
+| F44-15 | Printing | fit to printable area | M8 | Implemented | Default Fit scale |
+| F44-16 | Printing | fill page | M8 | Implemented | Print scale → Fill page |
+| F44-17 | Printing | pages per sheet | M8 | Deferred | N-up layout not yet; 1 page/sheet |
+| F44-18 | Printing | auto rotate | M8 | Implemented | Print dialog Auto-rotate |
+| F44-19 | Printing | center | M8 | Implemented | Print dialog Center on page |
+| F44-20 | Printing | print annotations | M8 | Implemented | PDFium render includes annotations |
+| F44-21 | Printing | print notes optionally | M8 | Implemented | Print → Append notes page |
+| F44-22 | Printing | grayscale | M8 | Tested | Print dialog Grayscale (`ImagePixelOps`) |
+| F44-23 | Printing | Windows printer properties integration | M8 | Implemented | PrintManager / PrintTaskOptionDetails |
 | F45-01 | Exporting | output format | M5-M9 | Implemented | PDF Export → PNG/JPEG/WebP/TIFF/BMP; image Convert/Export |
 | F45-02 | Exporting | destination | M5-M9 | Implemented | FileSavePicker / FolderPicker for multi-page |
 | F45-03 | Exporting | quality | M5-M9 | Implemented | JPEG/WebP quality slider on PDF Export + image JPEG export |
@@ -724,7 +724,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F52-01 | Keyboard shortcuts | Ctrl+O — Open | M1/M9 | Not Started |  |
 | F52-02 | Keyboard shortcuts | Ctrl+S — Save | M1/M9 | Not Started |  |
 | F52-03 | Keyboard shortcuts | Ctrl+Shift+S — Save As | M1/M9 | Not Started |  |
-| F52-04 | Keyboard shortcuts | Ctrl+P — Print | M1/M9 | Not Started |  |
+| F52-04 | Keyboard shortcuts | Ctrl+P — Print | M1/M9 | Implemented | PDF + image views (Print dialog) |
 | F52-05 | Keyboard shortcuts | Ctrl+W — Close tab/document | M1/M9 | Not Started |  |
 | F52-06 | Keyboard shortcuts | Ctrl+Tab — Next tab | M1/M9 | Not Started |  |
 | F52-07 | Keyboard shortcuts | Ctrl+Shift+Tab — Previous tab | M1/M9 | Not Started |  |

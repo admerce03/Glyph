@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices.WindowsRuntime;
+using Glyph.App.Printing;
 using Glyph.Core.Documents;
 using Glyph.Core.Signatures;
 using Glyph.Imaging.Abstractions;
@@ -508,6 +509,7 @@ public sealed class PdfDocumentView : UserControl
         var info = new Button { Content = "Info" };
         var optimize = new Button { Content = "Optimize" };
         var export = new Button { Content = "Export" };
+        var print = new Button { Content = "Print" };
         var sign = new Button { Content = "Sign" };
         var formFill = new Button { Content = "Form" };
         var ink = new Button { Content = "Ink" };
@@ -565,6 +567,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(info, "Document metadata, encryption, and permissions");
         ToolTipService.SetToolTip(optimize, "Downsample images / shrink PDF (presets)");
         ToolTipService.SetToolTip(export, "Export selected/current page(s) as PNG, JPEG, WebP, TIFF, BMP, GIF, AVIF, or JPEG 2000");
+        ToolTipService.SetToolTip(print, "Print current, selected, range, or all pages (Ctrl+P)");
         ToolTipService.SetToolTip(sign, "Signature: draw, import PNG/JPEG, or webcam photo of paper signature");
         ToolTipService.SetToolTip(formFill, "Form fill: overlay mode or field list (Tab order)");
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
@@ -632,6 +635,7 @@ public sealed class PdfDocumentView : UserControl
         info.Click += async (_, _) => await ShowDocumentInfoAsync();
         optimize.Click += async (_, _) => await ShowOptimizeDialogAsync();
         export.Click += async (_, _) => await ExportPagesAsImagesAsync();
+        print.Click += async (_, _) => await PrintDocumentAsync();
         sign.Click += async (_, _) => await BeginSignatureAsync();
         formFill.Click += async (_, _) => await OnFormButtonClickAsync();
         ink.Click += async (_, _) => await ToggleInkModeAsync();
@@ -671,7 +675,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, print, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe,
                 _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -1434,6 +1438,13 @@ public sealed class PdfDocumentView : UserControl
                 await CopySelectedPagesAsync();
             }
 
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrlDown && e.Key == VirtualKey.P)
+        {
+            await PrintDocumentAsync();
             e.Handled = true;
             return;
         }
@@ -10330,6 +10341,228 @@ public sealed class PdfDocumentView : UserControl
         var encrypted = _document.IsEncrypted ? "    Encrypted" : string.Empty;
         _status.Text =
             $"Page {CurrentPageIndex + 1} / {_document.PageCount}    Zoom {(int)Math.Round(_scale * 100)}%    {_layoutMode}{encrypted}";
+    }
+
+    private async Task PrintDocumentAsync()
+    {
+        try
+        {
+            var info = _documentInfo.GetInfo(_document);
+            if (!info.Permissions.CanPrint)
+            {
+                _status.Text = "This PDF does not allow printing.";
+                return;
+            }
+
+            var scopeBox = new ComboBox
+            {
+                Width = 220,
+                ItemsSource = new[] { "Current page", "Selected pages", "Page range…", "All pages" },
+                SelectedIndex = _pageSelection.Count > 0 ? 1 : 0,
+            };
+            var rangeBox = new TextBox
+            {
+                Header = "Range (e.g. 1-3,5)",
+                Width = 220,
+                Text = $"{CurrentPageIndex + 1}",
+                Visibility = Visibility.Collapsed,
+            };
+            var scaleBox = new ComboBox
+            {
+                Header = "Scale",
+                Width = 220,
+                ItemsSource = new[] { "Fit to printable area", "Fill page", "Actual size" },
+                SelectedIndex = 0,
+            };
+            var grayscale = new CheckBox { Content = "Grayscale" };
+            var center = new CheckBox { Content = "Center on page", IsChecked = true };
+            var autoRotate = new CheckBox { Content = "Auto-rotate", IsChecked = true };
+            var includeNotes = new CheckBox { Content = "Append notes page (text)" };
+            scopeBox.SelectionChanged += (_, _) =>
+            {
+                rangeBox.Visibility = scopeBox.SelectedIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
+            };
+
+            var dialog = new ContentDialog
+            {
+                Title = "Print PDF",
+                Content = new StackPanel
+                {
+                    Spacing = 8,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = "Annotations are included in the page render. System dialog sets printer, copies, collate, duplex, and paper.",
+                            TextWrapping = TextWrapping.Wrap,
+                            MaxWidth = 360,
+                            Opacity = 0.8,
+                        },
+                        scopeBox,
+                        rangeBox,
+                        scaleBox,
+                        grayscale,
+                        center,
+                        autoRotate,
+                        includeNotes,
+                    },
+                },
+                PrimaryButtonText = "Print…",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = XamlRoot,
+            };
+
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            {
+                _status.Text = "Print cancelled.";
+                return;
+            }
+
+            var indexes = scopeBox.SelectedIndex switch
+            {
+                1 => SelectedOrCurrentPages(),
+                2 => ParsePageRange(rangeBox.Text, _document.PageCount),
+                3 => Enumerable.Range(0, _document.PageCount).ToList(),
+                _ => [CurrentPageIndex],
+            };
+            if (indexes.Count == 0)
+            {
+                _status.Text = "No pages to print.";
+                return;
+            }
+
+            var scaleMode = scaleBox.SelectedIndex switch
+            {
+                1 => DocumentPrintScaleMode.Fill,
+                2 => DocumentPrintScaleMode.ActualSize,
+                _ => DocumentPrintScaleMode.Fit,
+            };
+
+            _status.Text = $"Preparing {indexes.Count} page(s) for print…";
+            var bitmaps = new List<WriteableBitmap>();
+            const double printDpi = 150;
+            var renderScale = printDpi / 72.0;
+            foreach (var pageIndex in indexes)
+            {
+                using var rendered = await _renderer.RenderPageAsync(
+                    _document,
+                    pageIndex,
+                    new PdfRenderRequest(renderScale));
+                var pixels = rendered.Pixels.ToArray();
+                if (grayscale.IsChecked == true)
+                {
+                    DocumentPrintHelper.ApplyGrayscale(pixels);
+                }
+
+                bitmaps.Add(await DocumentPrintHelper.ToWriteableBitmapAsync(
+                    rendered.Width,
+                    rendered.Height,
+                    pixels));
+            }
+
+            if (includeNotes.IsChecked == true)
+            {
+                var notesBitmap = await RenderNotesPrintPageAsync();
+                if (notesBitmap is not null)
+                {
+                    bitmaps.Add(notesBitmap);
+                }
+            }
+
+            var window = _ownerWindow
+                ?? App.CurrentApp.MainWindowInstance
+                ?? throw new InvalidOperationException("Main window unavailable for print.");
+            using var helper = new DocumentPrintHelper(
+                window,
+                jobName: System.IO.Path.GetFileName(_document.Path) ?? "Glyph PDF",
+                scaleMode: scaleMode,
+                center: center.IsChecked == true,
+                autoRotate: autoRotate.IsChecked == true);
+            await helper.PrintAsync(bitmaps);
+            _status.Text = $"Print UI shown · {bitmaps.Count} page(s).";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Print failed: " + ex.Message;
+        }
+    }
+
+    private static List<int> ParsePageRange(string? text, int pageCount)
+    {
+        var result = new SortedSet<int>();
+        if (string.IsNullOrWhiteSpace(text) || pageCount <= 0)
+        {
+            return [];
+        }
+
+        foreach (var part in text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (part.Contains('-', StringComparison.Ordinal))
+            {
+                var bounds = part.Split('-', 2, StringSplitOptions.TrimEntries);
+                if (bounds.Length == 2
+                    && int.TryParse(bounds[0], out var start)
+                    && int.TryParse(bounds[1], out var end))
+                {
+                    if (start > end)
+                    {
+                        (start, end) = (end, start);
+                    }
+
+                    for (var p = start; p <= end; p++)
+                    {
+                        if (p >= 1 && p <= pageCount)
+                        {
+                            result.Add(p - 1);
+                        }
+                    }
+                }
+
+                continue;
+            }
+
+            if (int.TryParse(part, out var one) && one >= 1 && one <= pageCount)
+            {
+                result.Add(one - 1);
+            }
+        }
+
+        return result.ToList();
+    }
+
+    private async Task<WriteableBitmap?> RenderNotesPrintPageAsync()
+    {
+        try
+        {
+            var annotations = await _annotations.ListAsync(_document);
+            var title = System.IO.Path.GetFileName(_document.Path) ?? "Document";
+            var text = PdfNotesExport.Format(annotations, documentTitle: title);
+            if (string.IsNullOrWhiteSpace(text) || !annotations.Any(a => a.IsStickyNote))
+            {
+                return null;
+            }
+
+            var block = new TextBlock
+            {
+                Text = text,
+                FontSize = 12,
+                TextWrapping = TextWrapping.Wrap,
+                Width = 612,
+                Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 0, 0, 0)),
+            };
+            block.Measure(new Windows.Foundation.Size(612, 20000));
+            var height = (int)Math.Ceiling(Math.Max(792, block.DesiredSize.Height + 24));
+            block.Arrange(new Windows.Foundation.Rect(0, 0, 612, height));
+            var rtb = new RenderTargetBitmap();
+            await rtb.RenderAsync(block, 612, height);
+            var pixels = (await rtb.GetPixelsAsync()).ToArray();
+            return await DocumentPrintHelper.ToWriteableBitmapAsync(rtb.PixelWidth, rtb.PixelHeight, pixels);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private async Task ExportPagesAsImagesAsync()

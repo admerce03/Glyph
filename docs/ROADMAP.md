@@ -322,6 +322,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Color management: detect ICC (`HasIccProfile`), assign/convert via Magick `SetProfile` / `TransformColorSpace`; Meta dialog Assign sRGB / Convert → sRGB; display honors ICC→sRGB (F39-02) with soft-proof Adobe RGB + rendering intent (F39-06/07/09); monitor profile / gamut warning deferred.
 - Animated GIF/WebP: decoder coalesces multi-frame images; Play/Pause/Restart/prev/next frame, Loop, frame label, Save frame → PNG (F27-01–10).
 - Background/subject: BG dialog corner flood-fill + fuzz, optional trim; extract to clipboard or PNG; Smart lasso covers F29-01/02 (F29-05 ML deferred).
+- Printing: PDF/image Print… + Ctrl+P via WinUI `PrintManager`/`PrintDocument` (scope/range/scale/grayscale/center/auto-rotate; annotations in render; optional notes page). System UI covers printer/copies/collate/duplex/paper (F44). N-up deferred.
 - Webcam signature capture already shipped in M4; HDR display (F26-24) still deferred.
 
 ## Milestone 9 — Performance, polish, accessibility, installer, audit
@@ -376,7 +377,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Color management | §39 | M8 | In Progress (display ICC→sRGB + soft-proof; monitor ICC deferred) |
 | Clipboard/screenshots | §40–41 | M1, M5 | Not Started |
 | Scanner/webcam | §42–43 | M8 | Not Started |
-| Printing | §44 | M8 | Not Started |
+| Printing | §44 | M8 | In Progress (system Print UI; N-up deferred) |
 | Export/share/integration | §45–48 | M5–M9 | In Progress (PDF page export formats/DPI/quality/metadata/ICC/alpha) |
 | Undo/autosave/snapshots | §49–51 | M1–M4, M9 | Not Started |
 | Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Not Started |

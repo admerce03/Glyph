@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices.WindowsRuntime;
+using Glyph.App.Printing;
 using Glyph.Core.Documents;
 using Glyph.Core.Signatures;
 using Glyph.Imaging.Abstractions;
@@ -256,6 +257,7 @@ public sealed class ImageDocumentView : UserControl
         var exportPng = new Button { Content = "→PNG" };
         var exportJpeg = new Button { Content = "→JPEG" };
         var convert = new Button { Content = "Convert" };
+        var printImage = new Button { Content = "Print" };
         var copyImage = new Button { Content = "Copy" };
         var pasteImage = new Button { Content = "Paste" };
         _prevButton = new Button { Content = "◀", Width = 36 };
@@ -299,6 +301,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(exportPng, "Export as PNG");
         ToolTipService.SetToolTip(exportJpeg, "Export as JPEG");
         ToolTipService.SetToolTip(convert, "Export as WebP, TIFF, BMP, GIF, AVIF, JP2, or HEIC");
+        ToolTipService.SetToolTip(printImage, "Print this image (Ctrl+P)");
         ToolTipService.SetToolTip(copyImage, "Copy whole image to clipboard (Ctrl+C; selection copies when active)");
         ToolTipService.SetToolTip(pasteImage, "Paste image from clipboard (Ctrl+V)");
         ToolTipService.SetToolTip(_prevButton, "Previous image in folder");
@@ -360,6 +363,7 @@ public sealed class ImageDocumentView : UserControl
         exportPng.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Png, ".png");
         exportJpeg.Click += async (_, _) => await ExportJpegAsync();
         convert.Click += async (_, _) => await ConvertAsync();
+        printImage.Click += async (_, _) => await PrintImageAsync();
         copyImage.Click += async (_, _) => await CopyImageAsync();
         pasteImage.Click += async (_, _) => await PasteImageAsync();
         _prevButton.Click += async (_, _) => await NavigateSiblingAsync(-1);
@@ -406,7 +410,7 @@ public sealed class ImageDocumentView : UserControl
                 _cropBox, crop, _interactiveCropButton, _cropAspectBox, _applyCropButton, _cancelCropButton,
                 _selectButton, _selectionKindBox, _selectAllButton, _invertSelButton, _deselectButton, _copySelButton, _cutSelButton, _pasteSelButton, _deleteSelButton, _cropSelButton,
                 _drawButton, _flattenMarkupButton,
-                resize, adjust, bgRemove, stamp, meta, ocrButton, copyImage, pasteImage, save, exportPng, exportJpeg, convert, _status,
+                resize, adjust, bgRemove, stamp, meta, ocrButton, copyImage, pasteImage, save, exportPng, exportJpeg, convert, printImage, _status,
             },
         };
 
@@ -967,6 +971,13 @@ public sealed class ImageDocumentView : UserControl
         if (ctrl && e.Key == Windows.System.VirtualKey.C)
         {
             _ = CopyImageAsync();
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrl && e.Key == Windows.System.VirtualKey.P)
+        {
+            _ = PrintImageAsync();
             e.Handled = true;
             return;
         }
@@ -3044,8 +3055,8 @@ public sealed class ImageDocumentView : UserControl
             return 0;
         }
 
+        _ = includeCurrent; // Current image handled by caller MutateAsync when selected.
         var current = System.IO.Path.GetFullPath(_document.Path);
-        // Skip open image: already mutated in-memory when includeCurrent.
         var targets = _siblings
             .Where(s => !string.Equals(System.IO.Path.GetFullPath(s), current, StringComparison.OrdinalIgnoreCase))
             .ToList();
@@ -3653,6 +3664,129 @@ public sealed class ImageDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Stamp failed: " + ex.Message;
+        }
+    }
+
+    private async Task PrintImageAsync()
+    {
+        try
+        {
+            var scaleBox = new ComboBox
+            {
+                Header = "Scale",
+                Width = 240,
+                ItemsSource = new[] { "Fit to printable area", "Fill page", "Actual size" },
+                SelectedIndex = 0,
+            };
+            var grayscale = new CheckBox { Content = "Grayscale" };
+            var center = new CheckBox { Content = "Center on page", IsChecked = true };
+            var includeSiblings = new CheckBox
+            {
+                Content = $"Also print other folder images ({Math.Max(0, _siblings.Count - 1)})",
+                IsEnabled = _siblings.Count > 1 && _decoder is not null,
+            };
+            var dialog = new ContentDialog
+            {
+                Title = "Print image",
+                Content = new StackPanel
+                {
+                    Spacing = 8,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = "System print dialog sets printer, copies, collate, duplex, and paper.",
+                            TextWrapping = TextWrapping.Wrap,
+                            MaxWidth = 320,
+                            Opacity = 0.8,
+                        },
+                        scaleBox,
+                        grayscale,
+                        center,
+                        includeSiblings,
+                    },
+                },
+                PrimaryButtonText = "Print…",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = XamlRoot,
+            };
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            {
+                _status.Text = "Print cancelled.";
+                return;
+            }
+
+            var scaleMode = scaleBox.SelectedIndex switch
+            {
+                1 => DocumentPrintScaleMode.Fill,
+                2 => DocumentPrintScaleMode.ActualSize,
+                _ => DocumentPrintScaleMode.Fit,
+            };
+
+            var bitmaps = new List<WriteableBitmap>();
+            async Task AddDocAsync(IImageDocument doc)
+            {
+                // Use unmanaged pixels for print fidelity (no display soft-proof).
+                var managed = doc.ColorManagedDisplay;
+                doc.ColorManagedDisplay = false;
+                try
+                {
+                    var buffer = await doc.GetPixelsAsync();
+                    var pixels = buffer.BgraPixels.ToArray();
+                    if (grayscale.IsChecked == true)
+                    {
+                        DocumentPrintHelper.ApplyGrayscale(pixels);
+                    }
+
+                    bitmaps.Add(await DocumentPrintHelper.ToWriteableBitmapAsync(
+                        buffer.Width,
+                        buffer.Height,
+                        pixels));
+                }
+                finally
+                {
+                    doc.ColorManagedDisplay = managed;
+                }
+            }
+
+            await AddDocAsync(_document);
+            if (includeSiblings.IsChecked == true && _decoder is not null && !string.IsNullOrWhiteSpace(_document.Path))
+            {
+                var current = System.IO.Path.GetFullPath(_document.Path);
+                foreach (var sibling in _siblings)
+                {
+                    if (string.Equals(System.IO.Path.GetFullPath(sibling), current, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        await using var doc = await _decoder.OpenAsync(sibling);
+                        await AddDocAsync(doc);
+                    }
+                    catch (Exception ex)
+                    {
+                        _status.Text = $"Print skipped {System.IO.Path.GetFileName(sibling)}: {ex.Message}";
+                    }
+                }
+            }
+
+            var window = App.CurrentApp.MainWindowInstance
+                ?? throw new InvalidOperationException("Main window unavailable for print.");
+            using var helper = new DocumentPrintHelper(
+                window,
+                jobName: System.IO.Path.GetFileName(_document.Path) ?? "Glyph image",
+                scaleMode: scaleMode,
+                center: center.IsChecked == true,
+                autoRotate: true);
+            await helper.PrintAsync(bitmaps);
+            _status.Text = $"Print UI shown · {bitmaps.Count} image(s).";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Print failed: " + ex.Message;
         }
     }
 
