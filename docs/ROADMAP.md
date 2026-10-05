@@ -191,8 +191,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Viewer: select text → Highlight (multi-color picker; persistent mode toggles so every selection highlights) / Underline / Strike toolbar actions; sidebar Color recolors selected markup.
 - Annotation sidebar lists text markup; click jumps to page; Delete removes selected markup.
 - Sticky notes: `AddStickyNoteAsync` + Note toolbar dialog; Contents/color/move APIs; notes appear in sidebar.
-- Freehand ink: `AddInkAsync` + Ink draw mode on page surface; listed in annotation sidebar.
-- Shapes: `AddShapeAsync` for rectangle/ellipse (Square/Circle), line, and arrow (ink strokes; arrow adds head wings); Rect/Ellipse/Line/Arrow draw modes.
+- Freehand ink: `AddInkAsync` + Ink draw mode on page surface (stroke color picker); listed in annotation sidebar.
+- Shapes: `AddShapeAsync` for rectangle/ellipse (Square/Circle), line, and arrow (ink strokes; arrow adds head wings); Rect/Ellipse/Line/Arrow draw modes with border/fill color picker.
 - Text boxes: `AddTextBoxAsync` FreeText with Contents + DA; TextBox toolbar dialog; listed in sidebar.
 - Flatten: `FlattenAsync` via `FPDFPage_Flatten` + Flatten toolbar (confirm dialog); editable annots removed after bake.
 - Signatures: `AddStampAsync` (BGRA stamp image) + local `FileSignatureLibrary`; Sign toolbar Draw (mouse stroke → PNG/library/stamp) or Import image.
