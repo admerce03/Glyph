@@ -563,6 +563,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F36-06 | Batch image operations | strip metadata | M8 | Implemented | Batch… → Strip metadata (re-save PreserveMetadata=false) |
 | F36-07 | Batch image operations | change color profile | M8 | Implemented | Batch… → Color profile assign/convert sRGB/Adobe RGB |
 | F36-08 | Batch image operations | rename, optionally | M8 | Implemented | Batch… → Rename pattern `{name}-{n:000}` |
+| F36-09 | Batch image operations | Show batch progress. | M8 | Implemented | Progress dialog + Cancel for folder Batch ops |
 | F37-01 | Image metadata | dimensions | M5 | Tested | GetMetadataAsync PixelWidth/Height |
 | F37-02 | Image metadata | pixel count | M5 | Implemented | Derived from dimensions |
 | F37-03 | Image metadata | DPI | M5 | Tested | Density → DpiX/DpiY |

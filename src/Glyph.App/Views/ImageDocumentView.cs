@@ -2508,30 +2508,27 @@ public sealed class ImageDocumentView : UserControl
         }
 
         var current = System.IO.Path.GetFullPath(_document.Path);
-        var updated = 0;
-        foreach (var sibling in _siblings)
-        {
-            var full = System.IO.Path.GetFullPath(sibling);
-            if (string.Equals(full, current, StringComparison.OrdinalIgnoreCase))
+        var targets = _siblings
+            .Where(s => !string.Equals(System.IO.Path.GetFullPath(s), current, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var (updated, cancelled) = await RunBatchWithProgressAsync(
+            "Batch resize",
+            targets,
+            async (sibling, _, ct) =>
             {
-                continue;
-            }
-
-            try
-            {
-                await using var doc = await _decoder.OpenAsync(sibling);
+                ct.ThrowIfCancellationRequested();
+                await using var doc = await _decoder.OpenAsync(sibling, ct);
                 var w = Math.Max(1, (int)Math.Round(doc.PixelWidth * percent / 100.0));
                 var h = lockAspect
                     ? Math.Max(1, (int)Math.Round(w * (doc.PixelHeight / (double)Math.Max(1, doc.PixelWidth))))
                     : Math.Max(1, (int)Math.Round(doc.PixelHeight * percent / 100.0));
-                await _processor.ResizeAsync(doc, w, h, options);
-                await _encoder.SaveAsync(doc, sibling);
-                updated++;
-            }
-            catch (Exception ex)
-            {
-                _status.Text = $"Batch resize skipped {System.IO.Path.GetFileName(sibling)}: {ex.Message}";
-            }
+                await _processor.ResizeAsync(doc, w, h, options, ct);
+                await _encoder.SaveAsync(doc, sibling, ct);
+                return true;
+            });
+        if (cancelled)
+        {
+            _status.Text = $"Batch resize cancelled after {updated} file(s).";
         }
 
         return updated;
@@ -2753,30 +2750,136 @@ public sealed class ImageDocumentView : UserControl
         }
 
         var current = System.IO.Path.GetFullPath(_document.Path);
-        var updated = 0;
-        foreach (var sibling in _siblings)
-        {
-            var full = System.IO.Path.GetFullPath(sibling);
-            if (string.Equals(full, current, StringComparison.OrdinalIgnoreCase))
+        var targets = _siblings
+            .Where(s => !string.Equals(System.IO.Path.GetFullPath(s), current, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var (updated, cancelled) = await RunBatchWithProgressAsync(
+            $"Batch {label}",
+            targets,
+            async (sibling, _, ct) =>
             {
-                continue;
-            }
+                ct.ThrowIfCancellationRequested();
+                await using var doc = await _decoder.OpenAsync(sibling, ct);
+                await ApplyAsync(doc);
+                await _encoder.SaveAsync(doc, sibling, ct);
+                return true;
+            });
+        _status.Text = cancelled
+            ? $"Batch {label} cancelled after {updated} file(s)."
+            : $"Batch {label}: updated {updated} folder image(s)"
+                + (includeCurrent.IsChecked == true ? " (+ current)." : ".");
+    }
 
+    /// <summary>
+    /// Runs a per-file folder batch with a progress dialog and Cancel (F36 progress).
+    /// </summary>
+    private async Task<(int Updated, bool Cancelled)> RunBatchWithProgressAsync(
+        string title,
+        IReadOnlyList<string> targets,
+        Func<string, int, CancellationToken, Task<bool>> processOne)
+    {
+        if (targets.Count == 0)
+        {
+            return (0, false);
+        }
+
+        using var cts = new CancellationTokenSource();
+        var workDone = false;
+        var progressLabel = new TextBlock
+        {
+            Text = $"0 / {targets.Count}",
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 360,
+        };
+        var bar = new ProgressBar
+        {
+            Minimum = 0,
+            Maximum = targets.Count,
+            Value = 0,
+            Width = 320,
+        };
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = new StackPanel
+            {
+                Spacing = 10,
+                Children =
+                {
+                    progressLabel,
+                    bar,
+                    new TextBlock
+                    {
+                        Text = "Cancel stops after the current file.",
+                        Opacity = 0.7,
+                        FontSize = 12,
+                    },
+                },
+            },
+            CloseButtonText = "Cancel",
+            XamlRoot = XamlRoot,
+        };
+        dialog.Closing += (_, args) =>
+        {
+            cts.Cancel();
+            if (!workDone && args.Result == ContentDialogResult.None)
+            {
+                args.Cancel = true;
+            }
+        };
+
+        var showTask = dialog.ShowAsync().AsTask();
+        var updated = 0;
+        var cancelled = false;
+        try
+        {
+            for (var i = 0; i < targets.Count; i++)
+            {
+                if (cts.IsCancellationRequested)
+                {
+                    cancelled = true;
+                    break;
+                }
+
+                var path = targets[i];
+                var name = System.IO.Path.GetFileName(path);
+                progressLabel.Text = $"{i + 1} / {targets.Count} · {name}";
+                bar.Value = i;
+                try
+                {
+                    if (await processOne(path, i, cts.Token))
+                    {
+                        updated++;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    cancelled = true;
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    progressLabel.Text = $"{i + 1} / {targets.Count} · skipped {name}: {ex.Message}";
+                }
+
+                bar.Value = i + 1;
+            }
+        }
+        finally
+        {
+            workDone = true;
+            dialog.Hide();
             try
             {
-                await using var doc = await _decoder.OpenAsync(sibling);
-                await ApplyAsync(doc);
-                await _encoder.SaveAsync(doc, sibling);
-                updated++;
+                await showTask;
             }
-            catch (Exception ex)
+            catch
             {
-                _status.Text = $"Batch orient skipped {System.IO.Path.GetFileName(sibling)}: {ex.Message}";
+                // Dialog may already be dismissed.
             }
         }
 
-        _status.Text = $"Batch {label}: updated {updated} folder image(s)"
-            + (includeCurrent.IsChecked == true ? " (+ current)." : ".");
+        return (updated, cancelled);
     }
 
     private async Task<int> BatchConvertFolderAsync(
@@ -2789,20 +2892,20 @@ public sealed class ImageDocumentView : UserControl
             return 0;
         }
 
-        var written = 0;
-        foreach (var sibling in _siblings)
-        {
-            try
+        var (written, cancelled) = await RunBatchWithProgressAsync(
+            "Batch convert",
+            _siblings,
+            async (sibling, _, ct) =>
             {
-                await using var doc = await _decoder.OpenAsync(sibling);
+                ct.ThrowIfCancellationRequested();
+                await using var doc = await _decoder.OpenAsync(sibling, ct);
                 var dest = System.IO.Path.ChangeExtension(sibling, extension);
-                await _encoder.SaveAsAsync(doc, dest, format, options);
-                written++;
-            }
-            catch (Exception ex)
-            {
-                _status.Text = $"Batch convert skipped {System.IO.Path.GetFileName(sibling)}: {ex.Message}";
-            }
+                await _encoder.SaveAsAsync(doc, dest, format, options, ct);
+                return true;
+            });
+        if (cancelled)
+        {
+            _status.Text = $"Batch convert cancelled after {written} file(s).";
         }
 
         return written;
@@ -2816,19 +2919,17 @@ public sealed class ImageDocumentView : UserControl
         }
 
         var current = System.IO.Path.GetFullPath(_document.Path);
-        var updated = 0;
-        foreach (var sibling in _siblings)
-        {
-            var full = System.IO.Path.GetFullPath(sibling);
-            if (!includeCurrent
-                && string.Equals(full, current, StringComparison.OrdinalIgnoreCase))
+        var targets = _siblings
+            .Where(s => includeCurrent
+                || !string.Equals(System.IO.Path.GetFullPath(s), current, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var (updated, cancelled) = await RunBatchWithProgressAsync(
+            "Batch strip metadata",
+            targets,
+            async (sibling, _, ct) =>
             {
-                continue;
-            }
-
-            try
-            {
-                await using var doc = await _decoder.OpenAsync(sibling);
+                ct.ThrowIfCancellationRequested();
+                await using var doc = await _decoder.OpenAsync(sibling, ct);
                 var ext = System.IO.Path.GetExtension(sibling);
                 var format = ext.ToLowerInvariant() switch
                 {
@@ -2847,15 +2948,15 @@ public sealed class ImageDocumentView : UserControl
                     doc,
                     temp,
                     format,
-                    new ImageEncodeOptions(PreserveMetadata: false));
+                    new ImageEncodeOptions(PreserveMetadata: false),
+                    ct);
                 System.IO.File.Copy(temp, sibling, overwrite: true);
                 System.IO.File.Delete(temp);
-                updated++;
-            }
-            catch (Exception ex)
-            {
-                _status.Text = $"Batch strip skipped {System.IO.Path.GetFileName(sibling)}: {ex.Message}";
-            }
+                return true;
+            });
+        if (cancelled)
+        {
+            _status.Text = $"Batch strip cancelled after {updated} file(s).";
         }
 
         return updated;
@@ -2874,15 +2975,17 @@ public sealed class ImageDocumentView : UserControl
             return 0;
         }
 
-        var renamed = 0;
-        for (var i = 0; i < _siblings.Count; i++)
-        {
-            var sibling = _siblings[i];
-            try
+        // Snapshot paths so renames don't disturb enumeration / {n} indexing.
+        var targets = _siblings.ToList();
+        var (renamed, cancelled) = await RunBatchWithProgressAsync(
+            "Batch rename",
+            targets,
+            async (sibling, index, ct) =>
             {
+                ct.ThrowIfCancellationRequested();
                 var baseName = System.IO.Path.GetFileNameWithoutExtension(sibling);
                 var ext = System.IO.Path.GetExtension(sibling);
-                var n = i + 1;
+                var n = index + 1;
                 var stem = pattern
                     .Replace("{name}", baseName, StringComparison.OrdinalIgnoreCase)
                     .Replace("{n:000}", n.ToString("000"), StringComparison.OrdinalIgnoreCase)
@@ -2895,7 +2998,7 @@ public sealed class ImageDocumentView : UserControl
 
                 if (string.IsNullOrWhiteSpace(stem))
                 {
-                    continue;
+                    return false;
                 }
 
                 var dest = System.IO.Path.Combine(dir, stem + ext);
@@ -2904,7 +3007,7 @@ public sealed class ImageDocumentView : UserControl
                         System.IO.Path.GetFullPath(dest),
                         StringComparison.OrdinalIgnoreCase))
                 {
-                    continue;
+                    return false;
                 }
 
                 if (System.IO.File.Exists(dest))
@@ -2921,12 +3024,11 @@ public sealed class ImageDocumentView : UserControl
                     _document.Path = dest;
                 }
 
-                renamed++;
-            }
-            catch (Exception ex)
-            {
-                _status.Text = $"Batch rename skipped {System.IO.Path.GetFileName(sibling)}: {ex.Message}";
-            }
+                return true;
+            });
+        if (cancelled)
+        {
+            _status.Text = $"Batch rename cancelled after {renamed} file(s).";
         }
 
         return renamed;
@@ -2943,42 +3045,32 @@ public sealed class ImageDocumentView : UserControl
         }
 
         var current = System.IO.Path.GetFullPath(_document.Path);
-        var updated = 0;
-        foreach (var sibling in _siblings)
-        {
-            var full = System.IO.Path.GetFullPath(sibling);
-            if (!includeCurrent
-                && string.Equals(full, current, StringComparison.OrdinalIgnoreCase))
+        // Skip open image: already mutated in-memory when includeCurrent.
+        var targets = _siblings
+            .Where(s => !string.Equals(System.IO.Path.GetFullPath(s), current, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var (updated, cancelled) = await RunBatchWithProgressAsync(
+            "Batch color profile",
+            targets,
+            async (sibling, _, ct) =>
             {
-                continue;
-            }
-
-            // Current image already mutated in-memory when includeCurrent; skip re-open overwrite of dirty buffer.
-            if (includeCurrent
-                && string.Equals(full, current, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            try
-            {
-                await using var doc = await _decoder.OpenAsync(sibling);
+                ct.ThrowIfCancellationRequested();
+                await using var doc = await _decoder.OpenAsync(sibling, ct);
                 if (convert)
                 {
-                    await _processor.ConvertColorProfileAsync(doc, kind);
+                    await _processor.ConvertColorProfileAsync(doc, kind, ct);
                 }
                 else
                 {
-                    await _processor.AssignColorProfileAsync(doc, kind);
+                    await _processor.AssignColorProfileAsync(doc, kind, ct);
                 }
 
-                await _encoder.SaveAsync(doc, sibling);
-                updated++;
-            }
-            catch (Exception ex)
-            {
-                _status.Text = $"Batch profile skipped {System.IO.Path.GetFileName(sibling)}: {ex.Message}";
-            }
+                await _encoder.SaveAsync(doc, sibling, ct);
+                return true;
+            });
+        if (cancelled)
+        {
+            _status.Text = $"Batch color profile cancelled after {updated} file(s).";
         }
 
         return updated;

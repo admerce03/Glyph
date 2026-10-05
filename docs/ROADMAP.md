@@ -318,7 +318,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Progress notes
 
-- Folder Batch… covers rotate/flip/orient, convert/export (PNG/JPEG/WebP/TIFF/BMP/GIF/AVIF/JP2), strip metadata, rename (`{name}-{n:000}`), and color profile assign/convert (sRGB/Adobe RGB); Resize dialog can scale all folder siblings.
+- Folder Batch… covers rotate/flip/orient, convert/export (PNG/JPEG/WebP/TIFF/BMP/GIF/AVIF/JP2), strip metadata, rename (`{name}-{n:000}`), and color profile assign/convert (sRGB/Adobe RGB); Resize dialog can scale all folder siblings; progress dialog with Cancel.
 - Color management: detect ICC (`HasIccProfile`), assign/convert via Magick `SetProfile` / `TransformColorSpace`; Meta dialog Assign sRGB / Convert → sRGB; display honors ICC→sRGB (F39-02) with soft-proof Adobe RGB + rendering intent (F39-06/07/09); monitor profile / gamut warning deferred.
 - Animated GIF/WebP: decoder coalesces multi-frame images; Play/Pause/Restart/prev/next frame, Loop, frame label, Save frame → PNG (F27-01–10).
 - Background/subject: BG dialog corner flood-fill + fuzz, optional trim; extract to clipboard or PNG; Smart lasso covers F29-01/02 (F29-05 ML deferred).
@@ -369,7 +369,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Optimization | §24 | M7 | In Progress (presets + downsample + estimate + page export/ICC; JPEG rewrite blocked) |
 | PDF metadata | §25 | M7 | Implemented (read + edit title/author/subject/keywords) |
 | Image viewing/editing | §26–35 | M5 | In Progress |
-| Batch images | §36 | M8 | In Progress (folder Batch convert/rename/strip) |
+| Batch images | §36 | M8 | Implemented (ops + progress/cancel) |
 | Animated images | §27 | M8 | Implemented (play/pause/frame nav/extract) |
 | Smart selection / BG | §29 | M8 | In Progress (flood-fill remove; ML subject deferred) |
 | Image metadata/GPS | §37–38 | M5, M8 | In Progress (EXIF/GPS inspector + strip) |
