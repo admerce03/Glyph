@@ -39,6 +39,13 @@ public sealed class ImageDocumentView : UserControl
     private readonly Button _prevButton;
     private readonly Button _nextButton;
     private readonly Button _slideshowButton;
+    private readonly Button _animPlayButton;
+    private readonly Button _animPrevButton;
+    private readonly Button _animNextButton;
+    private readonly Button _animRestartButton;
+    private readonly Button _animExtractButton;
+    private readonly CheckBox _animLoopBox;
+    private readonly TextBlock _animFrameLabel;
     private readonly Button _undoButton;
     private readonly Button _interactiveCropButton;
     private readonly Button _applyCropButton;
@@ -58,6 +65,9 @@ public sealed class ImageDocumentView : UserControl
     private ImageSelectionKind _selectionKind = ImageSelectionKind.Rectangle;
     private IReadOnlyList<string> _siblings = Array.Empty<string>();
     private DispatcherTimer? _slideshowTimer;
+    private DispatcherTimer? _animationTimer;
+    private bool _animationPlaying;
+    private int _animationLoopsCompleted;
     private readonly List<IImageEditCheckpoint> _editUndoStack = [];
     private readonly List<ImageMarkupStroke> _markupStrokes = [];
     private readonly List<ImageMarkupShape> _markupShapes = [];
@@ -250,6 +260,25 @@ public sealed class ImageDocumentView : UserControl
         _prevButton = new Button { Content = "◀", Width = 36 };
         _nextButton = new Button { Content = "▶", Width = 36 };
         _slideshowButton = new Button { Content = "Slideshow" };
+        _animPlayButton = new Button { Content = "Play", Visibility = Visibility.Collapsed };
+        _animPrevButton = new Button { Content = "⟨frm", Visibility = Visibility.Collapsed };
+        _animNextButton = new Button { Content = "frm⟩", Visibility = Visibility.Collapsed };
+        _animRestartButton = new Button { Content = "Restart", Visibility = Visibility.Collapsed };
+        _animExtractButton = new Button { Content = "Save frame", Visibility = Visibility.Collapsed };
+        _animLoopBox = new CheckBox
+        {
+            Content = "Loop",
+            IsChecked = true,
+            Visibility = Visibility.Collapsed,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        _animFrameLabel = new TextBlock
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            FontSize = 12,
+            Opacity = 0.8,
+            Visibility = Visibility.Collapsed,
+        };
         _undoButton = new Button { Content = "Undo", IsEnabled = false };
 
         ToolTipService.SetToolTip(crop, "Crop using x,y,w,h pixels (origin top-left)");
@@ -273,6 +302,12 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(_prevButton, "Previous image in folder");
         ToolTipService.SetToolTip(_nextButton, "Next image in folder");
         ToolTipService.SetToolTip(_slideshowButton, "Play/stop folder slideshow (3s, loops; Esc stops)");
+        ToolTipService.SetToolTip(_animPlayButton, "Play/pause animated frames (GIF/WebP)");
+        ToolTipService.SetToolTip(_animPrevButton, "Previous animation frame");
+        ToolTipService.SetToolTip(_animNextButton, "Next animation frame");
+        ToolTipService.SetToolTip(_animRestartButton, "Restart animation from first frame");
+        ToolTipService.SetToolTip(_animExtractButton, "Save current frame as PNG");
+        ToolTipService.SetToolTip(_animLoopBox, "Loop animation playback");
         ToolTipService.SetToolTip(_undoButton, "Undo last crop/resize/rotate/adjust (Ctrl+Z)");
 
         zoomOut.Click += async (_, _) => await SetZoomAsync(_zoom / 1.25);
@@ -327,11 +362,17 @@ public sealed class ImageDocumentView : UserControl
         _prevButton.Click += async (_, _) => await NavigateSiblingAsync(-1);
         _nextButton.Click += async (_, _) => await NavigateSiblingAsync(1);
         _slideshowButton.Click += (_, _) => ToggleSlideshow();
+        _animPlayButton.Click += (_, _) => ToggleAnimationPlayback();
+        _animPrevButton.Click += async (_, _) => await StepAnimationFrameAsync(-1);
+        _animNextButton.Click += async (_, _) => await StepAnimationFrameAsync(1);
+        _animRestartButton.Click += async (_, _) => await RestartAnimationAsync();
+        _animExtractButton.Click += async (_, _) => await SaveCurrentFrameAsync();
         _undoButton.Click += async (_, _) => await UndoEditAsync();
         KeyDown += ImageDocumentView_KeyDown;
         Unloaded += (_, _) =>
         {
             StopSlideshowTimerOnly();
+            StopAnimationTimerOnly();
             ClearEditUndoStack();
         };
 
@@ -356,7 +397,9 @@ public sealed class ImageDocumentView : UserControl
             Padding = new Thickness(8),
             Children =
             {
-                _prevButton, _nextButton, _slideshowButton, _undoButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, batchOrient, fullscreen, flipH, flipV,
+                _prevButton, _nextButton, _slideshowButton,
+                _animPlayButton, _animPrevButton, _animNextButton, _animRestartButton, _animLoopBox, _animFrameLabel, _animExtractButton,
+                _undoButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, batchOrient, fullscreen, flipH, flipV,
                 _cropBox, crop, _interactiveCropButton, _cropAspectBox, _applyCropButton, _cancelCropButton,
                 _selectButton, _selectionKindBox, _selectAllButton, _invertSelButton, _deselectButton, _copySelButton, _cutSelButton, _pasteSelButton, _deleteSelButton, _cropSelButton,
                 _drawButton, _flattenMarkupButton,
@@ -419,6 +462,7 @@ public sealed class ImageDocumentView : UserControl
 
         _loaded = true;
         RefreshSiblingList();
+        RefreshAnimationChrome();
         await RefreshAsync();
         UpdateStatus();
         if (_viewState.IsSlideshowActive)
@@ -608,6 +652,218 @@ public sealed class ImageDocumentView : UserControl
         _slideshowTimer = null;
     }
 
+    private void RefreshAnimationChrome()
+    {
+        var animated = _document.FrameCount > 1;
+        var visibility = animated ? Visibility.Visible : Visibility.Collapsed;
+        _animPlayButton.Visibility = visibility;
+        _animPrevButton.Visibility = visibility;
+        _animNextButton.Visibility = visibility;
+        _animRestartButton.Visibility = visibility;
+        _animExtractButton.Visibility = visibility;
+        _animLoopBox.Visibility = visibility;
+        _animFrameLabel.Visibility = visibility;
+        if (!animated)
+        {
+            StopAnimationPlayback();
+            return;
+        }
+
+        _animPlayButton.Content = _animationPlaying ? "Pause" : "Play";
+        _animFrameLabel.Text = $"Frame {_document.CurrentFrameIndex + 1}/{_document.FrameCount}";
+    }
+
+    private void ToggleAnimationPlayback()
+    {
+        if (_document.FrameCount <= 1)
+        {
+            return;
+        }
+
+        if (_animationPlaying)
+        {
+            PauseAnimation();
+            _status.Text = "Animation paused.";
+            return;
+        }
+
+        StartAnimationPlayback();
+        _status.Text = "Animation playing.";
+    }
+
+    private void StartAnimationPlayback()
+    {
+        if (_document.FrameCount <= 1)
+        {
+            return;
+        }
+
+        if (_viewState.IsSlideshowActive)
+        {
+            StopSlideshow();
+        }
+
+        _animationPlaying = true;
+        _animationLoopsCompleted = 0;
+        RefreshAnimationChrome();
+        ScheduleNextAnimationTick();
+    }
+
+    private void PauseAnimation()
+    {
+        _animationPlaying = false;
+        StopAnimationTimerOnly();
+        RefreshAnimationChrome();
+    }
+
+    private void StopAnimationPlayback()
+    {
+        _animationPlaying = false;
+        StopAnimationTimerOnly();
+        RefreshAnimationChrome();
+    }
+
+    private void StopAnimationTimerOnly()
+    {
+        if (_animationTimer is null)
+        {
+            return;
+        }
+
+        _animationTimer.Stop();
+        _animationTimer = null;
+    }
+
+    private void ScheduleNextAnimationTick()
+    {
+        StopAnimationTimerOnly();
+        if (!_animationPlaying || _document.FrameCount <= 1)
+        {
+            return;
+        }
+
+        var delayMs = _document.GetFrameDelayMilliseconds(_document.CurrentFrameIndex);
+        _animationTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(delayMs) };
+        _animationTimer.Tick += async (_, _) => await AdvanceAnimationFrameAsync();
+        _animationTimer.Start();
+    }
+
+    private async Task AdvanceAnimationFrameAsync()
+    {
+        if (!_animationPlaying || _document.FrameCount <= 1)
+        {
+            StopAnimationPlayback();
+            return;
+        }
+
+        var next = _document.CurrentFrameIndex + 1;
+        if (next >= _document.FrameCount)
+        {
+            var loop = _animLoopBox.IsChecked == true;
+            var maxLoops = _document.AnimationIterations;
+            // 0 = infinite (Netscape). When Loop is unchecked, stop after one pass.
+            if (!loop)
+            {
+                PauseAnimation();
+                _status.Text = $"Animation finished · frame {_document.FrameCount}/{_document.FrameCount}.";
+                return;
+            }
+
+            if (maxLoops > 0)
+            {
+                _animationLoopsCompleted++;
+                if (_animationLoopsCompleted >= maxLoops)
+                {
+                    PauseAnimation();
+                    _status.Text = "Animation finished looping.";
+                    return;
+                }
+            }
+
+            next = 0;
+        }
+
+        await _document.SetCurrentFrameAsync(next);
+        await RefreshAsync();
+        RefreshAnimationChrome();
+        UpdateStatus();
+        ScheduleNextAnimationTick();
+    }
+
+    private async Task StepAnimationFrameAsync(int delta)
+    {
+        if (_document.FrameCount <= 1)
+        {
+            return;
+        }
+
+        PauseAnimation();
+        var count = _document.FrameCount;
+        var next = ((_document.CurrentFrameIndex + delta) % count + count) % count;
+        await _document.SetCurrentFrameAsync(next);
+        await RefreshAsync();
+        RefreshAnimationChrome();
+        UpdateStatus();
+        _status.Text = $"Frame {_document.CurrentFrameIndex + 1}/{_document.FrameCount}.";
+    }
+
+    private async Task RestartAnimationAsync()
+    {
+        if (_document.FrameCount <= 1)
+        {
+            return;
+        }
+
+        await _document.SetCurrentFrameAsync(0);
+        await RefreshAsync();
+        _animationLoopsCompleted = 0;
+        StartAnimationPlayback();
+        _status.Text = "Animation restarted.";
+    }
+
+    private async Task SaveCurrentFrameAsync()
+    {
+        if (_document.FrameCount <= 1)
+        {
+            return;
+        }
+
+        try
+        {
+            PauseAnimation();
+            var window = App.CurrentApp.MainWindowInstance
+                ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+            var picker = new Windows.Storage.Pickers.FileSavePicker();
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary;
+            picker.FileTypeChoices.Add("PNG", [".png"]);
+            var baseName = string.IsNullOrWhiteSpace(_document.Path)
+                ? "frame"
+                : System.IO.Path.GetFileNameWithoutExtension(_document.Path);
+            picker.SuggestedFileName = $"{baseName}-frame{_document.CurrentFrameIndex + 1}.png";
+            var file = await picker.PickSaveFileAsync();
+            if (file is null)
+            {
+                _status.Text = "Save frame cancelled.";
+                return;
+            }
+
+            var buffer = await _document.ExtractFrameAsync(_document.CurrentFrameIndex);
+            await _encoder.WriteBgraAsync(
+                buffer.BgraPixels,
+                buffer.Width,
+                buffer.Height,
+                file.Path,
+                ImageEncodeFormat.Png);
+            _status.Text = $"Saved frame {_document.CurrentFrameIndex + 1} → {file.Name}";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Save frame failed: " + ex.Message;
+        }
+    }
+
     private void RefreshSlideshowChrome()
     {
         var active = _viewState.IsSlideshowActive;
@@ -674,6 +930,14 @@ public sealed class ImageDocumentView : UserControl
             {
                 StopSlideshow();
                 _status.Text = "Slideshow stopped.";
+                e.Handled = true;
+                return;
+            }
+
+            if (_animationPlaying)
+            {
+                PauseAnimation();
+                _status.Text = "Animation paused.";
                 e.Handled = true;
                 return;
             }
@@ -4294,6 +4558,15 @@ public sealed class ImageDocumentView : UserControl
     {
         var baseStatus =
             $"{_document.FormatName} {_document.PixelWidth}×{_document.PixelHeight} · {(_zoom * 100):0}%";
+        if (_document.FrameCount > 1)
+        {
+            baseStatus += $" · frame {_document.CurrentFrameIndex + 1}/{_document.FrameCount}";
+            if (_animationPlaying)
+            {
+                baseStatus += " · playing";
+            }
+        }
+
         if (!string.IsNullOrWhiteSpace(_document.Path) && _siblings.Count > 0)
         {
             var index = ImageFolderNavigator.IndexOf(_siblings, _document.Path);

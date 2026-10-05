@@ -5,29 +5,61 @@ namespace Glyph.Imaging.Magick;
 
 public sealed class MagickImageDocument : IImageDocument
 {
-    private MagickImage _image;
+    private readonly List<MagickImage> _frames;
+    private int _frameIndex;
+    private readonly int _animationIterations;
     private bool _disposed;
 
     internal MagickImageDocument(string? path, MagickImage image)
+        : this(path, [image])
     {
+    }
+
+    internal MagickImageDocument(string? path, IReadOnlyList<MagickImage> frames)
+    {
+        ArgumentNullException.ThrowIfNull(frames);
+        if (frames.Count == 0)
+        {
+            throw new ArgumentException("At least one frame is required.", nameof(frames));
+        }
+
         Path = path;
-        _image = image;
+        _frames = [.. frames];
+        _frameIndex = 0;
+        _animationIterations = frames.Count > 1
+            ? checked((int)frames[0].AnimationIterations)
+            : 1;
     }
 
     public string? Path { get; set; }
 
-    public int PixelWidth => checked((int)_image.Width);
+    public int PixelWidth => checked((int)Current.Width);
 
-    public int PixelHeight => checked((int)_image.Height);
+    public int PixelHeight => checked((int)Current.Height);
 
-    public string FormatName => _image.Format.ToString();
+    public string FormatName => Current.Format.ToString();
+
+    public int FrameCount => _frames.Count;
+
+    public int CurrentFrameIndex => _frameIndex;
+
+    public int AnimationIterations => _animationIterations;
 
     internal MagickImage Native
     {
         get
         {
             ThrowIfDisposed();
-            return _image;
+            return Current;
+        }
+    }
+
+    private MagickImage Current
+    {
+        get
+        {
+            ThrowIfDisposed();
+            return _frames[_frameIndex];
         }
     }
 
@@ -35,40 +67,61 @@ public sealed class MagickImageDocument : IImageDocument
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(image);
-        if (!ReferenceEquals(_image, image))
+        var existing = _frames[_frameIndex];
+        if (!ReferenceEquals(existing, image))
         {
-            _image.Dispose();
-            _image = image;
+            existing.Dispose();
+            _frames[_frameIndex] = image;
         }
+    }
+
+    public int GetFrameDelayMilliseconds(int frameIndex)
+    {
+        ThrowIfDisposed();
+        EnsureFrameIndex(frameIndex);
+        var frame = _frames[frameIndex];
+        var ticksPerSecond = frame.AnimationTicksPerSecond <= 0 ? 100 : (int)frame.AnimationTicksPerSecond;
+        var delayTicks = frame.AnimationDelay;
+        // GIF delay 0 is treated as ~10cs (100ms) by most browsers.
+        if (delayTicks == 0)
+        {
+            return 100;
+        }
+
+        return Math.Max(1, (int)Math.Round(delayTicks * 1000.0 / ticksPerSecond));
+    }
+
+    public Task SetCurrentFrameAsync(int frameIndex, CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        EnsureFrameIndex(frameIndex);
+        cancellationToken.ThrowIfCancellationRequested();
+        _frameIndex = frameIndex;
+        return Task.CompletedTask;
+    }
+
+    public Task<ImagePixelBuffer> ExtractFrameAsync(int frameIndex, CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        EnsureFrameIndex(frameIndex);
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return ToBgraBuffer(_frames[frameIndex], maxEdge: null);
+            },
+            cancellationToken);
     }
 
     public Task<ImagePixelBuffer> GetPixelsAsync(int? maxEdge = null, CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
+        var frame = Current;
         return Task.Run(
             () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                using var clone = _image.Clone();
-                if (maxEdge is int edge && edge > 0)
-                {
-                    var longest = Math.Max(clone.Width, clone.Height);
-                    if (longest > (uint)edge)
-                    {
-                        clone.Resize(new MagickGeometry((uint)edge)
-                        {
-                            Greater = true,
-                            IgnoreAspectRatio = false,
-                        });
-                    }
-                }
-
-                clone.AutoOrient();
-                // Emit 8-bit BGRA32 even when Magick.NET is built as Q16.
-                clone.Depth = 8;
-                clone.ColorType = ColorType.TrueColorAlpha;
-                var pixels = clone.ToByteArray(MagickFormat.Bgra);
-                return new ImagePixelBuffer(checked((int)clone.Width), checked((int)clone.Height), pixels);
+                return ToBgraBuffer(frame, maxEdge);
             },
             cancellationToken);
     }
@@ -76,11 +129,27 @@ public sealed class MagickImageDocument : IImageDocument
     public Task<ImageMetadataInfo> GetMetadataAsync(CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
+        var frame = Current;
         return Task.Run(
             () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                return ReadMetadata(_image, Path);
+                var meta = ReadMetadata(frame, Path);
+                if (_frames.Count > 1)
+                {
+                    var entries = meta.Entries.ToList();
+                    entries.Insert(0, new("Animation", "Frames", _frames.Count.ToString()));
+                    entries.Insert(1, new("Animation", "Current frame", (_frameIndex + 1).ToString()));
+                    entries.Insert(
+                        2,
+                        new(
+                            "Animation",
+                            "Loop",
+                            _animationIterations == 0 ? "Infinite" : _animationIterations.ToString()));
+                    return meta with { Entries = entries };
+                }
+
+                return meta;
             },
             cancellationToken);
     }
@@ -88,7 +157,7 @@ public sealed class MagickImageDocument : IImageDocument
     public IImageEditCheckpoint CaptureCheckpoint()
     {
         ThrowIfDisposed();
-        return new MagickImageEditCheckpoint((MagickImage)_image.Clone());
+        return new MagickImageEditCheckpoint((MagickImage)Current.Clone());
     }
 
     public void RestoreCheckpoint(IImageEditCheckpoint checkpoint)
@@ -102,6 +171,41 @@ public sealed class MagickImageDocument : IImageDocument
 
         Replace(magickCheckpoint.TakeOwnership());
         checkpoint.Dispose();
+    }
+
+    private static ImagePixelBuffer ToBgraBuffer(MagickImage source, int? maxEdge)
+    {
+        using var clone = source.Clone();
+        if (maxEdge is int edge && edge > 0)
+        {
+            var longest = Math.Max(clone.Width, clone.Height);
+            if (longest > (uint)edge)
+            {
+                clone.Resize(new MagickGeometry((uint)edge)
+                {
+                    Greater = true,
+                    IgnoreAspectRatio = false,
+                });
+            }
+        }
+
+        clone.AutoOrient();
+        // Emit 8-bit BGRA32 even when Magick.NET is built as Q16.
+        clone.Depth = 8;
+        clone.ColorType = ColorType.TrueColorAlpha;
+        var pixels = clone.ToByteArray(MagickFormat.Bgra);
+        return new ImagePixelBuffer(checked((int)clone.Width), checked((int)clone.Height), pixels);
+    }
+
+    private void EnsureFrameIndex(int frameIndex)
+    {
+        if (frameIndex < 0 || frameIndex >= _frames.Count)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(frameIndex),
+                frameIndex,
+                $"Frame index must be between 0 and {_frames.Count - 1}.");
+        }
     }
 
     internal static ImageMetadataInfo ReadMetadata(MagickImage image, string? path)
@@ -450,7 +554,12 @@ public sealed class MagickImageDocument : IImageDocument
             return;
         }
 
-        _image.Dispose();
+        foreach (var frame in _frames)
+        {
+            frame.Dispose();
+        }
+
+        _frames.Clear();
         _disposed = true;
         GC.SuppressFinalize(this);
     }

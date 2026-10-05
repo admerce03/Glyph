@@ -425,7 +425,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F25-19 | PDF metadata | keywords | M7 | Tested | Info → Edit… `/Keywords` |
 | F26-01 | Image viewing | JPEG/JPG | M5 | Implemented | Magick.NET decoder |
 | F26-02 | Image viewing | PNG | M5 | Implemented | Magick.NET decoder |
-| F26-03 | Image viewing | GIF | M5 | Implemented | Magick.NET decoder (first frame) |
+| F26-03 | Image viewing | GIF | M5 | Implemented | Magick.NET multi-frame decode (coalesce); still opens first frame |
 | F26-04 | Image viewing | BMP | M5 | Implemented | Magick.NET decoder |
 | F26-05 | Image viewing | TIFF | M5 | Implemented | Magick.NET decoder |
 | F26-06 | Image viewing | WebP | M5 | Implemented | Magick.NET decoder |
@@ -448,16 +448,16 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-23 | Image viewing | alpha transparency | M5 | Implemented | BGRA32 decode via Magick → WriteableBitmap |
 | F26-24 | Image viewing | HDR display where Windows/display stack supports it | M5 | Deferred | Needs WinUI HDR display pipeline; revisit with F39 |
 | F26-25 | Image viewing | color-managed display | M5 | Deferred | Covered by M8 §39 color management |
-| F27-01 | Animated images | play | M8 | Not Started |  |
-| F27-02 | Animated images | pause | M8 | Not Started |  |
-| F27-03 | Animated images | restart | M8 | Not Started |  |
-| F27-04 | Animated images | next frame | M8 | Not Started |  |
-| F27-05 | Animated images | previous frame | M8 | Not Started |  |
-| F27-06 | Animated images | timeline/frame number | M8 | Not Started |  |
-| F27-07 | Animated images | loop | M8 | Not Started |  |
-| F27-08 | Animated images | inspect individual frames | M8 | Not Started |  |
-| F27-09 | Animated images | extract frame | M8 | Not Started |  |
-| F27-10 | Animated images | save selected frame as image | M8 | Not Started |  |
+| F27-01 | Animated images | play | M8 | Implemented | Image toolbar Play/Pause uses frame delays |
+| F27-02 | Animated images | pause | M8 | Implemented | Pause + Esc stops playback |
+| F27-03 | Animated images | restart | M8 | Implemented | Restart → frame 0 + play |
+| F27-04 | Animated images | next frame | M8 | Implemented | frm⟩ steps forward (wraps) |
+| F27-05 | Animated images | previous frame | M8 | Implemented | ⟨frm steps backward (wraps) |
+| F27-06 | Animated images | timeline/frame number | M8 | Implemented | Frame N/M label + status |
+| F27-07 | Animated images | loop | M8 | Implemented | Loop checkbox; honors AnimationIterations |
+| F27-08 | Animated images | inspect individual frames | M8 | Implemented | Step frames; Meta shows Animation entries |
+| F27-09 | Animated images | extract frame | M8 | Tested | ExtractFrameAsync BGRA for any index |
+| F27-10 | Animated images | save selected frame as image | M8 | Implemented | Save frame → PNG picker |
 | F28-01 | Image selection tools | Rectangular selection. | M5 | Implemented | Select toolbar → drag rectangle overlay |
 | F28-02 | Image selection tools | Elliptical selection. | M5 | Tested | Select → Ellipse shape; extract/clear/move use oval mask |
 | F28-03 | Image selection tools | Freeform lasso. | M5 | Tested | Select → Lasso drag polyline; extract/clear/move use polygon mask |

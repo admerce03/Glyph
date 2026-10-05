@@ -25,7 +25,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M5 | Image viewer/editor | **In Progress** | M1 (shares shell/DnD with M3) |
 | M6 | OCR and scanned-document capabilities | **In Progress** | M2, M5 |
 | M7 | Redaction, PDF security, optimization, metadata | In Progress | M2–M4 |
-| M8 | Batch ops, scanner, color management, advanced | Not Started | M5–M7 |
+| M8 | Batch ops, scanner, color management, advanced | In Progress | M5–M7 |
 | M9 | Performance, polish, a11y, installer, audit | Not Started | M1–M8 core paths |
 
 M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behind separate interfaces. M3 remains the highest-priority Preview-differentiator after viewing works.
@@ -320,6 +320,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 - Folder Batch… covers rotate/flip/orient, convert/export (PNG/JPEG/WebP/TIFF/BMP/GIF/AVIF/JP2), strip metadata, rename (`{name}-{n:000}`), and color profile assign/convert (sRGB/Adobe RGB); Resize dialog can scale all folder siblings.
 - Color management: detect ICC (`HasIccProfile`), assign/convert via Magick `SetProfile` / `TransformColorSpace`; Meta dialog Assign sRGB / Convert → sRGB.
+- Animated GIF/WebP: decoder coalesces multi-frame images; Play/Pause/Restart/prev/next frame, Loop, frame label, Save frame → PNG (F27-01–10).
 - Webcam signature capture already shipped in M4; HDR/color-managed display deferred from M5 into §39 (F39-02 still open).
 
 ## Milestone 9 — Performance, polish, accessibility, installer, audit
@@ -367,9 +368,10 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Optimization | §24 | M7 | In Progress (presets + downsample + estimate + page export/ICC; JPEG rewrite blocked) |
 | PDF metadata | §25 | M7 | Implemented (read + edit title/author/subject/keywords) |
 | Image viewing/editing | §26–35 | M5 | In Progress |
-| Batch images | §36 | M8 | Not Started |
+| Batch images | §36 | M8 | In Progress (folder Batch convert/rename/strip) |
+| Animated images | §27 | M8 | Implemented (play/pause/frame nav/extract) |
 | Image metadata/GPS | §37–38 | M5, M8 | In Progress (EXIF/GPS inspector + strip) |
-| Color management | §39 | M8 | Not Started |
+| Color management | §39 | M8 | In Progress (detect/assign/convert; display TBD) |
 | Clipboard/screenshots | §40–41 | M1, M5 | Not Started |
 | Scanner/webcam | §42–43 | M8 | Not Started |
 | Printing | §44 | M8 | Not Started |

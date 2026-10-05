@@ -12,11 +12,30 @@ public sealed class MagickImageDecoder : IImageDecoder
             () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var image = new MagickImage(path);
-                // Bake EXIF orientation into pixels so dimensions match what users see.
-                image.AutoOrient();
-                ClearExifOrientation(image);
-                return (IImageDocument)new MagickImageDocument(path, image);
+                using var collection = new MagickImageCollection(path);
+                if (collection.Count <= 1)
+                {
+                    var single = collection.Count == 1
+                        ? (MagickImage)collection[0].Clone()
+                        : new MagickImage(path);
+                    single.AutoOrient();
+                    ClearExifOrientation(single);
+                    return (IImageDocument)new MagickImageDocument(path, single);
+                }
+
+                // Coalesce so each frame is a full composited image (GIF offsets/disposal).
+                collection.Coalesce();
+                var frames = new List<MagickImage>(collection.Count);
+                foreach (var frame in collection)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var clone = (MagickImage)frame.Clone();
+                    clone.AutoOrient();
+                    ClearExifOrientation(clone);
+                    frames.Add(clone);
+                }
+
+                return new MagickImageDocument(path, frames);
             },
             cancellationToken);
     }
