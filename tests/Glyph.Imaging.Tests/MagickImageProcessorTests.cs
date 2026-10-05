@@ -46,6 +46,56 @@ public class MagickImageProcessorTests
     }
 
     [Fact]
+    public async Task Batch_convert_and_strip_metadata_round_trip()
+    {
+        var path = CreateSolidPng(32, 24);
+        var jpegPath = Path.ChangeExtension(path, ".jpg");
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            var encoder = new MagickImageEncoder();
+            await using (var document = await decoder.OpenAsync(path))
+            {
+                await processor.SetDescriptiveMetadataAsync(
+                    document,
+                    new ImageDescriptiveMetadata(Title: "Keep Me", Copyright: "© Test"));
+                await encoder.SaveAsAsync(document, jpegPath, ImageEncodeFormat.Jpeg);
+            }
+
+            await using (var withMeta = await decoder.OpenAsync(jpegPath))
+            {
+                var before = await withMeta.GetMetadataAsync();
+                before.Title.Should().Be("Keep Me");
+                var stripped = Path.Combine(Path.GetTempPath(), "glyph-strip-" + Guid.NewGuid().ToString("N") + ".jpg");
+                await encoder.SaveAsAsync(
+                    withMeta,
+                    stripped,
+                    ImageEncodeFormat.Jpeg,
+                    new ImageEncodeOptions(PreserveMetadata: false));
+                try
+                {
+                    await using var afterDoc = await decoder.OpenAsync(stripped);
+                    var after = await afterDoc.GetMetadataAsync();
+                    after.Title.Should().BeNullOrEmpty();
+                }
+                finally
+                {
+                    File.Delete(stripped);
+                }
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(jpegPath))
+            {
+                File.Delete(jpegPath);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Probe_and_open_report_dimensions_without_requiring_full_ui_decode()
     {
         var path = CreateSolidPng(120, 80);

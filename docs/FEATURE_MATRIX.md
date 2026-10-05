@@ -555,12 +555,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F35-15 | Image format conversion | preserve/remove alpha | M5 | Tested | Convert dialog Preserve alpha → `ImageEncodeOptions.PreserveAlpha` |
 | F35-16 | Image format conversion | preserve/remove metadata | M5 | Tested | Convert dialog Preserve metadata → Strip when false |
 | F35-17 | Image format conversion | color profile handling | M5 | Implemented | Convert → Embed sRGB ICC (`EmbedSrgbProfile`) |
-| F36-01 | Batch image operations | resize | M8 | Not Started |  |
-| F36-02 | Batch image operations | rotate | M8 | Not Started |  |
-| F36-03 | Batch image operations | flip | M8 | Not Started |  |
-| F36-04 | Batch image operations | convert format | M8 | Not Started |  |
-| F36-05 | Batch image operations | export | M8 | Not Started |  |
-| F36-06 | Batch image operations | strip metadata | M8 | Not Started |  |
+| F36-01 | Batch image operations | resize | M8 | Implemented | Resize dialog → Also resize all N images in folder (scale %) |
+| F36-02 | Batch image operations | rotate | M8 | Implemented | Batch… → Orientation rotate L/R/180 |
+| F36-03 | Batch image operations | flip | M8 | Implemented | Batch… → Orientation flip H/V |
+| F36-04 | Batch image operations | convert format | M8 | Implemented | Batch… → Convert/export folder to PNG/JPEG/WebP/… |
+| F36-05 | Batch image operations | export | M8 | Implemented | Same Batch… Convert/export path |
+| F36-06 | Batch image operations | strip metadata | M8 | Implemented | Batch… → Strip metadata (re-save PreserveMetadata=false) |
 | F36-07 | Batch image operations | change color profile | M8 | Not Started |  |
 | F36-08 | Batch image operations | rename, optionally | M8 | Not Started |  |
 | F37-01 | Image metadata | dimensions | M5 | Tested | GetMetadataAsync PixelWidth/Height |

@@ -298,7 +298,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 8 — Batch operations, scanner, color management, advanced
 
-**Status:** Not Started · Depends on M5–M7
+**Status:** In Progress · Depends on M5–M7
 
 ### Scope (`FEATURES.md` §27, §29, §36, §39, §42–48 advanced)
 
@@ -316,7 +316,10 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - At least one scanner path validated on hardware when available (emulated tests otherwise)
 - Color-managed display path documented and tested with profiled sample
 
----
+### Progress notes
+
+- Folder Batch… covers rotate/flip/orient, convert/export (PNG/JPEG/WebP/TIFF/BMP/GIF/AVIF/JP2), and strip metadata; Resize dialog can scale all folder siblings.
+- Webcam signature capture already shipped in M4; HDR/color-managed display deferred from M5 into §39.
 
 ## Milestone 9 — Performance, polish, accessibility, installer, audit
 

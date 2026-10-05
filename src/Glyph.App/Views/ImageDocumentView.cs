@@ -263,7 +263,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(ocrButton, "Run offline OCR on this image");
         ToolTipService.SetToolTip(rotate180, "Rotate 180°");
         ToolTipService.SetToolTip(orient, "Apply EXIF orientation into pixels");
-        ToolTipService.SetToolTip(batchOrient, "Rotate/flip all images in the folder (overwrites on disk)");
+        ToolTipService.SetToolTip(batchOrient, "Batch folder: rotate/flip/orient, convert/export, or strip metadata");
         ToolTipService.SetToolTip(fullscreen, "Toggle window fullscreen");
         ToolTipService.SetToolTip(exportPng, "Export as PNG");
         ToolTipService.SetToolTip(exportJpeg, "Export as JPEG");
@@ -2271,14 +2271,21 @@ public sealed class ImageDocumentView : UserControl
     {
         if (_decoder is null || _siblings.Count < 2 || string.IsNullOrWhiteSpace(_document.Path))
         {
-            _status.Text = "Batch orientation needs a folder with multiple images.";
+            _status.Text = "Batch folder ops need a folder with multiple images.";
             return;
         }
 
+        var categoryBox = new ComboBox
+        {
+            Header = "Category",
+            Width = 260,
+            ItemsSource = new[] { "Orientation", "Convert / export", "Strip metadata" },
+            SelectedIndex = 0,
+        };
         var opBox = new ComboBox
         {
             Header = "Operation",
-            Width = 220,
+            Width = 260,
             ItemsSource = new[]
             {
                 "Rotate left 90°",
@@ -2290,14 +2297,49 @@ public sealed class ImageDocumentView : UserControl
             },
             SelectedIndex = 1,
         };
+        var formatBox = new ComboBox
+        {
+            Header = "Export format",
+            Width = 260,
+            Visibility = Visibility.Collapsed,
+            ItemsSource = new[] { "PNG", "JPEG", "WebP", "TIFF", "BMP", "GIF", "AVIF", "JPEG 2000" },
+            SelectedIndex = 0,
+        };
+        var quality = new Slider
+        {
+            Header = "Quality (JPEG/WebP/AVIF)",
+            Minimum = 1,
+            Maximum = 100,
+            Value = 85,
+            StepFrequency = 1,
+            Width = 260,
+            Visibility = Visibility.Collapsed,
+        };
         var includeCurrent = new CheckBox
         {
-            Content = "Also apply to the open image (in memory until Save)",
+            Content = "Also apply to the open image file",
             IsChecked = true,
         };
+
+        void SyncCategory()
+        {
+            var cat = categoryBox.SelectedIndex;
+            opBox.Visibility = cat == 0 ? Visibility.Visible : Visibility.Collapsed;
+            formatBox.Visibility = cat == 1 ? Visibility.Visible : Visibility.Collapsed;
+            var fmt = formatBox.SelectedItem as string;
+            quality.Visibility = cat == 1 && fmt is "JPEG" or "WebP" or "AVIF"
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            includeCurrent.Visibility = cat == 1 ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        categoryBox.SelectionChanged += (_, _) => SyncCategory();
+        formatBox.SelectionChanged += (_, _) => SyncCategory();
+        SyncCategory();
+
         var dialog = new ContentDialog
         {
-            Title = "Batch orientation",
+            Title = "Batch folder images",
             Content = new StackPanel
             {
                 Spacing = 10,
@@ -2305,12 +2347,15 @@ public sealed class ImageDocumentView : UserControl
                 {
                     new TextBlock
                     {
-                        Text = $"Applies to {_siblings.Count} images in this folder. Sibling files are overwritten on disk.",
+                        Text = $"Applies to {_siblings.Count} images in this folder. Convert writes sibling files with a new extension; orientation/strip overwrite originals.",
                         Opacity = 0.75,
                         TextWrapping = TextWrapping.Wrap,
-                        MaxWidth = 320,
+                        MaxWidth = 360,
                     },
+                    categoryBox,
                     opBox,
+                    formatBox,
+                    quality,
                     includeCurrent,
                 },
             },
@@ -2322,6 +2367,35 @@ public sealed class ImageDocumentView : UserControl
 
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
         {
+            return;
+        }
+
+        if (categoryBox.SelectedIndex == 1)
+        {
+            var (format, extension) = (formatBox.SelectedItem as string) switch
+            {
+                "PNG" => (ImageEncodeFormat.Png, ".png"),
+                "JPEG" => (ImageEncodeFormat.Jpeg, ".jpg"),
+                "WebP" => (ImageEncodeFormat.Webp, ".webp"),
+                "TIFF" => (ImageEncodeFormat.Tiff, ".tif"),
+                "BMP" => (ImageEncodeFormat.Bmp, ".bmp"),
+                "GIF" => (ImageEncodeFormat.Gif, ".gif"),
+                "AVIF" => (ImageEncodeFormat.Avif, ".avif"),
+                "JPEG 2000" => (ImageEncodeFormat.Jpeg2000, ".jp2"),
+                _ => (ImageEncodeFormat.Png, ".png"),
+            };
+            ImageEncodeOptions? options = format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Webp or ImageEncodeFormat.Avif
+                ? new ImageEncodeOptions(Quality: (int)quality.Value, PreserveMetadata: true)
+                : new ImageEncodeOptions(PreserveMetadata: true);
+            var converted = await BatchConvertFolderAsync(format, extension, options);
+            _status.Text = $"Batch convert → {format}: wrote {converted} file(s).";
+            return;
+        }
+
+        if (categoryBox.SelectedIndex == 2)
+        {
+            var strippedCount = await BatchStripMetadataFolderAsync(includeCurrent: includeCurrent.IsChecked == true);
+            _status.Text = $"Batch strip metadata: updated {strippedCount} folder image(s).";
             return;
         }
 
@@ -2382,6 +2456,88 @@ public sealed class ImageDocumentView : UserControl
 
         _status.Text = $"Batch {label}: updated {updated} folder image(s)"
             + (includeCurrent.IsChecked == true ? " (+ current)." : ".");
+    }
+
+    private async Task<int> BatchConvertFolderAsync(
+        ImageEncodeFormat format,
+        string extension,
+        ImageEncodeOptions? options)
+    {
+        if (_decoder is null || string.IsNullOrWhiteSpace(_document.Path))
+        {
+            return 0;
+        }
+
+        var written = 0;
+        foreach (var sibling in _siblings)
+        {
+            try
+            {
+                await using var doc = await _decoder.OpenAsync(sibling);
+                var dest = System.IO.Path.ChangeExtension(sibling, extension);
+                await _encoder.SaveAsAsync(doc, dest, format, options);
+                written++;
+            }
+            catch (Exception ex)
+            {
+                _status.Text = $"Batch convert skipped {System.IO.Path.GetFileName(sibling)}: {ex.Message}";
+            }
+        }
+
+        return written;
+    }
+
+    private async Task<int> BatchStripMetadataFolderAsync(bool includeCurrent)
+    {
+        if (_decoder is null || string.IsNullOrWhiteSpace(_document.Path))
+        {
+            return 0;
+        }
+
+        var current = System.IO.Path.GetFullPath(_document.Path);
+        var updated = 0;
+        foreach (var sibling in _siblings)
+        {
+            var full = System.IO.Path.GetFullPath(sibling);
+            if (!includeCurrent
+                && string.Equals(full, current, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            try
+            {
+                await using var doc = await _decoder.OpenAsync(sibling);
+                var ext = System.IO.Path.GetExtension(sibling);
+                var format = ext.ToLowerInvariant() switch
+                {
+                    ".jpg" or ".jpeg" => ImageEncodeFormat.Jpeg,
+                    ".webp" => ImageEncodeFormat.Webp,
+                    ".tif" or ".tiff" => ImageEncodeFormat.Tiff,
+                    ".bmp" => ImageEncodeFormat.Bmp,
+                    ".gif" => ImageEncodeFormat.Gif,
+                    ".avif" => ImageEncodeFormat.Avif,
+                    ".jp2" or ".j2k" => ImageEncodeFormat.Jpeg2000,
+                    ".heic" or ".heif" => ImageEncodeFormat.Heic,
+                    _ => ImageEncodeFormat.Png,
+                };
+                var temp = sibling + ".glyph-strip-tmp" + ext;
+                await _encoder.SaveAsAsync(
+                    doc,
+                    temp,
+                    format,
+                    new ImageEncodeOptions(PreserveMetadata: false));
+                System.IO.File.Copy(temp, sibling, overwrite: true);
+                System.IO.File.Delete(temp);
+                updated++;
+            }
+            catch (Exception ex)
+            {
+                _status.Text = $"Batch strip skipped {System.IO.Path.GetFileName(sibling)}: {ex.Message}";
+            }
+        }
+
+        return updated;
     }
 
     private static double EstimateRawMb(int width, int height) =>
