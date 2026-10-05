@@ -108,6 +108,8 @@ public sealed class PdfDocumentView : UserControl
     private int _polygonPageIndex = -1;
     private readonly List<PdfPagePoint> _polygonVertices = [];
     private Microsoft.UI.Xaml.Shapes.Polyline? _polygonPreview;
+    /// <summary>Recent ink/freeform/polygon strokes for F18-06 stroke undo (Ctrl+Z prefers this).</summary>
+    private readonly Stack<PdfAnnotationInfo> _strokeUndoStack = new();
     private PdfAnnotationColor _drawStrokeColor = PdfAnnotationColor.InkRed;
     private float _drawStrokeWidth = 2f;
     private bool _highlightMode;
@@ -506,7 +508,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(ellipse, "Draw an ellipse annotation");
         ToolTipService.SetToolTip(line, "Draw a line (stored as a 2-point ink stroke)");
         ToolTipService.SetToolTip(arrow, "Draw an arrow (ink shaft + arrowhead)");
-        ToolTipService.SetToolTip(undoEdit, "Undo last page edit (Ctrl+Z)");
+        ToolTipService.SetToolTip(undoEdit, "Undo last stroke (if any) or page edit (Ctrl+Z)");
         ToolTipService.SetToolTip(redoEdit, "Redo page edit (Ctrl+Y)");
 
         first.Click += async (_, _) => await GoToPageAsync(0, recordHistory: true);
@@ -572,7 +574,17 @@ public sealed class PdfDocumentView : UserControl
         line.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Line);
         arrow.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Arrow);
         star.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Star);
-        undoEdit.Click += async (_, _) => await UndoPageEditAsync();
+        undoEdit.Click += async (_, _) =>
+        {
+            if (_strokeUndoStack.Count > 0)
+            {
+                await UndoLastStrokeAsync();
+            }
+            else
+            {
+                await UndoPageEditAsync();
+            }
+        };
         redoEdit.Click += async (_, _) => await RedoPageEditAsync();
 
         var toolbar = new StackPanel
@@ -1383,7 +1395,15 @@ public sealed class PdfDocumentView : UserControl
 
         if (ctrlDown && e.Key == VirtualKey.Z)
         {
-            await UndoPageEditAsync();
+            if (_strokeUndoStack.Count > 0)
+            {
+                await UndoLastStrokeAsync();
+            }
+            else
+            {
+                await UndoPageEditAsync();
+            }
+
             e.Handled = true;
             return;
         }
@@ -4322,6 +4342,14 @@ public sealed class PdfDocumentView : UserControl
         {
             _status.Text = "Saving polygon…";
             await _annotations.AddPolygonAsync(_document, pageIndex, vertices, color, width);
+            // Re-list to capture the created annot for stroke undo.
+            var listed = await _annotations.ListAsync(_document, pageIndex);
+            var created = listed.LastOrDefault(a => a.ShapeKind == PdfShapeKind.Polygon && a.IsInk);
+            if (created is not null)
+            {
+                _strokeUndoStack.Push(created);
+            }
+
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
@@ -4938,10 +4966,11 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
+            PdfAnnotationInfo created;
             if (_freeformMode)
             {
                 _status.Text = "Saving freeform…";
-                await _annotations.AddFreeformAsync(
+                created = await _annotations.AddFreeformAsync(
                     _document,
                     pageIndex,
                     points,
@@ -4952,7 +4981,7 @@ public sealed class PdfDocumentView : UserControl
             else
             {
                 _status.Text = "Saving ink…";
-                await _annotations.AddInkAsync(
+                created = await _annotations.AddInkAsync(
                     _document,
                     pageIndex,
                     points,
@@ -4961,6 +4990,7 @@ public sealed class PdfDocumentView : UserControl
                 _status.Text = "Ink stroke added.";
             }
 
+            _strokeUndoStack.Push(created);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
@@ -4970,6 +5000,45 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = (_freeformMode ? "Freeform" : "Ink") + " failed: " + ex.Message;
+        }
+    }
+
+    private async Task UndoLastStrokeAsync()
+    {
+        if (_strokeUndoStack.Count == 0)
+        {
+            _status.Text = "No stroke to undo.";
+            return;
+        }
+
+        var stroke = _strokeUndoStack.Pop();
+        try
+        {
+            // Prefer the live sidebar entry in case indices shifted after other edits.
+            var live = _annotationItems.FirstOrDefault(a =>
+                a.PageIndex == stroke.PageIndex
+                && a.AnnotIndex == stroke.AnnotIndex
+                && a.IsInk);
+            var target = live ?? stroke;
+            await _annotations.RemoveAsync(_document, target.PageIndex, target.AnnotIndex);
+            if (_selectedAnnot is not null
+                && _selectedAnnot.PageIndex == target.PageIndex
+                && _selectedAnnot.AnnotIndex == target.AnnotIndex)
+            {
+                ClearAnnotSelectionVisual();
+                _selectedAnnot = null;
+            }
+
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = "Stroke undone.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Undo stroke failed: " + ex.Message;
         }
     }
 
