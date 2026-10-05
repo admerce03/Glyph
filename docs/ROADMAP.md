@@ -394,11 +394,11 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Progress notes
 
-- Prefs, toolbar hide+↑↓ reorder (F54) on PDF **and** image viewers with live apply to open tabs (`ToolbarCommandApplicator`), toolbar show/hide persisted (`ToolbarVisible`) + Ctrl+Shift+U/B chrome shortcuts, shortcut customization (F52-23), check-for-updates (F55-04), remember last page/zoom prefs toggles (F55-07/08, default ON), Theme in Preferences (F55-01), session restore (single-window tabs; `SessionRestorePolicy`), crash recovery, version snapshots, a11y Names, cold-start timing, background Find index (F57-05/F58-06), image Live Text overlay restore shipped in matrix
-- Third-party notices: `THIRD_PARTY_NOTICES.md` shipped with the app (About) and MSIX publish output (AGENTS.md / ADR-003)
+- Prefs, toolbar hide+↑↓ reorder (F54) on PDF **and** image viewers with live apply to open tabs (`ToolbarCommandApplicator`), toolbar show/hide persisted (`ToolbarVisible`) + Ctrl+Shift+U/B chrome shortcuts, shortcut customization (F52-23), check-for-updates (F55-04), remember last page/zoom prefs toggles (F55-07/08, default ON), Theme in Preferences (F55-01), session restore (single-window tabs; `SessionRestorePolicy`), full `ShellMenuCatalog` File/Edit/View/Window/Help vs XAML (F02-02), Help chrome Automation Names (F02-24 / F56), status chrome subtitle (no Milestone badge), page-cache `DefaultCapacity` 32 aligned with DI, crash recovery, version snapshots, cold-start timing, background Find index (F57-05/F58-06), image Live Text overlay restore shipped in matrix
+- Third-party notices: `THIRD_PARTY_NOTICES.md` shipped with the app (About) and MSIX publish output (AGENTS.md / ADR-003); unused CommunityToolkit.Mvvm pin removed
 - CI: push + PR for the same branch share a concurrency group (`head_ref || ref_name`) so Windows runners are not double-queued
 - MSIX: Windows CI produces test-signed `Glyph.App_*.msix` + `Glyph.CI.TestSign.cer` via `scripts/publish-msix.ps1 -TestSign` (`GenerateAppxPackageOnBuild`, artifact `glyph-msix-layout`). `scripts/install-msix-test.ps1` trusts the cert, sideloads, and probes installed `uap:FileType` associations (`-VerifyOnly` supported). Operator guide: [`PACKAGING.md`](PACKAGING.md). F01-06/07 remain Deferred until Explorer default-app verification (ADR-012). **Blocked:** ADR-015 password-write (Needs approval, prefer Option A PdfSharp).
-- Matrix audit (2026-10-05): 881 rows — 862 Tested / 12 Deferred / 7 Blocked (all Blocked = ADR-015 password-write); zero Not Started / In Progress / Implemented
+- Matrix audit (2026-10-05 tip through #105): 881 rows — 862 Tested / 12 Deferred / 7 Blocked (all Blocked = ADR-015 password-write); zero Not Started / In Progress / Implemented
 - Interactive proof debt: M1 shell screenshot, M2 viewer screenshots, M3 §11 cross-doc DnD recording — checklist in [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md)
 - Deferred catalogs unit-tested (`PackagingDeferredPolicy`, `PdfOptimizeDeferredPolicy`, `ImageAdvancedDeferredPolicy`, …)
 
@@ -408,7 +408,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 | Area | FEATURES.md | Milestone | Status |
 | --- | --- | --- | --- |
-| App/file handling | §1 | M1, M9 | Tested (test-signed `.msix` on CI; associations → ADR-012 sideload) |
+| App/file handling | §1 | M1, M9 | Tested (test-signed `.msix` on CI; associations → ADR-012 sideload; session restore = single-window tabs) |
 | Main window/UI chrome | §2 | M1, M9 | Tested |
 | Sidebar modes | §3 | M2–M5 | Tested (mode ComboBox + panels) |
 | PDF viewing | §4 | M2 | Tested (incl. Zoom ▭ / Glass / Present) |
