@@ -1113,32 +1113,44 @@ public sealed class PdfDocumentView : UserControl
 
         var insertAt = SelectedOrCurrentPages().DefaultIfEmpty(CurrentPageIndex).Max() + 1;
         insertAt = Math.Clamp(insertAt, 0, _document.PageCount);
+        string? tempPath = null;
         try
         {
-            await using var source = await PdfPageClipboard.OpenCopyAsync(_documentFactory);
+            var (source, path) = await PdfPageClipboard.OpenCopyAsync(_documentFactory);
+            tempPath = path;
             if (source is null || source.PageCount == 0)
             {
                 _status.Text = "Clipboard pages unavailable.";
                 return;
             }
 
-            var indexes = Enumerable.Range(0, source.PageCount).ToList();
-            _status.Text = indexes.Count == 1 ? "Pasting page…" : $"Pasting {indexes.Count} pages…";
-            await RunPageEditAsync(() => _pageEditor.InsertPagesAsync(_document, source, indexes, insertAt));
-
-            _pageSelection.Clear();
-            for (var i = 0; i < indexes.Count; i++)
+            await using (source)
             {
-                _pageSelection.Toggle(insertAt + i);
-            }
+                var indexes = Enumerable.Range(0, source.PageCount).ToList();
+                _status.Text = indexes.Count == 1 ? "Pasting page…" : $"Pasting {indexes.Count} pages…";
+                await RunPageEditAsync(() => _pageEditor.InsertPagesAsync(_document, source, indexes, insertAt));
 
-            await ReloadAfterPageEditAsync();
-            await GoToPageAsync(insertAt, recordHistory: true);
-            _status.Text = indexes.Count == 1 ? "Pasted 1 page." : $"Pasted {indexes.Count} pages.";
+                _pageSelection.Clear();
+                for (var i = 0; i < indexes.Count; i++)
+                {
+                    _pageSelection.Toggle(insertAt + i);
+                }
+
+                await ReloadAfterPageEditAsync();
+                await GoToPageAsync(insertAt, recordHistory: true);
+                _status.Text = indexes.Count == 1 ? "Pasted 1 page." : $"Pasted {indexes.Count} pages.";
+            }
         }
         catch (Exception ex)
         {
             _status.Text = "Paste pages failed: " + ex.Message;
+        }
+        finally
+        {
+            if (tempPath is not null && File.Exists(tempPath))
+            {
+                try { File.Delete(tempPath); } catch { /* best effort */ }
+            }
         }
     }
 
