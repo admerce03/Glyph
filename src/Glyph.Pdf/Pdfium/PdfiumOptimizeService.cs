@@ -301,22 +301,77 @@ public sealed class PdfiumOptimizeService : IPdfOptimizeService
         var srcBgra = ToBgra(srcPixels, srcW, srcH, srcStride, format);
         var dstBgra = ResizeBgraNearest(srcBgra, srcW, srcH, newW, newH);
 
-        // JPEG quality rewrite is staged behind IPdfImageJpegEncoder, but PDFiumCore's
-        // FPDF_FILEACCESS marshaling currently faults on LoadJpegFileInline, so we always
-        // use SetBitmap here (pixels correct; byte size may not shrink).
-        _ = _jpegEncoder;
-        _ = jpegQuality;
+        // Prefer DCTDecode rewrite when an encoder is available. PDFiumCore's FPDF_FILEACCESS
+        // allocates native memory without zeroing; on Linux m_FileLen is unsigned long (8 bytes)
+        // so garbage high bytes make LoadJpegFileInline read past the buffer — zero first.
+        if (_jpegEncoder is not null)
+        {
+            try
+            {
+                var jpeg = _jpegEncoder.EncodeBgraToJpeg(dstBgra, newW, newH, jpegQuality);
+                if (jpeg is { Length: > 0 } && TryLoadJpegInline(page, obj, jpeg))
+                {
+                    return true;
+                }
+            }
+            catch
+            {
+                // Fall through to SetBitmap.
+            }
+        }
 
-        var handle = GCHandle.Alloc(dstBgra, GCHandleType.Pinned);
+        return SetBitmapPixels(page, obj, dstBgra, newW, newH);
+    }
+
+    /// <summary>
+    /// Load JPEG bytes into an existing image object via FPDFImageObj_LoadJpegFileInline.
+    /// Zeros the CppSharp FILEACCESS native blob before use (required for Linux ABI).
+    /// </summary>
+    private static unsafe bool TryLoadJpegInline(FpdfPageT page, FpdfPageobjectT obj, byte[] jpeg)
+    {
+        var access = new FPDF_FILEACCESS();
+        PDFiumCore.Delegates.Func_int___IntPtr_uint_bytePtr_uint? getBlock = null;
+        try
+        {
+            new Span<byte>((void*)access.__Instance, sizeof(FPDF_FILEACCESS.__Internal)).Clear();
+            access.MFileLen = (uint)jpeg.Length;
+            access.MParam = IntPtr.Zero;
+            getBlock = (_, position, pBuf, size) =>
+            {
+                if (position >= (uint)jpeg.Length)
+                {
+                    return 0;
+                }
+
+                var remaining = (uint)jpeg.Length - position;
+                var toCopy = size < remaining ? size : remaining;
+                Marshal.Copy(jpeg, (int)position, (IntPtr)pBuf, (int)toCopy);
+                // PDFium treats a non-zero return as success for a full |size| read.
+                return toCopy == size ? 1 : 0;
+            };
+            access.MGetBlock = getBlock;
+
+            return fpdf_edit.FPDFImageObjLoadJpegFileInline(page, 1, obj, access) != 0;
+        }
+        finally
+        {
+            GC.KeepAlive(getBlock);
+            access.Dispose();
+        }
+    }
+
+    private static bool SetBitmapPixels(FpdfPageT page, FpdfPageobjectT obj, byte[] bgra, int width, int height)
+    {
+        var handle = GCHandle.Alloc(bgra, GCHandleType.Pinned);
         FpdfBitmapT? dstBmp = null;
         try
         {
             dstBmp = fpdfview.FPDFBitmapCreateEx(
-                newW,
-                newH,
+                width,
+                height,
                 PdfiumBitmapFormats.Bgra,
                 handle.AddrOfPinnedObject(),
-                newW * 4);
+                width * 4);
             if (dstBmp is null)
             {
                 return false;

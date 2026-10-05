@@ -49,6 +49,94 @@ public class PdfiumOptimizeServiceTests
     }
 
     [Fact]
+    public async Task Optimize_with_jpeg_encoder_writes_dctdecode()
+    {
+        var path = CreateBlankPdf();
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var optimize = new PdfiumOptimizeService(new MagickTestJpegEncoder());
+            await using var document = await factory.OpenAsync(path);
+            var pdfium = (PdfiumDocument)document;
+
+            PdfiumLibrary.EnsureInitialized();
+            lock (PdfiumSync.Gate)
+            {
+                // High-DPI solid image so Balanced (150 DPI target) downsamples.
+                InsertSolidImage(pdfium, pageIndex: 0, pixelSize: 800, displayPoints: 72);
+            }
+
+            var opts = PdfOptimizeOptions.FromPreset(PdfOptimizePreset.Balanced);
+            opts = opts with { JpegQuality = 40 };
+            var result = await optimize.OptimizeAsync(document, opts);
+            result.ImagesDownsampled.Should().BeGreaterThan(0);
+
+            PdfiumLibrary.EnsureInitialized();
+            lock (PdfiumSync.Gate)
+            {
+                var page = fpdfview.FPDF_LoadPage(pdfium.Handle, 0);
+                page.Should().NotBeNull();
+                try
+                {
+                    var count = fpdf_edit.FPDFPageCountObjects(page);
+                    count.Should().BeGreaterThan(0);
+                    FpdfPageobjectT? image = null;
+                    for (var i = 0; i < count; i++)
+                    {
+                        var obj = fpdf_edit.FPDFPageGetObject(page, i);
+                        if (obj is not null && fpdf_edit.FPDFPageObjGetType(obj) == 3)
+                        {
+                            image = obj;
+                            break;
+                        }
+                    }
+
+                    image.Should().NotBeNull();
+                    var filters = fpdf_edit.FPDFImageObjGetImageFilterCount(image);
+                    filters.Should().BeGreaterThan(0);
+                    var len = fpdf_edit.FPDFImageObjGetImageFilter(image, 0, IntPtr.Zero, 0);
+                    var buf = new byte[len];
+                    var handle = GCHandle.Alloc(buf, GCHandleType.Pinned);
+                    try
+                    {
+                        fpdf_edit.FPDFImageObjGetImageFilter(image, 0, handle.AddrOfPinnedObject(), (uint)buf.Length);
+                        var n = Array.IndexOf(buf, (byte)0);
+                        var name = System.Text.Encoding.ASCII.GetString(buf, 0, n < 0 ? buf.Length : n);
+                        name.Should().Be("DCTDecode");
+                    }
+                    finally
+                    {
+                        handle.Free();
+                    }
+
+                    var rawLen = fpdf_edit.FPDFImageObjGetImageDataRaw(image, IntPtr.Zero, 0);
+                    rawLen.Should().BeGreaterThan(0);
+                    var raw = new byte[rawLen];
+                    var rh = GCHandle.Alloc(raw, GCHandleType.Pinned);
+                    try
+                    {
+                        fpdf_edit.FPDFImageObjGetImageDataRaw(image, rh.AddrOfPinnedObject(), rawLen);
+                        raw[0].Should().Be(0xFF);
+                        raw[1].Should().Be(0xD8);
+                    }
+                    finally
+                    {
+                        rh.Free();
+                    }
+                }
+                finally
+                {
+                    fpdfview.FPDF_ClosePage(page);
+                }
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Lossless_full_rewrite_succeeds()
     {
         var path = CreateBlankPdf();
@@ -183,5 +271,31 @@ public class PdfiumOptimizeServiceTests
         builder.AddPage(PageSize.Letter);
         File.WriteAllBytes(path, builder.Build());
         return path;
+    }
+
+    private sealed class MagickTestJpegEncoder : IPdfImageJpegEncoder
+    {
+        public byte[]? EncodeBgraToJpeg(ReadOnlySpan<byte> bgra, int width, int height, int quality)
+        {
+            if (width <= 0 || height <= 0 || bgra.Length < width * height * 4)
+            {
+                return null;
+            }
+
+            quality = Math.Clamp(quality, 1, 100);
+            var copy = bgra.ToArray();
+            using var image = new ImageMagick.MagickImage();
+            image.ReadPixels(
+                copy,
+                new ImageMagick.PixelReadSettings(
+                    (uint)width,
+                    (uint)height,
+                    ImageMagick.StorageType.Char,
+                    ImageMagick.PixelMapping.BGRA));
+            image.Format = ImageMagick.MagickFormat.Jpeg;
+            image.Quality = (uint)quality;
+            image.Alpha(ImageMagick.AlphaOption.Remove);
+            return image.ToByteArray();
+        }
     }
 }

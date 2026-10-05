@@ -395,7 +395,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F24-05 | PDF optimization and compression | Custom | M7 | Implemented | Optimize dialog Custom: above/target DPI, strip attachments, preserve mono |
 | F24-06 | PDF optimization and compression | downsample images above selected DPI | M7 | Tested | `DownsampleAboveDpi` + PDFium `SetBitmap` resize |
 | F24-07 | PDF optimization and compression | target DPI | M7 | Tested | `TargetDpi` on presets |
-| F24-08 | PDF optimization and compression | JPEG quality | M7 | Blocked | `IPdfImageJpegEncoder`/Magick wired; `LoadJpegFileInline` FILEACCESS crashes under PDFiumCore — SetBitmap fallback |
+| F24-08 | PDF optimization and compression | JPEG quality | M7 | Tested | Magick `IPdfImageJpegEncoder` + zeroed `FPDF_FILEACCESS` → `LoadJpegFileInline` (DCTDecode); SetBitmap fallback |
 | F24-09 | PDF optimization and compression | preserve monochrome content | M7 | Implemented | Skip 1-bpp images when PreserveMonochrome |
 | F24-10 | PDF optimization and compression | compress streams | M7 | Implemented | Optimize measures/saves with `FPDF_NO_INCREMENTAL` full rewrite |
 | F24-11 | PDF optimization and compression | subset fonts where appropriate | M7 | Deferred | ADR-016 — no PDFium font-subset API |
