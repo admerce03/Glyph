@@ -2670,6 +2670,8 @@ public sealed partial class MainWindow : Window
             StringComparer.OrdinalIgnoreCase);
         var toolbarOrder = ToolbarOrderPolicy.Normalize(settings.ToolbarCommandOrder).ToList();
         var toolbarChecks = new List<CheckBox>();
+        var toolbarPanel = new StackPanel { Spacing = 2 };
+        var toolbarReset = new Button { Content = PreferencesDialogUi.ResetToolbar, Margin = new Thickness(0, 4, 0, 0) };
 
         void SyncHiddenFromChecks()
         {
@@ -2746,14 +2748,12 @@ public sealed partial class MainWindow : Window
             toolbarPanel.Children.Add(toolbarReset);
         }
 
-        var toolbarReset = new Button { Content = PreferencesDialogUi.ResetToolbar, Margin = new Thickness(0, 4, 0, 0) };
         toolbarReset.Click += (_, _) =>
         {
             toolbarHidden.Clear();
             toolbarOrder = ToolbarOrderPolicy.Normalize(null).ToList();
             RebuildToolbarRows();
         };
-        var toolbarPanel = new StackPanel { Spacing = 2 };
         RebuildToolbarRows();
 
         var shortcutBoxes = new List<(string Command, TextBox Box)>();
