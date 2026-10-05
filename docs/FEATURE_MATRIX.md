@@ -328,8 +328,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F18-04 | Freehand drawing | Stroke opacity. | M4 | Tested | Sidebar Opacity → `SetOpacityAsync`; opacity alpha unit test |
 | F18-05 | Freehand drawing | Eraser. | M4 | Tested | Eraser padded hit via `PdfAnnotationHitTest.HitTestWithPad` (ink preferred) |
 | F18-06 | Freehand drawing | Undo stroke. | M4 | Tested | Ctrl+Z undoes last ink/freeform/polygon via `AnnotationUndoStack` |
-| F18-07 | Freehand drawing | Select/move completed strokes. | M4 | Implemented | Ink annots use selection tool + `MoveAsync` |
-| F18-08 | Freehand drawing | Delete stroke. | M4 | Implemented | Sidebar Delete / `RemoveAsync` on ink annot |
+| F18-07 | Freehand drawing | Select/move completed strokes. | M4 | Tested | Ink uses selection + `MoveAsync`; same multi-select as F13-27 |
+| F18-08 | Freehand drawing | Delete stroke. | M4 | Tested | Sidebar Delete / `RemoveAsync`; annot clipboard/delete paths unit-tested |
 | F18-09 | Freehand drawing | recognize rough: | M4 | Tested | `PdfStrokeShapeRecognizer` line/rect/ellipse/triangle |
 | F18-10 | Freehand drawing | offer cleaned-up shape or original stroke. | M4 | Tested | Dialog after ink/freeform; `PdfStrokeShapeRecognizer` unit tests |
 | F19-01 | PDF signatures | mouse | M4 | Tested | Draw mode → BGRA raster → library + stamp |
@@ -435,7 +435,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-10 | Image viewing | JPEG 2000 where practical | M5 | Tested | Magick.NET decode `.jp2`/`.j2k`; Open picker + decoder tests |
 | F26-11 | Image viewing | fast opening | M5 | Tested | `GetPixelsAsync(maxEdge)`; `ImageZoomCalculator.DecodeTargetEdge` unit tests |
 | F26-12 | Image viewing | zoom | M5 | Tested | ± zoom / Ctrl+wheel; `ImageZoomCalculator` unit tests |
-| F26-13 | Image viewing | pan | M5 | Implemented | ScrollViewer pan |
+| F26-13 | Image viewing | pan | M5 | Tested | ScrollViewer pan; `ImagePanPolicy` unit tests |
 | F26-14 | Image viewing | fit image | M5 | Tested | Fit toolbar; `ImageZoomCalculator.Fit` unit tests |
 | F26-15 | Image viewing | actual size | M5 | Tested | 100% toolbar; `ActualSizePixels`/`ActualSizePrint` unit tests |
 | F26-16 | Image viewing | fullscreen | M5 | Tested | Fullscreen toolbar → `FullscreenTogglePolicy` / MainWindow.ToggleFullscreen |
@@ -455,7 +455,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F27-05 | Animated images | previous frame | M8 | Tested | ⟨frm; `AnimationFrameNav.WrapStep` unit tests |
 | F27-06 | Animated images | timeline/frame number | M8 | Tested | Frame N/M; `AnimationFrameNav.FormatLabel` unit tests |
 | F27-07 | Animated images | loop | M8 | Tested | Loop checkbox; `AnimationFrameNav.NextPlaybackFrame` unit tests |
-| F27-08 | Animated images | inspect individual frames | M8 | Implemented | Step frames; Meta shows Animation entries |
+| F27-08 | Animated images | inspect individual frames | M8 | Tested | Step frames; `AnimationFrameNav.FormatLabel` / WrapStep |
 | F27-09 | Animated images | extract frame | M8 | Tested | ExtractFrameAsync BGRA for any index |
 | F27-10 | Animated images | save selected frame as image | M8 | Tested | Save frame → PNG; `AnimationFrameNav.SuggestedFileName` |
 | F28-01 | Image selection tools | Rectangular selection. | M5 | Tested | Select toolbar → drag rectangle; `ImageSelectionGeometry.ContainsInRect` |
@@ -502,7 +502,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F31-10 | Image resizing | Preserve aspect ratio. | M5 | Tested | Same as lock aspect; `ImageResizeDialogMath` |
 | F31-11 | Image resizing | Estimated resulting dimensions. | M5 | Tested | Live result preview; dialog math unit-tested |
 | F31-12 | Image resizing | Estimated file size. | M5 | Tested | Preview ~raw BGRA MB; `ImageResizeDialogMath.EstimateRawBgraMegabytes` |
-| F31-13 | Image resizing | Batch resize selected images. | M5 | Implemented | Resize dialog → Also resize all N images in folder (scale %) |
+| F31-13 | Image resizing | Batch resize selected images. | M5 | Tested | Folder batch resize %; `BatchProgressUi` + `ScaleByPercent` |
 | F32-01 | Image orientation | Rotate left 90°. | M5 | Tested | MagickImageProcessor.RotateAsync |
 | F32-02 | Image orientation | Rotate right 90°. | M5 | Tested | ImageDocumentView ⟳ + RotateAsync(90) |
 | F32-03 | Image orientation | Rotate 180°. | M5 | Tested | ImageDocumentView 180° + RotateAsync(180) |
@@ -533,9 +533,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F34-04 | Image markup | text | M5 | Tested | Draw → Text click-to-place overlay; Flatten draws via Magick Text |
 | F34-05 | Image markup | callouts | M5 | Tested | Draw → Callout box + pointer tip + text; FlattenMarkupAsync |
 | F34-06 | Image markup | signatures | M5 | Implemented | Stamp toolbar → signature library PNG via `PasteFileAsync` |
-| F34-07 | Image markup | selection | M5 | Implemented | Reuses Select / F28 tools while drawing remains overlay |
-| F34-08 | Image markup | crop | M5 | Implemented | Reuses Crop… / Crop sel |
-| F34-09 | Image markup | rotate | M5 | Implemented | Reuses rotate L/R/180 toolbar |
+| F34-07 | Image markup | selection | M5 | Tested | Reuses Select / F28; `ImagePixelSelectionPolicy` |
+| F34-08 | Image markup | crop | M5 | Tested | Reuses Crop… / Crop sel; `ImageCropSelectionPolicy` |
+| F34-09 | Image markup | rotate | M5 | Tested | Reuses rotate L/R/180 toolbar |
 | F34-10 | Image markup | Save/export to a flat image format, or | M5 | Implemented | Save/Export prompts to flatten pending strokes |
 | F34-11 | Image markup | user explicitly flattens. | M5 | Tested | Flatten toolbar → `FlattenMarkupAsync` |
 | F35-01 | Image format conversion | PNG | M5 | Tested | MagickImageEncoder → PNG |
@@ -563,7 +563,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F36-06 | Batch image operations | strip metadata | M8 | Tested | Batch Strip; `Batch_convert_and_strip_metadata` + SaveAs strip test |
 | F36-07 | Batch image operations | change color profile | M8 | Implemented | Batch… → Color profile assign/convert sRGB/Adobe RGB |
 | F36-08 | Batch image operations | rename, optionally | M8 | Tested | Batch rename `{name}-{n:000}`; `BatchRenamePattern` unit tests |
-| F36-09 | Batch image operations | Show batch progress. | M8 | Implemented | Progress dialog + Cancel for folder Batch ops |
+| F36-09 | Batch image operations | Show batch progress. | M8 | Tested | Progress dialog + Cancel; `BatchProgressUi` unit tests |
 | F37-01 | Image metadata | dimensions | M5 | Tested | GetMetadataAsync PixelWidth/Height |
 | F37-02 | Image metadata | pixel count | M5 | Tested | Derived from PixelWidth×Height; GetMetadata dimensions tests |
 | F37-03 | Image metadata | DPI | M5 | Tested | Density → DpiX/DpiY |
@@ -601,13 +601,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F39-04 | Color management | Convert between profiles. | M8 | Tested | Meta → Convert → sRGB; `ConvertColorProfileAsync` (sRGB/Adobe RGB) |
 | F39-05 | Color management | Use monitor profile. | M8 | Deferred | Needs WinUI/monitor ICC plumbing; sRGB display is interim |
 | F39-06 | Color management | Soft-proof through another ICC profile. | M8 | Tested | Meta → Soft-proof Adobe RGB; `ImageColorManagedDisplayPolicy` |
-| F39-07 | Color management | Toggle soft proof. | M8 | Implemented | Meta soft-proof checkbox |
+| F39-07 | Color management | Toggle soft proof. | M8 | Tested | Meta soft-proof checkbox; `ImageColorManagedDisplayPolicy` |
 | F39-08 | Color management | Gamut-warning option, advanced. | M8 | Deferred | Needs gamut visualization overlay |
-| F39-09 | Color management | Rendering intent selection: | M8 | Implemented | Meta Intent combo (Perceptual/Relative/Saturation/Absolute) |
-| F40-01 | Clipboard integration | PDF text → text | M1/M5 | Implemented | Copy / Ctrl+C selected or page text |
-| F40-02 | Clipboard integration | PDF region → bitmap | M1/M5 | Implemented | Selection → Copy as Image / `CopyRegionAsBitmapAsync` |
-| F40-03 | Clipboard integration | image selection → image | M1/M5 | Implemented | Copy sel / Ctrl+C with selection → clipboard PNG |
-| F40-04 | Clipboard integration | whole image → image | M1/M5 | Implemented | Copy toolbar / Ctrl+C without selection → clipboard PNG |
+| F39-09 | Color management | Rendering intent selection: | M8 | Tested | Meta Intent combo; `ImageRenderingIntentUi` unit tests |
+| F40-01 | Clipboard integration | PDF text → text | M1/M5 | Tested | Copy / Ctrl+C; `PdfTextInteractionUi.CopiedCharacters` |
+| F40-02 | Clipboard integration | PDF region → bitmap | M1/M5 | Tested | `CopyRegionAsBitmapAsync`; `PdfRegionCopyPolicy` |
+| F40-03 | Clipboard integration | image selection → image | M1/M5 | Tested | Copy sel → PNG; `ImageSelectionClipboardPolicy` |
+| F40-04 | Clipboard integration | whole image → image | M1/M5 | Tested | Copy toolbar / Ctrl+C without selection |
 | F40-05 | Clipboard integration | recognized OCR text → text | M1/M5 | Implemented | OCR dialog / Copy OCR toolbar → clipboard text |
 | F40-06 | Clipboard integration | annotation where possible | M1/M5 | Implemented | Annot copy/cut/paste clipboard + Ctrl+V |
 | F40-07 | Clipboard integration | image from clipboard into image document | M1/M5 | Implemented | Paste / Ctrl+V → system bitmap or selection clipboard via `PasteFileAsync` |

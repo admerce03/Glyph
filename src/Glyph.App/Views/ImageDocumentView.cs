@@ -2857,7 +2857,7 @@ public sealed class ImageDocumentView : UserControl
             });
         if (cancelled)
         {
-            _status.Text = $"Batch resize cancelled after {updated} file(s).";
+            _status.Text = BatchProgressUi.CancelledStatus("Batch resize", updated);
         }
 
         return updated;
@@ -3116,7 +3116,7 @@ public sealed class ImageDocumentView : UserControl
         var workDone = false;
         var progressLabel = new TextBlock
         {
-            Text = $"0 / {targets.Count}",
+            Text = BatchProgressUi.ProgressLabel(0, targets.Count),
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 360,
         };
@@ -3139,13 +3139,13 @@ public sealed class ImageDocumentView : UserControl
                     bar,
                     new TextBlock
                     {
-                        Text = "Cancel stops after the current file.",
+                        Text = BatchProgressUi.CancelHint,
                         Opacity = 0.7,
                         FontSize = 12,
                     },
                 },
             },
-            CloseButtonText = "Cancel",
+            CloseButtonText = BatchProgressUi.CloseButton,
             XamlRoot = XamlRoot,
         };
         dialog.Closing += (_, args) =>
@@ -3172,7 +3172,10 @@ public sealed class ImageDocumentView : UserControl
 
                 var path = targets[i];
                 var name = System.IO.Path.GetFileName(path);
-                progressLabel.Text = $"{i + 1} / {targets.Count} · {name}";
+                progressLabel.Text = BatchProgressUi.ProgressWithFile(
+                    i + 1,
+                    targets.Count,
+                    name);
                 bar.Value = i;
                 try
                 {
@@ -3336,7 +3339,7 @@ public sealed class ImageDocumentView : UserControl
             });
         if (cancelled)
         {
-            _status.Text = $"Batch rename cancelled after {renamed} file(s).";
+            _status.Text = BatchProgressUi.CancelledStatus("Batch rename", renamed);
         }
 
         return renamed;
@@ -4363,7 +4366,7 @@ public sealed class ImageDocumentView : UserControl
             var intentBox = new ComboBox
             {
                 Width = 160,
-                ItemsSource = new[] { "Perceptual", "Relative", "Saturation", "Absolute" },
+                ItemsSource = ImageRenderingIntentUi.Labels.ToList(),
                 SelectedIndex = (int)_document.DisplayRenderingIntent,
             };
             intentBox.SelectionChanged += async (_, _) =>
@@ -4373,9 +4376,9 @@ public sealed class ImageDocumentView : UserControl
                     return;
                 }
 
-                _document.DisplayRenderingIntent = (ImageRenderingIntent)intentBox.SelectedIndex;
+                _document.DisplayRenderingIntent = ImageRenderingIntentUi.FromComboIndex(intentBox.SelectedIndex);
                 await RefreshAsync();
-                _status.Text = "Rendering intent: " + intentBox.SelectedItem;
+                _status.Text = ImageRenderingIntentUi.StatusAfterChange(_document.DisplayRenderingIntent);
             };
             var colorPanel = new StackPanel
             {
