@@ -39,8 +39,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | Tested | MenuBar File/Edit/View/Window; `ShellMenuCatalog` unit tests |
 | F02-03 | Main window and interface | Customizable toolbar. | M1/M9 | Tested | ToolbarCommands catalog + hide/reorder prefs + live apply (`ToolbarOrderPolicy`) |
 | F02-04 | Main window and interface | Optional compact toolbar. | M1/M9 | Tested | `CompactToolbar` prefs; live-applied with F54 |
-| F02-05 | Main window and interface | Hide/show toolbar. | M1/M9 | Tested | View → Hide/Show Toolbar; `ToolbarVisible` prefs round-trip + open-doc apply |
-| F02-06 | Main window and interface | Hide/show sidebar. | M1/M9 | Tested | View → Hide/Show Sidebar; `SidebarVisible` prefs round-trip |
+| F02-05 | Main window and interface | Hide/show toolbar. | M1/M9 | Tested | View → Hide/Show Toolbar; `ToolbarVisible` prefs; Ctrl+Shift+U (`Toggle Toolbar`) |
+| F02-06 | Main window and interface | Hide/show sidebar. | M1/M9 | Tested | View → Hide/Show Sidebar; `SidebarVisible` prefs; Ctrl+Shift+B (`Toggle Sidebar`) |
 | F02-07 | Main window and interface | Resizable sidebar. | M1/M9 | Tested | Drag splitter; `SidebarWidth` clamp + prefs unit tests |
 | F02-08 | Main window and interface | Resizable document area. | M1/M9 | Tested | Content pane `*` column; `DocumentAreaLayout` XAML unit test |
 | F02-09 | Main window and interface | Full-screen mode. | M1/M9 | Tested | View → Full Screen / F11; `FullscreenTogglePolicy` unit tests |

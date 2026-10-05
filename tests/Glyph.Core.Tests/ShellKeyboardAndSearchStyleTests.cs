@@ -24,6 +24,10 @@ public class ShellKeyboardShortcutsTests
         ShellKeyboardShortcuts.CatalogContains("Ctrl+S").Should().BeTrue();
         ShellKeyboardShortcuts.CatalogContains("F11").Should().BeTrue();
         ShellKeyboardShortcuts.CatalogContains("Ctrl+Shift+F").Should().BeTrue();
+        ShellKeyboardShortcuts.CatalogContains("Ctrl+Shift+B").Should().BeTrue();
+        ShellKeyboardShortcuts.CatalogContains("Ctrl+Shift+U").Should().BeTrue();
+        ShellKeyboardShortcuts.Catalog.Should().Contain(c => c.Command == "Toggle Sidebar");
+        ShellKeyboardShortcuts.Catalog.Should().Contain(c => c.Command == "Toggle Toolbar");
     }
 
     [Fact]
