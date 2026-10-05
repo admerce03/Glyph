@@ -735,7 +735,9 @@ public sealed class ImageDocumentView : UserControl
         }
 
         _animPlayButton.Content = _animationPlaying ? "Pause" : "Play";
-        _animFrameLabel.Text = $"Frame {_document.CurrentFrameIndex + 1}/{_document.FrameCount}";
+        _animFrameLabel.Text = AnimationFrameNav.FormatLabel(
+            _document.CurrentFrameIndex,
+            _document.FrameCount);
     }
 
     private void ToggleAnimationPlayback()
@@ -821,34 +823,23 @@ public sealed class ImageDocumentView : UserControl
             return;
         }
 
-        var next = _document.CurrentFrameIndex + 1;
-        if (next >= _document.FrameCount)
+        var next = AnimationFrameNav.NextPlaybackFrame(
+            _document.CurrentFrameIndex,
+            _document.FrameCount,
+            loopEnabled: _animLoopBox.IsChecked == true,
+            animationIterations: _document.AnimationIterations,
+            ref _animationLoopsCompleted);
+
+        if (next is null)
         {
-            var loop = _animLoopBox.IsChecked == true;
-            var maxLoops = _document.AnimationIterations;
-            // 0 = infinite (Netscape). When Loop is unchecked, stop after one pass.
-            if (!loop)
-            {
-                PauseAnimation();
-                _status.Text = $"Animation finished · frame {_document.FrameCount}/{_document.FrameCount}.";
-                return;
-            }
-
-            if (maxLoops > 0)
-            {
-                _animationLoopsCompleted++;
-                if (_animationLoopsCompleted >= maxLoops)
-                {
-                    PauseAnimation();
-                    _status.Text = "Animation finished looping.";
-                    return;
-                }
-            }
-
-            next = 0;
+            PauseAnimation();
+            _status.Text = _animLoopBox.IsChecked == true
+                ? "Animation finished looping."
+                : $"Animation finished · frame {_document.FrameCount}/{_document.FrameCount}.";
+            return;
         }
 
-        await _document.SetCurrentFrameAsync(next);
+        await _document.SetCurrentFrameAsync(next.Value);
         await RefreshAsync();
         RefreshAnimationChrome();
         UpdateStatus();
@@ -863,13 +854,19 @@ public sealed class ImageDocumentView : UserControl
         }
 
         PauseAnimation();
-        var count = _document.FrameCount;
-        var next = ((_document.CurrentFrameIndex + delta) % count + count) % count;
+        var next = AnimationFrameNav.WrapStep(_document.CurrentFrameIndex, delta, _document.FrameCount);
+        if (next < 0)
+        {
+            return;
+        }
+
         await _document.SetCurrentFrameAsync(next);
         await RefreshAsync();
         RefreshAnimationChrome();
         UpdateStatus();
-        _status.Text = $"Frame {_document.CurrentFrameIndex + 1}/{_document.FrameCount}.";
+        _status.Text = AnimationFrameNav.FormatLabel(
+            _document.CurrentFrameIndex,
+            _document.FrameCount) + ".";
     }
 
     private async Task RestartAnimationAsync()

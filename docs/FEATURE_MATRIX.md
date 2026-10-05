@@ -97,7 +97,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-18 | PDF viewing | First page. | M2 | Tested | First / Home; `PageLayoutCalculator.FirstPageIndex` unit tests |
 | F04-19 | PDF viewing | Last page. | M2 | Tested | Last / End; `PageLayoutCalculator.LastPageIndex` unit tests |
 | F04-20 | PDF viewing | Mouse-wheel scrolling. | M2 | Implemented | ScrollViewer wheel scrolling |
-| F04-21 | PDF viewing | Page Up/Page Down navigation. | M2 | Implemented | Key handlers in viewer |
+| F04-21 | PDF viewing | Page Up/Page Down navigation. | M2 | Tested | Key handlers; `PageLayoutCalculator` Next/Previous unit tests |
 | F04-22 | PDF viewing | Fit page. | M2 | Tested | `PdfZoomCalculator.FitPage` + toolbar |
 | F04-23 | PDF viewing | Fit width. | M2 | Tested | `PdfZoomCalculator.FitWidth` + toolbar |
 | F04-24 | PDF viewing | Actual size / 100%. | M2 | Tested | 100% control |
@@ -262,27 +262,27 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-36 | PDF annotations | change font size | M4 | Tested | TextBox/Callout NumberBox → `fontSizePoints`; annotation service tests |
 | F13-37 | PDF annotations | change text color | M4 | Tested | TextBox/Callout StrokePresets → `textColor` / DA; FreeText create tests |
 | F13-38 | PDF annotations | change text alignment | M4 | Tested | FreeText `/Q` via post-save dict patch (PDFium has GetNumberValue only); text box/callout Align UI |
-| F14-01 | Highlight workflow | Select text and apply highlight. | M4 | Implemented | Selection quads → Highlight toolbar |
+| F14-01 | Highlight workflow | Select text and apply highlight. | M4 | Tested | Selection quads → `AddTextMarkupAsync(Highlight)`; Pdf.Tests |
 | F14-02 | Highlight workflow | Persistent highlight mode: | M4 | Implemented | Highlight toggles mode; Esc exits; color remembered |
 | F14-03 | Highlight workflow | Multiple highlight colors. | M4 | Tested | Yellow/Green/Pink/Blue/Orange picker |
 | F14-04 | Highlight workflow | Change existing highlight color. | M4 | Tested | Sidebar Color → presets / `SetColorAsync` |
-| F14-05 | Highlight workflow | Underline selection. | M4 | Implemented | Underline toolbar |
-| F14-06 | Highlight workflow | Strikethrough selection. | M4 | Implemented | Strike toolbar |
-| F14-07 | Highlight workflow | Remove markup. | M4 | Implemented | Sidebar Delete + `RemoveAsync` |
-| F14-08 | Highlight workflow | Annotation sidebar showing all: | M4 | Implemented | Sidebar lists highlight/underline/strike |
+| F14-05 | Highlight workflow | Underline selection. | M4 | Tested | `AddTextMarkupAsync(Underline)`; Pdf.Tests |
+| F14-06 | Highlight workflow | Strikethrough selection. | M4 | Tested | `AddTextMarkupAsync(StrikeOut)`; Pdf.Tests |
+| F14-07 | Highlight workflow | Remove markup. | M4 | Tested | Sidebar Delete + `RemoveAsync`; markup remove unit test |
+| F14-08 | Highlight workflow | Annotation sidebar showing all: | M4 | Tested | Sidebar lists markup; `PdfAnnotationListLabel` Strike format |
 | F14-09 | Highlight workflow | Click annotation in sidebar to jump to it. | M4 | Implemented | Selection jumps to annotation page |
 | F15-01 | Notes | Add sticky note. | M4 | Tested | `AddStickyNoteAsync` + Note toolbar |
-| F15-02 | Notes | Enter note text. | M4 | Implemented | ContentDialog on add |
+| F15-02 | Notes | Enter note text. | M4 | Tested | ContentDialog on add; `AddStickyNoteAsync` contents round-trip |
 | F15-03 | Notes | Collapse note. | M4 | Implemented | Sidebar Collapse hides sticky popup overlay |
 | F15-04 | Notes | Expand note. | M4 | Implemented | Sidebar Expand / select note shows contents popup on page |
 | F15-05 | Notes | Move note icon. | M4 | Tested | `MoveAsync` API; drag UI later |
 | F15-06 | Notes | Change note color. | M4 | Tested | Create picker + sidebar Color → StickyNotePresets / `SetColorAsync` |
-| F15-07 | Notes | Edit. | M4 | Implemented | Sidebar Edit → `SetContentsAsync` (notes/text boxes/callouts) |
-| F15-08 | Notes | Delete. | M4 | Implemented | Sidebar Delete |
-| F15-09 | Notes | Show note author. | M4 | Implemented | Sidebar label includes `/T` author when set |
+| F15-07 | Notes | Edit. | M4 | Tested | Sidebar Edit → `SetContentsAsync`; sticky edit unit test |
+| F15-08 | Notes | Delete. | M4 | Tested | Sidebar Delete → `RemoveAsync`; markup remove unit test |
+| F15-09 | Notes | Show note author. | M4 | Tested | Sidebar label `/T`; `PdfAnnotationListLabel` author unit test |
 | F15-10 | Notes | Configurable annotation author name. | M4 | Tested | Author button + sticky `/T`; prefs `AnnotationAuthor` round-trip (F55-10) |
 | F15-11 | Notes | Optional date/time metadata. | M4 | Implemented | Sticky notes set `/CreationDate` and `/M` on create |
-| F15-12 | Notes | Show all notes in sidebar. | M4 | Implemented | Annotations list includes notes |
+| F15-12 | Notes | Show all notes in sidebar. | M4 | Tested | Annotations list; `PdfAnnotationListLabel` Note format + ListAsync |
 | F15-13 | Notes | Print notes optionally. | M4 | Tested | Annotations → Export notes → printable `.txt`; `PdfNotesExportTests` |
 | F16-01 | Text boxes and callouts | Add text box anywhere. | M4 | Tested | `AddTextBoxAsync` + TextBox toolbar |
 | F16-02 | Text boxes and callouts | Type arbitrary text over PDF. | M4 | Implemented | Contents via dialog |
@@ -448,13 +448,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-23 | Image viewing | alpha transparency | M5 | Implemented | BGRA32 decode via Magick → WriteableBitmap |
 | F26-24 | Image viewing | HDR display where Windows/display stack supports it | M5 | Deferred | Needs WinUI HDR display pipeline; revisit with F39 |
 | F26-25 | Image viewing | color-managed display | M5 | Implemented | Via M8 F39-02: GetPixelsAsync ICC→sRGB (Meta toggle) |
-| F27-01 | Animated images | play | M8 | Implemented | Image toolbar Play/Pause uses frame delays |
+| F27-01 | Animated images | play | M8 | Tested | Play uses frame delays + `NextPlaybackFrame` advance |
 | F27-02 | Animated images | pause | M8 | Implemented | Pause + Esc stops playback |
 | F27-03 | Animated images | restart | M8 | Implemented | Restart → frame 0 + play |
-| F27-04 | Animated images | next frame | M8 | Implemented | frm⟩ steps forward (wraps) |
-| F27-05 | Animated images | previous frame | M8 | Implemented | ⟨frm steps backward (wraps) |
-| F27-06 | Animated images | timeline/frame number | M8 | Implemented | Frame N/M label + status |
-| F27-07 | Animated images | loop | M8 | Implemented | Loop checkbox; honors AnimationIterations |
+| F27-04 | Animated images | next frame | M8 | Tested | frm⟩; `AnimationFrameNav.WrapStep` unit tests |
+| F27-05 | Animated images | previous frame | M8 | Tested | ⟨frm; `AnimationFrameNav.WrapStep` unit tests |
+| F27-06 | Animated images | timeline/frame number | M8 | Tested | Frame N/M; `AnimationFrameNav.FormatLabel` unit tests |
+| F27-07 | Animated images | loop | M8 | Tested | Loop checkbox; `AnimationFrameNav.NextPlaybackFrame` unit tests |
 | F27-08 | Animated images | inspect individual frames | M8 | Implemented | Step frames; Meta shows Animation entries |
 | F27-09 | Animated images | extract frame | M8 | Tested | ExtractFrameAsync BGRA for any index |
 | F27-10 | Animated images | save selected frame as image | M8 | Implemented | Save frame → PNG picker |
