@@ -139,7 +139,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F07-01 | PDF text interaction | Text selection. | M2/M6 | Tested | Click word-ish via `PdfTextSelection.TryExpandWordAt` + unit tests |
 | F07-02 | PDF text interaction | Copy text. | M2/M6 | Implemented | Copy button / Ctrl+C |
 | F07-03 | PDF text interaction | Select across lines. | M2/M6 | Implemented | Drag stream selection across lines; Alt/wide drag = column rect |
-| F07-04 | PDF text interaction | Select columns where practical. | M2/M6 | Tested | Alt-drag or wide region; `PdfTextSelection.PreferColumnMode` unit tests |
+| F07-04 | PDF text interaction | Select columns where practical. | M2/M6 | Tested | Alt-drag / wide region; `PreferColumnMode` + `PdfPageCoordinates` Y-flip fix |
 | F07-05 | PDF text interaction | Select all text on page/document. | M2/M6 | Implemented | Ctrl+A page text (2nd expands to document); Ctrl+Shift+A pages; context menu |
 | F07-06 | PDF text interaction | Right-click selected text. | M2/M6 | Implemented | Context menu: Copy / Find selection / Search web / Copy region as image |
 | F07-07 | PDF text interaction | Copy. | M2/M6 | Implemented | Clipboard text package |

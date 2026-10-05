@@ -3122,16 +3122,28 @@ public sealed class PdfDocumentView : UserControl
                 Math.Max(1, rightUi - leftUi),
                 Math.Max(1, bottomUi - topUi));
 
-            var left = leftUi / _scale;
-            var right = rightUi / _scale;
-            var top = page.HeightPoints - (bottomUi / _scale);
-            var bottom = page.HeightPoints - (topUi / _scale);
-            var selection = new PdfRect(left, bottom, right, top);
+            var selection = PdfPageCoordinates.FromDisplayRect(
+                leftUi,
+                topUi,
+                rightUi,
+                bottomUi,
+                page.HeightPoints,
+                _scale);
 
-            var startPdfX = dragStart.X / _scale;
-            var startPdfY = page.HeightPoints - (dragStart.Y / _scale);
-            var endPdfX = point.Position.X / _scale;
-            var endPdfY = page.HeightPoints - (point.Position.Y / _scale);
+            var startPdf = PdfPageCoordinates.FromDisplayPoint(
+                dragStart.X,
+                dragStart.Y,
+                page.HeightPoints,
+                _scale);
+            var endPdf = PdfPageCoordinates.FromDisplayPoint(
+                point.Position.X,
+                point.Position.Y,
+                page.HeightPoints,
+                _scale);
+            var startPdfX = startPdf.X;
+            var startPdfY = startPdf.Y;
+            var endPdfX = endPdf.X;
+            var endPdfY = endPdf.Y;
             var rectW = selection.Width;
             var rectH = selection.Height;
             // Alt or a wide short-tall drag prefers column/region geometry; otherwise stream across lines.
@@ -8860,15 +8872,13 @@ public sealed class PdfDocumentView : UserControl
         try
         {
             var page = _document.GetPage(_regionCopyPageIndex);
-            var left = _regionCopyDisplayRect.X / _scale;
-            var right = (_regionCopyDisplayRect.X + _regionCopyDisplayRect.Width) / _scale;
-            var top = page.HeightPoints - (_regionCopyDisplayRect.Y / _scale);
-            var bottom = page.HeightPoints - ((_regionCopyDisplayRect.Y + _regionCopyDisplayRect.Height) / _scale);
-            var bounds = new PdfRect(
-                Math.Min(left, right),
-                Math.Min(bottom, top),
-                Math.Max(left, right),
-                Math.Max(bottom, top));
+            var bounds = PdfPageCoordinates.FromDisplayRectXywh(
+                _regionCopyDisplayRect.X,
+                _regionCopyDisplayRect.Y,
+                _regionCopyDisplayRect.Width,
+                _regionCopyDisplayRect.Height,
+                page.HeightPoints,
+                _scale);
             _redaction.MarkRectangle(_document, _regionCopyPageIndex, bounds);
             RefreshPendingRedactionOverlay(_regionCopyPageIndex);
             var count = _redaction.GetPending(_document).Count;
