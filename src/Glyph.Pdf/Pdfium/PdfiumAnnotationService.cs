@@ -126,6 +126,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         double yPoints,
         string contents,
         PdfAnnotationColor color,
+        string? author = null,
         CancellationToken cancellationToken = default)
     {
         var pdfium = RequirePdfium(document);
@@ -191,6 +192,17 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                                 throw new InvalidOperationException("Failed to set sticky note Contents.");
                             }
 
+                            var resolvedAuthor = string.IsNullOrWhiteSpace(author) ? null : author.Trim();
+                            if (resolvedAuthor is not null &&
+                                !PdfiumAnnotStrings.SetString(annot, "T", resolvedAuthor))
+                            {
+                                throw new InvalidOperationException("Failed to set sticky note author (/T).");
+                            }
+
+                            var now = FormatPdfDate(DateTimeOffset.Now);
+                            _ = PdfiumAnnotStrings.SetString(annot, "CreationDate", now);
+                            _ = PdfiumAnnotStrings.SetString(annot, "M", now);
+
                             var index = fpdf_annot.FPDFPageGetAnnotIndex(page, annot);
                             if (index < 0)
                             {
@@ -205,7 +217,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                                 bounds,
                                 color,
                                 contents,
-                                IsStickyNote: true);
+                                IsStickyNote: true,
+                                Author: resolvedAuthor);
                         }
                         finally
                         {
@@ -1038,6 +1051,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         PdfRect bounds;
         PdfAnnotationColor color = new(0, 0, 0);
         string contents;
+        string? author = null;
         PdfTextMarkupKind? markupKind;
         PdfShapeKind? shapeKind;
         List<PdfQuad> quads = [];
@@ -1094,6 +1108,12 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                     }
 
                     contents = PdfiumAnnotStrings.GetString(annot, "Contents");
+                    author = PdfiumAnnotStrings.GetString(annot, "T");
+                    if (string.IsNullOrWhiteSpace(author))
+                    {
+                        author = null;
+                    }
+
                     markupKind = FromSubtype(subtype);
                     shapeKind = FromShapeSubtype(subtype);
                     if (shapeKind is null && subtype == PdfiumAnnotSubtypes.Ink)
@@ -1201,7 +1221,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                 bounds.Bottom,
                 contents,
                 color,
-                cancellationToken);
+                author: author,
+                cancellationToken: cancellationToken);
         }
 
         if (subtype == PdfiumAnnotSubtypes.FreeText)
@@ -1460,6 +1481,12 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                     }
 
                     var contents = PdfiumAnnotStrings.GetString(annot, "Contents");
+                    var author = PdfiumAnnotStrings.GetString(annot, "T");
+                    if (string.IsNullOrWhiteSpace(author))
+                    {
+                        author = null;
+                    }
+
                     var isSticky = subtype == PdfiumAnnotSubtypes.Text;
                     var isInk = subtype == PdfiumAnnotSubtypes.Ink;
                     var shapeKind = FromShapeSubtype(subtype);
@@ -1487,7 +1514,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                         shapeKind,
                         isTextBox,
                         isStamp,
-                        isCallout));
+                        isCallout,
+                        author));
                 }
                 finally
                 {
@@ -1789,6 +1817,9 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             "Freeform" => PdfShapeKind.Freeform,
             _ => null,
         };
+
+    private static string FormatPdfDate(DateTimeOffset value) =>
+        "D:" + value.ToString("yyyyMMddHHmmss");
 
     private static PdfiumDocument RequirePdfium(IPdfDocument document)
     {

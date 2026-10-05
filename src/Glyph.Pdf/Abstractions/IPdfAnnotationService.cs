@@ -20,6 +20,7 @@ public interface IPdfAnnotationService
         double yPoints,
         string contents,
         PdfAnnotationColor color,
+        string? author = null,
         CancellationToken cancellationToken = default);
 
     Task<PdfAnnotationInfo> AddInkAsync(

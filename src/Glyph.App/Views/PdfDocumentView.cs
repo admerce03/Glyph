@@ -162,6 +162,7 @@ public sealed class PdfDocumentView : UserControl
     private double _cropMarginRightPt;
     private double _cropMarginBottomPt;
     private string? _cropDragHandle;
+    private string _annotationAuthor = Environment.UserName;
     private Windows.Foundation.Point _cropPointerStart;
     private double _cropDragStartLeft;
     private double _cropDragStartTop;
@@ -359,10 +360,14 @@ public sealed class PdfDocumentView : UserControl
         var pasteAnnot = new Button { Content = "Paste", Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(pasteAnnot, "Paste annotation clipboard (Ctrl+V when clipboard has an annotation)");
         pasteAnnot.Click += async (_, _) => await PasteAnnotationClipboardAsync();
+        var authorAnnot = new Button { Content = "Author", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(authorAnnot, "Set default annotation author name for new sticky notes");
+        authorAnnot.Click += async (_, _) => await ConfigureAnnotationAuthorAsync();
         annotHeaderRow.Children.Add(duplicateAnnot);
         annotHeaderRow.Children.Add(copyAnnot);
         annotHeaderRow.Children.Add(cutAnnot);
         annotHeaderRow.Children.Add(pasteAnnot);
+        annotHeaderRow.Children.Add(authorAnnot);
         var colorAnnot = new Button { Content = "Color", Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(colorAnnot, "Change selected annotation color");
         colorAnnot.Click += async (_, _) => await SetSelectedAnnotationColorAsync();
@@ -1335,7 +1340,15 @@ public sealed class PdfDocumentView : UserControl
 
         if (e.Key is VirtualKey.Delete or VirtualKey.Back)
         {
-            await DeleteSelectedAsync();
+            if (TryGetSelectedAnnotation(out _))
+            {
+                await RemoveSelectedAnnotationAsync();
+            }
+            else
+            {
+                await DeleteSelectedAsync();
+            }
+
             e.Handled = true;
             return;
         }
@@ -3627,7 +3640,8 @@ public sealed class PdfDocumentView : UserControl
             var preview = string.IsNullOrWhiteSpace(info.Contents)
                 ? "(empty)"
                 : TrimForStatus(info.Contents);
-            return $"Note · p.{info.PageIndex + 1}: {preview}";
+            var author = string.IsNullOrWhiteSpace(info.Author) ? string.Empty : $" · {info.Author}";
+            return $"Note{author} · p.{info.PageIndex + 1}: {preview}";
         }
 
         if (info.IsTextBox)
@@ -5769,6 +5783,12 @@ public sealed class PdfDocumentView : UserControl
             Height = 120,
             PlaceholderText = "Note text",
         };
+        var authorBox = new TextBox
+        {
+            Text = _annotationAuthor,
+            PlaceholderText = "Author",
+            Width = 220,
+        };
         var colorList = new ListView
         {
             Height = 140,
@@ -5782,6 +5802,8 @@ public sealed class PdfDocumentView : UserControl
             Children =
             {
                 box,
+                new TextBlock { Text = "Author", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                authorBox,
                 new TextBlock { Text = "Color", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                 colorList,
             },
@@ -5805,6 +5827,11 @@ public sealed class PdfDocumentView : UserControl
 
         var colorIndex = Math.Clamp(colorList.SelectedIndex, 0, PdfAnnotationColor.StickyNotePresets.Count - 1);
         var color = PdfAnnotationColor.StickyNotePresets[colorIndex].Color;
+        if (!string.IsNullOrWhiteSpace(authorBox.Text))
+        {
+            _annotationAuthor = authorBox.Text.Trim();
+        }
+
         var page = _document.GetPage(CurrentPageIndex);
         var x = Math.Max(24, page.WidthPoints * 0.5 - 10);
         var y = Math.Max(24, page.HeightPoints * 0.5 - 10);
@@ -5818,7 +5845,8 @@ public sealed class PdfDocumentView : UserControl
                 x,
                 y,
                 box.Text ?? string.Empty,
-                color);
+                color,
+                author: _annotationAuthor);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
@@ -6247,6 +6275,39 @@ public sealed class PdfDocumentView : UserControl
 
         _annotSelectionRect = null;
         _annotResizeHandleVisuals.Clear();
+    }
+
+    private async Task ConfigureAnnotationAuthorAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for author dialog.");
+
+        var box = new TextBox
+        {
+            Text = _annotationAuthor,
+            PlaceholderText = "Author name",
+            Width = 260,
+        };
+        var dialog = new ContentDialog
+        {
+            Title = "Annotation author",
+            Content = box,
+            PrimaryButtonText = "Save",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        _annotationAuthor = string.IsNullOrWhiteSpace(box.Text)
+            ? Environment.UserName
+            : box.Text.Trim();
+        _status.Text = $"Annotation author set to {_annotationAuthor}.";
     }
 
     private async Task DuplicateSelectedAnnotationAsync()

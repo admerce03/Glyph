@@ -513,10 +513,12 @@ public class PdfiumAnnotationServiceTests
                     xPoints: 72,
                     yPoints: 700,
                     contents: "Hello from Glyph",
-                    color: PdfAnnotationColor.StickyNoteYellow);
+                    color: PdfAnnotationColor.StickyNoteYellow,
+                    author: "Glyph Tester");
 
                 created.IsStickyNote.Should().BeTrue();
                 created.Contents.Should().Be("Hello from Glyph");
+                created.Author.Should().Be("Glyph Tester");
 
                 await annots.SetContentsAsync(document, 0, created.AnnotIndex, "Edited note");
                 await annots.SetColorAsync(document, 0, created.AnnotIndex, new PdfAnnotationColor(80, 160, 255));
@@ -525,6 +527,7 @@ public class PdfiumAnnotationServiceTests
                 var listed = await annots.ListAsync(document, 0);
                 var note = listed.Should().ContainSingle(a => a.IsStickyNote).Subject;
                 note.Contents.Should().Be("Edited note");
+                note.Author.Should().Be("Glyph Tester");
                 note.Bounds.Left.Should().BeApproximately(100, 0.5);
 
                 // Resize via MoveAsync (same path as UI resize handles).
@@ -543,6 +546,7 @@ public class PdfiumAnnotationServiceTests
                 var copy = await annots.DuplicateAsync(document, 0, note.AnnotIndex);
                 copy.IsStickyNote.Should().BeTrue();
                 copy.Contents.Should().Be("Edited note");
+                copy.Author.Should().Be("Glyph Tester");
                 copy.Bounds.Left.Should().BeApproximately(note.Bounds.Left + 12, 0.5);
                 copy.Bounds.Bottom.Should().BeApproximately(note.Bounds.Bottom - 12, 0.5);
 

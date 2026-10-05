@@ -279,9 +279,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F15-06 | Notes | Change note color. | M4 | Tested | Create picker + sidebar Color → StickyNotePresets / `SetColorAsync` |
 | F15-07 | Notes | Edit. | M4 | Tested | `SetContentsAsync` API; edit dialog later |
 | F15-08 | Notes | Delete. | M4 | Implemented | Sidebar Delete |
-| F15-09 | Notes | Show note author. | M4 | Not Started |  |
-| F15-10 | Notes | Configurable annotation author name. | M4 | Not Started |  |
-| F15-11 | Notes | Optional date/time metadata. | M4 | Not Started |  |
+| F15-09 | Notes | Show note author. | M4 | Implemented | Sidebar label includes `/T` author when set |
+| F15-10 | Notes | Configurable annotation author name. | M4 | Implemented | Author button + sticky-note dialog; written to `/T` |
+| F15-11 | Notes | Optional date/time metadata. | M4 | Implemented | Sticky notes set `/CreationDate` and `/M` on create |
 | F15-12 | Notes | Show all notes in sidebar. | M4 | Implemented | Annotations list includes notes |
 | F15-13 | Notes | Print notes optionally. | M4 | Not Started |  |
 | F16-01 | Text boxes and callouts | Add text box anywhere. | M4 | Tested | `AddTextBoxAsync` + TextBox toolbar |
@@ -297,7 +297,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F16-11 | Text boxes and callouts | Text color. | M4 | Tested | DA RGB from `textColor` |
 | F16-12 | Text boxes and callouts | Background/fill color. | M4 | Implemented | `fillColor` → InteriorColor; TextBox dialog picker |
 | F16-13 | Text boxes and callouts | Border. | M4 | Tested | Border color + width on create |
-| F16-14 | Text boxes and callouts | Opacity. | M4 | Not Started |  |
+| F16-14 | Text boxes and callouts | Opacity. | M4 | Implemented | Sidebar Opacity → `SetOpacityAsync` |
 | F16-15 | Text boxes and callouts | Alignment. | M4 | Not Started |  |
 | F16-16 | Text boxes and callouts | Callout pointer. | M4 | Tested | Ink pointer from tip to nearest box edge |
 | F16-17 | Text boxes and callouts | Move pointer separately from text box. | M4 | Not Started |  |
@@ -320,12 +320,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F17-17 | Shapes | border width | M4 | Implemented | Width picker with stroke color dialog |
 | F17-18 | Shapes | line style | M4 | Not Started |  |
 | F17-19 | Shapes | fill color | M4 | Implemented | Semi-transparent fill from stroke hue |
-| F17-20 | Shapes | opacity | M4 | Not Started |  |
+| F17-20 | Shapes | opacity | M4 | Implemented | Sidebar Opacity → `SetOpacityAsync` |
 | F17-21 | Shapes | shape-specific adjustment handles | M4 | Not Started |  |
 | F18-01 | Freehand drawing | Mouse drawing. | M4 | Tested | Ink draw mode |
 | F18-02 | Freehand drawing | Stroke color. | M4 | Implemented | Stroke picker when entering Ink mode |
 | F18-03 | Freehand drawing | Stroke width. | M4 | Implemented | Width picker (1–8 pt) with color dialog |
-| F18-04 | Freehand drawing | Stroke opacity. | M4 | Not Started |  |
+| F18-04 | Freehand drawing | Stroke opacity. | M4 | Implemented | Sidebar Opacity → `SetOpacityAsync` on ink |
 | F18-05 | Freehand drawing | Eraser. | M4 | Not Started |  |
 | F18-06 | Freehand drawing | Undo stroke. | M4 | Not Started |  |
 | F18-07 | Freehand drawing | Select/move completed strokes. | M4 | Implemented | Ink annots use selection tool + `MoveAsync` |
