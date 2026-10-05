@@ -724,6 +724,7 @@ public sealed class PdfDocumentView : UserControl
         border.PointerMoved += PageBorder_PointerMoved;
         border.PointerReleased += PageBorder_PointerReleased;
         border.PointerCaptureLost += (_, _) => _dragSelecting = false;
+        border.RightTapped += PageBorder_RightTapped;
         RebuildOcrOverlayForPage(pageIndex);
         return border;
     }
@@ -1440,6 +1441,12 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        // Reserve right-click for the text selection context menu.
+        if (e.GetCurrentPoint(border).Properties.IsRightButtonPressed)
+        {
+            return;
+        }
+
         if (_cropMode)
         {
             if (pageIndex == _cropPageIndex)
@@ -1511,6 +1518,33 @@ public sealed class PdfDocumentView : UserControl
         _dragPageIndex = pageIndex;
         _dragStart = pressPoint;
         border.CapturePointer(e.Pointer);
+    }
+
+    private void PageBorder_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement target)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_selectedText))
+        {
+            _status.Text = "Select text first, then right-click for actions.";
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+        var copyItem = new MenuFlyoutItem { Text = "Copy" };
+        copyItem.Click += async (_, _) => await CopyTextAsync();
+        var findItem = new MenuFlyoutItem { Text = "Find selection" };
+        findItem.Click += async (_, _) => await SearchSelectedTextAsync();
+        var webItem = new MenuFlyoutItem { Text = "Search web" };
+        webItem.Click += async (_, _) => await SearchWebAsync(_selectedText);
+        flyout.Items.Add(copyItem);
+        flyout.Items.Add(findItem);
+        flyout.Items.Add(webItem);
+        flyout.ShowAt(target, e.GetPosition(target));
+        e.Handled = true;
     }
 
     private void PageBorder_PointerMoved(object sender, PointerRoutedEventArgs e)
