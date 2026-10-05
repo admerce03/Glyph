@@ -5,6 +5,26 @@ When a decision needs product/licensing/privacy approval, it is marked **Needs a
 
 ---
 
+## ADR-016 — Emulated scanner until WIA harness exists
+
+**Status:** Accepted (Milestone 8)  
+**Date:** 2026-10-04
+
+### Context
+
+M8 requires a scanner path with tests. Full Windows WIA/TWAIN validation needs interactive Windows hardware; Linux CI cannot exercise that stack.
+
+### Decision
+
+Ship `IScannerService` with `EmulatedScannerService` that lists a virtual flatbed and writes a DPI-sized PNG. Matrix rows for hardware ADF/duplex/WIA remain Not Started / Deferred until a Windows interactive harness lands.
+
+### Consequences
+
+- Batch/scanner UX and DI wiring can ship with green CI
+- Hardware discovery remains a documented gap, not a silent claim of completeness
+
+---
+
 ## ADR-015 — PDF metadata sidecar and Standard Security protect
 
 **Status:** Accepted (Milestone 7)  

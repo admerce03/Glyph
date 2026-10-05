@@ -555,49 +555,49 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F35-15 | Image format conversion | preserve/remove alpha | M5 | Not Started |  |
 | F35-16 | Image format conversion | preserve/remove metadata | M5 | Not Started |  |
 | F35-17 | Image format conversion | color profile handling | M5 | Not Started |  |
-| F36-01 | Batch image operations | resize | M8 | Not Started |  |
-| F36-02 | Batch image operations | rotate | M8 | Not Started |  |
-| F36-03 | Batch image operations | flip | M8 | Not Started |  |
-| F36-04 | Batch image operations | convert format | M8 | Not Started |  |
-| F36-05 | Batch image operations | export | M8 | Not Started |  |
-| F36-06 | Batch image operations | strip metadata | M8 | Not Started |  |
+| F36-01 | Batch image operations | resize | M8 | Tested | IImageBatchService Resize |
+| F36-02 | Batch image operations | rotate | M8 | Implemented | Batch Rotate |
+| F36-03 | Batch image operations | flip | M8 | Implemented | Batch Flip H/V |
+| F36-04 | Batch image operations | convert format | M8 | Implemented | Batch ConvertFormat |
+| F36-05 | Batch image operations | export | M8 | Tested | Batch writes output files |
+| F36-06 | Batch image operations | strip metadata | M8 | Implemented | Batch StripMetadata |
 | F36-07 | Batch image operations | change color profile | M8 | Not Started |  |
 | F36-08 | Batch image operations | rename, optionally | M8 | Not Started |  |
-| F37-01 | Image metadata | dimensions | M5 | Not Started |  |
-| F37-02 | Image metadata | pixel count | M5 | Not Started |  |
-| F37-03 | Image metadata | DPI | M5 | Not Started |  |
-| F37-04 | Image metadata | bit depth | M5 | Not Started |  |
-| F37-05 | Image metadata | color space | M5 | Not Started |  |
-| F37-06 | Image metadata | ICC profile | M5 | Not Started |  |
-| F37-07 | Image metadata | file format | M5 | Not Started |  |
-| F37-08 | Image metadata | compression | M5 | Not Started |  |
-| F37-09 | Image metadata | file size | M5 | Not Started |  |
-| F37-10 | Image metadata | camera make/model | M5 | Not Started |  |
-| F37-11 | Image metadata | lens information | M5 | Not Started |  |
-| F37-12 | Image metadata | exposure | M5 | Not Started |  |
-| F37-13 | Image metadata | aperture | M5 | Not Started |  |
-| F37-14 | Image metadata | ISO | M5 | Not Started |  |
-| F37-15 | Image metadata | focal length | M5 | Not Started |  |
-| F37-16 | Image metadata | capture date | M5 | Not Started |  |
-| F37-17 | Image metadata | orientation | M5 | Not Started |  |
-| F37-18 | Image metadata | GPS coordinates | M5 | Not Started |  |
-| F37-19 | Image metadata | EXIF | M5 | Not Started |  |
-| F37-20 | Image metadata | IPTC | M5 | Not Started |  |
-| F37-21 | Image metadata | XMP where available | M5 | Not Started |  |
-| F37-22 | Image metadata | title | M5 | Not Started |  |
-| F37-23 | Image metadata | description | M5 | Not Started |  |
-| F37-24 | Image metadata | keywords | M5 | Not Started |  |
-| F37-25 | Image metadata | copyright | M5 | Not Started |  |
+| F37-01 | Image metadata | dimensions | M5 | Tested | ImageMetadata.PixelWidth/Height |
+| F37-02 | Image metadata | pixel count | M5 | Tested | PixelCount |
+| F37-03 | Image metadata | DPI | M5 | Implemented | DensityX/Y DPI |
+| F37-04 | Image metadata | bit depth | M5 | Implemented | BitDepth |
+| F37-05 | Image metadata | color space | M5 | Implemented | ColorSpace |
+| F37-06 | Image metadata | ICC profile | M5 | Implemented | IccProfileName |
+| F37-07 | Image metadata | file format | M5 | Implemented | FormatName |
+| F37-08 | Image metadata | compression | M5 | Implemented | Compression |
+| F37-09 | Image metadata | file size | M5 | Implemented | FileSizeBytes |
+| F37-10 | Image metadata | camera make/model | M5 | Tested | Camera make/model EXIF |
+| F37-11 | Image metadata | lens information | M5 | Implemented | Lens EXIF when present |
+| F37-12 | Image metadata | exposure | M5 | Implemented | ExposureTime |
+| F37-13 | Image metadata | aperture | M5 | Implemented | FNumber |
+| F37-14 | Image metadata | ISO | M5 | Implemented | ISO |
+| F37-15 | Image metadata | focal length | M5 | Implemented | FocalLength |
+| F37-16 | Image metadata | capture date | M5 | Implemented | DateTaken |
+| F37-17 | Image metadata | orientation | M5 | Implemented | Orientation |
+| F37-18 | Image metadata | GPS coordinates | M5 | Tested | GPS lat/lon |
+| F37-19 | Image metadata | EXIF | M5 | Implemented | EXIF profile read/write |
+| F37-20 | Image metadata | IPTC | M5 | Not Started | IPTC |
+| F37-21 | Image metadata | XMP where available | M5 | Not Started | XMP |
+| F37-22 | Image metadata | title | M5 | Tested | Edit title |
+| F37-23 | Image metadata | description | M5 | Tested | Edit description |
+| F37-24 | Image metadata | keywords | M5 | Tested | Edit keywords (XPKeywords) |
+| F37-25 | Image metadata | copyright | M5 | Tested | Edit copyright |
 | F37-26 | Image metadata | rating, optionally | M5 | Not Started |  |
-| F38-01 | GPS metadata | display latitude/longitude. | M5/M8 | Not Started |  |
+| F38-01 | GPS metadata | display latitude/longitude. | M5/M8 | Tested | Display GPS via metadata dialog |
 | F38-02 | GPS metadata | Copy coordinates. | M5/M8 | Not Started |  |
 | F38-03 | GPS metadata | Open in default/browser mapping service. | M5/M8 | Not Started |  |
-| F38-04 | GPS metadata | Remove GPS metadata. | M5/M8 | Not Started |  |
+| F38-04 | GPS metadata | Remove GPS metadata. | M5/M8 | Tested | StripGpsAsync |
 | F38-05 | GPS metadata | Optional embedded map later. | M5/M8 | Not Started |  |
-| F39-01 | Color management | Detect embedded ICC profile. | M8 | Not Started |  |
-| F39-02 | Color management | Honor embedded profile while displaying. | M8 | Not Started |  |
+| F39-01 | Color management | Detect embedded ICC profile. | M8 | Implemented | GetColorProfile detection |
+| F39-02 | Color management | Honor embedded profile while displaying. | M8 | In Progress | Display still uses decoded BGRA; convert-to-sRGB available |
 | F39-03 | Color management | Assign ICC profile. | M8 | Not Started |  |
-| F39-04 | Color management | Convert between profiles. | M8 | Not Started |  |
+| F39-04 | Color management | Convert between profiles. | M8 | Implemented | ConvertToSrgbAsync |
 | F39-05 | Color management | Use monitor profile. | M8 | Not Started |  |
 | F39-06 | Color management | Soft-proof through another ICC profile. | M8 | Not Started |  |
 | F39-07 | Color management | Toggle soft proof. | M8 | Not Started |  |
@@ -614,19 +614,19 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F40-09 | Clipboard integration | text into annotation/text field | M1/M5 | Not Started |  |
 | F40-10 | Clipboard integration | file paths where appropriate | M1/M5 | Not Started |  |
 | F41-00 | Screenshot workflow | (see FEATURES.md §41) | M1/M5 | Not Started | |
-| F42-01 | Scanner support | Discover connected scanners. | M8 | Not Started |  |
-| F42-02 | Scanner support | Flatbed scanner. | M8 | Not Started |  |
-| F42-03 | Scanner support | Automatic document feeder. | M8 | Not Started |  |
-| F42-04 | Scanner support | Duplex feeder. | M8 | Not Started |  |
-| F42-05 | Scanner support | Color. | M8 | Not Started |  |
-| F42-06 | Scanner support | Grayscale. | M8 | Not Started |  |
+| F42-01 | Scanner support | Discover connected scanners. | M8 | Tested | EmulatedScannerService.ListDevicesAsync (ADR-016) |
+| F42-02 | Scanner support | Flatbed scanner. | M8 | Tested | Emulated flatbed scan |
+| F42-03 | Scanner support | Automatic document feeder. | M8 | Deferred | ADR-016: hardware ADF needs Windows WIA harness |
+| F42-04 | Scanner support | Duplex feeder. | M8 | Deferred | ADR-016: duplex needs Windows WIA harness |
+| F42-05 | Scanner support | Color. | M8 | Implemented | Emulated color scan |
+| F42-06 | Scanner support | Grayscale. | M8 | Implemented | Emulated grayscale flag |
 | F42-07 | Scanner support | Black and white. | M8 | Not Started |  |
-| F42-08 | Scanner support | Resolution/DPI. | M8 | Not Started |  |
+| F42-08 | Scanner support | Resolution/DPI. | M8 | Tested | Dpi on ScanRequest |
 | F42-09 | Scanner support | Paper size. | M8 | Not Started |  |
 | F42-10 | Scanner support | Auto crop. | M8 | Not Started |  |
 | F42-11 | Scanner support | Auto straighten. | M8 | Not Started |  |
 | F42-12 | Scanner support | Brightness/contrast where hardware supports it. | M8 | Not Started |  |
-| F42-13 | Scanner support | Scan one page. | M8 | Not Started |  |
+| F42-13 | Scanner support | Scan one page. | M8 | Tested | Scan one page to PNG |
 | F42-14 | Scanner support | Scan multiple pages. | M8 | Not Started |  |
 | F42-15 | Scanner support | Scan directly into new PDF. | M8 | Not Started |  |
 | F42-16 | Scanner support | Insert scanned pages into existing PDF. | M8 | Not Started |  |

@@ -50,6 +50,10 @@ public sealed partial class MainWindow : Window
     private readonly IImageDecoder _imageDecoder;
     private readonly IImageEncoder _imageEncoder;
     private readonly IImageProcessor _imageProcessor;
+    private readonly IImageMetadataService _imageMetadata;
+    private readonly IImageColorProfileService _imageColor;
+    private readonly IImageBatchService _imageBatch;
+    private readonly IScannerService _scanner;
     private readonly IOcrEngine _ocrEngine;
     private readonly PdfPageOcrService _pdfOcr;
     private readonly PageRenderCache _pageCache;
@@ -76,6 +80,10 @@ public sealed partial class MainWindow : Window
         IImageDecoder imageDecoder,
         IImageEncoder imageEncoder,
         IImageProcessor imageProcessor,
+        IImageMetadataService imageMetadata,
+        IImageColorProfileService imageColor,
+        IImageBatchService imageBatch,
+        IScannerService scanner,
         IOcrEngine ocrEngine,
         PdfPageOcrService pdfOcr,
         PageRenderCache pageCache,
@@ -100,6 +108,10 @@ public sealed partial class MainWindow : Window
         _imageDecoder = imageDecoder;
         _imageEncoder = imageEncoder;
         _imageProcessor = imageProcessor;
+        _imageMetadata = imageMetadata;
+        _imageColor = imageColor;
+        _imageBatch = imageBatch;
+        _scanner = scanner;
         _ocrEngine = ocrEngine;
         _pdfOcr = pdfOcr;
         _pageCache = pageCache;
@@ -465,7 +477,16 @@ public sealed partial class MainWindow : Window
 
             _openEngines[session.Id] = image;
             SidebarStatus.Text = $"{image.FormatName} · {image.PixelWidth}×{image.PixelHeight}";
-            return new ImageDocumentView(image, _imageProcessor, _imageEncoder, _ocrEngine, session.ViewState);
+            return new ImageDocumentView(
+                image,
+                _imageProcessor,
+                _imageEncoder,
+                _ocrEngine,
+                session.ViewState,
+                _imageMetadata,
+                _imageColor,
+                _imageBatch,
+                _scanner);
         }
 
         return CreatePlaceholderContent(session);

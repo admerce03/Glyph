@@ -25,7 +25,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M5 | Image viewer/editor | **In Progress** | M1 (shares shell/DnD with M3) |
 | M6 | OCR and scanned-document capabilities | **In Progress** | M2, M5 |
 | M7 | Redaction, PDF security, optimization, metadata | **In Progress** | M2–M4 |
-| M8 | Batch ops, scanner, color management, advanced | Not Started | M5–M7 |
+| M8 | Batch ops, scanner, color management, advanced | **In Progress** | M5–M7 |
 | M9 | Performance, polish, a11y, installer, audit | Not Started | M1–M8 core paths |
 
 M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behind separate interfaces. M3 remains the highest-priority Preview-differentiator after viewing works.
@@ -275,7 +275,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 8 — Batch operations, scanner, color management, advanced
 
-**Status:** Not Started · Depends on M5–M7
+**Status:** In Progress · Depends on M5–M7
 
 ### Scope (`FEATURES.md` §27, §29, §36, §39, §42–48 advanced)
 
@@ -292,6 +292,15 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Batch job progress/cancel
 - At least one scanner path validated on hardware when available (emulated tests otherwise)
 - Color-managed display path documented and tested with profiled sample
+
+### Progress notes
+
+- `IImageMetadataService` / Magick: dimensions/DPI/EXIF/GPS + edit title/description/keywords/copyright; StripGps / strip-all.
+- `IImageColorProfileService`: detect ICC + ConvertToSrgb.
+- `IImageBatchService`: resize/rotate/flip/convert/strip with progress + cancel.
+- `IScannerService` / `EmulatedScannerService`: CI-safe emulated flatbed scan (WIA hardware deferred).
+- Image viewer: Meta / →sRGB / Strip GPS / Scan toolbar actions.
+- Tests cover metadata round-trip, GPS strip, sRGB convert, batch resize progress, emulated scan.
 
 ---
 
@@ -340,11 +349,11 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Optimization | §24 | M7 | In Progress |
 | PDF metadata | §25 | M7 | In Progress |
 | Image viewing/editing | §26–35 | M5 | In Progress |
-| Batch images | §36 | M8 | Not Started |
-| Image metadata/GPS | §37–38 | M5, M8 | Not Started |
-| Color management | §39 | M8 | Not Started |
+| Batch images | §36 | M8 | In Progress |
+| Image metadata/GPS | §37–38 | M5, M8 | In Progress |
+| Color management | §39 | M8 | In Progress |
 | Clipboard/screenshots | §40–41 | M1, M5 | Not Started |
-| Scanner/webcam | §42–43 | M8 | Not Started |
+| Scanner/webcam | §42–43 | M8 | In Progress (emulated scanner) |
 | Printing | §44 | M8 | Not Started |
 | Export/share/integration | §45–48 | M5–M9 | Not Started |
 | Undo/autosave/snapshots | §49–51 | M1–M4, M9 | Not Started |

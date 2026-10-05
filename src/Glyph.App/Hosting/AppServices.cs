@@ -54,6 +54,10 @@ internal static class AppServices
         services.AddSingleton<IImageDecoder, MagickImageDecoder>();
         services.AddSingleton<IImageEncoder, MagickImageEncoder>();
         services.AddSingleton<IImageProcessor, MagickImageProcessor>();
+        services.AddSingleton<IImageMetadataService, MagickImageMetadataService>();
+        services.AddSingleton<IImageColorProfileService, MagickImageColorProfileService>();
+        services.AddSingleton<IImageBatchService, MagickImageBatchService>();
+        services.AddSingleton<IScannerService, EmulatedScannerService>();
         services.AddSingleton<IOcrEngine, TesseractCliOcrEngine>();
         services.AddSingleton<PdfPageOcrService>();
         services.AddSingleton<PageRenderCache>(_ => new PageRenderCache(capacity: 48));

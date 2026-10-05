@@ -17,6 +17,10 @@ public sealed class ImageDocumentView : UserControl
     private readonly IImageProcessor _processor;
     private readonly IImageEncoder _encoder;
     private readonly IOcrEngine _ocr;
+    private readonly IImageMetadataService? _metadata;
+    private readonly IImageColorProfileService? _color;
+    private readonly IImageBatchService? _batch;
+    private readonly IScannerService? _scanner;
     private readonly DocumentViewState _viewState;
     private readonly ScrollViewer _scrollViewer;
     private readonly Image _image;
@@ -30,12 +34,20 @@ public sealed class ImageDocumentView : UserControl
         IImageProcessor processor,
         IImageEncoder encoder,
         IOcrEngine ocr,
-        DocumentViewState? viewState = null)
+        DocumentViewState? viewState = null,
+        IImageMetadataService? metadata = null,
+        IImageColorProfileService? color = null,
+        IImageBatchService? batch = null,
+        IScannerService? scanner = null)
     {
         _document = document;
         _processor = processor;
         _encoder = encoder;
         _ocr = ocr;
+        _metadata = metadata;
+        _color = color;
+        _batch = batch;
+        _scanner = scanner;
         _viewState = viewState ?? new DocumentViewState();
         _zoom = _viewState.Zoom <= 0 ? 1.0 : _viewState.Zoom;
 
@@ -72,11 +84,19 @@ public sealed class ImageDocumentView : UserControl
         var exportPng = new Button { Content = "→PNG" };
         var exportJpeg = new Button { Content = "→JPEG" };
         var ocr = new Button { Content = "OCR" };
+        var meta = new Button { Content = "Meta" };
+        var srgb = new Button { Content = "→sRGB" };
+        var stripGps = new Button { Content = "Strip GPS" };
+        var scan = new Button { Content = "Scan" };
 
         ToolTipService.SetToolTip(crop, "Crop using x,y,w,h pixels (origin top-left)");
         ToolTipService.SetToolTip(exportPng, "Export as PNG");
         ToolTipService.SetToolTip(exportJpeg, "Export as JPEG");
         ToolTipService.SetToolTip(ocr, "Offline OCR of the current image");
+        ToolTipService.SetToolTip(meta, "View / edit image metadata");
+        ToolTipService.SetToolTip(srgb, "Convert embedded color profile to sRGB");
+        ToolTipService.SetToolTip(stripGps, "Remove GPS EXIF tags");
+        ToolTipService.SetToolTip(scan, "Scan via emulated flatbed (hardware WIA later)");
 
         zoomOut.Click += async (_, _) => await SetZoomAsync(_zoom / 1.25);
         zoomIn.Click += async (_, _) => await SetZoomAsync(_zoom * 1.25);
@@ -91,6 +111,10 @@ public sealed class ImageDocumentView : UserControl
         exportPng.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Png, ".png");
         exportJpeg.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Jpeg, ".jpg");
         ocr.Click += async (_, _) => await RunOcrAsync();
+        meta.Click += async (_, _) => await EditMetadataAsync();
+        srgb.Click += async (_, _) => await ConvertSrgbAsync();
+        stripGps.Click += async (_, _) => await StripGpsAsync();
+        scan.Click += async (_, _) => await ScanEmulatedAsync();
 
         var toolbar = new StackPanel
         {
@@ -100,7 +124,7 @@ public sealed class ImageDocumentView : UserControl
             Children =
             {
                 zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, flipH, flipV,
-                _cropBox, crop, save, exportPng, exportJpeg, ocr, _status,
+                _cropBox, crop, save, exportPng, exportJpeg, ocr, meta, srgb, stripGps, scan, _status,
             },
         };
 
@@ -271,6 +295,123 @@ public sealed class ImageDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "OCR failed: " + ex.Message;
+        }
+    }
+
+    private async Task EditMetadataAsync()
+    {
+        if (_metadata is null)
+        {
+            _status.Text = "Metadata service unavailable.";
+            return;
+        }
+
+        try
+        {
+            var current = await _metadata.GetAsync(_document);
+            var title = new TextBox { Header = "Title", Text = current.Title ?? string.Empty };
+            var description = new TextBox { Header = "Description", Text = current.Description ?? string.Empty };
+            var keywords = new TextBox { Header = "Keywords", Text = current.Keywords ?? string.Empty };
+            var copyright = new TextBox { Header = "Copyright", Text = current.Copyright ?? string.Empty };
+            var info = new TextBlock
+            {
+                Text =
+                    $"{current.PixelWidth}×{current.PixelHeight} · {current.FormatName} · " +
+                    $"DPI {current.DensityX:0}/{current.DensityY:0} · " +
+                    $"Camera {current.CameraMake ?? "-"} {current.CameraModel ?? ""} · " +
+                    $"GPS {(current.GpsLatitude is null ? "none" : $"{current.GpsLatitude:F5},{current.GpsLongitude:F5}")}",
+                TextWrapping = TextWrapping.WrapWholeWords,
+            };
+            var dialog = new ContentDialog
+            {
+                Title = "Image metadata",
+                PrimaryButtonText = "Save",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = XamlRoot,
+                Content = new StackPanel
+                {
+                    Spacing = 8,
+                    Children = { info, title, description, keywords, copyright },
+                },
+            };
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            {
+                return;
+            }
+
+            await _metadata.SetAsync(_document, title.Text, description.Text, keywords.Text, copyright.Text);
+            _status.Text = "Image metadata updated (save to persist).";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Metadata failed: " + ex.Message;
+        }
+    }
+
+    private async Task ConvertSrgbAsync()
+    {
+        if (_color is null)
+        {
+            _status.Text = "Color profile service unavailable.";
+            return;
+        }
+
+        await MutateAsync(() => _color.ConvertToSrgbAsync(_document), "Converted to sRGB.");
+    }
+
+    private async Task StripGpsAsync()
+    {
+        if (_metadata is null)
+        {
+            _status.Text = "Metadata service unavailable.";
+            return;
+        }
+
+        await MutateAsync(() => _metadata.StripGpsAsync(_document), "GPS tags removed.");
+    }
+
+    private async Task ScanEmulatedAsync()
+    {
+        if (_scanner is null)
+        {
+            _status.Text = "Scanner service unavailable.";
+            return;
+        }
+
+        try
+        {
+            var devices = await _scanner.ListDevicesAsync();
+            var device = devices.FirstOrDefault();
+            if (device is null)
+            {
+                _status.Text = "No scanners found.";
+                return;
+            }
+
+            var picker = new Windows.Storage.Pickers.FileSavePicker();
+            var window = App.CurrentApp.MainWindowInstance
+                ?? throw new InvalidOperationException("Main window unavailable.");
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+            picker.SuggestedFileName = "scan.png";
+            picker.FileTypeChoices.Add("PNG", [".png"]);
+            var file = await picker.PickSaveFileAsync();
+            if (file is null)
+            {
+                _status.Text = "Scan cancelled.";
+                return;
+            }
+
+            _status.Text = $"Scanning via {device.Name}…";
+            await _scanner.ScanAsync(new ScanRequest(device.Id, file.Path, Dpi: 150));
+            _status.Text = device.IsEmulated
+                ? $"Emulated scan saved to {file.Name}."
+                : $"Scan saved to {file.Name}.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Scan failed: " + ex.Message;
         }
     }
 
