@@ -1,13 +1,13 @@
 using System.Collections.Concurrent;
 using Glyph.Pdf.Abstractions;
 
-namespace Glyph.App;
+namespace Glyph.Pdf.Editing;
 
 /// <summary>
-/// Process-wide registry so thumbnail drops can resolve the source <see cref="IPdfDocument"/>
-/// for cross-tab / cross-document page drags.
+/// Process-wide registry so thumbnail drops resolve the source <see cref="IPdfDocument"/>
+/// for cross-tab / cross-document page drags (F11-09 / F59-04).
 /// </summary>
-internal static class PdfPageDragRegistry
+public static class PdfPageDragRegistry
 {
     private static readonly ConcurrentDictionary<string, WeakReference<IPdfDocument>> Documents = new(StringComparer.Ordinal);
 

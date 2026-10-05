@@ -1704,9 +1704,7 @@ public sealed class PdfDocumentView : UserControl
         var payload = new PageDragPayload(_documentKey, indexes);
         args.Data.SetText(payload.Format());
         args.Data.RequestedOperation = DataPackageOperation.Copy | DataPackageOperation.Move;
-        args.Data.Properties.Title = indexes.Count == 1
-            ? "PDF page"
-            : $"{indexes.Count} PDF pages";
+        args.Data.Properties.Title = PageDragDisplay.DragTitle(indexes.Count);
 
         // Deferred StorageItems so Explorer (and other apps) receive an extracted PDF on drop.
         var pageIndexes = indexes;
@@ -1721,9 +1719,9 @@ public sealed class PdfDocumentView : UserControl
         var deferral = request.GetDeferral();
         try
         {
-            var tempPath = System.IO.Path.Combine(
+            var tempPath = PageExtractFileNames.TempPdfPath(
                 System.IO.Path.GetTempPath(),
-                "Glyph-pages-" + Guid.NewGuid().ToString("N") + ".pdf");
+                Guid.NewGuid());
             await using (var extracted = await _pageEditor.ExtractPagesAsync(_document, pageIndexes))
             {
                 await _pageEditor.SaveAsync(extracted, tempPath);
@@ -2545,9 +2543,7 @@ public sealed class PdfDocumentView : UserControl
         try
         {
             await PdfPageClipboard.SetFromDocumentAsync(_pageEditor, _document, indexes);
-            _status.Text = indexes.Count == 1
-                ? "Copied 1 page."
-                : $"Copied {indexes.Count} pages.";
+            _status.Text = PageDragDisplay.CopiedPagesStatus(indexes.Count);
         }
         catch (Exception ex)
         {
@@ -2575,8 +2571,10 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var insertAt = SelectedOrCurrentPages().DefaultIfEmpty(CurrentPageIndex).Max() + 1;
-        insertAt = PageInsertIndex.Clamp(insertAt, _document.PageCount);
+        var insertAt = PagePastePlacement.InsertAfterSelection(
+            SelectedOrCurrentPages(),
+            CurrentPageIndex,
+            _document.PageCount);
         string? tempPath = null;
         try
         {
@@ -2591,7 +2589,7 @@ public sealed class PdfDocumentView : UserControl
             await using (source)
             {
                 var indexes = Enumerable.Range(0, source.PageCount).ToList();
-                _status.Text = indexes.Count == 1 ? "Pasting page…" : $"Pasting {indexes.Count} pages…";
+                _status.Text = PageDragDisplay.PastingPagesStatus(indexes.Count);
                 await RunPageEditAsync(() => _pageEditor.InsertPagesAsync(_document, source, indexes, insertAt));
 
                 _pageSelection.Clear();
@@ -2602,7 +2600,7 @@ public sealed class PdfDocumentView : UserControl
 
                 await ReloadAfterPageEditAsync();
                 await GoToPageAsync(insertAt, recordHistory: true);
-                _status.Text = indexes.Count == 1 ? "Pasted 1 page." : $"Pasted {indexes.Count} pages.";
+                _status.Text = PageDragDisplay.PastedPagesStatus(indexes.Count);
             }
         }
         catch (Exception ex)

@@ -297,11 +297,12 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - FreeText Align / `/Q` quadding via post-save dict patch (F13-38 / F16-15)
 - Bookmarks → PDF `/Outlines` export (F09-08)
 - Password-protect write blocked on ADR-015 (Needs approval)
-- Local polish (+76 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
+- Local polish (+78 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
 - Print N-up/scale/rotate/center extracted to `PrintSheetLayout`; scroll throttle + presentation defaults unit-tested
 - Search result snippets unified via `PdfSearchSnippet` (F06-10)
 - Page drop accept/copy helpers + ink dash preview pattern extracted
 - M3 insert prepend/append + text reading-order helpers unit-tested (F10-09/11/12, F07-03)
+- Page paste/drag-out/registry helpers moved to Core/Pdf with tests (F10-24, F11-07/09)
 
 ---
 

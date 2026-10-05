@@ -204,16 +204,16 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F10-21 | PDF page manipulation | Crop selected page. | M3 | Tested | `CropPagesAsync` / Crop toolbar dialog |
 | F10-22 | PDF page manipulation | Apply same crop to multiple pages. | M3 | Tested | Multi-select + SetCropBox / apply-all |
 | F10-23 | PDF page manipulation | Change page order. | M3 | Tested | `ReorderPagesAsync` + Move ↑/↓; `PageReorder` unit tests |
-| F10-24 | PDF page manipulation | Copy/paste pages between documents. | M3 | Implemented | DnD + Ctrl+C/V via `PdfPageClipboard` |
+| F10-24 | PDF page manipulation | Copy/paste pages between documents. | M3 | Tested | DnD + Ctrl+C/V; `PagePastePlacement` + `PageDragDisplay` unit tests |
 | F11-01 | Preview-style PDF drag-and-drop workflows | one page | M3 | Tested | Thumbnail CanDrag + `PageDragPayload` format/parse unit tests |
 | F11-02 | Preview-style PDF drag-and-drop workflows | multiple contiguous pages | M3 | Tested | Multi-select drag; payload preserves sorted indexes |
 | F11-03 | Preview-style PDF drag-and-drop workflows | multiple noncontiguous pages | M3 | Tested | Noncontiguous selection preserved in `PageDragPayload` |
 | F11-04 | Preview-style PDF drag-and-drop workflows | insertion before/after any page | M3 | Tested | Drop Y half via `PageDropPlacement.IsInsertAfter` unit tests |
 | F11-05 | Preview-style PDF drag-and-drop workflows | visible insertion indicator | M3 | Tested | Orange before/after border; `PageDropPlacement.HighlightThickness` unit tests |
 | F11-06 | Preview-style PDF drag-and-drop workflows | insert entire PDF at drop location. | M3 | Tested | Explorer `.pdf` StorageItems → insert; `AcceptsDrop`/`PreferCopyOperation`/`Caption` |
-| F11-07 | Preview-style PDF drag-and-drop workflows | create a new PDF containing those selected pages. | M3 | Implemented | Deferred StorageItems extract on drag-out |
+| F11-07 | Preview-style PDF drag-and-drop workflows | create a new PDF containing those selected pages. | M3 | Tested | Deferred StorageItems + `PageExtractFileNames.TempPdfPath` unit test |
 | F11-08 | Preview-style PDF drag-and-drop workflows | different windows | M3 | Implemented | File → New Window; per-window workspace + shared page drag registry |
-| F11-09 | Preview-style PDF drag-and-drop workflows | different tabs | M3 | Implemented | Cross-tab insert via `PdfPageDragRegistry` |
+| F11-09 | Preview-style PDF drag-and-drop workflows | different tabs | M3 | Tested | Cross-tab insert via `PdfPageDragRegistry` unit tests |
 | F12-01 | PDF crop | Rectangular page crop. | M3 | Tested | CropBox rectangle via margins / absolute box; `PdfCropBox`/`PdfCropMargins` unit tests |
 | F12-02 | PDF crop | Visual crop handles. | M3 | Tested | Interactive overlay handles; `PdfCropMargins.ClampMargin` unit-tested |
 | F12-03 | PDF crop | Numeric crop dimensions. | M3 | Tested | L/T/R/B inset dialog; `PdfCropMarginsParser` unit tests |
@@ -826,7 +826,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F59-01 | Multi-document workflow | multiple tabs | M1/M3 | Implemented | Tab strip + per-tab document hosts |
 | F59-02 | Multi-document workflow | multiple windows | M1/M3 | Implemented | File → New Window; per-window `WorkspaceState` |
 | F59-03 | Multi-document workflow | drag tabs between windows | M1/M3 | Implemented | `CanDragTabs` + `AllowDropTabs` cross-window; drop outside → new window |
-| F59-04 | Multi-document workflow | drag PDF pages between documents | M1/M3 | Implemented | Cross-tab/window insert via `PdfPageDragRegistry` |
+| F59-04 | Multi-document workflow | drag PDF pages between documents | M1/M3 | Tested | Cross-tab/window insert via `PdfPageDragRegistry` unit tests |
 | F59-05 | Multi-document workflow | drag images between compatible contexts | M1/M3 | Implemented | Image surface drag exposes file via deferred StorageItems; window drop opens |
 | F59-06 | Multi-document workflow | copy/paste between documents | M1/M3 | Implemented | Ctrl+C/V pages via `PdfPageClipboard` |
 | F59-07 | Multi-document workflow | side-by-side windows using Windows Snap | M1/M3 | Implemented | Multi-window shell; Snap is OS-native |
