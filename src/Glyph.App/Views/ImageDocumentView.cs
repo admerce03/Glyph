@@ -192,6 +192,7 @@ public sealed class ImageDocumentView : UserControl
         _scrollViewer.PointerWheelChanged += ScrollViewer_PointerWheelChanged;
         _scrollViewer.ManipulationMode = ManipulationModes.Scale;
         _scrollViewer.ManipulationDelta += ScrollViewer_ManipulationDelta;
+        _imageSurface.RightTapped += ImageSurface_RightTapped;
         _status = new TextBlock { Opacity = 0.75, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
         _cropBox = new TextBox
         {
@@ -1871,6 +1872,53 @@ public sealed class ImageDocumentView : UserControl
         SetPixelSelection(new ImageRect(0, 0, _document.PixelWidth, _document.PixelHeight));
         ApplySelectionChrome();
         _status.Text = $"Selected all {_document.PixelWidth}×{_document.PixelHeight}.";
+    }
+
+    private void ImageSurface_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement target)
+        {
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+        var copyItem = new MenuFlyoutItem { Text = _pixelSelection is not null ? "Copy selection" : "Copy image" };
+        copyItem.Click += async (_, _) => await CopyImageAsync();
+        flyout.Items.Add(copyItem);
+
+        if (_pixelSelection is not null)
+        {
+            var cutItem = new MenuFlyoutItem { Text = "Cut selection" };
+            cutItem.Click += async (_, _) => await CutSelectionAsync();
+            flyout.Items.Add(cutItem);
+            var deselectItem = new MenuFlyoutItem { Text = "Deselect" };
+            deselectItem.Click += (_, _) => ClearPixelSelection();
+            flyout.Items.Add(deselectItem);
+        }
+        else
+        {
+            var selectAllItem = new MenuFlyoutItem { Text = "Select all" };
+            selectAllItem.Click += (_, _) => SelectAllPixels();
+            flyout.Items.Add(selectAllItem);
+        }
+
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        var pasteItem = new MenuFlyoutItem { Text = "Paste" };
+        pasteItem.Click += async (_, _) => await PasteImageAsync();
+        flyout.Items.Add(pasteItem);
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        var fitItem = new MenuFlyoutItem { Text = "Fit" };
+        fitItem.Click += async (_, _) => await FitAsync();
+        flyout.Items.Add(fitItem);
+        var rotateLeftItem = new MenuFlyoutItem { Text = "Rotate left" };
+        rotateLeftItem.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, -90), "Rotated left.");
+        flyout.Items.Add(rotateLeftItem);
+        var rotateRightItem = new MenuFlyoutItem { Text = "Rotate right" };
+        rotateRightItem.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 90), "Rotated right.");
+        flyout.Items.Add(rotateRightItem);
+
+        flyout.ShowAt(target, e.GetPosition(target));
+        e.Handled = true;
     }
 
     private void InvertSelection()
