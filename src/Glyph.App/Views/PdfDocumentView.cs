@@ -59,6 +59,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfRedactionService _redaction;
     private readonly IPdfDocumentInfoService _documentInfo;
     private readonly IPdfOptimizeService _optimize;
+    private readonly IPdfSecurityService _security;
     private readonly IImageEncoder _imageEncoder;
     private readonly ISignatureLibrary _signatures;
     private readonly IPdfFormStore _forms;
@@ -260,6 +261,7 @@ public sealed class PdfDocumentView : UserControl
         IPdfRedactionService redaction,
         IPdfDocumentInfoService documentInfo,
         IPdfOptimizeService optimize,
+        IPdfSecurityService security,
         IImageEncoder imageEncoder,
         ISignatureLibrary signatures,
         IPdfFormStore forms,
@@ -284,6 +286,7 @@ public sealed class PdfDocumentView : UserControl
         _redaction = redaction;
         _documentInfo = documentInfo;
         _optimize = optimize;
+        _security = security;
         _imageEncoder = imageEncoder;
         _signatures = signatures;
         _forms = forms;
@@ -799,6 +802,7 @@ public sealed class PdfDocumentView : UserControl
         var redact = new Button { Content = PdfViewerChromeLabels.Redact };
         var info = new Button { Content = PdfViewerChromeLabels.Info };
         var optimizeButton = new Button { Content = PdfViewerChromeLabels.Optimize };
+        var protectButton = new Button { Content = PdfViewerChromeLabels.Protect };
         var export = new Button { Content = PdfViewerChromeLabels.Export };
         var print = new Button { Content = PdfViewerChromeLabels.Print };
         var camera = new Button { Content = WebcamCaptureUi.CaptureButton };
@@ -861,6 +865,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(redact, PdfRedactionUiCopy.ToolbarTooltip);
         ToolTipService.SetToolTip(info, PdfViewerTooltips.DocumentMetadataEncryptionAndPermissions);
         ToolTipService.SetToolTip(optimizeButton, PdfViewerTooltips.DownsampleImagesShrinkPdfPresets);
+        ToolTipService.SetToolTip(protectButton, PdfSecurityWriteUiCopy.ToolbarTooltip);
         ToolTipService.SetToolTip(export, PdfViewerTooltips.ExportSelectedCurrentPageSAs);
         ToolTipService.SetToolTip(print, PdfViewerTooltips.PrintCurrentSelectedRangeOrAll);
         ToolTipService.SetToolTip(camera, PdfViewerTooltips.CaptureFromWebcamAndInsertOnto);
@@ -900,7 +905,7 @@ public sealed class PdfDocumentView : UserControl
             first, prev, next, last, back, forward, zoomOut, zoomIn, fitWidth, fitPage, actual, _zoomAreaButton, _viewLoupeButton, _presentButton, copy,
             rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract,
             merge, split, crop, highlight, underline, strikeout, stickyNote, textBox, callout, flatten,
-            redact, info, optimizeButton, export, print, share, sidebarToggle, camera, sign, formFill, ink, freeform, eraser, rect,
+            redact, info, optimizeButton, protectButton, export, print, share, sidebarToggle, camera, sign, formFill, ink, freeform, eraser, rect,
             roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, fullscreen, undoEdit, redoEdit,
             _layoutBox, _gotoBox,
             _caseSensitiveBox, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton,
@@ -965,6 +970,7 @@ public sealed class PdfDocumentView : UserControl
         redact.Click += async (_, _) => await OnRedactButtonClickAsync();
         info.Click += async (_, _) => await ShowDocumentInfoAsync();
         optimizeButton.Click += async (_, _) => await ShowOptimizeDialogAsync();
+        protectButton.Click += async (_, _) => await ShowProtectDialogAsync();
         export.Click += async (_, _) => await ExportPagesAsImagesAsync();
         print.Click += async (_, _) => await PrintDocumentAsync();
         camera.Click += async (_, _) => await CaptureCameraIntoDocumentAsync();
@@ -1020,7 +1026,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _zoomAreaButton, _viewLoupeButton, _presentButton, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimizeButton, export, print, share, camera, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, fullscreen,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimizeButton, protectButton, export, print, share, camera, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, fullscreen,
                 _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _jobProgress, _status,
             },
         };
@@ -12702,6 +12708,35 @@ public sealed class PdfDocumentView : UserControl
             path,
             format,
             options);
+    }
+
+    private async Task ShowProtectDialogAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException(MainWindowRequiredMessages.DocumentInfo);
+
+        var body = new TextBlock
+        {
+            Text = _security.WriteProtectSupported
+                ? "Password-protect is available."
+                : PdfSecurityWriteUiCopy.DialogBody(),
+            TextWrapping = TextWrapping.WrapWholeWords,
+            MaxWidth = 420,
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = PdfSecurityWriteUiCopy.DialogTitle,
+            Content = body,
+            CloseButtonText = PdfSecurityWriteUiCopy.CloseButton,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        await dialog.ShowAsync();
+        _status.Text = _security.WriteProtectSupported
+            ? PdfSecurityWriteUiCopy.ToolbarLabel
+            : PdfSecurityWriteUiCopy.StatusBlocked;
     }
 
     private async Task ShowOptimizeDialogAsync()

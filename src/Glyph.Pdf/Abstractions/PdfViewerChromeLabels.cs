@@ -75,6 +75,7 @@ public static class PdfViewerChromeLabels
     public const string Redact = "Redact";
     public const string Info = "Info";
     public const string Optimize = "Optimize";
+    public const string Protect = "Protect";
     public const string Export = "Export";
     public const string Print = "Print";
     public const string Sign = "Sign";
