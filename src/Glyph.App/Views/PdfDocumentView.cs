@@ -271,6 +271,10 @@ public sealed class PdfDocumentView : UserControl
         var removeAnnot = new Button { Content = "Delete", Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(removeAnnot, "Delete selected annotation");
         removeAnnot.Click += async (_, _) => await RemoveSelectedAnnotationAsync();
+        var duplicateAnnot = new Button { Content = "Dup", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(duplicateAnnot, "Duplicate selected annotation (offset copy)");
+        duplicateAnnot.Click += async (_, _) => await DuplicateSelectedAnnotationAsync();
+        annotHeaderRow.Children.Add(duplicateAnnot);
         annotHeaderRow.Children.Add(removeAnnot);
         Grid.SetRow(annotHeaderRow, 6);
         sidePanel.Children.Add(annotHeaderRow);
@@ -3605,6 +3609,40 @@ public sealed class PdfDocumentView : UserControl
 
         _annotSelectionRect = null;
         _annotResizeHandleVisuals.Clear();
+    }
+
+    private async Task DuplicateSelectedAnnotationAsync()
+    {
+        var index = _annotationList.SelectedIndex;
+        if (index < 0 || index >= _annotationItems.Count)
+        {
+            if (_selectedAnnot is null)
+            {
+                _status.Text = "Select an annotation to duplicate.";
+                return;
+            }
+        }
+
+        var item = index >= 0 && index < _annotationItems.Count
+            ? _annotationItems[index]
+            : _selectedAnnot!;
+        try
+        {
+            var copy = await _annotations.DuplicateAsync(_document, item.PageIndex, item.AnnotIndex);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _selectedAnnot = copy;
+            SyncSidebarSelection(copy);
+            DrawAnnotSelection(copy);
+            _status.Text = $"Duplicated {FormatAnnotationLabel(item)}.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Duplicate annotation failed: " + ex.Message;
+        }
     }
 
     private async Task RemoveSelectedAnnotationAsync()

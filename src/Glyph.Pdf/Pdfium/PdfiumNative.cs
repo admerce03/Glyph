@@ -78,6 +78,14 @@ internal static partial class PdfiumNative
         public float Y;
     }
 
+    [LibraryImport(LibraryName, EntryPoint = "FPDFAnnot_GetInkListCount")]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    public static partial ulong AnnotGetInkListCount(IntPtr annot);
+
+    [LibraryImport(LibraryName, EntryPoint = "FPDFAnnot_GetInkListPath")]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    public static partial ulong AnnotGetInkListPath(IntPtr annot, uint strokeIndex, IntPtr points, ulong pointCount);
+
     [LibraryImport(LibraryName, EntryPoint = "FPDFAnnot_AddInkStroke")]
     [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
     public static partial int AnnotAddInkStroke(IntPtr annot, [In] FsPointF[] points, ulong pointCount);

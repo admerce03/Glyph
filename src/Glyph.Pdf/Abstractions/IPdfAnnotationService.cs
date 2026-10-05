@@ -83,6 +83,16 @@ public interface IPdfAnnotationService
         PdfRect bounds,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Duplicate an annotation on the same page, offset slightly from the original.
+    /// Stamp annotations are not supported yet (pixel payload is not retained in the list model).
+    /// </summary>
+    Task<PdfAnnotationInfo> DuplicateAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<PdfAnnotationInfo>> ListAsync(
         IPdfDocument document,
         int? pageIndex = null,
