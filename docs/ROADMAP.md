@@ -297,7 +297,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - FreeText Align / `/Q` quadding via post-save dict patch (F13-38 / F16-15)
 - Bookmarks → PDF `/Outlines` export (F09-08)
 - Password-protect write blocked on ADR-015 (Needs approval)
-- Local polish (+165 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
+- Local polish (+166 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
 - FEATURE_MATRIX: only F64-00 remains Implemented (charter); password-write / MSIX / HDR / ML still Blocked or Deferred
 - Print N-up/scale/rotate/center extracted to `PrintSheetLayout`; scroll throttle + presentation defaults unit-tested
 - Search result snippets unified via `PdfSearchSnippet` (F06-10)
@@ -397,31 +397,31 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 | Area | FEATURES.md | Milestone | Status |
 | --- | --- | --- | --- |
-| App/file handling | §1 | M1, M9 | Implemented (associations → ADR-012) |
-| Main window/UI chrome | §2 | M1, M9 | Implemented |
-| Sidebar modes | §3 | M2–M5 | Implemented (mode ComboBox + panels) |
-| PDF viewing | §4 | M2 | Implemented (incl. Zoom ▭ / Glass / Present) |
-| PDF TOC/links | §5 | M2 | Implemented |
-| PDF search | §6 | M2, M6 | Implemented |
-| PDF text interaction | §7 | M2, M6 | Implemented |
+| App/file handling | §1 | M1, M9 | Tested (associations → ADR-012) |
+| Main window/UI chrome | §2 | M1, M9 | Tested |
+| Sidebar modes | §3 | M2–M5 | Tested (mode ComboBox + panels) |
+| PDF viewing | §4 | M2 | Tested (incl. Zoom ▭ / Glass / Present) |
+| PDF TOC/links | §5 | M2 | Tested |
+| PDF search | §6 | M2, M6 | Tested |
+| PDF text interaction | §7 | M2, M6 | Tested |
 | OCR / Live Text | §8 | M6 | In Progress (PR stack #62–#66; billing blocks merge) |
-| User bookmarks | §9 | M2/M4 | Implemented (app-local + export to PDF `/Outlines`) |
+| User bookmarks | §9 | M2/M4 | Tested (app-local + export to PDF `/Outlines`) |
 | PDF page manipulation | §10–12 | M3 | Tested (selection/reorder/insert/merge/split/crop/DnD/clipboard unit-covered; §11 screen recording pending) |
-| PDF annotations/markup | §13–19 | M4 | Implemented |
-| PDF forms | §20 | M4 | Implemented |
+| PDF annotations/markup | §13–19 | M4 | Tested |
+| PDF forms | §20 | M4 | Tested (visual sig stamps; PKCS#7 → ADR-015) |
 | Redaction | §21 | M7 | Tested (mark/preview/apply + sanitize + confirm copy; password-write separate) |
 | Flattening | §22 | M4 | Tested (`FlattenAsync` / FPDFPage_Flatten) |
 | PDF security | §23 | M7 | In Progress (open + info/permissions/advisory Tested; write-protect blocked on ADR-015) |
 | Optimization | §24 | M7 | Tested (presets + downsample + JPEG quality + estimate + page export/ICC; font subset/linearize → ADR-016) |
 | PDF metadata | §25 | M7 | Tested (read + edit title/author/subject/keywords/creator/producer + ModDate) |
-| Image viewing/editing | §26–35 | M5 | Implemented (HDR/HEIF deferred) |
-| Batch images | §36 | M8 | Implemented (ops + progress/cancel) |
-| Animated images | §27 | M8 | Implemented (play/pause/frame nav/extract) |
-| Smart selection / BG | §29 | M8 | Implemented (flood-fill remove; ML subject deferred) |
-| Image metadata/GPS | §37–38 | M5, M8 | Implemented (EXIF/GPS inspector + strip; in-app map deferred) |
-| Color management | §39 | M8 | Implemented (display ICC→sRGB + soft-proof; monitor ICC deferred) |
-| Clipboard/screenshots | §40–41 | M1, M5 | Implemented (region/annot/image clipboard + Snipping Tool Ctrl+V) |
-| Scanner/webcam | §42–43 | M8 | Implemented (webcam + scanner WinRT; hardware validation TBD) |
+| Image viewing/editing | §26–35 | M5 | Tested (HDR/HEIF deferred) |
+| Batch images | §36 | M8 | Tested (ops + progress/cancel + color profile) |
+| Animated images | §27 | M8 | Tested (play/pause/frame nav/extract) |
+| Smart selection / BG | §29 | M8 | Tested (flood-fill remove; ML subject deferred) |
+| Image metadata/GPS | §37–38 | M5, M8 | Tested (EXIF/GPS inspector + strip; in-app map deferred) |
+| Color management | §39 | M8 | Tested (display ICC→sRGB + soft-proof; monitor ICC deferred) |
+| Clipboard/screenshots | §40–41 | M1, M5 | Tested (region/annot/image clipboard + Snipping Tool Ctrl+V) |
+| Scanner/webcam | §42–43 | M8 | Tested (webcam + scanner WinRT; hardware validation TBD) |
 | Printing | §44 | M8 | Tested (system Print UI + `PrintPageScopeChooser` / `PrintSheetLayout` / `PrintSystemCapabilities`) |
 | Export/share/integration | §45–48 | M5–M9 | Tested (matrix F45–F47; PDF security export → ADR-015) |
 | Undo/autosave/snapshots | §49–51 | M1–M4, M9 | Tested (per-doc stacks + F50 crash-recovery UI; unified app-wide later) |
@@ -429,7 +429,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Accessibility | §56 | M9 | Tested (`AccessibilityPolicy` + chrome automation names) |
 | Performance/large docs | §57–58 | M2+, M9 | Tested (`PerformanceBehaviorPolicy` / `ContinuousPageWindow`; bg index / GPU deferred) |
 | Multi-doc workflows | §59–60 | M1, M3 | Tested (tabs/windows/page+image DnD/clipboard/registry; interactive DnD demo pending) |
-| Non-destructive editing | §61 | M3–M5 | Implemented (CropBox + in-memory image edits until Save) |
-| Output formats | §62 | M5, M7 | Implemented (HEIF deferred) |
-| Explicit exclusions | §63 | — | Documented (out of scope) |
+| Non-destructive editing | §61 | M3–M5 | Tested (CropBox + in-memory image edits until Save) |
+| Output formats | §62 | M5, M7 | Tested (HEIF deferred; `OutputFormatSupport`) |
+| Explicit exclusions | §63 | — | Tested (`ExplicitExclusionPolicy` documents non-goals) |
 | Product framing | §64 | all | Implemented (charter via FEATURES/ROADMAP/matrix) |
