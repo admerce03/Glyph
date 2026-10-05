@@ -42,7 +42,7 @@ Glyph.sln
 │   ├── Glyph.Infrastructure/      Paths, settings, recent files, logging helpers
 │   ├── Glyph.Pdf/                 PDF abstractions + engine adapters
 │   ├── Glyph.Imaging/             Image abstractions + codec adapters
-│   └── Glyph.Ocr/                 OCR abstractions + Windows/Tesseract adapters
+│   └── Glyph.Ocr/                 OCR abstractions (`IOcrEngine`); Windows adapter lives in App
 └── tests/
     ├── Glyph.Core.Tests/
     ├── Glyph.Infrastructure.Tests/
@@ -228,7 +228,7 @@ Glyph does not need a public plugin SDK in Milestone 0–3. Internally, treat en
 IPdfDocumentFactory  → PdfiumDocumentFactory
 IPdfRenderer         → PdfiumRenderer
 IImageDecoder        → WicImageDecoder (+ MagickImageDecoder fallback)
-IOcrEngine           → WindowsOcrEngine (+ TesseractOcrEngine optional)
+IOcrEngine           → WindowsOcrEngine in App (TesseractOcrEngine optional per ADR-005 — not shipped)
 IRecentFilesStore    → JsonRecentFilesStore
 ISettingsStore       → JsonSettingsStore
 ```

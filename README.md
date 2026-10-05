@@ -28,7 +28,7 @@ src/Glyph.Core           Document sessions, commands, undo
 src/Glyph.Infrastructure Settings/recent files/paths
 src/Glyph.Pdf            PDF abstractions + PDFium/PdfPig adapters
 src/Glyph.Imaging        Image abstractions + Magick.NET adapter
-src/Glyph.Ocr            OCR abstractions + Windows OCR / Tesseract engines
+src/Glyph.Ocr            OCR abstractions (`IOcrEngine`; Windows.Media.Ocr in App; Tesseract not shipped)
 tests/                   xUnit behavior tests
 docs/                    Product + engineering docs
 scripts/                 Build/test/format helpers
