@@ -2090,7 +2090,7 @@ public sealed class ImageDocumentView : UserControl
 
     private async Task AdjustAsync()
     {
-        Slider MakeSlider(string header, double min, double max, double value)
+        static Slider MakeSlider(string header, double min, double max, double value, double step = 1)
         {
             return new Slider
             {
@@ -2098,9 +2098,41 @@ public sealed class ImageDocumentView : UserControl
                 Minimum = min,
                 Maximum = max,
                 Value = value,
-                StepFrequency = 1,
-                Width = 280,
+                StepFrequency = step,
+                Width = 260,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
             };
+        }
+
+        static FrameworkElement WithReset(Slider slider, double defaultValue, Action onChanged)
+        {
+            var resetOne = new Button
+            {
+                Content = "↺",
+                Width = 36,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = new Thickness(6, 0, 0, 0),
+            };
+            ToolTipService.SetToolTip(resetOne, "Reset this adjustment");
+            resetOne.Click += (_, _) =>
+            {
+                slider.Value = defaultValue;
+                onChanged();
+            };
+            slider.ValueChanged += (_, _) => onChanged();
+            var row = new Grid
+            {
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                    new ColumnDefinition { Width = GridLength.Auto },
+                },
+            };
+            Grid.SetColumn(slider, 0);
+            Grid.SetColumn(resetOne, 1);
+            row.Children.Add(slider);
+            row.Children.Add(resetOne);
+            return row;
         }
 
         var brightness = MakeSlider("Brightness (−100…100)", -100, 100, 0);
@@ -2110,14 +2142,136 @@ public sealed class ImageDocumentView : UserControl
         var shadows = MakeSlider("Shadows (−100 crush…100 lift)", -100, 100, 0);
         var blackPoint = MakeSlider("Black point (0…100)", 0, 100, 0);
         var whitePoint = MakeSlider("White point (0…100)", 0, 100, 100);
-        var gamma = MakeSlider("Gamma (0.1…3.0)", 0.1, 3.0, 1.0);
-        gamma.StepFrequency = 0.05;
+        var gamma = MakeSlider("Gamma (0.1…3.0)", 0.1, 3.0, 1.0, step: 0.05);
         var temperature = MakeSlider("Temperature (−100 cold…100 warm)", -100, 100, 0);
         var tint = MakeSlider("Tint (−100 green…100 magenta)", -100, 100, 0);
         var sharpness = MakeSlider("Sharpness (0…100)", 0, 100, 0);
         var autoLevels = new CheckBox { Content = "Auto Levels", IsChecked = false };
         var sepia = new CheckBox { Content = "Sepia", IsChecked = false };
-        var reset = new Button { Content = "Reset", HorizontalAlignment = HorizontalAlignment.Left };
+        var histCanvas = new Canvas
+        {
+            Width = 280,
+            Height = 64,
+            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 32, 32, 32)),
+        };
+        var histLabel = new TextBlock { Text = "Luminance histogram", Opacity = 0.75, FontSize = 12 };
+
+        ImageAdjustments BuildAdjustments() => new(
+            Brightness: brightness.Value,
+            Contrast: contrast.Value,
+            Saturation: saturation.Value,
+            AutoLevels: autoLevels.IsChecked == true,
+            Sharpness: sharpness.Value,
+            Sepia: sepia.IsChecked == true,
+            Temperature: temperature.Value,
+            Tint: tint.Value,
+            Highlights: highlights.Value,
+            Shadows: shadows.Value,
+            BlackPoint: blackPoint.Value,
+            WhitePoint: whitePoint.Value,
+            Gamma: gamma.Value);
+
+        static bool IsIdentity(ImageAdjustments a) =>
+            !a.AutoLevels
+            && !a.Sepia
+            && Math.Abs(a.Brightness) < 0.0001
+            && Math.Abs(a.Contrast) < 0.0001
+            && Math.Abs(a.Saturation) < 0.0001
+            && Math.Abs(a.Highlights) < 0.0001
+            && Math.Abs(a.Shadows) < 0.0001
+            && Math.Abs(a.BlackPoint) < 0.0001
+            && Math.Abs(a.WhitePoint - 100) < 0.0001
+            && Math.Abs(a.Gamma - 1.0) < 0.0001
+            && Math.Abs(a.Temperature) < 0.0001
+            && Math.Abs(a.Tint) < 0.0001
+            && Math.Abs(a.Sharpness) < 0.0001;
+
+        IImageEditCheckpoint? baseline = null;
+        var previewBusy = false;
+        var previewQueued = false;
+        var dialogOpen = true;
+
+        async Task UpdateHistogramAsync()
+        {
+            try
+            {
+                var pixels = await _document.GetPixelsAsync(maxEdge: 160);
+                var bins = new int[64];
+                var data = pixels.BgraPixels;
+                for (var i = 0; i + 3 < data.Length; i += 4)
+                {
+                    var lum = (data[i] * 29 + data[i + 1] * 150 + data[i + 2] * 77) / 256;
+                    bins[Math.Clamp(lum * 64 / 256, 0, 63)]++;
+                }
+
+                var max = Math.Max(1, bins.Max());
+                histCanvas.Children.Clear();
+                var barW = histCanvas.Width / bins.Length;
+                for (var i = 0; i < bins.Length; i++)
+                {
+                    var h = bins[i] * (histCanvas.Height - 2) / max;
+                    var bar = new Rectangle
+                    {
+                        Width = Math.Max(1, barW - 1),
+                        Height = Math.Max(1, h),
+                        Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(220, 200, 200, 200)),
+                    };
+                    Canvas.SetLeft(bar, i * barW);
+                    Canvas.SetTop(bar, histCanvas.Height - bar.Height);
+                    histCanvas.Children.Add(bar);
+                }
+            }
+            catch
+            {
+                // Histogram is best-effort.
+            }
+        }
+
+        async Task PreviewAsync()
+        {
+            if (!dialogOpen || baseline is null)
+            {
+                return;
+            }
+
+            if (previewBusy)
+            {
+                previewQueued = true;
+                return;
+            }
+
+            previewBusy = true;
+            try
+            {
+                do
+                {
+                    previewQueued = false;
+                    var snap = baseline.Clone();
+                    _document.RestoreCheckpoint(snap);
+                    var adj = BuildAdjustments();
+                    if (!IsIdentity(adj))
+                    {
+                        await _processor.AdjustAsync(_document, adj);
+                    }
+
+                    await RefreshAsync();
+                    await UpdateHistogramAsync();
+                }
+                while (previewQueued && dialogOpen);
+            }
+            catch (Exception ex)
+            {
+                _status.Text = "Preview failed: " + ex.Message;
+            }
+            finally
+            {
+                previewBusy = false;
+            }
+        }
+
+        void RequestPreview() => _ = PreviewAsync();
+
+        var reset = new Button { Content = "Reset all", HorizontalAlignment = HorizontalAlignment.Left };
         reset.Click += (_, _) =>
         {
             brightness.Value = 0;
@@ -2133,31 +2287,39 @@ public sealed class ImageDocumentView : UserControl
             sharpness.Value = 0;
             autoLevels.IsChecked = false;
             sepia.IsChecked = false;
+            RequestPreview();
         };
+        autoLevels.Checked += (_, _) => RequestPreview();
+        autoLevels.Unchecked += (_, _) => RequestPreview();
+        sepia.Checked += (_, _) => RequestPreview();
+        sepia.Unchecked += (_, _) => RequestPreview();
 
         var panel = new StackPanel
         {
-            Spacing = 10,
+            Spacing = 8,
             Children =
             {
                 new TextBlock
                 {
-                    Text = "Values apply on OK (Undo / Ctrl+Z available; Save to keep on disk).",
+                    Text = "Live preview on the image. ↺ resets one control; Reset all clears everything. Apply keeps the preview (Undo / Ctrl+Z).",
                     Opacity = 0.75,
                     TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 320,
                 },
+                histLabel,
+                histCanvas,
                 autoLevels,
-                brightness,
-                contrast,
-                highlights,
-                shadows,
-                blackPoint,
-                whitePoint,
-                gamma,
-                saturation,
-                temperature,
-                tint,
-                sharpness,
+                WithReset(brightness, 0, RequestPreview),
+                WithReset(contrast, 0, RequestPreview),
+                WithReset(highlights, 0, RequestPreview),
+                WithReset(shadows, 0, RequestPreview),
+                WithReset(blackPoint, 0, RequestPreview),
+                WithReset(whitePoint, 100, RequestPreview),
+                WithReset(gamma, 1.0, RequestPreview),
+                WithReset(saturation, 0, RequestPreview),
+                WithReset(temperature, 0, RequestPreview),
+                WithReset(tint, 0, RequestPreview),
+                WithReset(sharpness, 0, RequestPreview),
                 sepia,
                 reset,
             },
@@ -2166,55 +2328,82 @@ public sealed class ImageDocumentView : UserControl
         var dialog = new ContentDialog
         {
             Title = "Color adjustments",
-            Content = panel,
+            Content = new ScrollViewer
+            {
+                Content = panel,
+                MaxHeight = 520,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            },
             PrimaryButtonText = "Apply",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        try
         {
-            return;
-        }
+            baseline = _document.CaptureCheckpoint();
+            await UpdateHistogramAsync();
+            var result = await dialog.ShowAsync();
+            dialogOpen = false;
+            if (result != ContentDialogResult.Primary)
+            {
+                if (baseline is not null)
+                {
+                    _document.RestoreCheckpoint(baseline);
+                    baseline = null;
+                    await RefreshAsync();
+                }
 
-        var useAuto = autoLevels.IsChecked == true;
-        var useSepia = sepia.IsChecked == true;
-        if (!useAuto
-            && !useSepia
-            && Math.Abs(brightness.Value) < 0.0001
-            && Math.Abs(contrast.Value) < 0.0001
-            && Math.Abs(saturation.Value) < 0.0001
-            && Math.Abs(highlights.Value) < 0.0001
-            && Math.Abs(shadows.Value) < 0.0001
-            && Math.Abs(blackPoint.Value) < 0.0001
-            && Math.Abs(whitePoint.Value - 100) < 0.0001
-            && Math.Abs(gamma.Value - 1.0) < 0.0001
-            && Math.Abs(temperature.Value) < 0.0001
-            && Math.Abs(tint.Value) < 0.0001
-            && Math.Abs(sharpness.Value) < 0.0001)
+                _status.Text = "Adjustments cancelled.";
+                return;
+            }
+
+            var final = BuildAdjustments();
+            if (IsIdentity(final))
+            {
+                if (baseline is not null)
+                {
+                    _document.RestoreCheckpoint(baseline);
+                    baseline = null;
+                    await RefreshAsync();
+                }
+
+                _status.Text = "No adjustments to apply.";
+                return;
+            }
+
+            // Preview already matches final values; keep it and record undo from the pre-dialog state.
+            PushUndo(baseline!);
+            baseline = null;
+            UpdateStatus();
+            _status.Text = "Color adjustments applied.";
+        }
+        catch (Exception ex)
         {
-            _status.Text = "No adjustments to apply.";
-            return;
-        }
+            dialogOpen = false;
+            if (baseline is not null)
+            {
+                try
+                {
+                    _document.RestoreCheckpoint(baseline);
+                    baseline = null;
+                    await RefreshAsync();
+                }
+                catch
+                {
+                    baseline?.Dispose();
+                    baseline = null;
+                }
+            }
 
-        var adjustments = new ImageAdjustments(
-            Brightness: brightness.Value,
-            Contrast: contrast.Value,
-            Saturation: saturation.Value,
-            AutoLevels: useAuto,
-            Sharpness: sharpness.Value,
-            Sepia: useSepia,
-            Temperature: temperature.Value,
-            Tint: tint.Value,
-            Highlights: highlights.Value,
-            Shadows: shadows.Value,
-            BlackPoint: blackPoint.Value,
-            WhitePoint: whitePoint.Value,
-            Gamma: gamma.Value);
-        await MutateAsync(
-            () => _processor.AdjustAsync(_document, adjustments),
-            "Color adjustments applied.");
+            _status.Text = "Adjust failed: " + ex.Message;
+        }
+        finally
+        {
+            dialogOpen = false;
+            baseline?.Dispose();
+        }
     }
 
     private async Task StampSignatureAsync()

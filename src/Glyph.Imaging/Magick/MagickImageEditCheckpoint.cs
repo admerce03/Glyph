@@ -19,6 +19,12 @@ internal sealed class MagickImageEditCheckpoint : IImageEditCheckpoint
         return image;
     }
 
+    public IImageEditCheckpoint Clone()
+    {
+        var image = _image ?? throw new ObjectDisposedException(nameof(MagickImageEditCheckpoint));
+        return new MagickImageEditCheckpoint((MagickImage)image.Clone());
+    }
+
     public void Dispose()
     {
         _image?.Dispose();

@@ -41,4 +41,43 @@ public class MagickImageEditCheckpointTests
             }
         }
     }
+
+    [Fact]
+    public async Task Clone_lets_restore_without_consuming_original()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-clone-" + Guid.NewGuid().ToString("N") + ".png");
+        try
+        {
+            using (var image = new MagickImage(MagickColors.Blue, 64, 48))
+            {
+                await image.WriteAsync(path);
+            }
+
+            var decoder = new MagickImageDecoder();
+            await using var document = await decoder.OpenAsync(path);
+            var baseline = document.CaptureCheckpoint();
+            var processor = new MagickImageProcessor();
+
+            await processor.CropAsync(document, new ImageRect(4, 4, 20, 16));
+            document.PixelWidth.Should().Be(20);
+
+            document.RestoreCheckpoint(baseline.Clone());
+            document.PixelWidth.Should().Be(64);
+            document.PixelHeight.Should().Be(48);
+
+            await processor.CropAsync(document, new ImageRect(0, 0, 32, 24));
+            document.PixelWidth.Should().Be(32);
+
+            document.RestoreCheckpoint(baseline);
+            document.PixelWidth.Should().Be(64);
+            document.PixelHeight.Should().Be(48);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
 }

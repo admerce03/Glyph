@@ -36,6 +36,10 @@ public interface IImageDocument : IAsyncDisposable, IDisposable
 /// <summary>
 /// Opaque undo snapshot for <see cref="IImageDocument"/>.
 /// </summary>
-public interface IImageEditCheckpoint : IDisposable;
+public interface IImageEditCheckpoint : IDisposable
+{
+    /// <summary>Deep-copies the checkpoint so a restore can consume the clone while the original remains.</summary>
+    IImageEditCheckpoint Clone();
+}
 
 public sealed record ImagePixelBuffer(int Width, int Height, byte[] BgraPixels);
