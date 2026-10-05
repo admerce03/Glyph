@@ -82,6 +82,8 @@ public sealed class ImageDocumentView : UserControl
     private Windows.Foundation.Point _navStart;
     private ImageRect? _pixelSelection;
     private ImagePixelBuffer? _selectionClipboard;
+    private readonly List<ImageMarkupPoint> _lassoDocPoints = [];
+    private Polyline? _lassoPolyline;
     private readonly List<Windows.Foundation.Point> _drawPoints = [];
     private Polyline? _activeDrawPolyline;
     private Shape? _activeShapePreview;
@@ -197,7 +199,7 @@ public sealed class ImageDocumentView : UserControl
         {
             Width = 88,
             Visibility = Visibility.Collapsed,
-            ItemsSource = new[] { "Rect", "Ellipse" },
+            ItemsSource = new[] { "Rect", "Ellipse", "Lasso" },
             SelectedIndex = 0,
         };
         _selectAllButton = new Button { Content = "All", Visibility = Visibility.Collapsed };
@@ -210,7 +212,7 @@ public sealed class ImageDocumentView : UserControl
         _drawButton = new Button { Content = "Draw" };
         _flattenMarkupButton = new Button { Content = "Flatten", Visibility = Visibility.Collapsed };
         ToolTipService.SetToolTip(_selectButton, "Pixel selection (drag on image; drag inside to move; arrow keys nudge)");
-        ToolTipService.SetToolTip(_selectionKindBox, "Selection shape: rectangle or ellipse");
+        ToolTipService.SetToolTip(_selectionKindBox, "Selection shape: rectangle, ellipse, or freeform lasso");
         ToolTipService.SetToolTip(_selectAllButton, "Select entire image");
         ToolTipService.SetToolTip(_deselectButton, "Clear selection");
         ToolTipService.SetToolTip(_copySelButton, "Copy selection to clipboard as PNG");
@@ -279,9 +281,12 @@ public sealed class ImageDocumentView : UserControl
         _selectButton.Click += (_, _) => ToggleSelectionMode();
         _selectionKindBox.SelectionChanged += (_, _) =>
         {
-            _selectionKind = _selectionKindBox.SelectedIndex == 1
-                ? ImageSelectionKind.Ellipse
-                : ImageSelectionKind.Rectangle;
+            _selectionKind = _selectionKindBox.SelectedIndex switch
+            {
+                1 => ImageSelectionKind.Ellipse,
+                2 => ImageSelectionKind.Freeform,
+                _ => ImageSelectionKind.Rectangle,
+            };
             SyncSelectionOverlayShape();
         };
         _selectAllButton.Click += (_, _) => SelectAllPixels();
@@ -736,9 +741,31 @@ public sealed class ImageDocumentView : UserControl
         }
 
         await MutateAsync(
-            () => _processor.MoveRectAsync(_document, sel, destX, destY, _selectionKind),
+            () => _processor.MoveRectAsync(_document, sel, destX, destY, _selectionKind, CurrentLassoOrNull()),
             $"Moved selection to ({destX},{destY}).");
+        var dxPix = destX - sel.X;
+        var dyPix = destY - sel.Y;
+        TranslateLasso(dxPix, dyPix);
         SetPixelSelection(new ImageRect(destX, destY, sel.Width, sel.Height));
+    }
+
+    private IReadOnlyList<ImageMarkupPoint>? CurrentLassoOrNull() =>
+        _selectionKind == ImageSelectionKind.Freeform && _lassoDocPoints.Count >= 3
+            ? _lassoDocPoints.ToList()
+            : null;
+
+    private void TranslateLasso(int dx, int dy)
+    {
+        if (_lassoDocPoints.Count == 0 || (dx == 0 && dy == 0))
+        {
+            return;
+        }
+
+        for (var i = 0; i < _lassoDocPoints.Count; i++)
+        {
+            var p = _lassoDocPoints[i];
+            _lassoDocPoints[i] = new ImageMarkupPoint(p.X + dx, p.Y + dy);
+        }
     }
 
     private async Task CopyImageAsync()
@@ -838,7 +865,7 @@ public sealed class ImageDocumentView : UserControl
 
         try
         {
-            var buffer = await _processor.ExtractRectAsync(_document, sel, _selectionKind);
+            var buffer = await _processor.ExtractRectAsync(_document, sel, _selectionKind, CurrentLassoOrNull());
             _selectionClipboard = buffer;
             var temp = System.IO.Path.Combine(
                 System.IO.Path.GetTempPath(),
@@ -883,7 +910,7 @@ public sealed class ImageDocumentView : UserControl
         }
 
         await MutateAsync(
-            () => _processor.ClearRectAsync(_document, sel, transparent: true, _selectionKind),
+            () => _processor.ClearRectAsync(_document, sel, transparent: true, _selectionKind, CurrentLassoOrNull()),
             $"Cut selection {sel.Width}×{sel.Height}.");
     }
 
@@ -912,7 +939,7 @@ public sealed class ImageDocumentView : UserControl
         }
 
         await MutateAsync(
-            () => _processor.ClearRectAsync(_document, sel, transparent: true, _selectionKind),
+            () => _processor.ClearRectAsync(_document, sel, transparent: true, _selectionKind, CurrentLassoOrNull()),
             $"Cleared selection {sel.Width}×{sel.Height}.");
     }
 
@@ -1236,11 +1263,19 @@ public sealed class ImageDocumentView : UserControl
         {
             _selectionEllipse.Visibility = Visibility.Visible;
             _cropRect.Visibility = Visibility.Collapsed;
+            ClearLassoPolyline();
+        }
+        else if (_selectionKind == ImageSelectionKind.Freeform)
+        {
+            _cropRect.Visibility = Visibility.Collapsed;
+            _selectionEllipse.Visibility = Visibility.Collapsed;
+            RebuildLassoPolylineFromDoc();
         }
         else
         {
             _cropRect.Visibility = Visibility.Visible;
             _selectionEllipse.Visibility = Visibility.Collapsed;
+            ClearLassoPolyline();
         }
     }
 
@@ -1249,10 +1284,21 @@ public sealed class ImageDocumentView : UserControl
         _pixelSelection = null;
         _selectionMoving = false;
         _moveSourcePixels = null;
+        _lassoDocPoints.Clear();
+        ClearLassoPolyline();
         ClearCropSelection();
         if (_selectionMode)
         {
             _status.Text = "Selection cleared.";
+        }
+    }
+
+    private void ClearLassoPolyline()
+    {
+        if (_lassoPolyline is not null)
+        {
+            _cropOverlay.Children.Remove(_lassoPolyline);
+            _lassoPolyline = null;
         }
     }
 
@@ -1288,10 +1334,33 @@ public sealed class ImageDocumentView : UserControl
             return (nx * nx) + (ny * ny) <= 1.0;
         }
 
+        if (_selectionKind == ImageSelectionKind.Freeform && _lassoPolyline is { Points.Count: >= 3 })
+        {
+            return PointInPolygon(point, _lassoPolyline.Points);
+        }
+
         return point.X >= left
             && point.Y >= top
             && point.X <= left + w
             && point.Y <= top + h;
+    }
+
+    private static bool PointInPolygon(Windows.Foundation.Point point, IList<Windows.Foundation.Point> polygon)
+    {
+        var inside = false;
+        for (int i = 0, j = polygon.Count - 1; i < polygon.Count; j = i++)
+        {
+            var pi = polygon[i];
+            var pj = polygon[j];
+            var intersect = ((pi.Y > point.Y) != (pj.Y > point.Y))
+                && (point.X < ((pj.X - pi.X) * (point.Y - pi.Y) / ((pj.Y - pi.Y) + double.Epsilon)) + pi.X);
+            if (intersect)
+            {
+                inside = !inside;
+            }
+        }
+
+        return inside;
     }
 
     private void ClearCropSelection()
@@ -1334,8 +1403,28 @@ public sealed class ImageDocumentView : UserControl
         _moveSourcePixels = null;
         _cropDragging = true;
         _cropStart = point;
+        if (_selectionMode && _selectionKind == ImageSelectionKind.Freeform)
+        {
+            _lassoDocPoints.Clear();
+            ClearLassoPolyline();
+            _lassoPolyline = new Polyline
+            {
+                Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 30, 144, 255)),
+                StrokeThickness = 2,
+                Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 30, 144, 255)),
+                IsHitTestVisible = false,
+            };
+            _lassoPolyline.Points.Add(point);
+            _cropOverlay.Children.Add(_lassoPolyline);
+            _cropRect.Visibility = Visibility.Collapsed;
+            _selectionEllipse.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            UpdateCropRect(_cropStart, _cropStart);
+        }
+
         _cropOverlay.CapturePointer(e.Pointer);
-        UpdateCropRect(_cropStart, _cropStart);
         e.Handled = true;
     }
 
@@ -1351,6 +1440,13 @@ public sealed class ImageDocumentView : UserControl
             var left = Math.Clamp(_moveOriginLeft + dx, 0, maxLeft);
             var top = Math.Clamp(_moveOriginTop + dy, 0, maxTop);
             PlaceSelectionOverlay(left, top, _cropRect.Width, _cropRect.Height);
+            if (_selectionKind == ImageSelectionKind.Freeform && _lassoDocPoints.Count >= 3)
+            {
+                RebuildLassoPolylineFromDoc(
+                    previewOffsetX: left - _moveOriginLeft,
+                    previewOffsetY: top - _moveOriginTop);
+            }
+
             e.Handled = true;
             return;
         }
@@ -1360,7 +1456,15 @@ public sealed class ImageDocumentView : UserControl
             return;
         }
 
-        UpdateCropRect(_cropStart, e.GetCurrentPoint(_cropOverlay).Position);
+        var pos = e.GetCurrentPoint(_cropOverlay).Position;
+        if (_selectionMode && _selectionKind == ImageSelectionKind.Freeform && _lassoPolyline is not null)
+        {
+            _lassoPolyline.Points.Add(pos);
+            e.Handled = true;
+            return;
+        }
+
+        UpdateCropRect(_cropStart, pos);
         e.Handled = true;
     }
 
@@ -1405,6 +1509,13 @@ public sealed class ImageDocumentView : UserControl
 
         _cropDragging = false;
         _cropOverlay.ReleasePointerCapture(e.Pointer);
+        if (_selectionMode && _selectionKind == ImageSelectionKind.Freeform && _lassoPolyline is { Points.Count: >= 3 })
+        {
+            FinishLassoSelection();
+            e.Handled = true;
+            return;
+        }
+
         UpdateCropRect(_cropStart, e.GetCurrentPoint(_cropOverlay).Position);
         if (_selectionMode && _cropRect.Width > 0 && _cropRect.Height > 0 && _displayWidth > 0)
         {
@@ -1417,12 +1528,96 @@ public sealed class ImageDocumentView : UserControl
                 _displayHeight,
                 _document.PixelWidth,
                 _document.PixelHeight);
+            _lassoDocPoints.Clear();
             SyncSelectionOverlayShape();
-            var shape = _selectionKind == ImageSelectionKind.Ellipse ? "ellipse" : "rect";
-            _status.Text = $"Selected {_pixelSelection.Value.Width}×{_pixelSelection.Value.Height} px ({shape})";
+            _status.Text =
+                $"Selected {_pixelSelection.Value.Width}×{_pixelSelection.Value.Height} px ({SelectionKindLabel()})";
         }
 
         e.Handled = true;
+    }
+
+    private string SelectionKindLabel() =>
+        _selectionKind switch
+        {
+            ImageSelectionKind.Ellipse => "ellipse",
+            ImageSelectionKind.Freeform => "lasso",
+            _ => "rect",
+        };
+
+    private void FinishLassoSelection()
+    {
+        if (_lassoPolyline is null || _displayWidth <= 0 || _document.PixelWidth <= 0)
+        {
+            return;
+        }
+
+        if (_lassoPolyline.Points.Count >= 3)
+        {
+            var first = _lassoPolyline.Points[0];
+            var last = _lassoPolyline.Points[^1];
+            if (Math.Abs(first.X - last.X) > 1 || Math.Abs(first.Y - last.Y) > 1)
+            {
+                _lassoPolyline.Points.Add(first);
+            }
+        }
+
+        var scaleX = _document.PixelWidth / (double)_displayWidth;
+        var scaleY = _document.PixelHeight / (double)_displayHeight;
+        _lassoDocPoints.Clear();
+        double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
+        foreach (var p in _lassoPolyline.Points)
+        {
+            var dx = p.X * scaleX;
+            var dy = p.Y * scaleY;
+            _lassoDocPoints.Add(new ImageMarkupPoint(dx, dy));
+            minX = Math.Min(minX, dx);
+            minY = Math.Min(minY, dy);
+            maxX = Math.Max(maxX, dx);
+            maxY = Math.Max(maxY, dy);
+        }
+
+        var x = Math.Clamp((int)Math.Floor(minX), 0, Math.Max(0, _document.PixelWidth - 1));
+        var y = Math.Clamp((int)Math.Floor(minY), 0, Math.Max(0, _document.PixelHeight - 1));
+        var right = Math.Clamp((int)Math.Ceiling(maxX), x + 1, _document.PixelWidth);
+        var bottom = Math.Clamp((int)Math.Ceiling(maxY), y + 1, _document.PixelHeight);
+        _pixelSelection = new ImageRect(x, y, right - x, bottom - y);
+        PlaceSelectionOverlay(
+            x * (_displayWidth / (double)_document.PixelWidth),
+            y * (_displayHeight / (double)_document.PixelHeight),
+            (right - x) * (_displayWidth / (double)_document.PixelWidth),
+            (bottom - y) * (_displayHeight / (double)_document.PixelHeight));
+        _status.Text = $"Lasso selected {_pixelSelection.Value.Width}×{_pixelSelection.Value.Height} px ({_lassoDocPoints.Count} pts)";
+    }
+
+    private void RebuildLassoPolylineFromDoc(double previewOffsetX = 0, double previewOffsetY = 0)
+    {
+        if (_lassoDocPoints.Count < 3 || _displayWidth <= 0 || _document.PixelWidth <= 0)
+        {
+            return;
+        }
+
+        if (_lassoPolyline is null)
+        {
+            _lassoPolyline = new Polyline
+            {
+                Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 30, 144, 255)),
+                StrokeThickness = 2,
+                Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 30, 144, 255)),
+                IsHitTestVisible = false,
+            };
+            _cropOverlay.Children.Add(_lassoPolyline);
+        }
+
+        var scaleX = _displayWidth / (double)_document.PixelWidth;
+        var scaleY = _displayHeight / (double)_document.PixelHeight;
+        _lassoPolyline.Points.Clear();
+        foreach (var p in _lassoDocPoints)
+        {
+            _lassoPolyline.Points.Add(new Windows.Foundation.Point(
+                (p.X * scaleX) + previewOffsetX,
+                (p.Y * scaleY) + previewOffsetY));
+        }
     }
 
     private async Task CommitSelectionMoveAsync(ImageRect source, int destX, int destY)
@@ -1431,10 +1626,16 @@ public sealed class ImageDocumentView : UserControl
         var h = source.Height;
         destX = Math.Clamp(destX, 0, Math.Max(0, _document.PixelWidth - w));
         destY = Math.Clamp(destY, 0, Math.Max(0, _document.PixelHeight - h));
+        var polygon = CurrentLassoOrNull();
         await MutateAsync(
-            () => _processor.MoveRectAsync(_document, source, destX, destY, _selectionKind),
+            () => _processor.MoveRectAsync(_document, source, destX, destY, _selectionKind, polygon),
             $"Moved selection to ({destX},{destY}).");
+        TranslateLasso(destX - source.X, destY - source.Y);
         SetPixelSelection(new ImageRect(destX, destY, w, h));
+        if (_selectionKind == ImageSelectionKind.Freeform)
+        {
+            RebuildLassoPolylineFromDoc();
+        }
     }
 
     private void UpdateCropRect(Windows.Foundation.Point a, Windows.Foundation.Point b)
@@ -1449,8 +1650,7 @@ public sealed class ImageDocumentView : UserControl
             {
                 var mapped = ImageCropMapper.ToDocumentPixels(
                     x, y, w, h, _displayWidth, _displayHeight, _document.PixelWidth, _document.PixelHeight);
-                var shape = _selectionKind == ImageSelectionKind.Ellipse ? "ellipse" : "rect";
-                _status.Text = $"Selection ({shape}) → {mapped.Width}×{mapped.Height} px";
+                _status.Text = $"Selection ({SelectionKindLabel()}) → {mapped.Width}×{mapped.Height} px";
             }
 
             return;

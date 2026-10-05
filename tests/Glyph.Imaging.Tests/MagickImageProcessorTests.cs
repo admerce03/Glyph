@@ -234,6 +234,63 @@ public class MagickImageProcessorTests
     }
 
     [Fact]
+    public async Task Freeform_extract_clears_outside_polygon()
+    {
+        var path = CreateSolidPng(40, 30);
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            await using var document = await decoder.OpenAsync(path);
+
+            var polygon = new[]
+            {
+                new ImageMarkupPoint(8, 8),
+                new ImageMarkupPoint(28, 8),
+                new ImageMarkupPoint(18, 22),
+            };
+            var bounds = new ImageRect(5, 5, 25, 20);
+            var extracted = await processor.ExtractRectAsync(
+                document,
+                bounds,
+                ImageSelectionKind.Freeform,
+                polygon);
+            extracted.Width.Should().Be(25);
+            extracted.Height.Should().Be(20);
+            // AABB corner (5,5) is outside the inset triangle → transparent.
+            extracted.BgraPixels[3].Should().Be(0);
+
+            await processor.ClearRectAsync(
+                document,
+                bounds,
+                transparent: true,
+                ImageSelectionKind.Freeform,
+                polygon);
+            document.PixelWidth.Should().Be(40);
+
+            var movePoly = new[]
+            {
+                new ImageMarkupPoint(4, 4),
+                new ImageMarkupPoint(16, 4),
+                new ImageMarkupPoint(10, 14),
+            };
+            await processor.MoveRectAsync(
+                document,
+                new ImageRect(2, 2, 16, 14),
+                22,
+                12,
+                ImageSelectionKind.Freeform,
+                movePoly);
+            document.PixelWidth.Should().Be(40);
+            document.PixelHeight.Should().Be(30);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Ellipse_extract_clears_corners_to_transparent()
     {
         var path = CreateSolidPng(40, 30);

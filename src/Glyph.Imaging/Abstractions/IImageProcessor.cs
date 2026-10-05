@@ -31,22 +31,25 @@ public interface IImageProcessor
 
     /// <summary>
     /// Clears a region to transparent (or opaque white when <paramref name="transparent"/> is false).
-    /// <paramref name="kind"/> selects rectangle or ellipse geometry within <paramref name="pixels"/> bounds.
+    /// <paramref name="kind"/> selects rectangle, ellipse, or freeform polygon within <paramref name="pixels"/> bounds.
+    /// For freeform, pass document-space <paramref name="polygon"/> vertices (at least 3).
     /// </summary>
     Task ClearRectAsync(
         IImageDocument document,
         ImageRect pixels,
         bool transparent = true,
         ImageSelectionKind kind = ImageSelectionKind.Rectangle,
+        IReadOnlyList<ImageMarkupPoint>? polygon = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Returns BGRA32 pixels for a region (document pixel space). Ellipse kind clears outside the oval to transparent.
+    /// Returns BGRA32 pixels for a region (document pixel space). Ellipse/freeform clear outside the mask to transparent.
     /// </summary>
     Task<ImagePixelBuffer> ExtractRectAsync(
         IImageDocument document,
         ImageRect pixels,
         ImageSelectionKind kind = ImageSelectionKind.Rectangle,
+        IReadOnlyList<ImageMarkupPoint>? polygon = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -70,6 +73,7 @@ public interface IImageProcessor
         int destinationX,
         int destinationY,
         ImageSelectionKind kind = ImageSelectionKind.Rectangle,
+        IReadOnlyList<ImageMarkupPoint>? polygon = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -103,6 +107,7 @@ public enum ImageSelectionKind
 {
     Rectangle = 0,
     Ellipse = 1,
+    Freeform = 2,
 }
 
 public enum ImageResizeFilter

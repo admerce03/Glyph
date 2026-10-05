@@ -242,6 +242,7 @@ public sealed class MagickImageProcessor : IImageProcessor
         ImageRect pixels,
         bool transparent = true,
         ImageSelectionKind kind = ImageSelectionKind.Rectangle,
+        IReadOnlyList<ImageMarkupPoint>? polygon = null,
         CancellationToken cancellationToken = default)
     {
         var magick = RequireMagick(document);
@@ -254,7 +255,7 @@ public sealed class MagickImageProcessor : IImageProcessor
             () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                ClearRegionCore(magick.Native, pixels, transparent, kind);
+                ClearRegionCore(magick.Native, pixels, transparent, kind, polygon);
             },
             cancellationToken);
     }
@@ -263,6 +264,7 @@ public sealed class MagickImageProcessor : IImageProcessor
         IImageDocument document,
         ImageRect pixels,
         ImageSelectionKind kind = ImageSelectionKind.Rectangle,
+        IReadOnlyList<ImageMarkupPoint>? polygon = null,
         CancellationToken cancellationToken = default)
     {
         var magick = RequireMagick(document);
@@ -275,7 +277,7 @@ public sealed class MagickImageProcessor : IImageProcessor
             () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                return ExtractRegionCore(magick.Native, pixels, kind);
+                return ExtractRegionCore(magick.Native, pixels, kind, polygon);
             },
             cancellationToken);
     }
@@ -309,6 +311,7 @@ public sealed class MagickImageProcessor : IImageProcessor
         int destinationX,
         int destinationY,
         ImageSelectionKind kind = ImageSelectionKind.Rectangle,
+        IReadOnlyList<ImageMarkupPoint>? polygon = null,
         CancellationToken cancellationToken = default)
     {
         var magick = RequireMagick(document);
@@ -326,14 +329,18 @@ public sealed class MagickImageProcessor : IImageProcessor
                     return;
                 }
 
-                var buffer = ExtractRegionCore(magick.Native, source, kind);
-                ClearRegionCore(magick.Native, source, transparent: true, kind);
+                var buffer = ExtractRegionCore(magick.Native, source, kind, polygon);
+                ClearRegionCore(magick.Native, source, transparent: true, kind, polygon);
                 PasteRectCore(magick.Native, buffer, destinationX, destinationY);
             },
             cancellationToken);
     }
 
-    private static ImagePixelBuffer ExtractRegionCore(MagickImage image, ImageRect pixels, ImageSelectionKind kind)
+    private static ImagePixelBuffer ExtractRegionCore(
+        MagickImage image,
+        ImageRect pixels,
+        ImageSelectionKind kind,
+        IReadOnlyList<ImageMarkupPoint>? polygon)
     {
         using var clone = (MagickImage)image.Clone();
         clone.Crop(new MagickGeometry(pixels.X, pixels.Y, (uint)pixels.Width, (uint)pixels.Height));
@@ -344,6 +351,10 @@ public sealed class MagickImageProcessor : IImageProcessor
         {
             ApplyEllipseAlphaMask(clone);
         }
+        else if (kind == ImageSelectionKind.Freeform && polygon is { Count: >= 3 })
+        {
+            ApplyPolygonAlphaMask(clone, pixels, polygon);
+        }
 
         var bgra = clone.ToByteArray(MagickFormat.Bgra);
         return new ImagePixelBuffer(checked((int)clone.Width), checked((int)clone.Height), bgra);
@@ -353,7 +364,8 @@ public sealed class MagickImageProcessor : IImageProcessor
         MagickImage image,
         ImageRect pixels,
         bool transparent,
-        ImageSelectionKind kind)
+        ImageSelectionKind kind,
+        IReadOnlyList<ImageMarkupPoint>? polygon)
     {
         var x = Math.Clamp(pixels.X, 0, Math.Max(0, (int)image.Width - 1));
         var y = Math.Clamp(pixels.Y, 0, Math.Max(0, (int)image.Height - 1));
@@ -373,6 +385,11 @@ public sealed class MagickImageProcessor : IImageProcessor
             var radiusX = Math.Max(0.5, (right - x) / 2.0);
             var radiusY = Math.Max(0.5, (bottom - y) / 2.0);
             drawables.Ellipse(originX, originY, radiusX, radiusY, 0, 360);
+        }
+        else if (kind == ImageSelectionKind.Freeform && polygon is { Count: >= 3 })
+        {
+            var coords = polygon.Select(p => new PointD(p.X, p.Y)).ToArray();
+            drawables.Polygon(coords);
         }
         else
         {
@@ -399,6 +416,24 @@ public sealed class MagickImageProcessor : IImageProcessor
         new Drawables()
             .FillColor(MagickColors.White)
             .Ellipse(originX, originY, radiusX, radiusY, 0, 360)
+            .Draw(mask);
+        cropped.Composite(mask, CompositeOperator.DstIn);
+    }
+
+    private static void ApplyPolygonAlphaMask(
+        MagickImage cropped,
+        ImageRect bounds,
+        IReadOnlyList<ImageMarkupPoint> polygon)
+    {
+        cropped.Alpha(AlphaOption.Set);
+        using var mask = new MagickImage(MagickColors.Transparent, cropped.Width, cropped.Height);
+        mask.Alpha(AlphaOption.Set);
+        var local = polygon
+            .Select(p => new PointD(p.X - bounds.X, p.Y - bounds.Y))
+            .ToArray();
+        new Drawables()
+            .FillColor(MagickColors.White)
+            .Polygon(local)
             .Draw(mask);
         cropped.Composite(mask, CompositeOperator.DstIn);
     }
