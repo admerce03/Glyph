@@ -35,7 +35,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-25 | Application and file handling | Crash-recovery copy. | M1/M9 | Implemented | `FileCrashRecoveryStore` + periodic snapshots |
 | F01-26 | Application and file handling | Undo/redo history. | M1/M9 | In Progress | Page-edit snapshot undo via `PdfPageEditHistory`; app-wide stack later |
 | F01-27 | Application and file handling | Do not silently overwrite originals by default. | M1/M9 | Implemented | Autosave-to-original is opt-in (off by default) |
-| F02-01 | Main window and interface | Standard Windows title bar. | M1/M9 | Not Started |  |
+| F02-01 | Main window and interface | Standard Windows title bar. | M1/M9 | Implemented | WinUI AppWindow system title bar |
 | F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | In Progress | MenuBar File/View/Window |
 | F02-03 | Main window and interface | Customizable toolbar. | M1/M9 | Not Started |  |
 | F02-04 | Main window and interface | Optional compact toolbar. | M1/M9 | Not Started |  |
@@ -55,7 +55,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-18 | Main window and interface | High-DPI scaling. | M1/M9 | In Progress | PerMonitorV2 declared in app.manifest |
 | F02-19 | Main window and interface | Multi-monitor support. | M1/M9 | Not Started |  |
 | F02-20 | Main window and interface | Per-monitor DPI awareness. | M1/M9 | In Progress | PerMonitorV2 declared in app.manifest |
-| F02-21 | Main window and interface | Mouse support. | M1/M9 | Not Started |  |
+| F02-21 | Main window and interface | Mouse support. | M1/M9 | Implemented | Pointer input throughout document and chrome UI |
 | F02-22 | Main window and interface | Precision touchpad gesture support where useful. | M1/M9 | Not Started |  |
 | F02-23 | Main window and interface | Keyboard-first operation. | M1/M9 | Not Started |  |
 | F02-24 | Main window and interface | Accessibility through Windows UI Automation. | M1/M9 | Not Started |  |
