@@ -21,8 +21,8 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M1 | Application shell and basic file opening | **Implemented** (CI green; interactive screenshot pending) | M0 |
 | M2 | Core PDF viewer | **Implemented** (+ post-core Zoom ▭ / Glass / Present) | M1 |
 | M3 | Core PDF page manipulation | **Tested** (matrix F10–F12; §11 DnD screen recording + CI merge pending) | M2 |
-| M4 | PDF markup and editing | **Implemented** (matrix-complete; Quadding `/Q` via dict patch) | M2 (forms/security touch M7) |
-| M5 | Image viewer/editor | **Implemented** (matrix-complete; HDR/HEIF deferred) | M1 (shares shell/DnD with M3) |
+| M4 | PDF markup and editing | **Tested** (matrix-complete; Quadding `/Q` via dict patch) | M2 (forms/security touch M7) |
+| M5 | Image viewer/editor | **Tested** (matrix-complete; HDR/HEIF deferred) | M1 (shares shell/DnD with M3) |
 | M6 | OCR and scanned-document capabilities | **In Progress** (PRs #62–#66 stacked; Actions billing blocks CI/merge) | M2, M5 |
 | M7 | Redaction, PDF security, optimization, metadata | **In Progress** (redact/optimize/metadata Tested; password-write → ADR-015) | M2–M4 |
 | M8 | Batch ops, scanner, color management, advanced | **Implemented** (hardware validation TBD; ML subject deferred) | M5–M7 |
@@ -205,9 +205,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 5 — Image viewer/editor
 
-**Status:** Near Complete · Depends on M1
-
-### Scope (`FEATURES.md` §26–35, §37–38, §61 image parts)
+**Status:** Tested · Depends on M1 (HDR/HEIF deferred)
 
 - Major formats via WIC + Magick.NET adapter
 - Navigation, zoom/pan, image list sidebar
@@ -295,7 +293,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - FreeText Align / `/Q` quadding via post-save dict patch (F13-38 / F16-15)
 - Bookmarks → PDF `/Outlines` export (F09-08)
 - Password-protect write blocked on ADR-015 (Needs approval)
-- Local polish (+167 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
+- Local polish (+168 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
 - FEATURE_MATRIX: no Implemented rows remain (F64-00 Tested); password-write / MSIX / HDR / ML still Blocked or Deferred
 - Print N-up/scale/rotate/center extracted to `PrintSheetLayout`; scroll throttle + presentation defaults unit-tested
 - Search result snippets unified via `PdfSearchSnippet` (F06-10)
