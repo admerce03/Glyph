@@ -11,6 +11,7 @@ public class ImageDialogTitlesTests
         ImageDialogTitles.ResizeImage.Should().Contain("Resize");
         ImageDialogTitles.ColorAdjustments.Should().Contain("Color");
         ImageDialogTitles.FolderOcrResults.Should().Contain("OCR");
+        ImageDialogTitles.OcrEntities.Should().Contain("entities");
         ImageDialogTitles.DrawMarkup.Should().Contain("markup");
     }
 }
