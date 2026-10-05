@@ -20,5 +20,7 @@ public static class GlyphPaths
 
     public static string SignaturesDirectory => System.IO.Path.Combine(LocalAppDataRoot, "signatures");
 
+    public static string FormValueHistoryFile => System.IO.Path.Combine(LocalAppDataRoot, "form-values.json");
+
     public static string TempDirectory => System.IO.Path.Combine(System.IO.Path.GetTempPath(), "Glyph");
 }

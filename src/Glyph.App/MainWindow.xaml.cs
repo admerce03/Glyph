@@ -5,6 +5,7 @@ using Glyph.Core.Signatures;
 using Glyph.Core.Workspace;
 using Glyph.Imaging.Abstractions;
 using Glyph.Infrastructure.Documents;
+using Glyph.Infrastructure.Forms;
 using Glyph.Infrastructure.RecentFiles;
 using Glyph.Infrastructure.Settings;
 using Glyph.Ocr.Abstractions;
@@ -47,6 +48,7 @@ public sealed partial class MainWindow : Window
     private readonly IPdfDocumentInfoService _pdfInfo;
     private readonly IPdfOptimizeService _pdfOptimize;
     private readonly ISignatureLibrary _signatures;
+    private readonly IFormValueHistory _formValueHistory;
     private readonly IPdfFormStore _pdfForms;
     private readonly IImageDecoder _imageDecoder;
     private readonly IImageEncoder _imageEncoder;
@@ -73,6 +75,7 @@ public sealed partial class MainWindow : Window
         IPdfDocumentInfoService pdfInfo,
         IPdfOptimizeService pdfOptimize,
         ISignatureLibrary signatures,
+        IFormValueHistory formValueHistory,
         IPdfFormStore pdfForms,
         IImageDecoder imageDecoder,
         IImageEncoder imageEncoder,
@@ -97,6 +100,7 @@ public sealed partial class MainWindow : Window
         _pdfInfo = pdfInfo;
         _pdfOptimize = pdfOptimize;
         _signatures = signatures;
+        _formValueHistory = formValueHistory;
         _pdfForms = pdfForms;
         _imageDecoder = imageDecoder;
         _imageEncoder = imageEncoder;
@@ -632,6 +636,7 @@ public sealed partial class MainWindow : Window
                 _imageEncoder,
                 _signatures,
                 _pdfForms,
+                _formValueHistory,
                 _pdfFactory,
                 session.ViewState,
                 ownerWindow: this,

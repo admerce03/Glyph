@@ -2,6 +2,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.Core.Documents;
 using Glyph.Core.Signatures;
 using Glyph.Imaging.Abstractions;
+using Glyph.Infrastructure.Forms;
 using Glyph.Ocr.Abstractions;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Editing;
@@ -47,6 +48,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly IImageEncoder _imageEncoder;
     private readonly ISignatureLibrary _signatures;
     private readonly IPdfFormStore _forms;
+    private readonly IFormValueHistory _formValueHistory;
     private readonly IPdfDocumentFactory _documentFactory;
     private readonly IOcrEngine? _ocr;
     private readonly Button _ocrCancelButton;
@@ -207,6 +209,7 @@ public sealed class PdfDocumentView : UserControl
         IImageEncoder imageEncoder,
         ISignatureLibrary signatures,
         IPdfFormStore forms,
+        IFormValueHistory formValueHistory,
         IPdfDocumentFactory documentFactory,
         DocumentViewState? viewState = null,
         Window? ownerWindow = null,
@@ -227,6 +230,7 @@ public sealed class PdfDocumentView : UserControl
         _imageEncoder = imageEncoder;
         _signatures = signatures;
         _forms = forms;
+        _formValueHistory = formValueHistory;
         _documentFactory = documentFactory;
         _ocr = ocr;
         _ownerWindow = ownerWindow;
@@ -6272,10 +6276,43 @@ public sealed class PdfDocumentView : UserControl
             Height = 100,
             PlaceholderText = field.Name,
         };
+        var suggestions = _formValueHistory.GetSuggestions(field.Name);
+        UIElement content = box;
+        if (suggestions.Count > 0)
+        {
+            var recentList = new ListView
+            {
+                Height = 120,
+                SelectionMode = ListViewSelectionMode.Single,
+                ItemsSource = suggestions.ToList(),
+            };
+            recentList.SelectionChanged += (_, _) =>
+            {
+                if (recentList.SelectedItem is string picked)
+                {
+                    box.Text = picked;
+                }
+            };
+            content = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    box,
+                    new TextBlock
+                    {
+                        Text = "Recent values",
+                        FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    },
+                    recentList,
+                },
+            };
+        }
+
         var edit = new ContentDialog
         {
             Title = $"Edit {field.Name}",
-            Content = box,
+            Content = content,
             PrimaryButtonText = "Save",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
@@ -6289,11 +6326,13 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
+            var value = box.Text ?? string.Empty;
             await _forms.SetTextValueAsync(
                 _document,
                 field.PageIndex,
                 field.AnnotIndex,
-                box.Text ?? string.Empty);
+                value);
+            await _formValueHistory.RememberAsync(field.Name, value);
             _status.Text = $"Updated {field.Name}.";
             return true;
         }

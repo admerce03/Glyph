@@ -5,6 +5,7 @@ using Glyph.Core.Workspace;
 using Glyph.Imaging.Abstractions;
 using Glyph.Imaging.Magick;
 using Glyph.Infrastructure.Documents;
+using Glyph.Infrastructure.Forms;
 using Glyph.Infrastructure.Paths;
 using Glyph.Infrastructure.RecentFiles;
 using Glyph.Infrastructure.Settings;
@@ -42,6 +43,7 @@ internal static class AppServices
         services.AddSingleton<IDocumentViewStateStore>(_ =>
             new JsonDocumentViewStateStore(GlyphPaths.DocumentViewStateFile));
         services.AddSingleton<ISignatureLibrary>(_ => new FileSignatureLibrary(GlyphPaths.SignaturesDirectory));
+        services.AddSingleton<IFormValueHistory>(_ => new JsonFormValueHistory(GlyphPaths.FormValueHistoryFile));
         services.AddSingleton<IPdfDocumentFactory, PdfiumDocumentFactory>();
         services.AddSingleton<IPdfRenderer, PdfiumRenderer>();
         services.AddSingleton<IPdfTextExtractor, PdfiumTextExtractor>();
