@@ -10746,33 +10746,33 @@ public sealed class PdfDocumentView : UserControl
     {
         if (!TryGetSelectedAnnotation(out var item))
         {
-            _status.Text = "Select an annotation to copy.";
+            _status.Text = AnnotationClipboardPolicy.SelectToCopy;
             return;
         }
 
         _annotClipboard = (item.PageIndex, item.AnnotIndex);
         _annotClipboardIsCut = false;
-        _status.Text = $"Copied {PdfAnnotationListLabel.Format(item)}.";
+        _status.Text = AnnotationClipboardPolicy.Copied(PdfAnnotationListLabel.Format(item));
     }
 
     private void CutSelectedAnnotationToClipboard()
     {
         if (!TryGetSelectedAnnotation(out var item))
         {
-            _status.Text = "Select an annotation to cut.";
+            _status.Text = AnnotationClipboardPolicy.SelectToCut;
             return;
         }
 
         _annotClipboard = (item.PageIndex, item.AnnotIndex);
         _annotClipboardIsCut = true;
-        _status.Text = $"Cut {PdfAnnotationListLabel.Format(item)} (removed on paste).";
+        _status.Text = AnnotationClipboardPolicy.Cut(PdfAnnotationListLabel.Format(item));
     }
 
     private async Task PasteAnnotationClipboardAsync()
     {
         if (_annotClipboard is not { } clip)
         {
-            _status.Text = "Annotation clipboard is empty.";
+            _status.Text = AnnotationClipboardPolicy.EmptyClipboard;
             return;
         }
 
@@ -10785,13 +10785,17 @@ public sealed class PdfDocumentView : UserControl
             if (wasCut)
             {
                 await _annotations.RemoveAsync(_document, clip.PageIndex, clip.AnnotIndex);
-                if (clip.PageIndex == copyPage && clip.AnnotIndex < copyIndex)
-                {
-                    copyIndex--;
-                }
+                copyIndex = AnnotationClipboardPolicy.AdjustIndexAfterCutRemove(
+                    clip.PageIndex,
+                    clip.AnnotIndex,
+                    copyPage,
+                    copyIndex);
 
-                _annotClipboard = null;
-                _annotClipboardIsCut = false;
+                if (AnnotationClipboardPolicy.ClearClipboardAfterPaste(wasCut))
+                {
+                    _annotClipboard = null;
+                    _annotClipboardIsCut = false;
+                }
             }
 
             _cache.ClearDocument(_documentKey);
@@ -10804,13 +10808,11 @@ public sealed class PdfDocumentView : UserControl
             _selectedAnnot = pasted;
             SyncSidebarSelection(pasted);
             DrawAnnotSelection(pasted);
-            _status.Text = wasCut
-                ? $"Pasted {PdfAnnotationListLabel.Format(pasted)} (cut)."
-                : $"Pasted {PdfAnnotationListLabel.Format(pasted)}.";
+            _status.Text = AnnotationClipboardPolicy.Pasted(PdfAnnotationListLabel.Format(pasted), wasCut);
         }
         catch (Exception ex)
         {
-            _status.Text = "Paste annotation failed: " + ex.Message;
+            _status.Text = AnnotationClipboardPolicy.PasteFailed(ex.Message);
         }
     }
 

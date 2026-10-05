@@ -247,9 +247,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-21 | PDF annotations | rotate where appropriate | M4 | Tested | `RotateAsync` 90° CW for stamp/ink/shapes/FreeText; sticky & text markup unsupported |
 | F13-22 | PDF annotations | duplicate | M4 | Tested | `DuplicateAsync` offset clone + sidebar Dup |
 | F13-23 | PDF annotations | delete | M4 | Tested | `RemoveAsync` by page/annot index |
-| F13-24 | PDF annotations | cut | M4 | Implemented | Sidebar Cut / Ctrl+X; removes source on paste |
-| F13-25 | PDF annotations | copy | M4 | Implemented | Sidebar Copy / Ctrl+C when annot selected |
-| F13-26 | PDF annotations | paste | M4 | Implemented | Sidebar Paste / Ctrl+V; `DuplicateAsync` + optional cut-remove |
+| F13-24 | PDF annotations | cut | M4 | Tested | Sidebar Cut / Ctrl+X; `AnnotationClipboardPolicy` unit tests |
+| F13-25 | PDF annotations | copy | M4 | Tested | Sidebar Copy / Ctrl+C; `AnnotationClipboardPolicy` unit tests |
+| F13-26 | PDF annotations | paste | M4 | Tested | Sidebar Paste / Ctrl+V; cut-index adjust via `AnnotationClipboardPolicy` |
 | F13-27 | PDF annotations | multi-select | M4 | Tested | Ctrl+click toggle; sidebar Extended; `AnnotationMultiSelectPolicy` unit tests |
 | F13-28 | PDF annotations | group where useful | M4 | Tested | Sidebar Group/Ungroup; `GlyphGroup` key; select/move together |
 | F13-29 | PDF annotations | change border color | M4 | Tested | Set on create + `SetColorAsync` |
