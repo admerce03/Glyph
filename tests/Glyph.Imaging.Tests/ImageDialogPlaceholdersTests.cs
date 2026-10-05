@@ -9,5 +9,6 @@ public class ImageDialogPlaceholdersTests
     public void Placeholders_are_stable()
     {
         ImageDialogPlaceholders.CropXyWh.Should().Contain("Crop");
+        ImageDialogPlaceholders.FindInOcr.Should().Contain("OCR");
     }
 }

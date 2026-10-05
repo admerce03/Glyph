@@ -27,7 +27,16 @@ public static class ImageViewerTooltips
     public const string RemoveSolidBackgroundExtractSubjectCorner = "Remove solid background / extract subject (corner flood-fill)";
     public const string StampASignatureFromTheLibrary = "Stamp a signature from the library onto the image";
     public const string ImageMetadataExifIptcXmpAnd = "Image metadata, EXIF/IPTC/XMP, and GPS";
-    public const string RunOfflineOcrOnThisImage = "Run offline OCR on this image";
+    public const string RunOfflineOcrOnThisImage = "Run offline OCR and select text over the image";
+    public const string CopySelectedOcrWordsOrAll = "Copy selected OCR words (or all recognized text)";
+    public const string ReviewDetectedOcrEntities = "Review detected URLs, emails, phones, addresses, dates, and times";
+    public const string HideOcrWordOverlays = "Hide OCR word overlays";
+    public const string SearchRecognizedOcrText = "Search recognized OCR text";
+    public const string HighlightOcrWordsMatchingQuery = "Highlight OCR words matching the query";
+    public const string JumpToNextOcrSearchHit = "Jump to next OCR search hit";
+    public const string CancelInFlightOcrJob = "Cancel the in-flight OCR job";
+    public const string SearchWebForSelectedOcrText = "Search the web for selected OCR text";
+    public const string ExportSearchableOcrPdf = "Export a searchable PDF with this image and an invisible OCR text layer";
     public const string Rotate180 = "Rotate 180°";
     public const string ApplyExifOrientationIntoPixels = "Apply EXIF orientation into pixels";
     public const string DeskewStraightenScannedPageMagick = "Deskew / straighten scanned page (Magick)";

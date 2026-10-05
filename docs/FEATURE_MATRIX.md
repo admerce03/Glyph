@@ -150,10 +150,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F07-12 | PDF text interaction | Copy selected PDF region to clipboard as bitmap. | M2/M6 | Tested | Region crop → PNG clipboard; `PdfRegionCopyPolicy` unit tests |
 | F07-13 | PDF text interaction | Drag selected text where supported. | M2/M6 | Tested | Page CanDrag; `PdfTextDragPolicy` unit tests |
 | F08-01 | OCR / Live Text equivalent | Detect text automatically or on demand. | M6 | Tested | On-demand OCR toolbar; `OcrLayerPolicy.DetectOnDemand` |
-| F08-02 | OCR / Live Text equivalent | Select detected text directly over the image. | M6 | Tested | PDF OCR word-box overlay + Copy OCR; `OcrWordSelectionPolicy` unit tests |
-| F08-03 | OCR / Live Text equivalent | Copy text. | M6 | Tested | OCR result dialog Copy text; `OcrResultDialog` unit tests |
-| F08-04 | OCR / Live Text equivalent | Copy all recognized text. | M6 | Tested | Same copy path; `OcrResultDialog.TextCopied` |
-| F08-05 | OCR / Live Text equivalent | Search recognized text. | M6 | Tested | Find merges session OCR via `PdfPageTextSearch.Merge`; word overlays after page OCR |
+| F08-02 | OCR / Live Text equivalent | Select detected text directly over the image. | M6 | Tested | PDF + image OCR word-box overlay (select/Copy OCR); `OcrWordSelectionPolicy` / `ImageOcrOverlayStatus` unit tests |
+| F08-03 | OCR / Live Text equivalent | Copy text. | M6 | Tested | Image Copy OCR selection + PDF/dialog copy; `OcrResultDialog` / `OcrWordSelectionPolicy` unit tests |
+| F08-04 | OCR / Live Text equivalent | Copy all recognized text. | M6 | Tested | Copy OCR with empty selection copies all; `OcrWordSelectionPolicy.CopiedWords(0)` |
+| F08-05 | OCR / Live Text equivalent | Search recognized text. | M6 | Tested | PDF Find merges session OCR; image Find OCR / Next OCR via `OcrTextSearch` word overlays |
 | F08-06 | OCR / Live Text equivalent | OCR current page. | M6 | Tested | OCR chooser Primary = current/selected; `OcrPageRangeChooser` unit tests |
 | F08-07 | OCR / Live Text equivalent | OCR selected pages. | M6 | Tested | Multi-select thumbnails → OCR; `OcrPageRangeChooser.SelectedLabel` / PrimaryButton |
 | F08-08 | OCR / Live Text equivalent | OCR entire PDF. | M6 | Tested | Chooser Secondary = entire doc; `OcrPageRangeChooser.EntireDocumentPages` |

@@ -16,5 +16,6 @@ public static class ImageDialogTitles
     public const string EditDescriptiveMetadata = "Edit descriptive metadata";
     public const string OcrResult = "OCR result";
     public const string FolderOcrResults = "Folder OCR results";
+    public const string OcrEntities = "OCR entities";
     public const string DrawMarkup = "Draw markup";
 }
