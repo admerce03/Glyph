@@ -138,14 +138,14 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F06-17 | PDF search | Search OCR text where OCR has been generated. | M2/M6 | Implemented | Session OCR cache merged into Find results (`PdfPageTextSearch`) |
 | F07-01 | PDF text interaction | Text selection. | M2/M6 | Implemented | Click near glyphs selects word-ish run via PDFium text |
 | F07-02 | PDF text interaction | Copy text. | M2/M6 | Implemented | Copy button / Ctrl+C |
-| F07-03 | PDF text interaction | Select across lines. | M2/M6 | Not Started |  |
-| F07-04 | PDF text interaction | Select columns where practical. | M2/M6 | Not Started |  |
+| F07-03 | PDF text interaction | Select across lines. | M2/M6 | Implemented | Drag stream selection across lines; Alt/wide drag = column rect |
+| F07-04 | PDF text interaction | Select columns where practical. | M2/M6 | In Progress | Alt-drag or wide region uses rectangular column selection |
 | F07-05 | PDF text interaction | Select all text on page/document. | M2/M6 | In Progress | Copy falls back to full page text |
 | F07-06 | PDF text interaction | Right-click selected text. | M2/M6 | Implemented | Context menu: Copy / Find selection / Search web / Copy region as image |
 | F07-07 | PDF text interaction | Copy. | M2/M6 | Implemented | Clipboard text package |
 | F07-08 | PDF text interaction | Search selected text. | M2/M6 | Implemented | Find sel toolbar uses current text selection as query |
 | F07-09 | PDF text interaction | OCR fallback on scanned PDFs. | M2/M6 | Implemented | Find on image-only PDF offers OCR current page then re-searches |
-| F07-10 | PDF text interaction | Preserve reasonable reading order during copy. | M2/M6 | Not Started |  |
+| F07-10 | PDF text interaction | Preserve reasonable reading order during copy. | M2/M6 | Implemented | `PdfTextSelection` top-to-bottom / left-to-right with newlines |
 | F07-11 | PDF text interaction | Rectangular selection for copying a region as an image. | M2/M6 | Implemented | Drag region + right-click Copy region as image |
 | F07-12 | PDF text interaction | Copy selected PDF region to clipboard as bitmap. | M2/M6 | Implemented | Renders page crop to PNG bitmap on clipboard |
 | F07-13 | PDF text interaction | Drag selected text where supported. | M2/M6 | Not Started |  |

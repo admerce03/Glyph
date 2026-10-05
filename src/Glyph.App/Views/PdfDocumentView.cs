@@ -1777,11 +1777,36 @@ public sealed class PdfDocumentView : UserControl
             var top = page.HeightPoints - (bottomUi / _scale);
             var bottom = page.HeightPoints - (topUi / _scale);
             var selection = new PdfRect(left, bottom, right, top);
-            _selectedText = PdfTextSelection.CopyCharsInRect(chars, selection);
-            _selectionPageIndex = pageIndex;
-            _selectionQuads = PdfTextMarkupQuads.FromSelectionRect(chars, selection);
-            await RefreshSearchHighlightsAsync();
-            DrawSelectionOverlay(pageIndex, chars, selection);
+
+            var startPdfX = dragStart.X / _scale;
+            var startPdfY = page.HeightPoints - (dragStart.Y / _scale);
+            var endPdfX = point.Position.X / _scale;
+            var endPdfY = page.HeightPoints - (point.Position.Y / _scale);
+            var rectW = selection.Width;
+            var rectH = selection.Height;
+            // Alt or a wide short-tall drag prefers column/region geometry; otherwise stream across lines.
+            var columnMode = e.KeyModifiers.HasFlag(VirtualKeyModifiers.Menu)
+                || (rectW > Math.Max(40, rectH * 1.75) && rectH > 18);
+
+            if (columnMode)
+            {
+                _selectedText = PdfTextSelection.CopyCharsInRect(chars, selection);
+                _selectionPageIndex = pageIndex;
+                _selectionQuads = PdfTextMarkupQuads.FromSelectionRect(chars, selection);
+                await RefreshSearchHighlightsAsync();
+                DrawSelectionOverlay(pageIndex, chars, selection);
+            }
+            else
+            {
+                var startIdx = PdfTextSelection.NearestCharIndex(chars, startPdfX, startPdfY);
+                var endIdx = PdfTextSelection.NearestCharIndex(chars, endPdfX, endPdfY);
+                _selectedText = PdfTextSelection.CopyText(chars, startIdx, endIdx);
+                _selectionPageIndex = pageIndex;
+                _selectionQuads = PdfTextMarkupQuads.FromIndexRange(chars, startIdx, endIdx);
+                await RefreshSearchHighlightsAsync();
+                DrawSelectionOverlayFromRange(pageIndex, chars, startIdx, endIdx);
+            }
+
             if (_highlightMode && !string.IsNullOrEmpty(_selectedText))
             {
                 await ApplyTextMarkupAsync(PdfTextMarkupKind.Highlight, usePersistentColor: true);
@@ -1857,6 +1882,22 @@ public sealed class PdfDocumentView : UserControl
         foreach (var ch in PdfTextSelection.CharsInRect(chars, selection))
         {
             AddHighlightRect(overlay, page.HeightPoints, ch.Bounds, Windows.UI.Color.FromArgb(70, 30, 144, 255));
+        }
+    }
+
+    private void DrawSelectionOverlayFromRange(int pageIndex, IReadOnlyList<PdfTextChar> chars, int startIndex, int endIndexInclusive)
+    {
+        if (!_pageOverlays.TryGetValue(pageIndex, out var overlay) || chars.Count == 0)
+        {
+            return;
+        }
+
+        var start = Math.Clamp(Math.Min(startIndex, endIndexInclusive), 0, chars.Count - 1);
+        var end = Math.Clamp(Math.Max(startIndex, endIndexInclusive), 0, chars.Count - 1);
+        var page = _document.GetPage(pageIndex);
+        for (var i = start; i <= end; i++)
+        {
+            AddHighlightRect(overlay, page.HeightPoints, chars[i].Bounds, Windows.UI.Color.FromArgb(70, 30, 144, 255));
         }
     }
 

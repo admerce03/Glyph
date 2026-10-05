@@ -260,6 +260,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - **OCR→PDF** exports OCR'd pages as a searchable PDF (image + invisible text via `OcrSearchablePdfWriter`)
 - **Entities** dialog on PDF OCR text (URL/email/phone/address/date/time + maps/calendar/search web)
 - Right-click selected text → Copy / Find selection / Search web / Copy region as image
+- Multi-line drag selects across lines in reading order; Alt/wide drag keeps column rect selection
 - Image-folder OCR / Live Text image overlays still on parallel entities/live-text stack
 ---
 
