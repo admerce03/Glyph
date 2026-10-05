@@ -1,5 +1,5 @@
-using Glyph.Pdf.Abstractions;
 using System.Text;
+using Glyph.Pdf.Abstractions;
 
 namespace Glyph.Pdf.Text;
 

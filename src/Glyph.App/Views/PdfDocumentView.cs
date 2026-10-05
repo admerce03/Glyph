@@ -2551,38 +2551,38 @@ public sealed class PdfDocumentView : UserControl
             switch (entity.Kind)
             {
                 case OcrEntityKind.Url:
-                {
-                    var href = entity.Value.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                        ? entity.Value
-                        : "https://" + entity.Value;
-                    await Launcher.LaunchUriAsync(new Uri(href));
-                    _status.Text = "Opened URL.";
-                    break;
-                }
+                    {
+                        var href = entity.Value.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                            ? entity.Value
+                            : "https://" + entity.Value;
+                        await Launcher.LaunchUriAsync(new Uri(href));
+                        _status.Text = "Opened URL.";
+                        break;
+                    }
                 case OcrEntityKind.Email:
                     await Launcher.LaunchUriAsync(new Uri("mailto:" + entity.Value));
                     _status.Text = "Opened mail compose.";
                     break;
                 case OcrEntityKind.Address:
-                {
-                    var maps = "https://www.bing.com/maps?q=" + Uri.EscapeDataString(entity.Value);
-                    await Launcher.LaunchUriAsync(new Uri(maps));
-                    _status.Text = "Opened address in Maps.";
-                    break;
-                }
+                    {
+                        var maps = "https://www.bing.com/maps?q=" + Uri.EscapeDataString(entity.Value);
+                        await Launcher.LaunchUriAsync(new Uri(maps));
+                        _status.Text = "Opened address in Maps.";
+                        break;
+                    }
                 case OcrEntityKind.Date:
                 case OcrEntityKind.Time:
                     await CreateCalendarFromOcrAsync(entity);
                     break;
                 case OcrEntityKind.Phone:
                 default:
-                {
-                    var package = new DataPackage();
-                    package.SetText(entity.Value);
-                    Clipboard.SetContent(package);
-                    _status.Text = $"Copied {entity.Kind}.";
-                    break;
-                }
+                    {
+                        var package = new DataPackage();
+                        package.SetText(entity.Value);
+                        Clipboard.SetContent(package);
+                        _status.Text = $"Copied {entity.Kind}.";
+                        break;
+                    }
             }
         }
         catch (Exception ex)
