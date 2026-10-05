@@ -3785,12 +3785,14 @@ public sealed class PdfDocumentView : UserControl
                 _ => "Striking through…",
             };
 
-            await _annotations.AddTextMarkupAsync(
+            var created = await _annotations.AddTextMarkupAsync(
                 _document,
                 _selectionPageIndex,
                 kind,
                 _selectionQuads,
                 color);
+            RememberAnnotationForUndo(created);
+
             NotifyEdited();
 
             _cache.ClearDocument(_documentKey);
@@ -5711,7 +5713,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (_strokeUndoStack.Count == 0)
         {
-            _status.Text = "No stroke to undo.";
+            _status.Text = "Nothing to undo.";
             return;
         }
 
@@ -5721,8 +5723,7 @@ public sealed class PdfDocumentView : UserControl
             // Prefer the live sidebar entry in case indices shifted after other edits.
             var live = _annotationItems.FirstOrDefault(a =>
                 a.PageIndex == stroke.PageIndex
-                && a.AnnotIndex == stroke.AnnotIndex
-                && a.IsInk);
+                && a.AnnotIndex == stroke.AnnotIndex);
             var target = live ?? stroke;
             await _annotations.RemoveAsync(_document, target.PageIndex, target.AnnotIndex);
             if (_selectedAnnot is not null
@@ -5739,13 +5740,15 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = "Stroke undone.";
+            _status.Text = $"Undid {FormatAnnotationLabel(target)}.";
         }
         catch (Exception ex)
         {
-            _status.Text = "Undo stroke failed: " + ex.Message;
+            _status.Text = "Undo annotation failed: " + ex.Message;
         }
     }
+
+    private void RememberAnnotationForUndo(PdfAnnotationInfo created) => _strokeUndoStack.Push(created);
 
     private void CancelInkStroke()
     {
@@ -6094,13 +6097,14 @@ public sealed class PdfDocumentView : UserControl
             var bottom = Math.Max(36, 48.0);
             var bounds = new PdfRect(left, bottom, left + targetWidth, bottom + targetHeight);
 
-            await _annotations.AddStampAsync(
+            var stamp = await _annotations.AddStampAsync(
                 _document,
                 CurrentPageIndex,
                 bounds,
                 pixels,
                 width,
                 height);
+            RememberAnnotationForUndo(stamp);
             await ApplySignatureContentsAsync(CurrentPageIndex, FormatSignatureContents(entry));
 
             _cache.ClearDocument(_documentKey);
@@ -8032,7 +8036,7 @@ public sealed class PdfDocumentView : UserControl
         try
         {
             _status.Text = "Adding note…";
-            await _annotations.AddStickyNoteAsync(
+            var created = await _annotations.AddStickyNoteAsync(
                 _document,
                 CurrentPageIndex,
                 x,
@@ -8040,6 +8044,7 @@ public sealed class PdfDocumentView : UserControl
                 box.Text ?? string.Empty,
                 color,
                 author: _annotationAuthor);
+            RememberAnnotationForUndo(created);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
@@ -8175,7 +8180,7 @@ public sealed class PdfDocumentView : UserControl
         try
         {
             _status.Text = "Adding text box…";
-            await _annotations.AddTextBoxAsync(
+            var created = await _annotations.AddTextBoxAsync(
                 _document,
                 CurrentPageIndex,
                 bounds,
@@ -8186,6 +8191,7 @@ public sealed class PdfDocumentView : UserControl
                 fontSizePoints: fontSize,
                 fontResourceName: fontResource,
                 underline: underlineCheck.IsChecked == true);
+            RememberAnnotationForUndo(created);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
