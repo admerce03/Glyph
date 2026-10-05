@@ -37,7 +37,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-27 | Application and file handling | Do not silently overwrite originals by default. | M1/M9 | Implemented | Autosave-to-original is opt-in (off by default) |
 | F02-01 | Main window and interface | Standard Windows title bar. | M1/M9 | Implemented | WinUI AppWindow system title bar |
 | F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | In Progress | MenuBar File/View/Window |
-| F02-03 | Main window and interface | Customizable toolbar. | M1/M9 | Not Started |  |
+| F02-03 | Main window and interface | Customizable toolbar. | M1/M9 | Implemented | Preferences → Toolbar commands show/hide + Reset (F54) |
 | F02-04 | Main window and interface | Optional compact toolbar. | M1/M9 | Implemented | Preferences → Compact document toolbars |
 | F02-05 | Main window and interface | Hide/show toolbar. | M1/M9 | Implemented | View → Hide/Show Toolbar |
 | F02-06 | Main window and interface | Hide/show sidebar. | M1/M9 | Implemented | View → Hide/Show Sidebar; persisted |
@@ -746,25 +746,25 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F53-01 | Precision touchpad behavior | two-finger scroll | M1/M2 | Implemented | Native ScrollViewer pan on PDF + image views |
 | F53-02 | Precision touchpad behavior | pinch zoom on supported precision touchpads | M1/M2 | Implemented | Ctrl+wheel + Manipulation Scale on PDF + image |
 | F53-03 | Precision touchpad behavior | standard Windows touchpad gestures where they map naturally to application navigation | M1/M2 | Implemented | Scroll/pinch map to pan/zoom; no touchscreen/pen gestures |
-| F54-01 | Toolbar customization | sidebar | M1/M9 | Not Started |  |
-| F54-02 | Toolbar customization | previous | M1/M9 | Not Started |  |
-| F54-03 | Toolbar customization | next | M1/M9 | Not Started |  |
-| F54-04 | Toolbar customization | page number | M1/M9 | Not Started |  |
-| F54-05 | Toolbar customization | zoom | M1/M9 | Not Started |  |
-| F54-06 | Toolbar customization | fit page | M1/M9 | Not Started |  |
-| F54-07 | Toolbar customization | fit width | M1/M9 | Not Started |  |
-| F54-08 | Toolbar customization | search | M1/M9 | Not Started |  |
-| F54-09 | Toolbar customization | markup | M1/M9 | Not Started |  |
-| F54-10 | Toolbar customization | highlight | M1/M9 | Not Started |  |
-| F54-11 | Toolbar customization | rotate | M1/M9 | Not Started |  |
-| F54-12 | Toolbar customization | crop | M1/M9 | Not Started |  |
-| F54-13 | Toolbar customization | signature | M1/M9 | Not Started |  |
-| F54-14 | Toolbar customization | print | M1/M9 | Not Started |  |
-| F54-15 | Toolbar customization | inspector | M1/M9 | Not Started |  |
-| F54-16 | Toolbar customization | share | M1/M9 | Not Started |  |
-| F54-17 | Toolbar customization | OCR | M1/M9 | Not Started |  |
-| F54-18 | Toolbar customization | default toolbar | M1/M9 | Not Started |  |
-| F54-19 | Toolbar customization | reset toolbar | M1/M9 | Not Started |  |
+| F54-01 | Toolbar customization | sidebar | M1/M9 | Implemented | Toolbar Sidebar toggle + Preferences visibility |
+| F54-02 | Toolbar customization | previous | M1/M9 | Implemented | Prefs toggle; PDF Prev button |
+| F54-03 | Toolbar customization | next | M1/M9 | Implemented | Prefs toggle; PDF Next button |
+| F54-04 | Toolbar customization | page number | M1/M9 | Implemented | Prefs toggle; goto box |
+| F54-05 | Toolbar customization | zoom | M1/M9 | Implemented | Prefs toggle; ± zoom |
+| F54-06 | Toolbar customization | fit page | M1/M9 | Implemented | Prefs toggle |
+| F54-07 | Toolbar customization | fit width | M1/M9 | Implemented | Prefs toggle |
+| F54-08 | Toolbar customization | search | M1/M9 | Implemented | Prefs toggle; find UI cluster |
+| F54-09 | Toolbar customization | markup | M1/M9 | Implemented | Prefs toggle; ink/shapes cluster |
+| F54-10 | Toolbar customization | highlight | M1/M9 | Implemented | Prefs toggle; highlight/underline/strike |
+| F54-11 | Toolbar customization | rotate | M1/M9 | Implemented | Prefs toggle |
+| F54-12 | Toolbar customization | crop | M1/M9 | Implemented | Prefs toggle |
+| F54-13 | Toolbar customization | signature | M1/M9 | Implemented | Prefs toggle; Sign |
+| F54-14 | Toolbar customization | print | M1/M9 | Implemented | Prefs toggle |
+| F54-15 | Toolbar customization | inspector | M1/M9 | Implemented | Prefs toggle; Info |
+| F54-16 | Toolbar customization | share | M1/M9 | Implemented | Prefs toggle; Share toolbar → Windows Share |
+| F54-17 | Toolbar customization | OCR | M1/M9 | Implemented | Prefs toggle; OCR cluster |
+| F54-18 | Toolbar customization | default toolbar | M1/M9 | Implemented | Empty `ToolbarHiddenCommands` = all visible |
+| F54-19 | Toolbar customization | reset toolbar | M1/M9 | Implemented | Preferences → Reset toolbar to default |
 | F54-20 | Toolbar customization | compact icon mode | M1/M9 | Implemented | Preferences → Compact document toolbars |
 | F55-01 | Preferences | theme | M1/M9 | In Progress | Theme setting persisted in settings.json |
 | F55-02 | Preferences | restore previous session | M1/M9 | Implemented | View → Preferences toggle |

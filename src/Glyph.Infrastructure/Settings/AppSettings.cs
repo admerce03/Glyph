@@ -37,6 +37,11 @@ public sealed class AppSettings
     /// <summary>When true, document toolbars use tighter padding (F02-04 / F54-20).</summary>
     public bool CompactToolbar { get; set; }
 
+    /// <summary>
+    /// Toolbar command ids to hide (F54). Empty = default toolbar (all catalog commands visible).
+    /// </summary>
+    public List<string> ToolbarHiddenCommands { get; set; } = [];
+
     /// <summary>Default highlight preset name (F55-18), e.g. Yellow.</summary>
     public string DefaultHighlightColor { get; set; } = "Yellow";
 

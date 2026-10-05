@@ -1002,6 +1002,19 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    /// <summary>Toolbar Share button entry (F54-16).</summary>
+    public void ShareActiveDocumentFromToolbar() => ShareActiveDocument();
+
+    /// <summary>Toolbar Sidebar toggle entry (F54-01).</summary>
+    public async Task ToggleSidebarFromToolbarAsync()
+    {
+        var visible = SidebarBorder.Visibility != Visibility.Visible;
+        ApplySidebarVisibility(visible);
+        var settings = _settingsStore.Current;
+        settings.SidebarVisible = visible;
+        await _settingsStore.SaveAsync(settings);
+    }
+
     private async Task ShowActiveInExplorerAsync()
     {
         var path = _workspace.ActiveDocument?.Path;
@@ -2499,6 +2512,45 @@ public sealed partial class MainWindow : Window
             Content = "Compact document toolbars (tighter padding)",
             IsChecked = settings.CompactToolbar,
         };
+        var toolbarHidden = new HashSet<string>(
+            settings.ToolbarHiddenCommands ?? [],
+            StringComparer.OrdinalIgnoreCase);
+        var toolbarChecks = ToolbarCommands.Catalog
+            .Select(c => new CheckBox
+            {
+                Content = c.Label,
+                Tag = c.Id,
+                IsChecked = !toolbarHidden.Contains(c.Id),
+                Margin = new Thickness(0, 2, 0, 2),
+            })
+            .ToList();
+        var toolbarReset = new Button { Content = "Reset toolbar to default", Margin = new Thickness(0, 4, 0, 0) };
+        toolbarReset.Click += (_, _) =>
+        {
+            foreach (var box in toolbarChecks)
+            {
+                box.IsChecked = true;
+            }
+        };
+        var toolbarPanel = new StackPanel
+        {
+            Spacing = 2,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = "Toolbar commands (unchecked = hidden; reopen documents to apply)",
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    Margin = new Thickness(0, 8, 0, 4),
+                },
+            },
+        };
+        foreach (var box in toolbarChecks)
+        {
+            toolbarPanel.Children.Add(box);
+        }
+
+        toolbarPanel.Children.Add(toolbarReset);
         var highlightColorBox = new ComboBox
         {
             Header = "Default highlight color",
@@ -2662,7 +2714,7 @@ public sealed partial class MainWindow : Window
             Children =
             {
                 restoreBox, autoSaveBox, intervalBox, recentBox, snapshotsBox, snapshotCapBox,
-                separateWindowsBox, authorBox, compactToolbarBox,
+                separateWindowsBox, authorBox, compactToolbarBox, toolbarPanel,
                 highlightColorBox, strokeColorBox, stickyColorBox, strokeWidthBox,
                 animationAutoplayBox, stripMetadataBox, layoutBox, defaultZoomBox,
                 zoom100Box, interpolationBox, colorManagedBox, localOcrNote, ocrLanguageBox,
@@ -2672,7 +2724,12 @@ public sealed partial class MainWindow : Window
         var dialog = new ContentDialog
         {
             Title = "Preferences",
-            Content = panel,
+            Content = new ScrollViewer
+            {
+                Content = panel,
+                MaxHeight = 520,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            },
             PrimaryButtonText = "Save",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
@@ -2692,6 +2749,10 @@ public sealed partial class MainWindow : Window
         settings.OpenFilesInSeparateWindows = separateWindowsBox.IsChecked == true;
         settings.AnnotationAuthor = authorBox.Text?.Trim() ?? string.Empty;
         settings.CompactToolbar = compactToolbarBox.IsChecked == true;
+        settings.ToolbarHiddenCommands = toolbarChecks
+            .Where(b => b.IsChecked != true && b.Tag is string id)
+            .Select(b => (string)b.Tag!)
+            .ToList();
         settings.DefaultHighlightColor = highlightColorBox.SelectedItem as string ?? "Yellow";
         settings.DefaultStrokeColor = strokeColorBox.SelectedItem as string ?? "Red";
         settings.DefaultStickyNoteColor = stickyColorBox.SelectedItem as string ?? "Yellow";

@@ -165,6 +165,14 @@ public sealed class JsonSettingsStore : ISettingsStore
         // OCR is always on-device; keep the flag true so prefs stay honest.
         settings.LocalOnlyOcr = true;
         settings.OcrLanguageTag = (settings.OcrLanguageTag ?? string.Empty).Trim();
+
+        settings.ToolbarHiddenCommands ??= [];
+        var known = new HashSet<string>(ToolbarCommands.Catalog.Select(c => c.Id), StringComparer.OrdinalIgnoreCase);
+        settings.ToolbarHiddenCommands = settings.ToolbarHiddenCommands
+            .Where(id => !string.IsNullOrWhiteSpace(id) && known.Contains(id.Trim()))
+            .Select(id => id.Trim().ToLowerInvariant())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private static string NormalizePageLayoutName(string? name) => name?.Trim() switch
@@ -189,6 +197,7 @@ public sealed class JsonSettingsStore : ISettingsStore
         OpenFilesInSeparateWindows = settings.OpenFilesInSeparateWindows,
         AnnotationAuthor = settings.AnnotationAuthor ?? string.Empty,
         CompactToolbar = settings.CompactToolbar,
+        ToolbarHiddenCommands = settings.ToolbarHiddenCommands?.ToList() ?? [],
         DefaultHighlightColor = settings.DefaultHighlightColor ?? "Yellow",
         DefaultStrokeColor = settings.DefaultStrokeColor ?? "Red",
         DefaultStickyNoteColor = settings.DefaultStickyNoteColor ?? "Yellow",

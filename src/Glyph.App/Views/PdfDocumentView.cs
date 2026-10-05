@@ -722,6 +722,8 @@ public sealed class PdfDocumentView : UserControl
         var print = new Button { Content = "Print" };
         var camera = new Button { Content = "Camera" };
         var sign = new Button { Content = "Sign" };
+        var share = new Button { Content = "Share" };
+        var sidebarToggle = new Button { Content = "Sidebar" };
         var formFill = new Button { Content = "Form" };
         var ink = new Button { Content = "Ink" };
         var freeform = new Button { Content = "Freeform" };
@@ -781,6 +783,8 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(export, "Export selected/current page(s) as PNG, JPEG, WebP, TIFF, BMP, GIF, AVIF, or JPEG 2000");
         ToolTipService.SetToolTip(print, "Print current, selected, range, or all pages (Ctrl+P)");
         ToolTipService.SetToolTip(camera, "Capture from webcam and insert onto the current page");
+        ToolTipService.SetToolTip(share, "Share via Windows Share UI");
+        ToolTipService.SetToolTip(sidebarToggle, "Show or hide the app sidebar");
         ToolTipService.SetToolTip(sign, "Signature: draw, import PNG/JPEG, or webcam photo of paper signature");
         ToolTipService.SetToolTip(formFill, "Form fill: overlay mode or field list (Tab order)");
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
@@ -815,7 +819,7 @@ public sealed class PdfDocumentView : UserControl
             first, prev, next, last, back, forward, zoomOut, zoomIn, fitWidth, fitPage, actual, copy,
             rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract,
             merge, split, crop, highlight, underline, strikeout, stickyNote, textBox, callout, flatten,
-            redact, info, optimize, export, print, camera, sign, formFill, ink, freeform, eraser, rect,
+            redact, info, optimize, export, print, share, sidebarToggle, camera, sign, formFill, ink, freeform, eraser, rect,
             roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, fullscreen, undoEdit, redoEdit,
             _layoutBox, _gotoBox,
             _caseSensitiveBox, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton,
@@ -877,6 +881,28 @@ public sealed class PdfDocumentView : UserControl
         print.Click += async (_, _) => await PrintDocumentAsync();
         camera.Click += async (_, _) => await CaptureCameraIntoDocumentAsync();
         sign.Click += async (_, _) => await BeginSignatureAsync();
+        share.Click += (_, _) =>
+        {
+            if (App.CurrentApp.MainWindowInstance is MainWindow mw)
+            {
+                mw.ShareActiveDocumentFromToolbar();
+            }
+            else
+            {
+                _status.Text = "Share unavailable.";
+            }
+        };
+        sidebarToggle.Click += async (_, _) =>
+        {
+            if (App.CurrentApp.MainWindowInstance is MainWindow mw)
+            {
+                await mw.ToggleSidebarFromToolbarAsync();
+            }
+            else
+            {
+                _status.Text = "Sidebar toggle unavailable.";
+            }
+        };
         formFill.Click += async (_, _) => await OnFormButtonClickAsync();
         ink.Click += async (_, _) => await ToggleInkModeAsync();
         freeform.Click += async (_, _) => await ToggleFreeformModeAsync();
@@ -902,14 +928,59 @@ public sealed class PdfDocumentView : UserControl
             Padding = settings?.CompactToolbar == true ? new Thickness(4, 2, 4, 2) : new Thickness(8),
             Children =
             {
-                first, prev, _gotoBox, next, last, back, forward,
+                sidebarToggle, first, prev, _gotoBox, next, last, back, forward,
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, print, camera, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, fullscreen,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, print, share, camera, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, fullscreen,
                 _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _jobProgress, _status,
             },
         };
+        TagToolbarCommand(sidebarToggle, ToolbarCommands.Sidebar);
+        TagToolbarCommand(prev, ToolbarCommands.Previous);
+        TagToolbarCommand(next, ToolbarCommands.Next);
+        TagToolbarCommand(_gotoBox, ToolbarCommands.PageNumber);
+        TagToolbarCommand(zoomOut, ToolbarCommands.Zoom);
+        TagToolbarCommand(zoomIn, ToolbarCommands.Zoom);
+        TagToolbarCommand(fitPage, ToolbarCommands.FitPage);
+        TagToolbarCommand(fitWidth, ToolbarCommands.FitWidth);
+        TagToolbarCommand(_searchBox, ToolbarCommands.Search);
+        TagToolbarCommand(_caseSensitiveBox, ToolbarCommands.Search);
+        TagToolbarCommand(searchButton, ToolbarCommands.Search);
+        TagToolbarCommand(findSelection, ToolbarCommands.Search);
+        TagToolbarCommand(clearSearch, ToolbarCommands.Search);
+        TagToolbarCommand(prevMatch, ToolbarCommands.Search);
+        TagToolbarCommand(nextMatch, ToolbarCommands.Search);
+        TagToolbarCommand(ink, ToolbarCommands.Markup);
+        TagToolbarCommand(freeform, ToolbarCommands.Markup);
+        TagToolbarCommand(polygon, ToolbarCommands.Markup);
+        TagToolbarCommand(eraser, ToolbarCommands.Markup);
+        TagToolbarCommand(rect, ToolbarCommands.Markup);
+        TagToolbarCommand(roundRect, ToolbarCommands.Markup);
+        TagToolbarCommand(hiRect, ToolbarCommands.Markup);
+        TagToolbarCommand(ellipse, ToolbarCommands.Markup);
+        TagToolbarCommand(line, ToolbarCommands.Markup);
+        TagToolbarCommand(arrow, ToolbarCommands.Markup);
+        TagToolbarCommand(star, ToolbarCommands.Markup);
+        TagToolbarCommand(bubble, ToolbarCommands.Markup);
+        TagToolbarCommand(loupe, ToolbarCommands.Markup);
+        TagToolbarCommand(highlight, ToolbarCommands.Highlight);
+        TagToolbarCommand(underline, ToolbarCommands.Highlight);
+        TagToolbarCommand(strikeout, ToolbarCommands.Highlight);
+        TagToolbarCommand(rotateLeft, ToolbarCommands.Rotate);
+        TagToolbarCommand(rotateRight, ToolbarCommands.Rotate);
+        TagToolbarCommand(crop, ToolbarCommands.Crop);
+        TagToolbarCommand(sign, ToolbarCommands.Signature);
+        TagToolbarCommand(print, ToolbarCommands.Print);
+        TagToolbarCommand(info, ToolbarCommands.Inspector);
+        TagToolbarCommand(share, ToolbarCommands.Share);
+        TagToolbarCommand(ocrPage, ToolbarCommands.Ocr);
+        TagToolbarCommand(_ocrCancelButton, ToolbarCommands.Ocr);
+        TagToolbarCommand(_copyOcrButton, ToolbarCommands.Ocr);
+        TagToolbarCommand(_clearOcrOverlayButton, ToolbarCommands.Ocr);
+        TagToolbarCommand(_ocrSavePdfButton, ToolbarCommands.Ocr);
+        TagToolbarCommand(_ocrEntitiesButton, ToolbarCommands.Ocr);
+        ApplyToolbarCommandVisibility(_toolbar, settings);
 
         var body = new Grid
         {
@@ -944,6 +1015,34 @@ public sealed class PdfDocumentView : UserControl
     }
 
     public int CurrentPageIndex { get; private set; }
+
+    private static void TagToolbarCommand(FrameworkElement element, string commandId) =>
+        element.Tag = commandId;
+
+    private static void ApplyToolbarCommandVisibility(StackPanel? toolbar, AppSettings? settings)
+    {
+        if (toolbar is null)
+        {
+            return;
+        }
+
+        var hidden = new HashSet<string>(
+            settings?.ToolbarHiddenCommands ?? [],
+            StringComparer.OrdinalIgnoreCase);
+        if (hidden.Count == 0)
+        {
+            return;
+        }
+
+        for (var i = toolbar.Children.Count - 1; i >= 0; i--)
+        {
+            if (toolbar.Children[i] is FrameworkElement { Tag: string id }
+                && hidden.Contains(id))
+            {
+                toolbar.Children.RemoveAt(i);
+            }
+        }
+    }
 
     private async void PdfDocumentView_Loaded(object sender, RoutedEventArgs e)
     {
