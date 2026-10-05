@@ -230,7 +230,7 @@ public sealed class ImageDocumentView : UserControl
             ItemsSource = new[] { "Free", "Original", "1:1", "4:3", "3:2", "16:9" },
             SelectedIndex = 0,
         };
-        ToolTipService.SetToolTip(_cropAspectBox, "Crop aspect: free, original image ratio, or common presets");
+        ToolTipService.SetToolTip(_cropAspectBox, ImageViewerTooltips.CropAspectFreeOriginalImageRatio);
         _selectButton = new Button { Content = "Select" };
         _selectionKindBox = new ComboBox
         {
@@ -249,18 +249,18 @@ public sealed class ImageDocumentView : UserControl
         _cropSelButton = new Button { Content = "Crop sel", Visibility = Visibility.Collapsed };
         _drawButton = new Button { Content = "Draw" };
         _flattenMarkupButton = new Button { Content = "Flatten", Visibility = Visibility.Collapsed };
-        ToolTipService.SetToolTip(_selectButton, "Pixel selection (drag on image; drag inside to move; arrow keys nudge)");
-        ToolTipService.SetToolTip(_selectionKindBox, "Selection shape: rectangle, ellipse, freeform lasso, or smart (edge-snapping) lasso");
-        ToolTipService.SetToolTip(_selectAllButton, "Select entire image");
-        ToolTipService.SetToolTip(_invertSelButton, "Invert selection (operations apply to outside)");
-        ToolTipService.SetToolTip(_deselectButton, "Clear selection");
-        ToolTipService.SetToolTip(_copySelButton, "Copy selection to clipboard as PNG");
-        ToolTipService.SetToolTip(_cutSelButton, "Cut selection (copy + clear)");
-        ToolTipService.SetToolTip(_pasteSelButton, "Paste at selection top-left (or 0,0)");
-        ToolTipService.SetToolTip(_deleteSelButton, "Clear selection to transparent");
-        ToolTipService.SetToolTip(_cropSelButton, "Crop image to selection");
-        ToolTipService.SetToolTip(_drawButton, "Freehand markup (non-destructive overlay until Flatten/Save)");
-        ToolTipService.SetToolTip(_flattenMarkupButton, "Bake markup strokes into pixels");
+        ToolTipService.SetToolTip(_selectButton, ImageViewerTooltips.PixelSelectionDragOnImageDrag);
+        ToolTipService.SetToolTip(_selectionKindBox, ImageViewerTooltips.SelectionShapeRectangleEllipseFreeformLasso);
+        ToolTipService.SetToolTip(_selectAllButton, ImageViewerTooltips.SelectEntireImage);
+        ToolTipService.SetToolTip(_invertSelButton, ImageViewerTooltips.InvertSelectionOperationsApplyToOutside);
+        ToolTipService.SetToolTip(_deselectButton, ImageViewerTooltips.ClearSelection);
+        ToolTipService.SetToolTip(_copySelButton, ImageViewerTooltips.CopySelectionToClipboardAsPng);
+        ToolTipService.SetToolTip(_cutSelButton, ImageViewerTooltips.CutSelectionCopyClear);
+        ToolTipService.SetToolTip(_pasteSelButton, ImageViewerTooltips.PasteAtSelectionTopLeftOr);
+        ToolTipService.SetToolTip(_deleteSelButton, ImageViewerTooltips.ClearSelectionToTransparent);
+        ToolTipService.SetToolTip(_cropSelButton, ImageViewerTooltips.CropImageToSelection);
+        ToolTipService.SetToolTip(_drawButton, ImageViewerTooltips.FreehandMarkupNonDestructiveOverlayUntil);
+        ToolTipService.SetToolTip(_flattenMarkupButton, ImageViewerTooltips.BakeMarkupStrokesIntoPixels);
         var resize = new Button { Content = "Resize" };
         var adjust = new Button { Content = "Adjust" };
         var bgRemove = new Button { Content = "BG" };
@@ -303,46 +303,46 @@ public sealed class ImageDocumentView : UserControl
         };
         _undoButton = new Button { Content = "Undo", IsEnabled = false };
 
-        ToolTipService.SetToolTip(crop, "Crop using x,y,w,h pixels (origin top-left)");
-        ToolTipService.SetToolTip(_interactiveCropButton, "Drag a rectangle on the image to crop");
-        ToolTipService.SetToolTip(_applyCropButton, "Apply the dragged crop rectangle");
-        ToolTipService.SetToolTip(_cancelCropButton, "Cancel interactive crop");
-        ToolTipService.SetToolTip(resize, "Resize width/height with optional aspect lock");
-        ToolTipService.SetToolTip(adjust, "Brightness / contrast / saturation / levels");
-        ToolTipService.SetToolTip(bgRemove, "Remove solid background / extract subject (corner flood-fill)");
-        ToolTipService.SetToolTip(stamp, "Stamp a signature from the library onto the image");
-        ToolTipService.SetToolTip(meta, "Image metadata, EXIF/IPTC/XMP, and GPS");
-        ToolTipService.SetToolTip(ocrButton, "Run offline OCR on this image");
-        ToolTipService.SetToolTip(rotate180, "Rotate 180°");
-        ToolTipService.SetToolTip(orient, "Apply EXIF orientation into pixels");
-        ToolTipService.SetToolTip(straighten, "Deskew / straighten scanned page (Magick)");
-        ToolTipService.SetToolTip(batchOrient, "Batch folder: rotate/flip/orient, convert/export, or strip metadata");
-        ToolTipService.SetToolTip(fullscreen, "Toggle window fullscreen");
-        ToolTipService.SetToolTip(exportPng, "Export as PNG");
-        ToolTipService.SetToolTip(exportJpeg, "Export as JPEG");
-        ToolTipService.SetToolTip(convert, "Export as WebP, TIFF, BMP, GIF, AVIF, JP2, or HEIC");
-        ToolTipService.SetToolTip(printImage, "Print this image (Ctrl+P)");
-        ToolTipService.SetToolTip(copyImage, "Copy whole image to clipboard (Ctrl+C; selection copies when active)");
-        ToolTipService.SetToolTip(pasteImage, "Paste image from clipboard (Ctrl+V)");
-        ToolTipService.SetToolTip(_prevButton, "Previous image in folder");
-        ToolTipService.SetToolTip(_nextButton, "Next image in folder");
-        ToolTipService.SetToolTip(_slideshowButton, "Play/stop folder slideshow (3s, loops; Esc stops)");
-        ToolTipService.SetToolTip(_animPlayButton, "Play/pause animated frames (GIF/WebP)");
-        ToolTipService.SetToolTip(_animPrevButton, "Previous animation frame");
-        ToolTipService.SetToolTip(_animNextButton, "Next animation frame");
-        ToolTipService.SetToolTip(_animRestartButton, "Restart animation from first frame");
-        ToolTipService.SetToolTip(_animExtractButton, "Save current frame as PNG");
-        ToolTipService.SetToolTip(_animLoopBox, "Loop animation playback");
-        ToolTipService.SetToolTip(_undoButton, "Undo last crop/resize/rotate/adjust (Ctrl+Z)");
-        ToolTipService.SetToolTip(zoomOut, "Zoom out");
-        ToolTipService.SetToolTip(zoomIn, "Zoom in");
-        ToolTipService.SetToolTip(fit, "Fit image in view");
-        ToolTipService.SetToolTip(actual, "Zoom to 100%");
-        ToolTipService.SetToolTip(rotateLeft, "Rotate left 90°");
-        ToolTipService.SetToolTip(rotateRight, "Rotate right 90°");
-        ToolTipService.SetToolTip(flipH, "Flip horizontal");
-        ToolTipService.SetToolTip(flipV, "Flip vertical");
-        ToolTipService.SetToolTip(save, "Save image");
+        ToolTipService.SetToolTip(crop, ImageViewerTooltips.CropUsingXYWH);
+        ToolTipService.SetToolTip(_interactiveCropButton, ImageViewerTooltips.DragARectangleOnTheImage);
+        ToolTipService.SetToolTip(_applyCropButton, ImageViewerTooltips.ApplyTheDraggedCropRectangle);
+        ToolTipService.SetToolTip(_cancelCropButton, ImageViewerTooltips.CancelInteractiveCrop);
+        ToolTipService.SetToolTip(resize, ImageViewerTooltips.ResizeWidthHeightWithOptionalAspect);
+        ToolTipService.SetToolTip(adjust, ImageViewerTooltips.BrightnessContrastSaturationLevels);
+        ToolTipService.SetToolTip(bgRemove, ImageViewerTooltips.RemoveSolidBackgroundExtractSubjectCorner);
+        ToolTipService.SetToolTip(stamp, ImageViewerTooltips.StampASignatureFromTheLibrary);
+        ToolTipService.SetToolTip(meta, ImageViewerTooltips.ImageMetadataExifIptcXmpAnd);
+        ToolTipService.SetToolTip(ocrButton, ImageViewerTooltips.RunOfflineOcrOnThisImage);
+        ToolTipService.SetToolTip(rotate180, ImageViewerTooltips.Rotate180);
+        ToolTipService.SetToolTip(orient, ImageViewerTooltips.ApplyExifOrientationIntoPixels);
+        ToolTipService.SetToolTip(straighten, ImageViewerTooltips.DeskewStraightenScannedPageMagick);
+        ToolTipService.SetToolTip(batchOrient, ImageViewerTooltips.BatchFolderRotateFlipOrientConvert);
+        ToolTipService.SetToolTip(fullscreen, ImageViewerTooltips.ToggleWindowFullscreen);
+        ToolTipService.SetToolTip(exportPng, ImageViewerTooltips.ExportAsPng);
+        ToolTipService.SetToolTip(exportJpeg, ImageViewerTooltips.ExportAsJpeg);
+        ToolTipService.SetToolTip(convert, ImageViewerTooltips.ExportAsWebpTiffBmpGif);
+        ToolTipService.SetToolTip(printImage, ImageViewerTooltips.PrintThisImageCtrlP);
+        ToolTipService.SetToolTip(copyImage, ImageViewerTooltips.CopyWholeImageToClipboardCtrl);
+        ToolTipService.SetToolTip(pasteImage, ImageViewerTooltips.PasteImageFromClipboardCtrlV);
+        ToolTipService.SetToolTip(_prevButton, ImageViewerTooltips.PreviousImageInFolder);
+        ToolTipService.SetToolTip(_nextButton, ImageViewerTooltips.NextImageInFolder);
+        ToolTipService.SetToolTip(_slideshowButton, ImageViewerTooltips.PlayStopFolderSlideshow3sLoops);
+        ToolTipService.SetToolTip(_animPlayButton, ImageViewerTooltips.PlayPauseAnimatedFramesGifWebp);
+        ToolTipService.SetToolTip(_animPrevButton, ImageViewerTooltips.PreviousAnimationFrame);
+        ToolTipService.SetToolTip(_animNextButton, ImageViewerTooltips.NextAnimationFrame);
+        ToolTipService.SetToolTip(_animRestartButton, ImageViewerTooltips.RestartAnimationFromFirstFrame);
+        ToolTipService.SetToolTip(_animExtractButton, ImageViewerTooltips.SaveCurrentFrameAsPng);
+        ToolTipService.SetToolTip(_animLoopBox, ImageViewerTooltips.LoopAnimationPlayback);
+        ToolTipService.SetToolTip(_undoButton, ImageViewerTooltips.UndoLastCropResizeRotateAdjust);
+        ToolTipService.SetToolTip(zoomOut, ImageViewerTooltips.ZoomOut);
+        ToolTipService.SetToolTip(zoomIn, ImageViewerTooltips.ZoomIn);
+        ToolTipService.SetToolTip(fit, ImageViewerTooltips.FitImageInView);
+        ToolTipService.SetToolTip(actual, ImageViewerTooltips.ZoomTo100);
+        ToolTipService.SetToolTip(rotateLeft, ImageViewerTooltips.RotateLeft90);
+        ToolTipService.SetToolTip(rotateRight, ImageViewerTooltips.RotateRight90);
+        ToolTipService.SetToolTip(flipH, ImageViewerTooltips.FlipHorizontal);
+        ToolTipService.SetToolTip(flipV, ImageViewerTooltips.FlipVertical);
+        ToolTipService.SetToolTip(save, ImageViewerTooltips.SaveImage);
         ApplyToolbarAccessibleNames(
             zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, flipH, flipV, crop,
             _interactiveCropButton, _applyCropButton, _cancelCropButton, _cropAspectBox,
@@ -2760,8 +2760,7 @@ public sealed class ImageDocumentView : UserControl
             IsEnabled = _siblings.Count > 1 && _decoder is not null,
         };
         ToolTipService.SetToolTip(
-            batchFolder,
-            "Applies Scale % to every image in this folder (overwrites files on disk). Current image is resized in memory until Save.");
+            batchFolder, ImageViewerTooltips.AppliesScaleToEveryImageIn);
 
         var panel = new StackPanel
         {
@@ -3591,7 +3590,7 @@ public sealed class ImageDocumentView : UserControl
                 VerticalAlignment = VerticalAlignment.Bottom,
                 Margin = new Thickness(6, 0, 0, 0),
             };
-            ToolTipService.SetToolTip(resetOne, "Reset this adjustment");
+            ToolTipService.SetToolTip(resetOne, ImageViewerTooltips.ResetThisAdjustment);
             resetOne.Click += (_, _) =>
             {
                 slider.Value = defaultValue;

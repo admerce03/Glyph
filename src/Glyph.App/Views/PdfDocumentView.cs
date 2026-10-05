@@ -359,18 +359,18 @@ public sealed class PdfDocumentView : UserControl
         _searchBox = new TextBox { PlaceholderText = "Find in document", Width = 160 };
         _searchBox.KeyDown += SearchBox_KeyDown;
         _caseSensitiveBox = new CheckBox { Content = "Aa", VerticalAlignment = VerticalAlignment.Center };
-        ToolTipService.SetToolTip(_caseSensitiveBox, "Match case");
+        ToolTipService.SetToolTip(_caseSensitiveBox, PdfViewerTooltips.MatchCase);
         var searchButton = new Button { Content = "Find" };
         searchButton.Click += async (_, _) => await RunSearchAsync();
         var findSelection = new Button { Content = "Find sel" };
         findSelection.Click += async (_, _) => await SearchSelectedTextAsync();
-        ToolTipService.SetToolTip(findSelection, "Search for the currently selected text");
+        ToolTipService.SetToolTip(findSelection, PdfViewerTooltips.SearchForTheCurrentlySelectedText);
         var ocrPage = new Button { Content = "OCR" };
         ocrPage.Click += async (_, _) => await OnOcrButtonClickAsync();
-        ToolTipService.SetToolTip(ocrPage, "Run offline OCR on selected pages or the entire PDF");
+        ToolTipService.SetToolTip(ocrPage, PdfViewerTooltips.RunOfflineOcrOnSelectedPages);
         _ocrCancelButton = new Button { Content = PerformanceBehaviorPolicy.CancelOcrButton, Visibility = Visibility.Collapsed };
         _ocrCancelButton.Click += (_, _) => CancelOcr();
-        ToolTipService.SetToolTip(_ocrCancelButton, "Cancel the in-flight OCR job");
+        ToolTipService.SetToolTip(_ocrCancelButton, PdfViewerTooltips.CancelTheInFlightOcrJob);
         _jobProgress = new ProgressBar
         {
             Width = 120,
@@ -380,26 +380,26 @@ public sealed class PdfDocumentView : UserControl
             Visibility = Visibility.Collapsed,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        ToolTipService.SetToolTip(_jobProgress, "Long-running job progress");
+        ToolTipService.SetToolTip(_jobProgress, PdfViewerTooltips.LongRunningJobProgress);
         _copyOcrButton = new Button { Content = "Copy OCR", Visibility = Visibility.Collapsed };
         _copyOcrButton.Click += (_, _) => CopySelectedOcrText();
-        ToolTipService.SetToolTip(_copyOcrButton, "Copy selected OCR words (or all OCR text on visible pages)");
+        ToolTipService.SetToolTip(_copyOcrButton, PdfViewerTooltips.CopySelectedOcrWordsOrAll);
         _clearOcrOverlayButton = new Button { Content = "Clear OCR", Visibility = Visibility.Collapsed };
         _clearOcrOverlayButton.Click += (_, _) => ClearOcrOverlays();
-        ToolTipService.SetToolTip(_clearOcrOverlayButton, "Hide OCR word overlays (keeps Find OCR cache)");
+        ToolTipService.SetToolTip(_clearOcrOverlayButton, PdfViewerTooltips.HideOcrWordOverlaysKeepsFind);
         _ocrSavePdfButton = new Button { Content = "OCR→PDF", Visibility = Visibility.Collapsed };
         _ocrSavePdfButton.Click += async (_, _) => await SaveSearchableOcrPdfAsync();
-        ToolTipService.SetToolTip(_ocrSavePdfButton, "Export OCR'd pages as a searchable PDF with invisible text");
+        ToolTipService.SetToolTip(_ocrSavePdfButton, PdfViewerTooltips.ExportOcrDPagesAsA);
         _ocrEntitiesButton = new Button { Content = "Entities", Visibility = Visibility.Collapsed };
         _ocrEntitiesButton.Click += async (_, _) => await ShowOcrEntitiesAsync();
-        ToolTipService.SetToolTip(_ocrEntitiesButton, "Review detected URLs, emails, phones, addresses, dates, and times in OCR text");
+        ToolTipService.SetToolTip(_ocrEntitiesButton, PdfViewerTooltips.ReviewDetectedUrlsEmailsPhonesAddresses);
         var clearSearch = new Button { Content = "Clear" };
-        ToolTipService.SetToolTip(clearSearch, "Clear search results");
+        ToolTipService.SetToolTip(clearSearch, PdfViewerTooltips.ClearSearchResults);
         clearSearch.Click += async (_, _) => await ClearSearchAsync();
         var prevMatch = new Button { Content = "◁" };
         var nextMatch = new Button { Content = "▷" };
-        ToolTipService.SetToolTip(prevMatch, "Previous match");
-        ToolTipService.SetToolTip(nextMatch, "Next match");
+        ToolTipService.SetToolTip(prevMatch, PdfViewerTooltips.PreviousMatch);
+        ToolTipService.SetToolTip(nextMatch, PdfViewerTooltips.NextMatch);
         prevMatch.Click += async (_, _) => await GoToHitAsync(_activeHitIndex - 1);
         nextMatch.Click += async (_, _) => await GoToHitAsync(_activeHitIndex + 1);
         _searchResults = new ListView
@@ -450,27 +450,27 @@ public sealed class PdfDocumentView : UserControl
             },
         };
         var addBookmark = new Button { Content = "+", Width = 28, Padding = new Thickness(0) };
-        ToolTipService.SetToolTip(addBookmark, "Add bookmark at current page");
+        ToolTipService.SetToolTip(addBookmark, PdfViewerTooltips.AddBookmarkAtCurrentPage);
         AutomationProperties.SetName(addBookmark, "Add bookmark at current page");
         addBookmark.Click += async (_, _) => await AddBookmarkAsync();
         var renameBookmark = new Button { Content = "Rename", Padding = new Thickness(4, 2, 4, 2) };
-        ToolTipService.SetToolTip(renameBookmark, "Rename selected bookmark");
+        ToolTipService.SetToolTip(renameBookmark, PdfViewerTooltips.RenameSelectedBookmark);
         AutomationProperties.SetName(renameBookmark, "Rename selected bookmark");
         renameBookmark.Click += async (_, _) => await RenameSelectedBookmarkAsync();
         var deleteBookmark = new Button { Content = "Del", Padding = new Thickness(4, 2, 4, 2) };
-        ToolTipService.SetToolTip(deleteBookmark, "Delete selected bookmark");
+        ToolTipService.SetToolTip(deleteBookmark, PdfViewerTooltips.DeleteSelectedBookmark);
         AutomationProperties.SetName(deleteBookmark, "Delete selected bookmark");
         deleteBookmark.Click += (_, _) => DeleteSelectedBookmark();
         var upBookmark = new Button { Content = "↑", Width = 28, Padding = new Thickness(0) };
-        ToolTipService.SetToolTip(upBookmark, "Move bookmark up");
+        ToolTipService.SetToolTip(upBookmark, PdfViewerTooltips.MoveBookmarkUp);
         AutomationProperties.SetName(upBookmark, "Move bookmark up");
         upBookmark.Click += (_, _) => MoveSelectedBookmark(-1);
         var downBookmark = new Button { Content = "↓", Width = 28, Padding = new Thickness(0) };
-        ToolTipService.SetToolTip(downBookmark, "Move bookmark down");
+        ToolTipService.SetToolTip(downBookmark, PdfViewerTooltips.MoveBookmarkDown);
         AutomationProperties.SetName(downBookmark, "Move bookmark down");
         downBookmark.Click += (_, _) => MoveSelectedBookmark(1);
         var exportBookmarks = new Button { Content = "PDF", Padding = new Thickness(4, 2, 4, 2) };
-        ToolTipService.SetToolTip(exportBookmarks, "Write bookmarks into this PDF as a standard outline");
+        ToolTipService.SetToolTip(exportBookmarks, PdfViewerTooltips.WriteBookmarksIntoThisPdfAs);
         AutomationProperties.SetName(exportBookmarks, "Export bookmarks to PDF outline");
         exportBookmarks.Click += async (_, _) => await ExportBookmarksToPdfOutlineAsync();
         bookmarkHeader.Children.Add(addBookmark);
@@ -510,25 +510,25 @@ public sealed class PdfDocumentView : UserControl
             },
         };
         var removeAnnot = new Button { Content = "Delete", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(removeAnnot, "Delete selected annotation");
+        ToolTipService.SetToolTip(removeAnnot, PdfViewerTooltips.DeleteSelectedAnnotation);
         removeAnnot.Click += async (_, _) => await RemoveSelectedAnnotationAsync();
         var duplicateAnnot = new Button { Content = "Dup", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(duplicateAnnot, "Duplicate selected annotation (offset copy)");
+        ToolTipService.SetToolTip(duplicateAnnot, PdfViewerTooltips.DuplicateSelectedAnnotationOffsetCopy);
         duplicateAnnot.Click += async (_, _) => await DuplicateSelectedAnnotationAsync();
         var copyAnnot = new Button { Content = "Copy", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(copyAnnot, "Copy selected annotation (Ctrl+C when selected)");
+        ToolTipService.SetToolTip(copyAnnot, PdfViewerTooltips.CopySelectedAnnotationCtrlCWhen);
         copyAnnot.Click += (_, _) => CopySelectedAnnotationToClipboard();
         var cutAnnot = new Button { Content = "Cut", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(cutAnnot, "Cut selected annotation (Ctrl+X when selected)");
+        ToolTipService.SetToolTip(cutAnnot, PdfViewerTooltips.CutSelectedAnnotationCtrlXWhen);
         cutAnnot.Click += (_, _) => CutSelectedAnnotationToClipboard();
         var pasteAnnot = new Button { Content = "Paste", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(pasteAnnot, "Paste annotation clipboard (Ctrl+V when clipboard has an annotation)");
+        ToolTipService.SetToolTip(pasteAnnot, PdfViewerTooltips.PasteAnnotationClipboardCtrlVWhen);
         pasteAnnot.Click += async (_, _) => await PasteAnnotationClipboardAsync();
         var editAnnot = new Button { Content = "Edit", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(editAnnot, "Edit contents of selected sticky note, text box, or callout");
+        ToolTipService.SetToolTip(editAnnot, PdfViewerTooltips.EditContentsOfSelectedStickyNote);
         editAnnot.Click += async (_, _) => await EditSelectedAnnotationContentsAsync();
         var authorAnnot = new Button { Content = "Author", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(authorAnnot, "Set default annotation author name for new sticky notes");
+        ToolTipService.SetToolTip(authorAnnot, PdfViewerTooltips.SetDefaultAnnotationAuthorNameFor);
         authorAnnot.Click += async (_, _) => await ConfigureAnnotationAuthorAsync();
         annotHeaderRow.Children.Add(duplicateAnnot);
         annotHeaderRow.Children.Add(editAnnot);
@@ -537,55 +537,55 @@ public sealed class PdfDocumentView : UserControl
         annotHeaderRow.Children.Add(pasteAnnot);
         annotHeaderRow.Children.Add(authorAnnot);
         var expandNote = new Button { Content = "Expand", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(expandNote, "Expand selected sticky note (show popup on page)");
+        ToolTipService.SetToolTip(expandNote, PdfViewerTooltips.ExpandSelectedStickyNoteShowPopup);
         expandNote.Click += (_, _) => ExpandSelectedStickyNote();
         annotHeaderRow.Children.Add(expandNote);
         var collapseNote = new Button { Content = "Collapse", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(collapseNote, "Collapse expanded sticky note popup");
+        ToolTipService.SetToolTip(collapseNote, PdfViewerTooltips.CollapseExpandedStickyNotePopup);
         collapseNote.Click += (_, _) => CollapseSelectedStickyNote();
         annotHeaderRow.Children.Add(collapseNote);
         var exportNotes = new Button { Content = "Export notes", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(exportNotes, "Save sticky notes as a printable text file");
+        ToolTipService.SetToolTip(exportNotes, PdfViewerTooltips.SaveStickyNotesAsAPrintable);
         exportNotes.Click += async (_, _) => await ExportNotesAsync();
         annotHeaderRow.Children.Add(exportNotes);
         var underlineAnnot = new Button { Content = "Underline", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(underlineAnnot, "Toggle underline on selected text box or callout");
+        ToolTipService.SetToolTip(underlineAnnot, PdfViewerTooltips.ToggleUnderlineOnSelectedTextBox);
         underlineAnnot.Click += async (_, _) => await ToggleSelectedTextUnderlineAsync();
         annotHeaderRow.Children.Add(underlineAnnot);
         var alignAnnot = new Button { Content = "Align", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(alignAnnot, "Set text alignment (left/center/right) on selected text box or callout");
+        ToolTipService.SetToolTip(alignAnnot, PdfViewerTooltips.SetTextAlignmentLeftCenterRight);
         alignAnnot.Click += async (_, _) => await SetSelectedTextQuaddingAsync();
         annotHeaderRow.Children.Add(alignAnnot);
         var colorAnnot = new Button { Content = "Color", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(colorAnnot, "Change selected annotation color");
+        ToolTipService.SetToolTip(colorAnnot, PdfViewerTooltips.ChangeSelectedAnnotationColor);
         colorAnnot.Click += async (_, _) => await SetSelectedAnnotationColorAsync();
         annotHeaderRow.Children.Add(colorAnnot);
         var fillAnnot = new Button { Content = "Fill", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(fillAnnot, "Change fill color for shapes and text boxes");
+        ToolTipService.SetToolTip(fillAnnot, PdfViewerTooltips.ChangeFillColorForShapesAnd);
         fillAnnot.Click += async (_, _) => await SetSelectedAnnotationFillAsync();
         annotHeaderRow.Children.Add(fillAnnot);
         var tipAnnot = new Button { Content = "Tip", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(tipAnnot, "Reposition callout pointer tip (click on page)");
+        ToolTipService.SetToolTip(tipAnnot, PdfViewerTooltips.RepositionCalloutPointerTipClickOn);
         tipAnnot.Click += (_, _) => BeginCalloutTipEdit();
         annotHeaderRow.Children.Add(tipAnnot);
         var groupAnnot = new Button { Content = "Group", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(groupAnnot, "Group selected annotations so they move together");
+        ToolTipService.SetToolTip(groupAnnot, PdfViewerTooltips.GroupSelectedAnnotationsSoTheyMove);
         groupAnnot.Click += async (_, _) => await GroupSelectedAnnotationsAsync();
         annotHeaderRow.Children.Add(groupAnnot);
         var ungroupAnnot = new Button { Content = "Ungroup", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(ungroupAnnot, "Remove group from selected annotations");
+        ToolTipService.SetToolTip(ungroupAnnot, PdfViewerTooltips.RemoveGroupFromSelectedAnnotations);
         ungroupAnnot.Click += async (_, _) => await UngroupSelectedAnnotationsAsync();
         annotHeaderRow.Children.Add(ungroupAnnot);
         var opacityAnnot = new Button { Content = "Opacity", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(opacityAnnot, "Change selected annotation opacity");
+        ToolTipService.SetToolTip(opacityAnnot, PdfViewerTooltips.ChangeSelectedAnnotationOpacity);
         opacityAnnot.Click += async (_, _) => await SetSelectedAnnotationOpacityAsync();
         annotHeaderRow.Children.Add(opacityAnnot);
         var widthAnnot = new Button { Content = "Width", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(widthAnnot, "Change stroke or border width for ink and shapes");
+        ToolTipService.SetToolTip(widthAnnot, PdfViewerTooltips.ChangeStrokeOrBorderWidthFor);
         widthAnnot.Click += async (_, _) => await SetSelectedAnnotationBorderWidthAsync();
         annotHeaderRow.Children.Add(widthAnnot);
         var rotateAnnot = new Button { Content = "Rotate", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(rotateAnnot, "Rotate selected stamp, ink/shape, or text box 90° clockwise");
+        ToolTipService.SetToolTip(rotateAnnot, PdfViewerTooltips.RotateSelectedStampInkShapeOr);
         rotateAnnot.Click += async (_, _) => await RotateSelectedAnnotationAsync();
         annotHeaderRow.Children.Add(rotateAnnot);
         annotHeaderRow.Children.Add(removeAnnot);
@@ -606,10 +606,10 @@ public sealed class PdfDocumentView : UserControl
             },
         };
         var propertiesMore = new Button { Content = "More…", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(propertiesMore, "Open full document info dialog");
+        ToolTipService.SetToolTip(propertiesMore, PdfViewerTooltips.OpenFullDocumentInfoDialog);
         propertiesMore.Click += async (_, _) => await ShowDocumentInfoAsync();
         var propertiesEdit = new Button { Content = "Edit…", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(propertiesEdit, "Edit title, author, subject, and keywords");
+        ToolTipService.SetToolTip(propertiesEdit, PdfViewerTooltips.EditTitleAuthorSubjectAndKeywords);
         propertiesEdit.Click += async (_, _) =>
         {
             try
@@ -649,10 +649,10 @@ public sealed class PdfDocumentView : UserControl
             },
         };
         var saveAttachment = new Button { Content = "Save…", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(saveAttachment, "Save selected embedded attachment to disk");
+        ToolTipService.SetToolTip(saveAttachment, PdfViewerTooltips.SaveSelectedEmbeddedAttachmentToDisk);
         saveAttachment.Click += async (_, _) => await SaveSelectedAttachmentAsync();
         var refreshAttachments = new Button { Content = "↻", Padding = new Thickness(6, 2, 6, 2) };
-        ToolTipService.SetToolTip(refreshAttachments, "Refresh attachment list");
+        ToolTipService.SetToolTip(refreshAttachments, PdfViewerTooltips.RefreshAttachmentList);
         refreshAttachments.Click += (_, _) => RefreshAttachmentsSidebar();
         attachmentHeader.Children.Add(saveAttachment);
         attachmentHeader.Children.Add(refreshAttachments);
@@ -699,7 +699,7 @@ public sealed class PdfDocumentView : UserControl
             SelectedIndex = SidebarModeCombo.FromSidebarMode(_viewState.SidebarMode),
         };
         AutomationProperties.SetName(_sidebarModeBox, "Sidebar mode");
-        ToolTipService.SetToolTip(_sidebarModeBox, "Switch sidebar mode without opening another window");
+        ToolTipService.SetToolTip(_sidebarModeBox, PdfViewerTooltips.SwitchSidebarModeWithoutOpeningAnother);
         _sidebarModeBox.SelectionChanged += (_, _) => ApplySidebarMode();
 
         var sideContentHost = new Grid();
@@ -761,16 +761,16 @@ public sealed class PdfDocumentView : UserControl
         var fitPage = new Button { Content = "Fit page" };
         var actual = new Button { Content = "100%" };
         _zoomAreaButton = new Button { Content = "Zoom ▭" };
-        ToolTipService.SetToolTip(_zoomAreaButton, "Rectangular zoom-to-area: drag on a page to zoom into that region");
+        ToolTipService.SetToolTip(_zoomAreaButton, PdfViewerTooltips.RectangularZoomToAreaDragOn);
         AutomationProperties.SetName(_zoomAreaButton, "Zoom to area");
         _viewLoupeButton = new Button { Content = "Glass" };
-        ToolTipService.SetToolTip(_viewLoupeButton, "Magnifier/loupe: move over the page to enlarge under the cursor");
+        ToolTipService.SetToolTip(_viewLoupeButton, PdfViewerTooltips.MagnifierLoupeMoveOverThePage);
         AutomationProperties.SetName(_viewLoupeButton, "Magnifier loupe");
         _presentButton = new Button { Content = "Present" };
-        ToolTipService.SetToolTip(_presentButton, "Presentation mode: fullscreen, hide chrome, single-page (Esc to exit)");
+        ToolTipService.SetToolTip(_presentButton, PdfViewerTooltips.PresentationModeFullscreenHideChromeSingle);
         AutomationProperties.SetName(_presentButton, "Presentation mode");
         var copy = new Button { Content = "Copy" };
-        ToolTipService.SetToolTip(copy, "Copy selected text, or the current page text if nothing is selected");
+        ToolTipService.SetToolTip(copy, PdfViewerTooltips.CopySelectedTextOrTheCurrent);
         var rotateLeft = new Button { Content = "⟲" };
         var rotateRight = new Button { Content = "⟳" };
         var deletePages = new Button { Content = "Delete" };
@@ -833,62 +833,62 @@ public sealed class PdfDocumentView : UserControl
         _redactButton = redact;
         var undoEdit = new Button { Content = "Undo" };
         var redoEdit = new Button { Content = "Redo" };
-        ToolTipService.SetToolTip(rotateLeft, "Rotate selected pages left");
-        ToolTipService.SetToolTip(rotateRight, "Rotate selected pages right");
-        ToolTipService.SetToolTip(deletePages, "Delete selected pages");
-        ToolTipService.SetToolTip(moveUp, "Move selected pages earlier");
-        ToolTipService.SetToolTip(moveDown, "Move selected pages later");
-        ToolTipService.SetToolTip(insertBlank, "Insert blank page after selection");
-        ToolTipService.SetToolTip(duplicate, "Duplicate selected pages");
-        ToolTipService.SetToolTip(extract, "Extract selected pages to a new PDF file");
-        ToolTipService.SetToolTip(merge, "Merge other PDF files into this document");
-        ToolTipService.SetToolTip(split, "Split document before each selected page");
-        ToolTipService.SetToolTip(crop, "Interactive CropBox crop (visual handles; numeric via Crop → Numeric)");
-        ToolTipService.SetToolTip(highlight, "Highlight selected text, or toggle persistent highlight mode");
-        ToolTipService.SetToolTip(underline, "Underline selected text");
-        ToolTipService.SetToolTip(strikeout, "Strike through selected text");
-        ToolTipService.SetToolTip(stickyNote, "Add a sticky note on the current page");
-        ToolTipService.SetToolTip(textBox, "Add a FreeText text box on the current page");
-        ToolTipService.SetToolTip(callout, "Draw a callout: drag from tip to text box");
-        ToolTipService.SetToolTip(flatten, "Flatten annotations into page content (permanent)");
+        ToolTipService.SetToolTip(rotateLeft, PdfViewerTooltips.RotateSelectedPagesLeft);
+        ToolTipService.SetToolTip(rotateRight, PdfViewerTooltips.RotateSelectedPagesRight);
+        ToolTipService.SetToolTip(deletePages, PdfViewerTooltips.DeleteSelectedPages);
+        ToolTipService.SetToolTip(moveUp, PdfViewerTooltips.MoveSelectedPagesEarlier);
+        ToolTipService.SetToolTip(moveDown, PdfViewerTooltips.MoveSelectedPagesLater);
+        ToolTipService.SetToolTip(insertBlank, PdfViewerTooltips.InsertBlankPageAfterSelection);
+        ToolTipService.SetToolTip(duplicate, PdfViewerTooltips.DuplicateSelectedPages);
+        ToolTipService.SetToolTip(extract, PdfViewerTooltips.ExtractSelectedPagesToANew);
+        ToolTipService.SetToolTip(merge, PdfViewerTooltips.MergeOtherPdfFilesIntoThis);
+        ToolTipService.SetToolTip(split, PdfViewerTooltips.SplitDocumentBeforeEachSelectedPage);
+        ToolTipService.SetToolTip(crop, PdfViewerTooltips.InteractiveCropboxCropVisualHandlesNumeric);
+        ToolTipService.SetToolTip(highlight, PdfViewerTooltips.HighlightSelectedTextOrTogglePersistent);
+        ToolTipService.SetToolTip(underline, PdfViewerTooltips.UnderlineSelectedText);
+        ToolTipService.SetToolTip(strikeout, PdfViewerTooltips.StrikeThroughSelectedText);
+        ToolTipService.SetToolTip(stickyNote, PdfViewerTooltips.AddAStickyNoteOnThe);
+        ToolTipService.SetToolTip(textBox, PdfViewerTooltips.AddAFreetextTextBoxOn);
+        ToolTipService.SetToolTip(callout, PdfViewerTooltips.DrawACalloutDragFromTip);
+        ToolTipService.SetToolTip(flatten, PdfViewerTooltips.FlattenAnnotationsIntoPageContentPermanent);
         ToolTipService.SetToolTip(redact, PdfRedactionUiCopy.ToolbarTooltip);
-        ToolTipService.SetToolTip(info, "Document metadata, encryption, and permissions");
-        ToolTipService.SetToolTip(optimize, "Downsample images / shrink PDF (presets)");
-        ToolTipService.SetToolTip(export, "Export selected/current page(s) as PNG, JPEG, WebP, TIFF, BMP, GIF, AVIF, or JPEG 2000");
-        ToolTipService.SetToolTip(print, "Print current, selected, range, or all pages (Ctrl+P)");
-        ToolTipService.SetToolTip(camera, "Capture from webcam and insert onto the current page");
-        ToolTipService.SetToolTip(share, "Share via Windows Share UI");
-        ToolTipService.SetToolTip(sidebarToggle, "Show or hide the app sidebar");
-        ToolTipService.SetToolTip(sign, "Signature: draw, import PNG/JPEG, or webcam photo of paper signature");
-        ToolTipService.SetToolTip(formFill, "Form fill: overlay mode or field list (Tab order)");
-        ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
-        ToolTipService.SetToolTip(freeform, "Draw a closed freeform shape (auto-closes path)");
-        ToolTipService.SetToolTip(eraser, "Erase annotations by clicking them (ink preferred)");
-        ToolTipService.SetToolTip(rect, "Draw a rectangle annotation");
-        ToolTipService.SetToolTip(roundRect, "Draw a rounded rectangle annotation");
-        ToolTipService.SetToolTip(hiRect, "Draw a translucent highlight rectangle area");
-        ToolTipService.SetToolTip(ellipse, "Draw an ellipse annotation");
-        ToolTipService.SetToolTip(line, "Draw a line (stored as a 2-point ink stroke)");
-        ToolTipService.SetToolTip(arrow, "Draw an arrow (ink shaft + arrowhead)");
-        ToolTipService.SetToolTip(star, "Draw a 5-point star outline");
-        ToolTipService.SetToolTip(bubble, "Draw a speech-bubble outline");
-        ToolTipService.SetToolTip(loupe, "Draw a loupe magnification marker (select to see zoomed crop)");
-        ToolTipService.SetToolTip(fullscreen, "Toggle window fullscreen (F11)");
-        ToolTipService.SetToolTip(undoEdit, "Undo last stroke (if any) or page edit (Ctrl+Z)");
-        ToolTipService.SetToolTip(redoEdit, "Redo page edit (Ctrl+Y)");
-        ToolTipService.SetToolTip(first, "Go to first page");
-        ToolTipService.SetToolTip(prev, "Previous page");
-        ToolTipService.SetToolTip(next, "Next page");
-        ToolTipService.SetToolTip(last, "Go to last page");
-        ToolTipService.SetToolTip(back, "Navigate back in page history");
-        ToolTipService.SetToolTip(forward, "Navigate forward in page history");
-        ToolTipService.SetToolTip(zoomOut, "Zoom out");
-        ToolTipService.SetToolTip(zoomIn, "Zoom in");
-        ToolTipService.SetToolTip(fitWidth, "Fit page width");
-        ToolTipService.SetToolTip(fitPage, "Fit page");
-        ToolTipService.SetToolTip(actual, "Zoom to 100%");
-        ToolTipService.SetToolTip(_layoutBox, "Page layout mode");
-        ToolTipService.SetToolTip(_gotoBox, "Go to page number");
+        ToolTipService.SetToolTip(info, PdfViewerTooltips.DocumentMetadataEncryptionAndPermissions);
+        ToolTipService.SetToolTip(optimize, PdfViewerTooltips.DownsampleImagesShrinkPdfPresets);
+        ToolTipService.SetToolTip(export, PdfViewerTooltips.ExportSelectedCurrentPageSAs);
+        ToolTipService.SetToolTip(print, PdfViewerTooltips.PrintCurrentSelectedRangeOrAll);
+        ToolTipService.SetToolTip(camera, PdfViewerTooltips.CaptureFromWebcamAndInsertOnto);
+        ToolTipService.SetToolTip(share, PdfViewerTooltips.ShareViaWindowsShareUi);
+        ToolTipService.SetToolTip(sidebarToggle, PdfViewerTooltips.ShowOrHideTheAppSidebar);
+        ToolTipService.SetToolTip(sign, PdfViewerTooltips.SignatureDrawImportPngJpegOr);
+        ToolTipService.SetToolTip(formFill, PdfViewerTooltips.FormFillOverlayModeOrField);
+        ToolTipService.SetToolTip(ink, PdfViewerTooltips.ToggleFreehandInkDrawingOnThe);
+        ToolTipService.SetToolTip(freeform, PdfViewerTooltips.DrawAClosedFreeformShapeAuto);
+        ToolTipService.SetToolTip(eraser, PdfViewerTooltips.EraseAnnotationsByClickingThemInk);
+        ToolTipService.SetToolTip(rect, PdfViewerTooltips.DrawARectangleAnnotation);
+        ToolTipService.SetToolTip(roundRect, PdfViewerTooltips.DrawARoundedRectangleAnnotation);
+        ToolTipService.SetToolTip(hiRect, PdfViewerTooltips.DrawATranslucentHighlightRectangleArea);
+        ToolTipService.SetToolTip(ellipse, PdfViewerTooltips.DrawAnEllipseAnnotation);
+        ToolTipService.SetToolTip(line, PdfViewerTooltips.DrawALineStoredAsA);
+        ToolTipService.SetToolTip(arrow, PdfViewerTooltips.DrawAnArrowInkShaftArrowhead);
+        ToolTipService.SetToolTip(star, PdfViewerTooltips.DrawA5PointStarOutline);
+        ToolTipService.SetToolTip(bubble, PdfViewerTooltips.DrawASpeechBubbleOutline);
+        ToolTipService.SetToolTip(loupe, PdfViewerTooltips.DrawALoupeMagnificationMarkerSelect);
+        ToolTipService.SetToolTip(fullscreen, PdfViewerTooltips.ToggleWindowFullscreenF11);
+        ToolTipService.SetToolTip(undoEdit, PdfViewerTooltips.UndoLastStrokeIfAnyOr);
+        ToolTipService.SetToolTip(redoEdit, PdfViewerTooltips.RedoPageEditCtrlY);
+        ToolTipService.SetToolTip(first, PdfViewerTooltips.GoToFirstPage);
+        ToolTipService.SetToolTip(prev, PdfViewerTooltips.PreviousPage);
+        ToolTipService.SetToolTip(next, PdfViewerTooltips.NextPage);
+        ToolTipService.SetToolTip(last, PdfViewerTooltips.GoToLastPage);
+        ToolTipService.SetToolTip(back, PdfViewerTooltips.NavigateBackInPageHistory);
+        ToolTipService.SetToolTip(forward, PdfViewerTooltips.NavigateForwardInPageHistory);
+        ToolTipService.SetToolTip(zoomOut, PdfViewerTooltips.ZoomOut);
+        ToolTipService.SetToolTip(zoomIn, PdfViewerTooltips.ZoomIn);
+        ToolTipService.SetToolTip(fitWidth, PdfViewerTooltips.FitPageWidth);
+        ToolTipService.SetToolTip(fitPage, PdfViewerTooltips.FitPage);
+        ToolTipService.SetToolTip(actual, PdfViewerTooltips.ZoomTo100);
+        ToolTipService.SetToolTip(_layoutBox, PdfViewerTooltips.PageLayoutMode);
+        ToolTipService.SetToolTip(_gotoBox, PdfViewerTooltips.GoToPageNumber);
         ApplyToolbarAccessibleNames(
             first, prev, next, last, back, forward, zoomOut, zoomIn, fitWidth, fitPage, actual, _zoomAreaButton, _viewLoupeButton, _presentButton, copy,
             rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract,
@@ -6877,7 +6877,7 @@ public sealed class PdfDocumentView : UserControl
         var drawBtn = new Button { Content = "Draw with mouse", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 4, 0, 0) };
         var importBtn = new Button { Content = "Import image…", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 4, 0, 0) };
         var webcamBtn = new Button { Content = "Webcam…", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 4, 0, 0) };
-        ToolTipService.SetToolTip(webcamBtn, "Photograph a signature on paper with the webcam");
+        ToolTipService.SetToolTip(webcamBtn, PdfViewerTooltips.PhotographASignatureOnPaperWith);
         var picked = 0; // 1=draw, 2=import, 3=webcam
         drawBtn.Click += (_, _) => { picked = 1; dialog.Hide(); };
         importBtn.Click += (_, _) => { picked = 2; dialog.Hide(); };
@@ -6939,10 +6939,10 @@ public sealed class PdfDocumentView : UserControl
         var down = new Button { Content = "↓", Padding = new Thickness(10, 4, 10, 4) };
         var del = new Button { Content = "Delete", Padding = new Thickness(10, 4, 10, 4) };
         var saveDesc = new Button { Content = "Save description", Padding = new Thickness(10, 4, 10, 4) };
-        ToolTipService.SetToolTip(up, "Move selected signature earlier in the library");
-        ToolTipService.SetToolTip(down, "Move selected signature later in the library");
-        ToolTipService.SetToolTip(del, "Delete selected signature from the library");
-        ToolTipService.SetToolTip(saveDesc, "Save accessibility description for the selected signature");
+        ToolTipService.SetToolTip(up, PdfViewerTooltips.MoveSelectedSignatureEarlierInThe);
+        ToolTipService.SetToolTip(down, PdfViewerTooltips.MoveSelectedSignatureLaterInThe);
+        ToolTipService.SetToolTip(del, PdfViewerTooltips.DeleteSelectedSignatureFromTheLibrary);
+        ToolTipService.SetToolTip(saveDesc, PdfViewerTooltips.SaveAccessibilityDescriptionForTheSelected);
         AutomationProperties.SetName(up, "Move signature up");
         AutomationProperties.SetName(down, "Move signature down");
         AutomationProperties.SetName(del, "Delete signature");
@@ -7088,7 +7088,7 @@ public sealed class PdfDocumentView : UserControl
 
         var importBtn = new Button { Content = "Import image…", HorizontalAlignment = HorizontalAlignment.Left };
         var webcamBtn = new Button { Content = "Webcam…", HorizontalAlignment = HorizontalAlignment.Left };
-        ToolTipService.SetToolTip(webcamBtn, "Photograph a signature on paper with the webcam");
+        ToolTipService.SetToolTip(webcamBtn, PdfViewerTooltips.PhotographASignatureOnPaperWith);
         var importRequested = false;
         var webcamRequested = false;
         importBtn.Click += (_, _) =>
@@ -7447,7 +7447,7 @@ public sealed class PdfDocumentView : UserControl
                 var fallback = new ContentDialog
                 {
                     Title = PdfDialogTitles.WebcamUnavailable,
-                    Content = "No camera could be opened (or capture cancelled). Import a photo of your signature instead?",
+                    Content = PdfDialogBodies.WebcamUnavailableImport,
                     PrimaryButtonText = DialogButtons.ImportImageEllipsis,
                     CloseButtonText = DialogButtons.Cancel,
                     DefaultButton = ContentDialogButton.Primary,
@@ -8490,7 +8490,7 @@ public sealed class PdfDocumentView : UserControl
         var dialog = new ContentDialog
         {
             Title = PdfDialogTitles.FlattenAnnotations,
-            Content = "Bake all annotations into page content? This cannot be undone from the annotation layer.",
+            Content = PdfDialogBodies.FlattenAnnotationsConfirm,
             PrimaryButtonText = DialogButtons.Flatten,
             CloseButtonText = DialogButtons.Cancel,
             DefaultButton = ContentDialogButton.Close,
@@ -10474,9 +10474,9 @@ public sealed class PdfDocumentView : UserControl
         var small = new Button { Content = "S", Width = 28, Padding = new Thickness(0), Tag = ThumbnailWidthConstraints.Min };
         var medium = new Button { Content = "M", Width = 28, Padding = new Thickness(0), Tag = ThumbnailWidthConstraints.Default };
         var large = new Button { Content = "L", Width = 28, Padding = new Thickness(0), Tag = 156.0 };
-        ToolTipService.SetToolTip(small, "Small page thumbnails");
-        ToolTipService.SetToolTip(medium, "Medium page thumbnails");
-        ToolTipService.SetToolTip(large, "Large page thumbnails");
+        ToolTipService.SetToolTip(small, PdfViewerTooltips.SmallPageThumbnails);
+        ToolTipService.SetToolTip(medium, PdfViewerTooltips.MediumPageThumbnails);
+        ToolTipService.SetToolTip(large, PdfViewerTooltips.LargePageThumbnails);
         AutomationProperties.SetName(small, "Small page thumbnails");
         AutomationProperties.SetName(medium, "Medium page thumbnails");
         AutomationProperties.SetName(large, "Large page thumbnails");
@@ -11186,7 +11186,7 @@ public sealed class PdfDocumentView : UserControl
         cancel.Click += (_, _) => CancelCropMode();
         numeric.Click += async (_, _) => await CropNumericDialogAsync();
         exportCropped.Click += async (_, _) => await ExportCroppedAsync();
-        ToolTipService.SetToolTip(exportCropped, "Export selected pages with a permanent MediaBox crop");
+        ToolTipService.SetToolTip(exportCropped, PdfViewerTooltips.ExportSelectedPagesWithAPermanent);
         _cropChrome = new StackPanel
         {
             Orientation = Orientation.Horizontal,
