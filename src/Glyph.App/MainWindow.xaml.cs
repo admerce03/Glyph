@@ -1946,7 +1946,7 @@ public sealed partial class MainWindow : Window
     private void AttachTabContextFlyout(TabViewItem tab)
     {
         var flyout = new MenuFlyout();
-        var closeItem = new MenuFlyoutItem { Text = "Close Tab" };
+        var closeItem = new MenuFlyoutItem { Text = AppShellTextLabels.CloseTab };
         closeItem.Click += async (_, _) =>
         {
             if (tab.Tag is DocumentId id)
@@ -1954,7 +1954,7 @@ public sealed partial class MainWindow : Window
                 await CloseDocumentAsync(id);
             }
         };
-        var tearItem = new MenuFlyoutItem { Text = "Move to New Window" };
+        var tearItem = new MenuFlyoutItem { Text = AppShellTextLabels.MoveToNewWindow };
         tearItem.Click += async (_, _) =>
         {
             if (tab.Tag is DocumentId id)

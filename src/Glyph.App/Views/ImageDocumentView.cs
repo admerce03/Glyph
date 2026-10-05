@@ -486,7 +486,7 @@ public sealed class ImageDocumentView : UserControl
         };
         sidebar.Children.Add(new TextBlock
         {
-            Text = "Images",
+            Text = ImageViewerTextLabels.Images,
             FontSize = 12,
             Opacity = 0.75,
             Margin = new Thickness(4, 0, 4, 4),
@@ -1937,17 +1937,17 @@ public sealed class ImageDocumentView : UserControl
         }
 
         flyout.Items.Add(new MenuFlyoutSeparator());
-        var pasteItem = new MenuFlyoutItem { Text = "Paste" };
+        var pasteItem = new MenuFlyoutItem { Text = ImageViewerTextLabels.Paste };
         pasteItem.Click += async (_, _) => await PasteImageAsync();
         flyout.Items.Add(pasteItem);
         flyout.Items.Add(new MenuFlyoutSeparator());
-        var fitItem = new MenuFlyoutItem { Text = "Fit" };
+        var fitItem = new MenuFlyoutItem { Text = ImageViewerTextLabels.Fit };
         fitItem.Click += async (_, _) => await FitAsync();
         flyout.Items.Add(fitItem);
-        var rotateLeftItem = new MenuFlyoutItem { Text = "Rotate left" };
+        var rotateLeftItem = new MenuFlyoutItem { Text = ImageViewerTextLabels.RotateLeft };
         rotateLeftItem.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, -90), "Rotated left.");
         flyout.Items.Add(rotateLeftItem);
-        var rotateRightItem = new MenuFlyoutItem { Text = "Rotate right" };
+        var rotateRightItem = new MenuFlyoutItem { Text = ImageViewerTextLabels.RotateRight };
         rotateRightItem.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 90), "Rotated right.");
         flyout.Items.Add(rotateRightItem);
 
@@ -2637,7 +2637,7 @@ public sealed class ImageDocumentView : UserControl
             var (w, h) = ParsePixelSize();
             if (w <= 0 || h <= 0)
             {
-                preview.Text = "Result: —";
+                preview.Text = ImageViewerTextLabels.ResultPlaceholder;
                 return;
             }
 
@@ -3396,7 +3396,7 @@ public sealed class ImageDocumentView : UserControl
             Value = 12,
             Width = 220,
         };
-        var fuzzLabel = new TextBlock { Text = "Fuzz 12%" };
+        var fuzzLabel = new TextBlock { Text = ImageViewerTextLabels.Fuzz12Percent };
         fuzzSlider.ValueChanged += (_, args) =>
         {
             fuzzLabel.Text = $"Fuzz {args.NewValue:0}%";
@@ -3424,7 +3424,7 @@ public sealed class ImageDocumentView : UserControl
             {
                 new TextBlock
                 {
-                    Text = "Corner flood-fill removes connected background colors (studio / solid BG).",
+                    Text = ImageViewerTextLabels.FloodFillHint,
                     TextWrapping = TextWrapping.Wrap,
                     MaxWidth = 320,
                     Opacity = 0.8,
@@ -3631,7 +3631,7 @@ public sealed class ImageDocumentView : UserControl
             Height = 64,
             Background = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 32, 32, 32)),
         };
-        var histLabel = new TextBlock { Text = "Luminance histogram", Opacity = 0.75, FontSize = 12 };
+        var histLabel = new TextBlock { Text = ImageViewerTextLabels.LuminanceHistogram, Opacity = 0.75, FontSize = 12 };
 
         ImageAdjustments BuildAdjustments() => new(
             Brightness: brightness.Value,
@@ -3756,7 +3756,7 @@ public sealed class ImageDocumentView : UserControl
             {
                 new TextBlock
                 {
-                    Text = "Live preview on the image. ↺ resets one control; Reset all clears everything. Apply keeps the preview (Undo / Ctrl+Z).",
+                    Text = ImageViewerTextLabels.AdjustPreviewHint,
                     Opacity = 0.75,
                     TextWrapping = TextWrapping.Wrap,
                     MaxWidth = 320,
@@ -3992,7 +3992,7 @@ public sealed class ImageDocumentView : UserControl
                     {
                         new TextBlock
                         {
-                            Text = "System print dialog sets printer, copies, collate, duplex, and paper.",
+                            Text = ImageViewerTextLabels.PrintDialogHint,
                             TextWrapping = TextWrapping.Wrap,
                             MaxWidth = 320,
                             Opacity = 0.8,
@@ -4393,7 +4393,7 @@ public sealed class ImageDocumentView : UserControl
                         Spacing = 8,
                         Children =
                         {
-                            new TextBlock { Text = "Intent", VerticalAlignment = VerticalAlignment.Center },
+                            new TextBlock { Text = ImageViewerTextLabels.Intent, VerticalAlignment = VerticalAlignment.Center },
                             intentBox,
                         },
                     },
@@ -4559,7 +4559,7 @@ public sealed class ImageDocumentView : UserControl
                 {
                     new TextBlock
                     {
-                        Text = "Writes IPTC title, caption, keywords, and copyright. Save the image to persist on disk.",
+                        Text = ImageViewerTextLabels.IptcPersistHint,
                         Opacity = 0.75,
                         TextWrapping = TextWrapping.Wrap,
                         MaxWidth = 360,

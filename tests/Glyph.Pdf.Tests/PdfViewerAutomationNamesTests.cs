@@ -1,0 +1,14 @@
+using FluentAssertions;
+using Glyph.Pdf.Abstractions;
+using Xunit;
+
+namespace Glyph.Pdf.Tests;
+
+public class PdfViewerAutomationNamesTests
+{
+    [Fact]
+    public void Labels_are_stable()
+    {
+        PdfViewerAutomationNames.TableOfContents.Should().Be("Table of contents");
+    }
+}

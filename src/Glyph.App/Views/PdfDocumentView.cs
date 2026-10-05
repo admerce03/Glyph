@@ -354,7 +354,7 @@ public sealed class PdfDocumentView : UserControl
         _outlineTree = new TreeView { SelectionMode = TreeViewSelectionMode.Single };
         _outlineTree.ItemInvoked += OutlineTree_ItemInvoked;
         _outlineTree.KeyDown += OutlineTree_KeyDown;
-        AutomationProperties.SetName(_outlineTree, "Table of contents");
+        AutomationProperties.SetName(_outlineTree, PdfViewerAutomationNames.TableOfContents);
 
         _searchBox = new TextBox { PlaceholderText = PdfDialogPlaceholders.FindInDocument, Width = 160 };
         _searchBox.KeyDown += SearchBox_KeyDown;
@@ -443,7 +443,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 new TextBlock
                 {
-                    Text = "Bookmarks",
+                    Text = PdfViewerTextLabels.Bookmarks,
                     FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                     VerticalAlignment = VerticalAlignment.Center,
                 },
@@ -451,27 +451,27 @@ public sealed class PdfDocumentView : UserControl
         };
         var addBookmark = new Button { Content = PdfViewerChromeLabels.Plus, Width = 28, Padding = new Thickness(0) };
         ToolTipService.SetToolTip(addBookmark, PdfViewerTooltips.AddBookmarkAtCurrentPage);
-        AutomationProperties.SetName(addBookmark, "Add bookmark at current page");
+        AutomationProperties.SetName(addBookmark, PdfViewerAutomationNames.AddBookmarkAtCurrentPage);
         addBookmark.Click += async (_, _) => await AddBookmarkAsync();
         var renameBookmark = new Button { Content = PdfViewerChromeLabels.Rename, Padding = new Thickness(4, 2, 4, 2) };
         ToolTipService.SetToolTip(renameBookmark, PdfViewerTooltips.RenameSelectedBookmark);
-        AutomationProperties.SetName(renameBookmark, "Rename selected bookmark");
+        AutomationProperties.SetName(renameBookmark, PdfViewerAutomationNames.RenameSelectedBookmark);
         renameBookmark.Click += async (_, _) => await RenameSelectedBookmarkAsync();
         var deleteBookmark = new Button { Content = PdfViewerChromeLabels.DeleteShort, Padding = new Thickness(4, 2, 4, 2) };
         ToolTipService.SetToolTip(deleteBookmark, PdfViewerTooltips.DeleteSelectedBookmark);
-        AutomationProperties.SetName(deleteBookmark, "Delete selected bookmark");
+        AutomationProperties.SetName(deleteBookmark, PdfViewerAutomationNames.DeleteSelectedBookmark);
         deleteBookmark.Click += (_, _) => DeleteSelectedBookmark();
         var upBookmark = new Button { Content = PdfViewerChromeLabels.MoveUp, Width = 28, Padding = new Thickness(0) };
         ToolTipService.SetToolTip(upBookmark, PdfViewerTooltips.MoveBookmarkUp);
-        AutomationProperties.SetName(upBookmark, "Move bookmark up");
+        AutomationProperties.SetName(upBookmark, PdfViewerAutomationNames.MoveBookmarkUp);
         upBookmark.Click += (_, _) => MoveSelectedBookmark(-1);
         var downBookmark = new Button { Content = PdfViewerChromeLabels.MoveDown, Width = 28, Padding = new Thickness(0) };
         ToolTipService.SetToolTip(downBookmark, PdfViewerTooltips.MoveBookmarkDown);
-        AutomationProperties.SetName(downBookmark, "Move bookmark down");
+        AutomationProperties.SetName(downBookmark, PdfViewerAutomationNames.MoveBookmarkDown);
         downBookmark.Click += (_, _) => MoveSelectedBookmark(1);
         var exportBookmarks = new Button { Content = PdfViewerChromeLabels.Pdf, Padding = new Thickness(4, 2, 4, 2) };
         ToolTipService.SetToolTip(exportBookmarks, PdfViewerTooltips.WriteBookmarksIntoThisPdfAs);
-        AutomationProperties.SetName(exportBookmarks, "Export bookmarks to PDF outline");
+        AutomationProperties.SetName(exportBookmarks, PdfViewerAutomationNames.ExportBookmarksToPdfOutline);
         exportBookmarks.Click += async (_, _) => await ExportBookmarksToPdfOutlineAsync();
         bookmarkHeader.Children.Add(addBookmark);
         bookmarkHeader.Children.Add(renameBookmark);
@@ -482,14 +482,14 @@ public sealed class PdfDocumentView : UserControl
 
         var tocHeader = new TextBlock
         {
-            Text = "Contents",
+            Text = PdfViewerTextLabels.Contents,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             Margin = new Thickness(8, 8, 8, 4),
         };
 
         var searchHeader = new TextBlock
         {
-            Text = "Search",
+            Text = PdfViewerTextLabels.Search,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             Margin = new Thickness(8, 8, 8, 4),
         };
@@ -503,7 +503,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 new TextBlock
                 {
-                    Text = "Annotations",
+                    Text = PdfViewerTextLabels.Annotations,
                     FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                     VerticalAlignment = VerticalAlignment.Center,
                 },
@@ -599,7 +599,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 new TextBlock
                 {
-                    Text = "Properties",
+                    Text = PdfViewerTextLabels.Properties,
                     FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                     VerticalAlignment = VerticalAlignment.Center,
                 },
@@ -630,7 +630,7 @@ public sealed class PdfDocumentView : UserControl
             FontSize = 11,
             Opacity = 0.85,
             TextWrapping = TextWrapping.Wrap,
-            Text = "Loading…",
+            Text = PdfViewerTextLabels.LoadingEllipsis,
         };
 
         var attachmentHeader = new StackPanel
@@ -642,7 +642,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 new TextBlock
                 {
-                    Text = "Attachments",
+                    Text = PdfViewerTextLabels.Attachments,
                     FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                     VerticalAlignment = VerticalAlignment.Center,
                 },
@@ -698,7 +698,7 @@ public sealed class PdfDocumentView : UserControl
             ItemsSource = SidebarModeCombo.Labels.ToArray(),
             SelectedIndex = SidebarModeCombo.FromSidebarMode(_viewState.SidebarMode),
         };
-        AutomationProperties.SetName(_sidebarModeBox, "Sidebar mode");
+        AutomationProperties.SetName(_sidebarModeBox, PdfViewerAutomationNames.SidebarMode);
         ToolTipService.SetToolTip(_sidebarModeBox, PdfViewerTooltips.SwitchSidebarModeWithoutOpeningAnother);
         _sidebarModeBox.SelectionChanged += (_, _) => ApplySidebarMode();
 
@@ -762,13 +762,13 @@ public sealed class PdfDocumentView : UserControl
         var actual = new Button { Content = PdfViewerChromeLabels.Zoom100 };
         _zoomAreaButton = new Button { Content = PdfViewerChromeLabels.ZoomArea };
         ToolTipService.SetToolTip(_zoomAreaButton, PdfViewerTooltips.RectangularZoomToAreaDragOn);
-        AutomationProperties.SetName(_zoomAreaButton, "Zoom to area");
+        AutomationProperties.SetName(_zoomAreaButton, PdfViewerAutomationNames.ZoomToArea);
         _viewLoupeButton = new Button { Content = PdfViewerChromeLabels.LoupeGlass };
         ToolTipService.SetToolTip(_viewLoupeButton, PdfViewerTooltips.MagnifierLoupeMoveOverThePage);
-        AutomationProperties.SetName(_viewLoupeButton, "Magnifier loupe");
+        AutomationProperties.SetName(_viewLoupeButton, PdfViewerAutomationNames.MagnifierLoupe);
         _presentButton = new Button { Content = PdfViewerChromeLabels.Present };
         ToolTipService.SetToolTip(_presentButton, PdfViewerTooltips.PresentationModeFullscreenHideChromeSingle);
-        AutomationProperties.SetName(_presentButton, "Presentation mode");
+        AutomationProperties.SetName(_presentButton, PdfViewerAutomationNames.PresentationMode);
         var copy = new Button { Content = PdfViewerChromeLabels.Copy };
         ToolTipService.SetToolTip(copy, PdfViewerTooltips.CopySelectedTextOrTheCurrent);
         var rotateLeft = new Button { Content = PdfViewerChromeLabels.RotateCcw };
@@ -1623,7 +1623,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var flyout = new MenuFlyout();
-        var goItem = new MenuFlyoutItem { Text = "Go to page" };
+        var goItem = new MenuFlyoutItem { Text = PdfViewerTextLabels.GoToPage };
         goItem.Click += async (_, _) =>
         {
             if (_bookmarkList.SelectedItem is BookmarkListItem item)
@@ -1631,13 +1631,13 @@ public sealed class PdfDocumentView : UserControl
                 await GoToPageAsync(item.PageIndex, recordHistory: true);
             }
         };
-        var renameItem = new MenuFlyoutItem { Text = "Rename…" };
+        var renameItem = new MenuFlyoutItem { Text = PdfViewerTextLabels.RenameEllipsis };
         renameItem.Click += async (_, _) => await RenameSelectedBookmarkAsync();
-        var upItem = new MenuFlyoutItem { Text = "Move up" };
+        var upItem = new MenuFlyoutItem { Text = PdfViewerTextLabels.MoveUp };
         upItem.Click += (_, _) => MoveSelectedBookmark(-1);
-        var downItem = new MenuFlyoutItem { Text = "Move down" };
+        var downItem = new MenuFlyoutItem { Text = PdfViewerTextLabels.MoveDown };
         downItem.Click += (_, _) => MoveSelectedBookmark(1);
-        var deleteItem = new MenuFlyoutItem { Text = "Delete" };
+        var deleteItem = new MenuFlyoutItem { Text = PdfViewerTextLabels.Delete };
         deleteItem.Click += (_, _) => DeleteSelectedBookmark();
         flyout.Items.Add(goItem);
         flyout.Items.Add(renameItem);
@@ -1664,13 +1664,13 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var flyout = new MenuFlyout();
-        var goItem = new MenuFlyoutItem { Text = "Go to match" };
+        var goItem = new MenuFlyoutItem { Text = PdfViewerTextLabels.GoToMatch };
         goItem.Click += async (_, _) =>
         {
             var index = _searchResults.SelectedIndex >= 0 ? _searchResults.SelectedIndex : _activeHitIndex;
             await GoToHitAsync(index);
         };
-        var clearItem = new MenuFlyoutItem { Text = "Clear search" };
+        var clearItem = new MenuFlyoutItem { Text = PdfViewerTextLabels.ClearSearch };
         clearItem.Click += async (_, _) => await ClearSearchAsync();
         flyout.Items.Add(goItem);
         flyout.Items.Add(clearItem);
@@ -2824,7 +2824,7 @@ public sealed class PdfDocumentView : UserControl
             duplicateItem.Click += async (_, _) => await DuplicateSelectedAnnotationAsync();
             var deleteItem = new MenuFlyoutItem { Text = PageContextMenu.Delete };
             deleteItem.Click += async (_, _) => await RemoveSelectedAnnotationAsync();
-            var copyAnnotItem = new MenuFlyoutItem { Text = "Copy annotation" };
+            var copyAnnotItem = new MenuFlyoutItem { Text = PdfViewerTextLabels.CopyAnnotation };
             copyAnnotItem.Click += (_, _) => CopySelectedAnnotationToClipboard();
             flyout.Items.Add(styleItem);
             flyout.Items.Add(duplicateItem);
@@ -5394,7 +5394,7 @@ public sealed class PdfDocumentView : UserControl
                     Spacing = 12,
                     Children = { boldCheck, italicCheck, underlineCheck },
                 },
-                new TextBlock { Text = "Text color", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                new TextBlock { Text = PdfViewerTextLabels.TextColor, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                 textColorList,
             },
         };
@@ -5976,9 +5976,9 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var panel = new StackPanel { Spacing = 8, Children = { } };
-        panel.Children.Add(new TextBlock { Text = "Color", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        panel.Children.Add(new TextBlock { Text = PdfViewerTextLabels.Color, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
         panel.Children.Add(colorList);
-        panel.Children.Add(new TextBlock { Text = "Width", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        panel.Children.Add(new TextBlock { Text = PdfViewerTextLabels.Width, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
         panel.Children.Add(widthList);
         if (lineStyleBox is not null)
         {
@@ -6889,7 +6889,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 new TextBlock
                 {
-                    Text = "Draw with the mouse, import a PNG/JPEG, or photograph a signature on paper.",
+                    Text = PdfViewerTextLabels.SignatureDrawHint,
                     TextWrapping = TextWrapping.Wrap,
                     Margin = new Thickness(0, 0, 0, 8),
                 },
@@ -6943,12 +6943,12 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(down, PdfViewerTooltips.MoveSelectedSignatureLaterInThe);
         ToolTipService.SetToolTip(del, PdfViewerTooltips.DeleteSelectedSignatureFromTheLibrary);
         ToolTipService.SetToolTip(saveDesc, PdfViewerTooltips.SaveAccessibilityDescriptionForTheSelected);
-        AutomationProperties.SetName(up, "Move signature up");
-        AutomationProperties.SetName(down, "Move signature down");
-        AutomationProperties.SetName(del, "Delete signature");
-        AutomationProperties.SetName(saveDesc, "Save signature description");
-        AutomationProperties.SetName(descBox, "Signature accessibility description");
-        AutomationProperties.SetName(list, "Saved signatures");
+        AutomationProperties.SetName(up, PdfViewerAutomationNames.MoveSignatureUp);
+        AutomationProperties.SetName(down, PdfViewerAutomationNames.MoveSignatureDown);
+        AutomationProperties.SetName(del, PdfViewerAutomationNames.DeleteSignature);
+        AutomationProperties.SetName(saveDesc, PdfViewerAutomationNames.SaveSignatureDescription);
+        AutomationProperties.SetName(descBox, PdfViewerAutomationNames.SignatureAccessibilityDescription);
+        AutomationProperties.SetName(list, PdfViewerAutomationNames.SavedSignatures);
 
         void RefreshList(int selectIndex)
         {
@@ -7063,7 +7063,7 @@ public sealed class PdfDocumentView : UserControl
             Spacing = 8,
             Children =
             {
-                new TextBlock { Text = "Saved signatures — Insert places the selection on the current page." },
+                new TextBlock { Text = PdfViewerTextLabels.SavedSignaturesHint },
                 list,
                 descBox,
                 new StackPanel
@@ -7268,7 +7268,7 @@ public sealed class PdfDocumentView : UserControl
 
         var nameBox = new TextBox
         {
-            Text = "Signature",
+            Text = PdfViewerTextLabels.Signature,
             PlaceholderText = PdfDialogPlaceholders.SignatureName,
             Header = PdfDialogHeaders.Name,
         };
@@ -7277,8 +7277,8 @@ public sealed class PdfDocumentView : UserControl
             PlaceholderText = PdfDialogPlaceholders.SignatureOfExample,
             Header = PdfDialogHeaders.AccessibilityDescription,
         };
-        AutomationProperties.SetName(nameBox, "Signature name");
-        AutomationProperties.SetName(descBox, "Signature accessibility description");
+        AutomationProperties.SetName(nameBox, PdfViewerAutomationNames.SignatureName);
+        AutomationProperties.SetName(descBox, PdfViewerAutomationNames.SignatureAccessibilityDescription);
         var nameDialog = new ContentDialog
         {
             Title = PdfDialogTitles.SaveSignature,
@@ -8133,7 +8133,7 @@ public sealed class PdfDocumentView : UserControl
                     {
                         new TextBlock
                         {
-                            Text = "Place a signature stamp in this form field (visual; not PKCS#7).",
+                            Text = PdfViewerTextLabels.FormSignatureHint,
                             TextWrapping = TextWrapping.Wrap,
                         },
                         list,
@@ -8437,7 +8437,7 @@ public sealed class PdfDocumentView : UserControl
                     box,
                     new TextBlock
                     {
-                        Text = "Recent values",
+                        Text = PdfViewerTextLabels.RecentValues,
                         FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                     },
                     recentList,
@@ -9079,9 +9079,9 @@ public sealed class PdfDocumentView : UserControl
             Children =
             {
                 box,
-                new TextBlock { Text = "Author", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                new TextBlock { Text = PdfViewerTextLabels.Author, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                 authorBox,
-                new TextBlock { Text = "Color", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                new TextBlock { Text = PdfViewerTextLabels.Color, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                 colorList,
             },
         };
@@ -9215,11 +9215,11 @@ public sealed class PdfDocumentView : UserControl
                     Spacing = 12,
                     Children = { boldCheck, italicCheck, underlineCheck },
                 },
-                new TextBlock { Text = "Text color", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                new TextBlock { Text = PdfViewerTextLabels.TextColor, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                 textColorList,
-                new TextBlock { Text = "Fill", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                new TextBlock { Text = PdfViewerTextLabels.Fill, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                 fillList,
-                new TextBlock { Text = "Border", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                new TextBlock { Text = PdfViewerTextLabels.Border, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                 borderList,
             },
         };
@@ -10477,9 +10477,9 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(small, PdfViewerTooltips.SmallPageThumbnails);
         ToolTipService.SetToolTip(medium, PdfViewerTooltips.MediumPageThumbnails);
         ToolTipService.SetToolTip(large, PdfViewerTooltips.LargePageThumbnails);
-        AutomationProperties.SetName(small, "Small page thumbnails");
-        AutomationProperties.SetName(medium, "Medium page thumbnails");
-        AutomationProperties.SetName(large, "Large page thumbnails");
+        AutomationProperties.SetName(small, PdfViewerAutomationNames.SmallPageThumbnails);
+        AutomationProperties.SetName(medium, PdfViewerAutomationNames.MediumPageThumbnails);
+        AutomationProperties.SetName(large, PdfViewerAutomationNames.LargePageThumbnails);
 
         async void OnSizeClick(object sender, RoutedEventArgs e)
         {
@@ -10502,7 +10502,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 new TextBlock
                 {
-                    Text = "Pages",
+                    Text = PdfViewerTextLabels.Pages,
                     FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                     VerticalAlignment = VerticalAlignment.Center,
                 },
@@ -11196,7 +11196,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 new TextBlock
                 {
-                    Text = "Crop handles",
+                    Text = PdfViewerTextLabels.CropHandles,
                     VerticalAlignment = VerticalAlignment.Center,
                     FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                 },
@@ -11488,7 +11488,7 @@ public sealed class PdfDocumentView : UserControl
         var allPages = new CheckBox { Content = PdfViewerChromeLabels.ApplyToAllPages, IsChecked = false };
         var note = new TextBlock
         {
-            Text = "Non-destructive CropBox inset. Visual handles remain available from Crop.",
+            Text = PdfViewerTextLabels.NonDestructiveCropBoxInsetVisualHandlesRemainAvailableFromCrop,
             TextWrapping = TextWrapping.WrapWholeWords,
             Opacity = 0.75,
             FontSize = 12,
@@ -12304,7 +12304,7 @@ public sealed class PdfDocumentView : UserControl
                     {
                         new TextBlock
                         {
-                            Text = "Annotations are included in the page render. System dialog sets printer, copies, collate, duplex, and paper.",
+                            Text = PdfViewerTextLabels.AnnotationsAreIncludedInThePageRenderSystemDialogSetsPrinterCopiesCollateDuplexAndPaper,
                             TextWrapping = TextWrapping.Wrap,
                             MaxWidth = 360,
                             Opacity = 0.8,
@@ -12492,7 +12492,7 @@ public sealed class PdfDocumentView : UserControl
             Children =
             {
                 new TextBlock { Text = DocumentExportFormats.ExportSummary(indexes.Count) },
-                new TextBlock { Text = "Format" },
+                new TextBlock { Text = PdfViewerTextLabels.Format },
                 formatBox,
                 new TextBlock { Text = DocumentExportFormats.DpiHeader },
                 dpiBox,
@@ -12700,7 +12700,7 @@ public sealed class PdfDocumentView : UserControl
         {
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 420,
-            Text = "Choose a preset (or Custom), then Estimate or Apply. Downsampled images are rewritten as JPEG when quality settings apply.",
+            Text = PdfViewerTextLabels.ChooseAPresetOrCustomThenEstimateOrApplyDownsampledImagesAreRewrittenAsJPEGWhenQualitySettingsApply,
         };
 
         PdfOptimizePreset SelectedPreset() => PdfOptimizeDialogUi.FromComboIndex(presetBox.SelectedIndex);
@@ -12753,7 +12753,7 @@ public sealed class PdfDocumentView : UserControl
             }
             catch (Exception ex)
             {
-                estimateText.Text = "Estimate failed: " + ex.Message;
+                estimateText.Text = PdfViewerTextLabels.EstimateFailed + ex.Message;
             }
         };
 
@@ -12763,9 +12763,9 @@ public sealed class PdfDocumentView : UserControl
             Spacing = 8,
             Children =
             {
-                new TextBlock { Text = "Above DPI", VerticalAlignment = VerticalAlignment.Center },
+                new TextBlock { Text = PdfViewerTextLabels.AboveDPI, VerticalAlignment = VerticalAlignment.Center },
                 aboveDpiBox,
-                new TextBlock { Text = "Target DPI", VerticalAlignment = VerticalAlignment.Center },
+                new TextBlock { Text = PdfViewerTextLabels.TargetDPI, VerticalAlignment = VerticalAlignment.Center },
                 targetDpiBox,
             },
         };
@@ -12775,7 +12775,7 @@ public sealed class PdfDocumentView : UserControl
             Spacing = 8,
             Children =
             {
-                new TextBlock { Text = "Preset" },
+                new TextBlock { Text = PdfViewerTextLabels.Preset },
                 presetBox,
                 customRow,
                 jpegQualityBox,
@@ -13150,7 +13150,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var flyout = new MenuFlyout();
-        var saveItem = new MenuFlyoutItem { Text = "Save as…" };
+        var saveItem = new MenuFlyoutItem { Text = PdfViewerTextLabels.SaveAs };
         saveItem.Click += async (_, _) => await SaveSelectedAttachmentAsync();
         flyout.Items.Add(saveItem);
         flyout.ShowAt(target, e.GetPosition(target));
