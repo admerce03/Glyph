@@ -12854,6 +12854,18 @@ public sealed class PdfDocumentView : UserControl
 
         var aboveDpiBox = new TextBox { Width = 80, Text = "225", IsEnabled = false };
         var targetDpiBox = new TextBox { Width = 80, Text = "150", IsEnabled = false };
+        var jpegQualityBox = new NumberBox
+        {
+            Header = "JPEG quality",
+            Width = 140,
+            Value = 75,
+            Minimum = 1,
+            Maximum = 100,
+            SmallChange = 5,
+            LargeChange = 10,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
+            IsEnabled = false,
+        };
         var stripAttachments = new CheckBox { Content = "Remove embedded files", IsEnabled = false };
         var preserveMono = new CheckBox { Content = "Preserve monochrome images", IsChecked = true, IsEnabled = false };
         var stripMetadata = new CheckBox { Content = "Remove metadata", IsEnabled = false };
@@ -12863,6 +12875,7 @@ public sealed class PdfDocumentView : UserControl
             var custom = presetBox.SelectedIndex == 4;
             aboveDpiBox.IsEnabled = custom;
             targetDpiBox.IsEnabled = custom;
+            jpegQualityBox.IsEnabled = custom;
             stripAttachments.IsEnabled = custom;
             preserveMono.IsEnabled = custom;
             stripMetadata.IsEnabled = custom;
@@ -12872,6 +12885,7 @@ public sealed class PdfDocumentView : UserControl
                 var opts = PdfOptimizeOptions.FromPreset(preset);
                 aboveDpiBox.Text = opts.DownsampleAboveDpi.ToString("0");
                 targetDpiBox.Text = opts.TargetDpi.ToString("0");
+                jpegQualityBox.Value = opts.JpegQuality;
                 stripAttachments.IsChecked = opts.RemoveEmbeddedAttachments;
                 preserveMono.IsChecked = opts.PreserveMonochrome;
                 stripMetadata.IsChecked = opts.RemoveMetadata;
@@ -12885,7 +12899,7 @@ public sealed class PdfDocumentView : UserControl
         {
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 420,
-            Text = "Choose a preset (or Custom), then Estimate or Apply. JPEG rewrite is pending a PDFiumCore FILEACCESS fix.",
+            Text = "Choose a preset (or Custom), then Estimate or Apply. Downsampled images are rewritten as JPEG when quality settings apply.",
         };
 
         PdfOptimizePreset SelectedPreset() => presetBox.SelectedIndex switch
@@ -12917,12 +12931,16 @@ public sealed class PdfDocumentView : UserControl
                 target = 150;
             }
 
+            var jpegQuality = double.IsNaN(jpegQualityBox.Value)
+                ? 75
+                : (int)Math.Clamp(jpegQualityBox.Value, 1, 100);
+
             return new PdfOptimizeOptions(
                 Preset: PdfOptimizePreset.Custom,
                 DownsampleImages: true,
                 DownsampleAboveDpi: above,
                 TargetDpi: target,
-                JpegQuality: 75,
+                JpegQuality: jpegQuality,
                 PreserveMonochrome: preserveMono.IsChecked == true,
                 RemoveEmbeddedAttachments: stripAttachments.IsChecked == true,
                 RemoveMetadata: stripMetadata.IsChecked == true);
@@ -12966,6 +12984,7 @@ public sealed class PdfDocumentView : UserControl
                 new TextBlock { Text = "Preset" },
                 presetBox,
                 customRow,
+                jpegQualityBox,
                 stripAttachments,
                 preserveMono,
                 stripMetadata,
