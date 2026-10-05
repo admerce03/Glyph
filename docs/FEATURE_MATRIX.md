@@ -149,7 +149,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F07-11 | PDF text interaction | Rectangular selection for copying a region as an image. | M2/M6 | Tested | Drag region + `PdfTextInteractionUi.CopyRegionAsImage` |
 | F07-12 | PDF text interaction | Copy selected PDF region to clipboard as bitmap. | M2/M6 | Tested | Region crop → PNG clipboard; `PdfRegionCopyPolicy` unit tests |
 | F07-13 | PDF text interaction | Drag selected text where supported. | M2/M6 | Tested | Page CanDrag; `PdfTextDragPolicy` unit tests |
-| F08-01 | OCR / Live Text equivalent | Detect text automatically or on demand. | M6 | Implemented | Image + PDF page OCR toolbar → Windows.Media.Ocr |
+| F08-01 | OCR / Live Text equivalent | Detect text automatically or on demand. | M6 | Tested | On-demand OCR toolbar; `OcrLayerPolicy.DetectOnDemand` |
 | F08-02 | OCR / Live Text equivalent | Select detected text directly over the image. | M6 | Tested | PDF OCR word-box overlay + Copy OCR; `OcrWordSelectionPolicy` unit tests |
 | F08-03 | OCR / Live Text equivalent | Copy text. | M6 | Tested | OCR result dialog Copy text; `OcrResultDialog` unit tests |
 | F08-04 | OCR / Live Text equivalent | Copy all recognized text. | M6 | Tested | Same copy path; `OcrResultDialog.TextCopied` |
@@ -159,7 +159,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F08-08 | OCR / Live Text equivalent | OCR entire PDF. | M6 | Tested | Chooser Secondary = entire doc; `OcrPageRangeChooser.EntireDocumentPages` |
 | F08-09 | OCR / Live Text equivalent | OCR multiple images. | M6 | Implemented | Image OCR → Folder (N) runs siblings via batch progress dialog |
 | F08-10 | OCR / Live Text equivalent | Optionally embed OCR text layer into PDF. | M6 | Tested | OCR→PDF export via `OcrSearchablePdfWriter`; Ocr.Tests |
-| F08-11 | OCR / Live Text equivalent | Preserve image underneath the OCR layer. | M6 | Implemented | Full-bleed page render under invisible text layer |
+| F08-11 | OCR / Live Text equivalent | Preserve image underneath the OCR layer. | M6 | Tested | Full-bleed underlay; `OcrLayerPolicy.PreserveImageUnderOverlay` |
 | F08-12 | OCR / Live Text equivalent | URLs | M6 | Tested | `OcrEntityDetector` + Entities dialog Open; Ocr.Tests |
 | F08-13 | OCR / Live Text equivalent | email addresses | M6 | Tested | `OcrEntityDetector` + mailto launch; Ocr.Tests |
 | F08-14 | OCR / Live Text equivalent | phone numbers | M6 | Tested | `OcrEntityDetector` + Copy value; Ocr.Tests |
@@ -474,14 +474,14 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F29-01 | Smart object/background selection | Smart Lasso. | M8 | Tested | Same as F28-04; `ImageSmartLassoEdges` unit tests |
 | F29-02 | Smart object/background selection | Edge-aware selection. | M8 | Tested | Sobel edge map via `ImageSmartLassoEdges.ComputeSobel` |
 | F29-03 | Smart object/background selection | Background removal. | M8 | Tested | BG dialog → corner flood-fill + fuzz |
-| F29-04 | Smart object/background selection | Subject extraction. | M8 | Implemented | BG → Extract subject (clipboard or PNG) |
+| F29-04 | Smart object/background selection | Subject extraction. | M8 | Tested | BG → Extract subject; `ImageBackgroundSubjectPolicy` |
 | F29-05 | Smart object/background selection | Automatic subject detection. | M8 | Deferred | Needs on-device ML model; flood-fill covers solid BG |
 | F29-06 | Smart object/background selection | Remove background. | M8 | Tested | Alias of F29-03 |
-| F29-07 | Smart object/background selection | Preserve transparent background. | M8 | Implemented | Remove keeps alpha; Convert PNG/WebP/TIFF keep alpha |
-| F29-08 | Smart object/background selection | Offer conversion to transparency-capable format if source format cannot support alpha. | M8 | Implemented | Status hints Save/Convert to PNG after BG remove on JPEG |
+| F29-07 | Smart object/background selection | Preserve transparent background. | M8 | Tested | Remove keeps alpha; `FormatSupportsAlpha` |
+| F29-08 | Smart object/background selection | Offer conversion to transparency-capable format if source format cannot support alpha. | M8 | Tested | Status hint via `ImageBackgroundSubjectPolicy.TransparencyHint` |
 | F29-09 | Smart object/background selection | Undo. | M8 | Implemented | MutateAsync checkpoint undo (Ctrl+Z) |
-| F29-10 | Smart object/background selection | Copy extracted subject. | M8 | Implemented | BG → Extract subject → clipboard PNG |
-| F29-11 | Smart object/background selection | Save extracted subject as separate image. | M8 | Implemented | BG → Extract subject → save PNG |
+| F29-10 | Smart object/background selection | Copy extracted subject. | M8 | Tested | Extract → clipboard PNG; `ExtractToClipboard` |
+| F29-11 | Smart object/background selection | Save extracted subject as separate image. | M8 | Tested | Extract → save PNG; `SuggestedSubjectFileName` |
 | F30-01 | Image crop | Interactive crop box. | M5 | Tested | Drag rectangle overlay; `ImageCropSelectionPolicy` unit tests |
 | F30-02 | Image crop | Free aspect ratio. | M5 | Tested | Free drag; `ImageCropAspect.Constrain` free-mode unit test |
 | F30-03 | Image crop | Original aspect ratio. | M5 | Tested | Crop… aspect dropdown → Original (`ImageCropAspect`) |

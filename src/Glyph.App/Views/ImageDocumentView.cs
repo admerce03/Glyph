@@ -3417,9 +3417,9 @@ public sealed class ImageDocumentView : UserControl
             Width = 280,
             ItemsSource = new[]
             {
-                "Remove background (edit in place)",
-                "Extract subject → clipboard PNG",
-                "Extract subject → save PNG",
+                ImageBackgroundSubjectPolicy.RemoveInPlace,
+                ImageBackgroundSubjectPolicy.ExtractToClipboard,
+                ImageBackgroundSubjectPolicy.ExtractToFile,
             },
             SelectedIndex = 0,
         };
@@ -3443,7 +3443,7 @@ public sealed class ImageDocumentView : UserControl
         };
         var dialog = new ContentDialog
         {
-            Title = "Background / subject",
+            Title = ImageBackgroundSubjectPolicy.DialogTitle,
             Content = panel,
             PrimaryButtonText = "Apply",
             CloseButtonText = "Cancel",
@@ -3476,12 +3476,13 @@ public sealed class ImageDocumentView : UserControl
                         ? $"Background removed (fuzz {fuzz:0}%) and trimmed."
                         : $"Background removed (fuzz {fuzz:0}%).");
                 var format = _document.FormatName;
-                if (format.Contains("Jpeg", StringComparison.OrdinalIgnoreCase)
-                    || format.Contains("Jpg", StringComparison.OrdinalIgnoreCase)
-                    || format.Contains("Bmp", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(format, "Gif", StringComparison.OrdinalIgnoreCase))
+                var ext = string.IsNullOrWhiteSpace(_document.Path)
+                    ? format
+                    : System.IO.Path.GetExtension(_document.Path);
+                if (!ImageBackgroundSubjectPolicy.FormatSupportsAlpha(ext)
+                    && !ImageBackgroundSubjectPolicy.FormatSupportsAlpha(format))
                 {
-                    _status.Text += " · Save/Convert to PNG/WebP to keep transparency.";
+                    _status.Text += ImageBackgroundSubjectPolicy.TransparencyHint;
                 }
 
                 return;
@@ -3539,11 +3540,11 @@ public sealed class ImageDocumentView : UserControl
                     var baseName = string.IsNullOrWhiteSpace(_document.Path)
                         ? "subject"
                         : System.IO.Path.GetFileNameWithoutExtension(_document.Path);
-                    picker.SuggestedFileName = baseName + "-subject.png";
+                    picker.SuggestedFileName = ImageBackgroundSubjectPolicy.SuggestedSubjectFileName(baseName);
                     var file = await picker.PickSaveFileAsync();
                     if (file is null)
                     {
-                        _status.Text = "Save subject cancelled.";
+                        _status.Text = ImageBackgroundSubjectPolicy.SaveCancelled;
                     }
                     else
                     {
