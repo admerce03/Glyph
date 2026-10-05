@@ -256,7 +256,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - **Cancel OCR** + `n/m` status progress for multi-page PDF recognition
 - Document **Find** merges session OCR page text (`PdfPageTextSearch`) when OCR has been run
 - Find on image-only PDFs offers OCR-current-page fallback; **Find sel** searches the text selection
-- Text-layer embed / entity actions / Live Text overlays still outstanding
+- PDF **Live Text** word-box overlay after OCR (click/Ctrl+click select + **Copy OCR**)
+- Text-layer embed / entity actions still outstanding (image-side on entities stack)
 ---
 
 ## Milestone 7 — Redaction, PDF security, optimization, metadata
