@@ -109,6 +109,63 @@ public class MagickImageProcessorTests
         }
     }
 
+    [Fact]
+    public async Task Adjust_brightness_contrast_saturation_keeps_dimensions()
+    {
+        var path = CreateSolidPng(64, 48);
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            await using var document = await decoder.OpenAsync(path);
+
+            await processor.AdjustAsync(document, new ImageAdjustments(Brightness: 20, Contrast: 10, Saturation: -15));
+            document.PixelWidth.Should().Be(64);
+            document.PixelHeight.Should().Be(48);
+
+            var pixels = await document.GetPixelsAsync(maxEdge: 64);
+            pixels.BgraPixels.Length.Should().Be(pixels.Width * pixels.Height * 4);
+            pixels.BgraPixels.Should().Contain(b => b != 0);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Theory]
+    [InlineData(ImageEncodeFormat.Jpeg, ".jpg")]
+    [InlineData(ImageEncodeFormat.Webp, ".webp")]
+    [InlineData(ImageEncodeFormat.Bmp, ".bmp")]
+    [InlineData(ImageEncodeFormat.Tiff, ".tif")]
+    [InlineData(ImageEncodeFormat.Gif, ".gif")]
+    public async Task SaveAs_writes_common_formats(ImageEncodeFormat format, string extension)
+    {
+        var path = CreateSolidPng(32, 24);
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-out-" + Guid.NewGuid().ToString("N") + extension);
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var encoder = new MagickImageEncoder();
+            await using var document = await decoder.OpenAsync(path);
+            await encoder.SaveAsAsync(document, outPath, format);
+            File.Exists(outPath).Should().BeTrue();
+            new FileInfo(outPath).Length.Should().BeGreaterThan(0);
+
+            await using var reopened = await decoder.OpenAsync(outPath);
+            reopened.PixelWidth.Should().Be(32);
+            reopened.PixelHeight.Should().Be(24);
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
     private static string CreateSolidPng(int width, int height)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-src-" + Guid.NewGuid().ToString("N") + ".png");

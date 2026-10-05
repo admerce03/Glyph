@@ -512,11 +512,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F32-07 | Image orientation | Respect EXIF orientation. | M5 | Not Started |  |
 | F32-08 | Image orientation | Option to normalize EXIF orientation into pixels. | M5 | Not Started |  |
 | F33-01 | Image color adjustments | Auto Levels | M5 | Not Started |  |
-| F33-02 | Image color adjustments | Exposure | M5 | Not Started |  |
-| F33-03 | Image color adjustments | Contrast | M5 | Not Started |  |
+| F33-02 | Image color adjustments | Exposure | M5 | Implemented | Adjust dialog Brightness (Magick BrightnessContrast) |
+| F33-03 | Image color adjustments | Contrast | M5 | Tested | Adjust dialog → AdjustAsync Contrast |
 | F33-04 | Image color adjustments | Highlights | M5 | Not Started |  |
 | F33-05 | Image color adjustments | Shadows | M5 | Not Started |  |
-| F33-06 | Image color adjustments | Saturation | M5 | Not Started |  |
+| F33-06 | Image color adjustments | Saturation | M5 | Tested | Adjust dialog → AdjustAsync Saturation |
 | F33-07 | Image color adjustments | Temperature | M5 | Not Started |  |
 | F33-08 | Image color adjustments | Tint | M5 | Not Started |  |
 | F33-09 | Image color adjustments | Sharpness | M5 | Not Started |  |
@@ -524,7 +524,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F33-11 | Image color adjustments | Black point / levels | M5 | Not Started |  |
 | F33-12 | Image color adjustments | Gamma where useful | M5 | Not Started |  |
 | F33-13 | Image color adjustments | Reset individual adjustment | M5 | Not Started |  |
-| F33-14 | Image color adjustments | Reset all | M5 | Not Started |  |
+| F33-14 | Image color adjustments | Reset all | M5 | Implemented | Adjust dialog Reset |
 | F33-15 | Image color adjustments | live preview | M5 | Not Started |  |
 | F33-16 | Image color adjustments | histogram | M5 | Not Started |  |
 | F34-01 | Image markup | mouse drawing | M5 | Not Started |  |
@@ -539,11 +539,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F34-10 | Image markup | Save/export to a flat image format, or | M5 | Not Started |  |
 | F34-11 | Image markup | user explicitly flattens. | M5 | Not Started |  |
 | F35-01 | Image format conversion | PNG | M5 | Tested | MagickImageEncoder → PNG |
-| F35-02 | Image format conversion | JPEG | M5 | Not Started |  |
-| F35-03 | Image format conversion | WebP | M5 | Not Started |  |
-| F35-04 | Image format conversion | TIFF | M5 | Not Started |  |
-| F35-05 | Image format conversion | BMP | M5 | Not Started |  |
-| F35-06 | Image format conversion | GIF | M5 | Not Started |  |
+| F35-02 | Image format conversion | JPEG | M5 | Tested | →JPEG toolbar + SaveAsAsync |
+| F35-03 | Image format conversion | WebP | M5 | Tested | Convert dialog → WebP |
+| F35-04 | Image format conversion | TIFF | M5 | Tested | Convert dialog → TIFF |
+| F35-05 | Image format conversion | BMP | M5 | Tested | Convert dialog → BMP |
+| F35-06 | Image format conversion | GIF | M5 | Tested | Convert dialog → GIF (first frame) |
 | F35-07 | Image format conversion | HEIC/HEIF where supported | M5 | Not Started |  |
 | F35-08 | Image format conversion | AVIF | M5 | Not Started |  |
 | F35-09 | Image format conversion | JPEG 2000 | M5 | Not Started |  |
