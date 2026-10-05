@@ -26,7 +26,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M6 | OCR and scanned-document capabilities | **Tested** (PRs #62–#66 merged; offline OCR/Live Text/entities) | M2, M5 |
 | M7 | Redaction, PDF security, optimization, metadata | **Tested** (#67; password-write → ADR-015) | M2–M4 |
 | M8 | Batch ops, scanner, color management, advanced | **Tested** (hardware validation TBD; ML subject deferred) | M5–M7 |
-| M9 | Performance, polish, a11y, installer, audit | **In Progress** (matrix complete; MSIX scaffold; associations/signing TBD) | M1–M8 core paths |
+| M9 | Performance, polish, a11y, installer, audit | **In Progress** (unsigned .msix on CI; sideload/signing TBD) | M1–M8 core paths |
 
 M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behind separate interfaces. M3 remains the highest-priority Preview-differentiator after viewing works.
 
@@ -367,7 +367,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 9 — Performance, polish, accessibility, installer, audit
 
-**Status:** In Progress · Depends on prior milestones’ core paths (matrix complete; MSIX scaffold; signing/sideload verify pending)
+**Status:** In Progress · Depends on prior milestones’ core paths (unsigned `.msix` on CI; sideload/signing + interactive demos pending)
 
 ### Scope (`FEATURES.md` §52–56, §57–60 remaining, distribution)
 
@@ -389,7 +389,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 ### Progress notes
 
 - Prefs, toolbar customization, session restore, crash recovery, version snapshots, a11y Names, cold-start timing shipped in matrix
-- MSIX scaffold: single-project MSIX (`EnableMsixTooling` + `GenerateAppxPackageOnBuild` + PublishProfiles); `scripts/publish-msix.ps1` copies AppxPackageDir to `artifacts/msix`. Associations/signing still Deferred until sideload verify.
+- MSIX: Windows CI produces unsigned `Glyph.App_*.msix` via single-project `GenerateAppxPackageOnBuild` (`scripts/publish-msix.ps1`, artifact `glyph-msix-layout`). F01-06/07 / F55-04 remain Deferred until signed/sideload verification (ADR-012).
 - Matrix audit (2026-10-05): 880 rows — 858 Tested / 15 Deferred / 7 Blocked (all Blocked = ADR-015 password-write); zero Not Started / In Progress / Implemented
 - Interactive proof debt: M1 shell screenshot, M2 viewer screenshots, M3 §11 cross-doc DnD recording (Windows interactive environment required)
 - Deferred catalogs unit-tested (`PackagingDeferredPolicy`, `PdfOptimizeDeferredPolicy`, `ImageAdvancedDeferredPolicy`, …)
@@ -400,7 +400,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 | Area | FEATURES.md | Milestone | Status |
 | --- | --- | --- | --- |
-| App/file handling | §1 | M1, M9 | Tested (MSIX scaffold; associations → ADR-012 verify) |
+| App/file handling | §1 | M1, M9 | Tested (unsigned `.msix` on CI; associations → ADR-012 sideload) |
 | Main window/UI chrome | §2 | M1, M9 | Tested |
 | Sidebar modes | §3 | M2–M5 | Tested (mode ComboBox + panels) |
 | PDF viewing | §4 | M2 | Tested (incl. Zoom ▭ / Glass / Present) |

@@ -6,7 +6,7 @@ Authoritative product scope: [`docs/FEATURES.md`](docs/FEATURES.md).
 
 ## Current status
 
-Milestones **M0–M8** are matrix-**Tested** on `main` (password-write Blocked on ADR-015; HDR/HEIF/ML and packaging associations Deferred). **M9** is In Progress (MSIX scaffold; signing/sideload verify + interactive demos pending).
+Milestones **M0–M8** are matrix-**Tested** on `main` (password-write Blocked on ADR-015; HDR/HEIF/ML and packaging associations Deferred). **M9** is In Progress (unsigned `.msix` builds on Windows CI; signing/sideload verify + interactive demos pending).
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) and [`docs/FEATURE_MATRIX.md`](docs/FEATURE_MATRIX.md).
 
@@ -80,7 +80,7 @@ Default builds stay unpackaged. To produce a self-contained MSIX layout on Windo
 ./scripts/publish-msix.ps1 -Configuration Release -Runtime win-x64
 ```
 
-Output lands under `artifacts/msix/`. Signing and Store/sideload verification are still open (ADR-012 associations remain Deferred until verified).
+Output lands under `artifacts/msix/` (includes `Glyph.App_*.msix`). Signing and Store/sideload verification are still open (ADR-012 associations remain Deferred until verified).
 
 ## Contributing / agents
 

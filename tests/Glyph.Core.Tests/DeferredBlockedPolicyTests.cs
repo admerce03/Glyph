@@ -11,6 +11,7 @@ public class PackagingDeferredPolicyTests
     public void Associations_and_updates_wait_on_verified_msix()
     {
         PackagingDeferredPolicy.MsixScaffoldShipped.Should().BeTrue();
+        PackagingDeferredPolicy.MsixPackageCiProduced.Should().BeTrue();
         PackagingDeferredPolicy.NativeFileAssociationsShipped.Should().BeFalse();
         PackagingDeferredPolicy.InAppUpdateCheckShipped.Should().BeFalse();
         PackagingDeferredPolicy.Adr.Should().Be("ADR-012");
