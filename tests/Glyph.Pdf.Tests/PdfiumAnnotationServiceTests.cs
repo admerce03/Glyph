@@ -219,7 +219,7 @@ public class PdfiumAnnotationServiceTests
         var builder = new PdfDocumentBuilder();
         var font = builder.AddStandard14Font(Standard14Font.Helvetica);
         var page = builder.AddPage(PageSize.A4);
-        page.AddText(text, 18, new UglyToad.PdfPig.Core.PdfPoint(50, 750), font);
+        page.AddText(text, 18, new PdfPoint(50, 750), font);
         File.WriteAllBytes(path, builder.Build());
         return path;
     }
