@@ -7003,7 +7003,7 @@ public sealed class PdfDocumentView : UserControl
 
         void RefreshList(int selectIndex)
         {
-            list.ItemsSource = library.Select(FormatSignatureListLabel).ToList();
+            list.ItemsSource = library.Select(SignatureDisplayText.ListLabel).ToList();
             list.SelectedIndex = library.Count == 0
                 ? -1
                 : Math.Clamp(selectIndex, 0, library.Count - 1);
@@ -7235,7 +7235,7 @@ public sealed class PdfDocumentView : UserControl
                 width,
                 height);
             RememberAnnotationForUndo(stamp);
-            await ApplySignatureContentsAsync(CurrentPageIndex, FormatSignatureContents(entry));
+            await ApplySignatureContentsAsync(CurrentPageIndex, SignatureDisplayText.Contents(entry));
 
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
@@ -7250,20 +7250,6 @@ public sealed class PdfDocumentView : UserControl
         }
     }
 
-    private static string FormatSignatureListLabel(SignatureEntry entry)
-        => string.IsNullOrWhiteSpace(entry.Description)
-            ? entry.Name
-            : $"{entry.Name} — {entry.Description}";
-
-    private static string FormatSignatureContents(SignatureEntry entry)
-        => string.IsNullOrWhiteSpace(entry.Description)
-            ? $"Signature: {entry.Name}"
-            : entry.Description.Trim();
-
-    private static string FormatSignatureContents(string name, string? description)
-        => string.IsNullOrWhiteSpace(description)
-            ? $"Signature: {name}"
-            : description.Trim();
 
     private async Task ApplySignatureContentsAsync(int pageIndex, string contents)
     {
@@ -7389,7 +7375,7 @@ public sealed class PdfDocumentView : UserControl
                 raster.PixelWidth,
                 raster.PixelHeight);
             RememberAnnotationForUndo(stamp);
-            await ApplySignatureContentsAsync(pageIndex, FormatSignatureContents(name, description));
+            await ApplySignatureContentsAsync(pageIndex, SignatureDisplayText.Contents(name, description));
 
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
@@ -8298,7 +8284,7 @@ public sealed class PdfDocumentView : UserControl
             width,
             height);
         RememberAnnotationForUndo(stamp);
-        await ApplySignatureContentsAsync(field.PageIndex, FormatSignatureContents(entry));
+        await ApplySignatureContentsAsync(field.PageIndex, SignatureDisplayText.Contents(entry));
 
         _cache.ClearDocument(_documentKey);
         _cache.ClearDocument(_thumbnailKey);
