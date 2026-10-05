@@ -150,7 +150,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F07-12 | PDF text interaction | Copy selected PDF region to clipboard as bitmap. | M2/M6 | Implemented | Renders page crop to PNG bitmap on clipboard |
 | F07-13 | PDF text interaction | Drag selected text where supported. | M2/M6 | Implemented | Page CanDrag exports selected text via DragStarting |
 | F08-01 | OCR / Live Text equivalent | Detect text automatically or on demand. | M6 | Implemented | Image + PDF page OCR toolbar → Windows.Media.Ocr |
-| F08-02 | OCR / Live Text equivalent | Select detected text directly over the image. | M6 | Implemented | PDF OCR word-box overlay (click/Ctrl+click) + Copy OCR; image overlay on Live Text PR |
+| F08-02 | OCR / Live Text equivalent | Select detected text directly over the image. | M6 | Implemented | Image + PDF OCR word-box overlay; click/Ctrl+click select + Copy OCR |
 | F08-03 | OCR / Live Text equivalent | Copy text. | M6 | Implemented | OCR result dialog Copy text |
 | F08-04 | OCR / Live Text equivalent | Copy all recognized text. | M6 | Implemented | Same as copy full result text |
 | F08-05 | OCR / Live Text equivalent | Search recognized text. | M6 | Implemented | Find merges session OCR cache; OCR word overlays after page OCR |

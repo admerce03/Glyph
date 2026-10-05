@@ -26,6 +26,7 @@ public sealed class ImageDocumentView : UserControl
     private readonly Grid _imageSurface;
     private readonly Image _image;
     private readonly Canvas _cropOverlay;
+    private readonly Canvas _ocrOverlay;
     private readonly Rectangle _cropRect;
     private readonly TextBlock _status;
     private readonly TextBox _cropBox;
@@ -35,6 +36,8 @@ public sealed class ImageDocumentView : UserControl
     private readonly Button _interactiveCropButton;
     private readonly Button _applyCropButton;
     private readonly Button _cancelCropButton;
+    private readonly Button _copyOcrButton;
+    private readonly Button _clearOcrButton;
     private IReadOnlyList<string> _siblings = Array.Empty<string>();
     private double _zoom = 1.0;
     private bool _loaded;
@@ -44,6 +47,11 @@ public sealed class ImageDocumentView : UserControl
     private Windows.Foundation.Point _cropStart;
     private int _displayWidth;
     private int _displayHeight;
+    private OcrResult? _ocrResult;
+    private int _ocrSourceWidth;
+    private int _ocrSourceHeight;
+    private readonly List<(OcrWord Word, Rectangle Visual)> _ocrVisuals = [];
+    private readonly HashSet<int> _selectedOcrIndices = [];
 
     public ImageDocumentView(
         IImageDocument document,
@@ -80,8 +88,14 @@ public sealed class ImageDocumentView : UserControl
             IsHitTestVisible = false,
         };
         _cropOverlay.Children.Add(_cropRect);
+        _ocrOverlay = new Canvas
+        {
+            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(1, 0, 0, 0)),
+            IsHitTestVisible = false,
+        };
         _imageSurface = new Grid();
         _imageSurface.Children.Add(_image);
+        _imageSurface.Children.Add(_ocrOverlay);
         _imageSurface.Children.Add(_cropOverlay);
         _scrollViewer = new ScrollViewer
         {
@@ -119,6 +133,8 @@ public sealed class ImageDocumentView : UserControl
         var adjust = new Button { Content = "Adjust" };
         var meta = new Button { Content = "Meta" };
         var ocrButton = new Button { Content = "OCR" };
+        _copyOcrButton = new Button { Content = "Copy OCR", Visibility = Visibility.Collapsed };
+        _clearOcrButton = new Button { Content = "Clear OCR", Visibility = Visibility.Collapsed };
         var rotate180 = new Button { Content = "180°" };
         var orient = new Button { Content = "Orient" };
         var fullscreen = new Button { Content = "Fullscreen" };
@@ -134,7 +150,9 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(resize, "Resize width/height with optional aspect lock");
         ToolTipService.SetToolTip(adjust, "Brightness / contrast / saturation");
         ToolTipService.SetToolTip(meta, "Image metadata, EXIF, and GPS");
-        ToolTipService.SetToolTip(ocrButton, "Run offline OCR on this image");
+        ToolTipService.SetToolTip(ocrButton, "Run offline OCR and select text over the image");
+        ToolTipService.SetToolTip(_copyOcrButton, "Copy selected OCR words (or all recognized text)");
+        ToolTipService.SetToolTip(_clearOcrButton, "Hide OCR word overlays");
         ToolTipService.SetToolTip(rotate180, "Rotate 180°");
         ToolTipService.SetToolTip(orient, "Apply EXIF orientation into pixels");
         ToolTipService.SetToolTip(fullscreen, "Toggle window fullscreen");
@@ -163,6 +181,8 @@ public sealed class ImageDocumentView : UserControl
         adjust.Click += async (_, _) => await AdjustAsync();
         meta.Click += async (_, _) => await ShowMetadataAsync();
         ocrButton.Click += async (_, _) => await RunOcrAsync();
+        _copyOcrButton.Click += (_, _) => CopySelectedOcrText();
+        _clearOcrButton.Click += (_, _) => ClearOcrOverlay();
         save.Click += async (_, _) => await SaveAsync();
         exportPng.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Png, ".png");
         exportJpeg.Click += async (_, _) => await ExportJpegAsync();
@@ -183,7 +203,7 @@ public sealed class ImageDocumentView : UserControl
             Children =
             {
                 _prevButton, _nextButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
-                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, save, exportPng, exportJpeg, convert, _status,
+                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, _copyOcrButton, _clearOcrButton, save, exportPng, exportJpeg, convert, _status,
             },
         };
 
@@ -354,6 +374,8 @@ public sealed class ImageDocumentView : UserControl
         _displayHeight = buffer.Height;
         _cropOverlay.Width = buffer.Width;
         _cropOverlay.Height = buffer.Height;
+        _ocrOverlay.Width = buffer.Width;
+        _ocrOverlay.Height = buffer.Height;
         _imageSurface.Width = buffer.Width;
         _imageSurface.Height = buffer.Height;
         _viewState.Zoom = _zoom;
@@ -361,6 +383,8 @@ public sealed class ImageDocumentView : UserControl
         {
             ClearCropSelection();
         }
+
+        RebuildOcrOverlay();
     }
 
     private async Task SetZoomAsync(double zoom)
@@ -399,6 +423,7 @@ public sealed class ImageDocumentView : UserControl
     private void EnterCropMode()
     {
         _cropMode = true;
+        _ocrOverlay.IsHitTestVisible = false;
         _cropOverlay.IsHitTestVisible = true;
         _interactiveCropButton.Visibility = Visibility.Collapsed;
         _applyCropButton.Visibility = Visibility.Visible;
@@ -412,6 +437,7 @@ public sealed class ImageDocumentView : UserControl
         _cropMode = false;
         _cropDragging = false;
         _cropOverlay.IsHitTestVisible = false;
+        _ocrOverlay.IsHitTestVisible = _ocrVisuals.Count > 0;
         _interactiveCropButton.Visibility = Visibility.Visible;
         _applyCropButton.Visibility = Visibility.Collapsed;
         _cancelCropButton.Visibility = Visibility.Collapsed;
@@ -935,56 +961,178 @@ public sealed class ImageDocumentView : UserControl
             var result = await _ocr.RecognizeAsync(
                 new OcrRequest(buffer.Width, buffer.Height, buffer.BgraPixels));
 
-            var text = string.IsNullOrWhiteSpace(result.Text) ? "(no text recognized)" : result.Text;
-            var box = new TextBox
-            {
-                Text = text,
-                IsReadOnly = true,
-                AcceptsReturn = true,
-                TextWrapping = TextWrapping.Wrap,
-                Width = 480,
-                Height = 320,
-            };
-            var copy = new Button { Content = "Copy text", Margin = new Thickness(0, 8, 0, 0) };
-            copy.Click += (_, _) =>
-            {
-                var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
-                package.SetText(result.Text ?? string.Empty);
-                Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
-                _status.Text = "OCR text copied.";
-            };
+            _ocrResult = result;
+            _ocrSourceWidth = buffer.Width;
+            _ocrSourceHeight = buffer.Height;
+            _selectedOcrIndices.Clear();
+            RebuildOcrOverlay();
 
-            var panel = new StackPanel
+            var wordCount = result.Lines.Sum(l => l.Words.Count);
+            if (wordCount == 0)
             {
-                Spacing = 8,
-                Children =
-                {
-                    new TextBlock
-                    {
-                        Text = $"{result.Lines.Count} line(s) · {result.Lines.Sum(l => l.Words.Count)} word(s)",
-                        Opacity = 0.75,
-                    },
-                    box,
-                    copy,
-                },
-            };
+                _status.Text = "OCR finished — no text.";
+                return;
+            }
 
-            var dialog = new ContentDialog
-            {
-                Title = "OCR result",
-                Content = panel,
-                CloseButtonText = "Close",
-                XamlRoot = XamlRoot,
-            };
-            await dialog.ShowAsync();
-            _status.Text = string.IsNullOrWhiteSpace(result.Text)
-                ? "OCR finished — no text."
-                : $"OCR finished — {result.Lines.Count} line(s).";
+            _status.Text = $"OCR ready — click words to select ({wordCount} word(s)).";
         }
         catch (Exception ex)
         {
             _status.Text = "OCR failed: " + ex.Message;
         }
+    }
+
+    private void RebuildOcrOverlay()
+    {
+        _ocrOverlay.Children.Clear();
+        _ocrVisuals.Clear();
+
+        if (_ocrResult is null
+            || _ocrSourceWidth <= 0
+            || _ocrSourceHeight <= 0
+            || _displayWidth <= 0
+            || _displayHeight <= 0)
+        {
+            _ocrOverlay.IsHitTestVisible = false;
+            _copyOcrButton.Visibility = Visibility.Collapsed;
+            _clearOcrButton.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var index = 0;
+        foreach (var line in _ocrResult.Lines)
+        {
+            foreach (var word in line.Words)
+            {
+                var mapped = OcrOverlayMapper.MapToDisplay(
+                    word, _ocrSourceWidth, _ocrSourceHeight, _displayWidth, _displayHeight);
+                var wordIndex = index;
+                var rect = new Rectangle
+                {
+                    Width = mapped.Width,
+                    Height = mapped.Height,
+                    Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 64, 156, 255)),
+                    Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(180, 32, 120, 220)),
+                    StrokeThickness = 1,
+                    Tag = wordIndex,
+                };
+                Canvas.SetLeft(rect, mapped.X);
+                Canvas.SetTop(rect, mapped.Y);
+                rect.PointerPressed += OcrWord_PointerPressed;
+                _ocrOverlay.Children.Add(rect);
+                _ocrVisuals.Add((word, rect));
+                index++;
+            }
+        }
+
+        foreach (var selected in _selectedOcrIndices.ToList())
+        {
+            if (selected < 0 || selected >= _ocrVisuals.Count)
+            {
+                _selectedOcrIndices.Remove(selected);
+                continue;
+            }
+
+            ApplyOcrSelectionChrome(selected, selected: true);
+        }
+
+        var hasWords = _ocrVisuals.Count > 0;
+        _ocrOverlay.IsHitTestVisible = hasWords && !_cropMode;
+        _copyOcrButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
+        _clearOcrButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OcrWord_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is not Rectangle rect || rect.Tag is not int index)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        var ctrl = Microsoft.UI.Input.InputKeyboardSource
+            .GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+        if (!ctrl)
+        {
+            foreach (var selected in _selectedOcrIndices.ToList())
+            {
+                ApplyOcrSelectionChrome(selected, selected: false);
+            }
+
+            _selectedOcrIndices.Clear();
+        }
+
+        if (_selectedOcrIndices.Contains(index))
+        {
+            _selectedOcrIndices.Remove(index);
+            ApplyOcrSelectionChrome(index, selected: false);
+        }
+        else
+        {
+            _selectedOcrIndices.Add(index);
+            ApplyOcrSelectionChrome(index, selected: true);
+        }
+
+        _status.Text = _selectedOcrIndices.Count == 0
+            ? $"OCR ready — {_ocrVisuals.Count} word(s)."
+            : $"OCR selected {_selectedOcrIndices.Count} word(s).";
+    }
+
+    private void ApplyOcrSelectionChrome(int index, bool selected)
+    {
+        if (index < 0 || index >= _ocrVisuals.Count)
+        {
+            return;
+        }
+
+        var rect = _ocrVisuals[index].Visual;
+        rect.Fill = new SolidColorBrush(selected
+            ? Windows.UI.Color.FromArgb(90, 255, 200, 40)
+            : Windows.UI.Color.FromArgb(40, 64, 156, 255));
+        rect.Stroke = new SolidColorBrush(selected
+            ? Windows.UI.Color.FromArgb(220, 220, 140, 0)
+            : Windows.UI.Color.FromArgb(180, 32, 120, 220));
+    }
+
+    private void CopySelectedOcrText()
+    {
+        if (_ocrResult is null)
+        {
+            return;
+        }
+
+        string text;
+        if (_selectedOcrIndices.Count == 0)
+        {
+            text = _ocrResult.Text ?? string.Empty;
+        }
+        else
+        {
+            text = string.Join(
+                ' ',
+                _selectedOcrIndices.OrderBy(i => i)
+                    .Where(i => i >= 0 && i < _ocrVisuals.Count)
+                    .Select(i => _ocrVisuals[i].Word.Text));
+        }
+
+        var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+        package.SetText(text);
+        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+        _status.Text = _selectedOcrIndices.Count == 0
+            ? "All OCR text copied."
+            : $"Copied {_selectedOcrIndices.Count} OCR word(s).";
+    }
+
+    private void ClearOcrOverlay()
+    {
+        _ocrResult = null;
+        _ocrSourceWidth = 0;
+        _ocrSourceHeight = 0;
+        _selectedOcrIndices.Clear();
+        RebuildOcrOverlay();
+        _status.Text = "OCR overlay cleared.";
     }
 
     private async Task SaveAsync()
@@ -1039,6 +1187,7 @@ public sealed class ImageDocumentView : UserControl
         try
         {
             await mutation();
+            ClearOcrOverlay();
             await RefreshAsync();
             UpdateStatus();
             _status.Text = okStatus;
