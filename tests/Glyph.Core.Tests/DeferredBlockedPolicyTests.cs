@@ -13,12 +13,14 @@ public class PackagingDeferredPolicyTests
         PackagingDeferredPolicy.MsixScaffoldShipped.Should().BeTrue();
         PackagingDeferredPolicy.MsixPackageCiProduced.Should().BeTrue();
         PackagingDeferredPolicy.MsixPackageCiTestSigned.Should().BeTrue();
+        PackagingDeferredPolicy.MsixSideloadHelperShipped.Should().BeTrue();
         PackagingDeferredPolicy.NativeFileAssociationsShipped.Should().BeFalse();
         PackagingDeferredPolicy.InAppUpdateCheckShipped.Should().BeFalse();
         PackagingDeferredPolicy.Adr.Should().Be("ADR-012");
         PackagingDeferredPolicy.PublishScript.Should().Contain("publish-msix");
+        PackagingDeferredPolicy.InstallScript.Should().Contain("install-msix-test");
         PackagingDeferredPolicy.ManifestPath.Should().Contain("Package.appxmanifest");
-        PackagingDeferredPolicy.Reason.Should().Contain("Test-signed");
+        PackagingDeferredPolicy.Reason.Should().Contain("sideload helper");
     }
 }
 
