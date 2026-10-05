@@ -196,7 +196,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Text boxes: `AddTextBoxAsync` FreeText with Contents + DA; TextBox toolbar dialog; listed in sidebar.
 - Flatten: `FlattenAsync` via `FPDFPage_Flatten` + Flatten toolbar (confirm dialog); editable annots removed after bake.
 - Signatures: `AddStampAsync` (BGRA stamp image) + local `FileSignatureLibrary`; Sign toolbar Draw (mouse stroke → PNG/library/stamp) or Import image.
-- AcroForm: `IPdfFormStore` / `PdfiumFormStore` lists widgets, sets text/combo `/V`, tab-adjacent focus; Form toolbar dialog; Pdf.Tests sample AcroForm.
+- AcroForm: `IPdfFormStore` / `PdfiumFormStore` lists widgets, sets text/combo `/V`, toggles checkboxes (`/V`+`/AS`), tab-adjacent focus; Form toolbar dialog; Pdf.Tests sample AcroForm.
 
 ---
 

@@ -59,12 +59,59 @@ public class PdfiumFormStoreTests
         }
     }
 
+    [Fact]
+    public async Task Checkbox_toggle_sets_v_and_as_and_survives_save()
+    {
+        var path = CreateAcroFormPdf(includeCheckBox: true);
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-check-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var forms = new PdfiumFormStore();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var fields = await forms.ListFieldsAsync(document);
+                var check = fields.Should().ContainSingle(f => f.Name == "Agree").Subject;
+                check.Kind.Should().Be(PdfFormFieldKind.CheckBox);
+
+                await forms.SetCheckBoxAsync(document, check.PageIndex, check.AnnotIndex, isChecked: true);
+                var listed = await forms.ListFieldsAsync(document);
+                listed.Should().Contain(f => f.Name == "Agree" && f.Value == "Yes");
+
+                await forms.SetCheckBoxAsync(document, check.PageIndex, check.AnnotIndex, isChecked: false);
+                listed = await forms.ListFieldsAsync(document);
+                listed.Should().Contain(f => f.Name == "Agree" && f.Value == "Off");
+
+                await forms.SetCheckBoxAsync(document, check.PageIndex, check.AnnotIndex, isChecked: true);
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var fields = await forms.ListFieldsAsync(reopened);
+                fields.Should().Contain(f => f.Name == "Agree" && f.Value == "Yes");
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
     /// <summary>
-    /// Minimal two-field AcroForm (letter page) written with a correct xref.
+    /// Minimal AcroForm (letter page) written with a correct xref.
     /// </summary>
-    private static string CreateAcroFormPdf()
+    private static string CreateAcroFormPdf(bool includeCheckBox = false)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-acroform-" + Guid.NewGuid().ToString("N") + ".pdf");
+        var annots = includeCheckBox ? "[7 0 R 8 0 R 9 0 R]" : "[7 0 R 8 0 R]";
+        var fields = includeCheckBox ? "[7 0 R 8 0 R 9 0 R]" : "[7 0 R 8 0 R]";
         var objects = new List<string>
         {
             // 1 Catalog
@@ -72,11 +119,11 @@ public class PdfiumFormStoreTests
             // 2 Pages
             "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
             // 3 Page
-            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 6 0 R >> >> /Annots [7 0 R 8 0 R] >>",
+            $"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 6 0 R >> >> /Annots {annots} >>",
             // 4 Contents
             "<< /Length 68 >>\nstream\nBT /F1 12 Tf 72 720 Td (Name:) Tj 0 -40 Td (City:) Tj ET\nendstream",
             // 5 AcroForm
-            "<< /Fields [7 0 R 8 0 R] /DR << /Font << /Helv 6 0 R >> >> /DA (/Helv 0 Tf 0 g) /NeedAppearances true >>",
+            $"<< /Fields {fields} /DR << /Font << /Helv 6 0 R >> >> /DA (/Helv 0 Tf 0 g) /NeedAppearances true >>",
             // 6 Font
             "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
             // 7 Name widget
@@ -84,6 +131,12 @@ public class PdfiumFormStoreTests
             // 8 City widget
             "<< /Type /Annot /Subtype /Widget /Rect [120 670 320 695] /F 4 /P 3 0 R /FT /Tx /T (City) /V () /DV () /DA (/Helv 12 Tf 0 g) /MK << >> >>",
         };
+
+        if (includeCheckBox)
+        {
+            objects.Add(
+                "<< /Type /Annot /Subtype /Widget /Rect [120 630 140 650] /F 4 /P 3 0 R /FT /Btn /T (Agree) /V /Off /AS /Off /Ff 0 /MK << >> >>");
+        }
 
         using var ms = new MemoryStream();
         using (var writer = new StreamWriter(ms, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), leaveOpen: true))

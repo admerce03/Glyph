@@ -25,6 +25,16 @@ public interface IPdfFormStore
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Toggle a checkbox widget. Sets <c>/V</c> and <c>/AS</c> to the on-state name or <c>Off</c>.
+    /// </summary>
+    Task SetCheckBoxAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        bool isChecked,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Focus the next (or previous) field in tab order. Returns the focused field, or null if none.
     /// </summary>
     Task<PdfFormFieldInfo?> FocusAdjacentAsync(

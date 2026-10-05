@@ -350,7 +350,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F19-16 | PDF signatures | preserve transparency | M4 | Tested | BGRA alpha channel |
 | F20-01 | PDF forms | text fields | M4 | Tested | `IPdfFormStore.SetTextValueAsync` + Form toolbar |
 | F20-02 | PDF forms | multiline fields | M4 | Implemented | Same text path; AcceptsReturn in edit dialog |
-| F20-03 | PDF forms | checkboxes | M4 | Not Started | Listed; edit later |
+| F20-03 | PDF forms | checkboxes | M4 | Tested | `SetCheckBoxAsync` sets `/V`+`/AS` |
 | F20-04 | PDF forms | radio buttons | M4 | Not Started | Listed; edit later |
 | F20-05 | PDF forms | dropdowns | M4 | Not Started |  |
 | F20-06 | PDF forms | combo boxes | M4 | Implemented | Set via same `/V` text path |
