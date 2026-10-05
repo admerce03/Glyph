@@ -234,7 +234,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-08 | PDF annotations | Rounded rectangles | M4 | Not Started |  |
 | F13-09 | PDF annotations | Ellipses | M4 | Tested | `AddShapeAsync(Ellipse)` + Ellipse draw mode |
 | F13-10 | PDF annotations | Polygons | M4 | Not Started |  |
-| F13-11 | PDF annotations | Callouts | M4 | Not Started |  |
+| F13-11 | PDF annotations | Callouts | M4 | Tested | `AddCalloutAsync` FreeText+ink pointer; Callout draw mode |
 | F13-12 | PDF annotations | Text boxes | M4 | Tested | `AddTextBoxAsync` FreeText + TextBox toolbar |
 | F13-13 | PDF annotations | Sticky notes | M4 | Tested | Same as F15-01 `AddStickyNoteAsync` |
 | F13-14 | PDF annotations | Speech-bubble-like callouts | M4 | Not Started |  |
@@ -299,7 +299,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F16-13 | Text boxes and callouts | Border. | M4 | Tested | Border color + width on create |
 | F16-14 | Text boxes and callouts | Opacity. | M4 | Not Started |  |
 | F16-15 | Text boxes and callouts | Alignment. | M4 | Not Started |  |
-| F16-16 | Text boxes and callouts | Callout pointer. | M4 | Not Started |  |
+| F16-16 | Text boxes and callouts | Callout pointer. | M4 | Tested | Ink pointer from tip to nearest box edge |
 | F16-17 | Text boxes and callouts | Move pointer separately from text box. | M4 | Not Started |  |
 | F17-01 | Shapes | line | M4 | Not Started |  |
 | F17-02 | Shapes | arrow | M4 | Tested | Same as F13-06 Arrow draw mode |

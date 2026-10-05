@@ -52,6 +52,22 @@ public interface IPdfAnnotationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// FreeText callout: text box plus an ink pointer from <paramref name="tip"/> to the box.
+    /// </summary>
+    Task<PdfAnnotationInfo> AddCalloutAsync(
+        IPdfDocument document,
+        int pageIndex,
+        PdfRect textBounds,
+        PdfPagePoint tip,
+        string contents,
+        PdfAnnotationColor textColor,
+        PdfAnnotationColor? borderColor = null,
+        PdfAnnotationColor? fillColor = null,
+        float fontSizePoints = 12f,
+        float pointerWidthPoints = 1.5f,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Insert a stamp annotation backed by a BGRA32 image (e.g. signature PNG with alpha).
     /// </summary>
     Task<PdfAnnotationInfo> AddStampAsync(
