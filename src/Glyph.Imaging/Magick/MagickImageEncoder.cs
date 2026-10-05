@@ -43,6 +43,7 @@ public sealed class MagickImageEncoder : IImageEncoder
                     ImageEncodeFormat.Gif => MagickFormat.Gif,
                     ImageEncodeFormat.Avif => MagickFormat.Avif,
                     ImageEncodeFormat.Jpeg2000 => MagickFormat.Jp2,
+                    ImageEncodeFormat.Heic => MagickFormat.Heic,
                     _ => MagickFormat.Png,
                 };
 
@@ -91,6 +92,7 @@ public sealed class MagickImageEncoder : IImageEncoder
                     ImageEncodeFormat.Gif => MagickFormat.Gif,
                     ImageEncodeFormat.Avif => MagickFormat.Avif,
                     ImageEncodeFormat.Jpeg2000 => MagickFormat.Jp2,
+                    ImageEncodeFormat.Heic => MagickFormat.Heic,
                     _ => MagickFormat.Png,
                 };
 
@@ -119,7 +121,8 @@ public sealed class MagickImageEncoder : IImageEncoder
                 throw new ArgumentOutOfRangeException(nameof(options), "Quality must be between 1 and 100.");
             }
 
-            if (format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Webp or ImageEncodeFormat.Avif)
+            if (format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Webp or ImageEncodeFormat.Avif
+                or ImageEncodeFormat.Heic)
             {
                 image.Quality = (uint)quality;
             }

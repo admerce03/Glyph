@@ -511,7 +511,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F32-06 | Image orientation | Batch operations on selected images. | M5 | Not Started |  |
 | F32-07 | Image orientation | Respect EXIF orientation. | M5 | Tested | MagickImageDecoder AutoOrient on open |
 | F32-08 | Image orientation | Option to normalize EXIF orientation into pixels. | M5 | Tested | Orient toolbar + NormalizeOrientationAsync |
-| F33-01 | Image color adjustments | Auto Levels | M5 | Not Started |  |
+| F33-01 | Image color adjustments | Auto Levels | M5 | Tested | Adjust dialog → `AutoLevels` → Magick `AutoLevel` |
 | F33-02 | Image color adjustments | Exposure | M5 | Implemented | Adjust dialog Brightness (Magick BrightnessContrast) |
 | F33-03 | Image color adjustments | Contrast | M5 | Tested | Adjust dialog → AdjustAsync Contrast |
 | F33-04 | Image color adjustments | Highlights | M5 | Not Started |  |
@@ -519,8 +519,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F33-06 | Image color adjustments | Saturation | M5 | Tested | Adjust dialog → AdjustAsync Saturation |
 | F33-07 | Image color adjustments | Temperature | M5 | Not Started |  |
 | F33-08 | Image color adjustments | Tint | M5 | Not Started |  |
-| F33-09 | Image color adjustments | Sharpness | M5 | Not Started |  |
-| F33-10 | Image color adjustments | Sepia | M5 | Not Started |  |
+| F33-09 | Image color adjustments | Sharpness | M5 | Tested | Adjust dialog Sharpness → Magick `Sharpen` |
+| F33-10 | Image color adjustments | Sepia | M5 | Tested | Adjust dialog Sepia → Magick `SepiaTone` |
 | F33-11 | Image color adjustments | Black point / levels | M5 | Not Started |  |
 | F33-12 | Image color adjustments | Gamma where useful | M5 | Not Started |  |
 | F33-13 | Image color adjustments | Reset individual adjustment | M5 | Not Started |  |
@@ -544,13 +544,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F35-04 | Image format conversion | TIFF | M5 | Tested | Convert dialog → TIFF |
 | F35-05 | Image format conversion | BMP | M5 | Tested | Convert dialog → BMP |
 | F35-06 | Image format conversion | GIF | M5 | Tested | Convert dialog → GIF (first frame) |
-| F35-07 | Image format conversion | HEIC/HEIF where supported | M5 | Not Started |  |
-| F35-08 | Image format conversion | AVIF | M5 | Not Started |  |
-| F35-09 | Image format conversion | JPEG 2000 | M5 | Not Started |  |
+| F35-07 | Image format conversion | HEIC/HEIF where supported | M5 | Tested | Convert → HEIC (`ImageEncodeFormat.Heic`); skips when Magick lacks codec |
+| F35-08 | Image format conversion | AVIF | M5 | Tested | Convert dialog → AVIF + quality |
+| F35-09 | Image format conversion | JPEG 2000 | M5 | Tested | Convert dialog → JPEG 2000 |
 | F35-10 | Image format conversion | PDF | M5 | Not Started |  |
 | F35-11 | Image format conversion | JPEG quality | M5 | Tested | ImageEncodeOptions.Quality + →JPEG dialog |
 | F35-12 | Image format conversion | WebP quality/lossless | M5 | Tested | Convert dialog Quality / Lossless WebP |
-| F35-13 | Image format conversion | AVIF quality | M5 | Not Started |  |
+| F35-13 | Image format conversion | AVIF quality | M5 | Tested | Convert dialog Quality slider for AVIF |
 | F35-14 | Image format conversion | TIFF compression | M5 | Not Started |  |
 | F35-15 | Image format conversion | preserve/remove alpha | M5 | Not Started |  |
 | F35-16 | Image format conversion | preserve/remove metadata | M5 | Not Started |  |

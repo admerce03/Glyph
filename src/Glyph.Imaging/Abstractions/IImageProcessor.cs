@@ -33,4 +33,7 @@ public readonly record struct ImageRect(int X, int Y, int Width, int Height);
 public sealed record ImageAdjustments(
     double Brightness = 0,
     double Contrast = 0,
-    double Saturation = 0);
+    double Saturation = 0,
+    bool AutoLevels = false,
+    double Sharpness = 0,
+    bool Sepia = false);

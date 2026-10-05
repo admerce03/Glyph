@@ -547,6 +547,17 @@ public sealed class ImageDocumentView : UserControl
         }
     }
 
+    private void ClearEditUndoStack()
+    {
+        foreach (var checkpoint in _editUndoStack)
+        {
+            checkpoint.Dispose();
+        }
+
+        _editUndoStack.Clear();
+        _undoButton.IsEnabled = false;
+    }
+
     private void PushUndo(IImageEditCheckpoint checkpoint)
     {
         _editUndoStack.Add(checkpoint);
@@ -959,12 +970,18 @@ public sealed class ImageDocumentView : UserControl
         var brightness = MakeSlider("Brightness (−100…100)", -100, 100, 0);
         var contrast = MakeSlider("Contrast (−100…100)", -100, 100, 0);
         var saturation = MakeSlider("Saturation (−100…100)", -100, 100, 0);
+        var sharpness = MakeSlider("Sharpness (0…100)", 0, 100, 0);
+        var autoLevels = new CheckBox { Content = "Auto Levels", IsChecked = false };
+        var sepia = new CheckBox { Content = "Sepia", IsChecked = false };
         var reset = new Button { Content = "Reset", HorizontalAlignment = HorizontalAlignment.Left };
         reset.Click += (_, _) =>
         {
             brightness.Value = 0;
             contrast.Value = 0;
             saturation.Value = 0;
+            sharpness.Value = 0;
+            autoLevels.IsChecked = false;
+            sepia.IsChecked = false;
         };
 
         var panel = new StackPanel
@@ -974,13 +991,16 @@ public sealed class ImageDocumentView : UserControl
             {
                 new TextBlock
                 {
-                    Text = "Values apply destructively on OK (save to keep).",
+                    Text = "Values apply on OK (Undo / Ctrl+Z available; Save to keep on disk).",
                     Opacity = 0.75,
                     TextWrapping = TextWrapping.Wrap,
                 },
+                autoLevels,
                 brightness,
                 contrast,
                 saturation,
+                sharpness,
+                sepia,
                 reset,
             },
         };
@@ -1000,18 +1020,29 @@ public sealed class ImageDocumentView : UserControl
             return;
         }
 
-        if (Math.Abs(brightness.Value) < 0.0001
+        var useAuto = autoLevels.IsChecked == true;
+        var useSepia = sepia.IsChecked == true;
+        if (!useAuto
+            && !useSepia
+            && Math.Abs(brightness.Value) < 0.0001
             && Math.Abs(contrast.Value) < 0.0001
-            && Math.Abs(saturation.Value) < 0.0001)
+            && Math.Abs(saturation.Value) < 0.0001
+            && Math.Abs(sharpness.Value) < 0.0001)
         {
             _status.Text = "No adjustments to apply.";
             return;
         }
 
-        var adjustments = new ImageAdjustments(brightness.Value, contrast.Value, saturation.Value);
+        var adjustments = new ImageAdjustments(
+            Brightness: brightness.Value,
+            Contrast: contrast.Value,
+            Saturation: saturation.Value,
+            AutoLevels: useAuto,
+            Sharpness: sharpness.Value,
+            Sepia: useSepia);
         await MutateAsync(
             () => _processor.AdjustAsync(_document, adjustments),
-            $"Adjusted B{brightness.Value:0}/C{contrast.Value:0}/S{saturation.Value:0}.");
+            "Color adjustments applied.");
     }
 
     private async Task ConvertAsync()
@@ -1020,7 +1051,7 @@ public sealed class ImageDocumentView : UserControl
         {
             Header = "Format",
             Width = 200,
-            ItemsSource = new[] { "WebP", "TIFF", "BMP", "GIF", "AVIF", "JPEG 2000" },
+            ItemsSource = new[] { "WebP", "TIFF", "BMP", "GIF", "AVIF", "JPEG 2000", "HEIC" },
             SelectedIndex = 0,
         };
         var quality = new Slider
@@ -1037,7 +1068,7 @@ public sealed class ImageDocumentView : UserControl
         {
             var selected = formatBox.SelectedItem as string;
             var isWebp = selected == "WebP";
-            var needsQuality = selected is "WebP" or "AVIF";
+            var needsQuality = selected is "WebP" or "AVIF" or "HEIC";
             quality.Visibility = needsQuality && !(isWebp && lossless.IsChecked == true)
                 ? Visibility.Visible
                 : Visibility.Collapsed;
@@ -1073,6 +1104,7 @@ public sealed class ImageDocumentView : UserControl
             "GIF" => (ImageEncodeFormat.Gif, ".gif"),
             "AVIF" => (ImageEncodeFormat.Avif, ".avif"),
             "JPEG 2000" => (ImageEncodeFormat.Jpeg2000, ".jp2"),
+            "HEIC" => (ImageEncodeFormat.Heic, ".heic"),
             _ => (ImageEncodeFormat.Webp, ".webp"),
         };
 
@@ -1083,7 +1115,7 @@ public sealed class ImageDocumentView : UserControl
                 ? new ImageEncodeOptions(Lossless: true)
                 : new ImageEncodeOptions(Quality: (int)quality.Value);
         }
-        else if (format == ImageEncodeFormat.Avif)
+        else if (format is ImageEncodeFormat.Avif or ImageEncodeFormat.Heic)
         {
             options = new ImageEncodeOptions(Quality: (int)quality.Value);
         }

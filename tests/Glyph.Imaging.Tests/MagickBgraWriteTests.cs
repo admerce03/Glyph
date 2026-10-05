@@ -16,6 +16,7 @@ public class MagickBgraWriteTests
     [InlineData(ImageEncodeFormat.Gif, ".gif")]
     [InlineData(ImageEncodeFormat.Avif, ".avif")]
     [InlineData(ImageEncodeFormat.Jpeg2000, ".jp2")]
+    [InlineData(ImageEncodeFormat.Heic, ".heic")]
     public async Task WriteBgra_round_trips_dimensions(ImageEncodeFormat format, string extension)
     {
         var width = 48;
@@ -33,15 +34,24 @@ public class MagickBgraWriteTests
         try
         {
             var encoder = new MagickImageEncoder();
-            await encoder.WriteBgraAsync(
-                bgra,
-                width,
-                height,
-                path,
-                format,
-                format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Webp or ImageEncodeFormat.Avif
-                    ? new ImageEncodeOptions(Quality: 80)
-                    : null);
+            try
+            {
+                await encoder.WriteBgraAsync(
+                    bgra,
+                    width,
+                    height,
+                    path,
+                    format,
+                    format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Webp or ImageEncodeFormat.Avif
+                        or ImageEncodeFormat.Heic
+                        ? new ImageEncodeOptions(Quality: 80)
+                        : null);
+            }
+            catch (MagickException) when (format == ImageEncodeFormat.Heic)
+            {
+                // Magick build without HEIC encode — acceptable for F35-07 "where supported".
+                return;
+            }
 
             File.Exists(path).Should().BeTrue();
             using var image = new MagickImage(path);

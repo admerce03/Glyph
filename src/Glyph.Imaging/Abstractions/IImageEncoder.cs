@@ -34,10 +34,11 @@ public enum ImageEncodeFormat
     Gif,
     Avif,
     Jpeg2000,
+    Heic,
 }
 
 /// <summary>
-/// Optional encode knobs. Quality is 1–100 when set (JPEG/WebP/AVIF).
+/// Optional encode knobs. Quality is 1–100 when set (JPEG/WebP/AVIF/HEIC).
 /// Lossless applies to WebP when true.
 /// Title/Author are written into image metadata when the codec supports it.
 /// EmbedSrgbProfile writes an sRGB ICC profile when the codec retains it

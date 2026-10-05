@@ -95,6 +95,11 @@ public sealed class MagickImageProcessor : IImageProcessor
             () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (adjustments.AutoLevels)
+                {
+                    magick.Native.AutoLevel();
+                }
+
                 if (Math.Abs(adjustments.Brightness) > 0.0001)
                 {
                     // Magick brightness-contrast: brightness percent roughly -100..100.
@@ -109,6 +114,18 @@ public sealed class MagickImageProcessor : IImageProcessor
                 if (Math.Abs(adjustments.Saturation) > 0.0001)
                 {
                     magick.Native.Modulate(new Percentage(100), new Percentage(100 + adjustments.Saturation), new Percentage(100));
+                }
+
+                if (adjustments.Sharpness > 0.0001)
+                {
+                    // Radius/sigma scaled from a 0–100 UI slider.
+                    var sigma = Math.Clamp(adjustments.Sharpness / 25.0, 0.1, 4.0);
+                    magick.Native.Sharpen(radius: 0, sigma: sigma);
+                }
+
+                if (adjustments.Sepia)
+                {
+                    magick.Native.SepiaTone(new Percentage(80));
                 }
             },
             cancellationToken);

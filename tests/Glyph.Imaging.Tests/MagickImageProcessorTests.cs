@@ -133,6 +133,28 @@ public class MagickImageProcessorTests
         }
     }
 
+    [Fact]
+    public async Task Adjust_auto_levels_sharpness_sepia_keeps_dimensions()
+    {
+        var path = CreateSolidPng(48, 32);
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            await using var document = await decoder.OpenAsync(path);
+
+            await processor.AdjustAsync(
+                document,
+                new ImageAdjustments(AutoLevels: true, Sharpness: 40, Sepia: true));
+            document.PixelWidth.Should().Be(48);
+            document.PixelHeight.Should().Be(32);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     [Theory]
     [InlineData(ImageEncodeFormat.Jpeg, ".jpg")]
     [InlineData(ImageEncodeFormat.Webp, ".webp")]
