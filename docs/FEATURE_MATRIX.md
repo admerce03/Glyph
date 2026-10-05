@@ -63,7 +63,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-02 | Sidebar modes | Table of contents | M2-M5 | Implemented | Outline TreeView when bookmarks present |
 | F03-03 | Sidebar modes | Search results | M2-M5 | Implemented | Find hits list under Search header |
 | F03-04 | Sidebar modes | Bookmarks | M2-M5 | Implemented | PDF sidebar Bookmarks list (user bookmarks) |
-| F03-05 | Sidebar modes | Highlights and annotations | M2-M5 | Not Started |  |
+| F03-05 | Sidebar modes | Highlights and annotations | M2-M5 | Implemented | PDF sidebar Annotations list (markup, notes, ink, shapes, signatures) |
 | F03-06 | Sidebar modes | Image list | M2-M5 | Not Started |  |
 | F03-07 | Sidebar modes | Contact sheet | M2-M5 | Not Started |  |
 | F03-08 | Sidebar modes | Document attachments, if supported | M2-M5 | Not Started |  |
@@ -832,22 +832,22 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F59-07 | Multi-document workflow | side-by-side windows using Windows Snap | M1/M3 | Implemented | Multi-window shell; Snap is OS-native |
 | F59-08 | Multi-document workflow | maintain independent undo history for each document | M1/M3 | Implemented | Per-view `PdfPageEditHistory` |
 | F59-09 | Multi-document workflow | retain per-document page/zoom position | M1/M3 | Implemented | Per-document `PdfViewState` persistence |
-| F60-01 | Context-sensitive commands | Copy | M1/M3 | Not Started |  |
-| F60-02 | Context-sensitive commands | Highlight | M1/M3 | Not Started |  |
-| F60-03 | Context-sensitive commands | Underline | M1/M3 | Not Started |  |
-| F60-04 | Context-sensitive commands | Strikethrough | M1/M3 | Not Started |  |
-| F60-05 | Context-sensitive commands | Search | M1/M3 | Not Started |  |
-| F60-06 | Context-sensitive commands | Style | M1/M3 | Not Started |  |
-| F60-07 | Context-sensitive commands | Duplicate | M1/M3 | Not Started |  |
-| F60-08 | Context-sensitive commands | Delete | M1/M3 | Not Started |  |
-| F60-09 | Context-sensitive commands | Copy | M1/M3 | Not Started |  |
-| F61-01 | Non-destructive editing where practical | PDF annotations | M3-M5 | Not Started |  |
+| F60-01 | Context-sensitive commands | Copy | M1/M3 | Implemented | Page right-click + Edit → Copy for selected text |
+| F60-02 | Context-sensitive commands | Highlight | M1/M3 | Implemented | Page right-click Highlight on text selection |
+| F60-03 | Context-sensitive commands | Underline | M1/M3 | Implemented | Page right-click Underline on text selection |
+| F60-04 | Context-sensitive commands | Strikethrough | M1/M3 | Implemented | Page right-click Strikethrough on text selection |
+| F60-05 | Context-sensitive commands | Search | M1/M3 | Implemented | Page right-click Find selection / Search web |
+| F60-06 | Context-sensitive commands | Style | M1/M3 | Implemented | Page right-click Style… → annotation color |
+| F60-07 | Context-sensitive commands | Duplicate | M1/M3 | Implemented | Page right-click Duplicate selected annotation |
+| F60-08 | Context-sensitive commands | Delete | M1/M3 | Implemented | Page right-click Delete selected annotation |
+| F60-09 | Context-sensitive commands | Copy | M1/M3 | Implemented | Page right-click Copy annotation + Ctrl+C |
+| F61-01 | Non-destructive editing where practical | PDF annotations | M3-M5 | Implemented | Annotation objects editable until Flatten / Save |
 | F61-02 | Non-destructive editing where practical | image markup | M3-M5 | Implemented | Draw overlay until Flatten/Save (F34) |
 | F61-03 | Non-destructive editing where practical | crops | M3-M5 | Tested | CropBox-only until optional permanent export |
 | F61-04 | Non-destructive editing where practical | adjustments | M3-M5 | Implemented | Image Adjust live preview via checkpoint clone; Apply/Cancel |
-| F61-05 | Non-destructive editing where practical | signatures | M3-M5 | Not Started |  |
-| F61-06 | Non-destructive editing where practical | shapes | M3-M5 | Not Started |  |
-| F61-07 | Non-destructive editing where practical | text | M3-M5 | Not Started |  |
+| F61-05 | Non-destructive editing where practical | signatures | M3-M5 | Implemented | Stamp annotations until Flatten / Save |
+| F61-06 | Non-destructive editing where practical | shapes | M3-M5 | Implemented | Shape annotations until Flatten / Save |
+| F61-07 | Non-destructive editing where practical | text | M3-M5 | Implemented | Text box / callout annotations until Flatten / Save |
 | F62-01 | Supported output formats | PDF | M5/M7 | Implemented | Save / Extract / OCR→PDF / cropped export |
 | F62-02 | Supported output formats | PNG | M5/M7 | Tested | Image export + PDF page Export (`WriteBgraAsync`) |
 | F62-03 | Supported output formats | JPEG | M5/M7 | Tested | Image JPEG quality export + PDF page Export |

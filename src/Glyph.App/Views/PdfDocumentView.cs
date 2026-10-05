@@ -1999,13 +1999,16 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var hasText = !string.IsNullOrWhiteSpace(_selectedText);
+        var hasText = !string.IsNullOrWhiteSpace(_selectedText)
+            && _selectionPageIndex >= 0
+            && _selectionQuads.Count > 0;
         var hasRegion = _regionCopyPageIndex >= 0
             && _regionCopyDisplayRect.Width >= 4
             && _regionCopyDisplayRect.Height >= 4;
-        if (!hasText && !hasRegion)
+        var hasAnnot = TryGetSelectedAnnotation(out _);
+        if (!hasText && !hasRegion && !hasAnnot)
         {
-            _status.Text = "Select text or drag a region, then right-click for actions.";
+            _status.Text = "Select text, an annotation, or drag a region, then right-click for actions.";
             return;
         }
 
@@ -2014,6 +2017,12 @@ public sealed class PdfDocumentView : UserControl
         {
             var copyItem = new MenuFlyoutItem { Text = "Copy" };
             copyItem.Click += async (_, _) => await CopyTextAsync();
+            var highlightItem = new MenuFlyoutItem { Text = "Highlight" };
+            highlightItem.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.Highlight);
+            var underlineItem = new MenuFlyoutItem { Text = "Underline" };
+            underlineItem.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.Underline);
+            var strikeItem = new MenuFlyoutItem { Text = "Strikethrough" };
+            strikeItem.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.StrikeOut);
             var findItem = new MenuFlyoutItem { Text = "Find selection" };
             findItem.Click += async (_, _) => await SearchSelectedTextAsync();
             var webItem = new MenuFlyoutItem { Text = "Search web" };
@@ -2021,9 +2030,33 @@ public sealed class PdfDocumentView : UserControl
             var redactTextItem = new MenuFlyoutItem { Text = "Mark for redaction" };
             redactTextItem.Click += (_, _) => MarkSelectionForRedaction();
             flyout.Items.Add(copyItem);
+            flyout.Items.Add(highlightItem);
+            flyout.Items.Add(underlineItem);
+            flyout.Items.Add(strikeItem);
             flyout.Items.Add(findItem);
             flyout.Items.Add(webItem);
             flyout.Items.Add(redactTextItem);
+        }
+
+        if (hasAnnot)
+        {
+            if (flyout.Items.Count > 0)
+            {
+                flyout.Items.Add(new MenuFlyoutSeparator());
+            }
+
+            var styleItem = new MenuFlyoutItem { Text = "Style…" };
+            styleItem.Click += async (_, _) => await SetSelectedAnnotationColorAsync();
+            var duplicateItem = new MenuFlyoutItem { Text = "Duplicate" };
+            duplicateItem.Click += async (_, _) => await DuplicateSelectedAnnotationAsync();
+            var deleteItem = new MenuFlyoutItem { Text = "Delete" };
+            deleteItem.Click += async (_, _) => await RemoveSelectedAnnotationAsync();
+            var copyAnnotItem = new MenuFlyoutItem { Text = "Copy annotation" };
+            copyAnnotItem.Click += (_, _) => CopySelectedAnnotationToClipboard();
+            flyout.Items.Add(styleItem);
+            flyout.Items.Add(duplicateItem);
+            flyout.Items.Add(deleteItem);
+            flyout.Items.Add(copyAnnotItem);
         }
 
         if (hasRegion)
