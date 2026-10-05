@@ -28,7 +28,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-18 | Application and file handling | File → Export. | M1/M9 | Not Started |  |
 | F01-19 | Application and file handling | File → Rename. | M1/M9 | Not Started |  |
 | F01-20 | Application and file handling | File → Move. | M1/M9 | Not Started |  |
-| F01-21 | Application and file handling | File → Properties. | M1/M9 | Not Started |  |
+| F01-21 | Application and file handling | File → Properties. | M1/M9 | Implemented | File → Properties / Ctrl+I → PDF Info or image Meta |
 | F01-22 | Application and file handling | Close: | M1/M9 | Not Started |  |
 | F01-23 | Application and file handling | Unsaved-change prompt where appropriate. | M1/M9 | Not Started |  |
 | F01-24 | Application and file handling | Optional autosave. | M1/M9 | Not Started |  |
@@ -721,13 +721,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F51-03 | Optional version snapshots | restore snapshot. | M9 | Not Started |  |
 | F51-04 | Optional version snapshots | open snapshot as copy. | M9 | Not Started |  |
 | F51-05 | Optional version snapshots | delete snapshots. | M9 | Not Started |  |
-| F52-01 | Keyboard shortcuts | Ctrl+O — Open | M1/M9 | Not Started |  |
+| F52-01 | Keyboard shortcuts | Ctrl+O — Open | M1/M9 | Implemented | File menu accelerator |
 | F52-02 | Keyboard shortcuts | Ctrl+S — Save | M1/M9 | Not Started |  |
 | F52-03 | Keyboard shortcuts | Ctrl+Shift+S — Save As | M1/M9 | Not Started |  |
 | F52-04 | Keyboard shortcuts | Ctrl+P — Print | M1/M9 | Implemented | PDF + image views (Print dialog) |
-| F52-05 | Keyboard shortcuts | Ctrl+W — Close tab/document | M1/M9 | Not Started |  |
-| F52-06 | Keyboard shortcuts | Ctrl+Tab — Next tab | M1/M9 | Not Started |  |
-| F52-07 | Keyboard shortcuts | Ctrl+Shift+Tab — Previous tab | M1/M9 | Not Started |  |
+| F52-05 | Keyboard shortcuts | Ctrl+W — Close tab/document | M1/M9 | Implemented | File → Close Tab accelerator |
+| F52-06 | Keyboard shortcuts | Ctrl+Tab — Next tab | M1/M9 | Implemented | Window → Next Tab |
+| F52-07 | Keyboard shortcuts | Ctrl+Shift+Tab — Previous tab | M1/M9 | Implemented | Window → Previous Tab |
 | F52-08 | Keyboard shortcuts | Ctrl+F — Find | M1/M9 | Not Started |  |
 | F52-09 | Keyboard shortcuts | F3 / Shift+F3 — Next/previous result | M1/M9 | Not Started |  |
 | F52-10 | Keyboard shortcuts | Ctrl+C — Copy | M1/M9 | Not Started |  |
