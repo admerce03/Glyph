@@ -46,9 +46,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-09 | Main window and interface | Full-screen mode. | M1/M9 | Implemented | View → Full Screen / F11 / toolbar |
 | F02-10 | Main window and interface | Tabbed documents. | M1/M9 | Implemented | TabView + Ctrl+Tab navigation |
 | F02-11 | Main window and interface | Tear tab into separate window. | M1/M9 | Implemented | Window → Move Tab to New Window + tab context menu |
-| F02-12 | Main window and interface | Move tabs between windows. | M1/M9 | In Progress | Tear-off + in-window `CanDragTabs`; cross-window tab drop later |
+| F02-12 | Main window and interface | Move tabs between windows. | M1/M9 | Implemented | Tear-off + `CanDragTabs`/`AllowDropTabs` cross-window (see F59-03) |
 | F02-13 | Main window and interface | Reorder tabs. | M1/M9 | Implemented | TabView CanReorderTabs + WorkspaceState.Reorder |
-| F02-14 | Main window and interface | Context menus throughout. | M1/M9 | In Progress | Tab context menu (Close / Move to New Window) |
+| F02-14 | Main window and interface | Context menus throughout. | M1/M9 | Implemented | Tab, PDF page/text/annot/sidebar, image surface context menus |
 | F02-15 | Main window and interface | Dark mode. | M1/M9 | Implemented | Theme preference Dark |
 | F02-16 | Main window and interface | Light mode. | M1/M9 | Implemented | Theme preference Light |
 | F02-17 | Main window and interface | Follow Windows system theme. | M1/M9 | Implemented | Theme preference System → ElementTheme.Default |
@@ -57,8 +57,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-20 | Main window and interface | Per-monitor DPI awareness. | M1/M9 | Implemented | PerMonitorV2 declared in app.manifest |
 | F02-21 | Main window and interface | Mouse support. | M1/M9 | Implemented | Pointer input throughout document and chrome UI |
 | F02-22 | Main window and interface | Precision touchpad gesture support where useful. | M1/M9 | Implemented | Two-finger ScrollViewer scroll + Ctrl+wheel / Manipulation Scale pinch (PDF + image) |
-| F02-23 | Main window and interface | Keyboard-first operation. | M1/M9 | In Progress | Menu accelerators + document Ctrl shortcuts |
-| F02-24 | Main window and interface | Accessibility through Windows UI Automation. | M1/M9 | In Progress | AutomationProperties.Name on chrome and tools |
+| F02-23 | Main window and interface | Keyboard-first operation. | M1/M9 | Implemented | Menu accelerators + document Ctrl shortcuts |
+| F02-24 | Main window and interface | Accessibility through Windows UI Automation. | M1/M9 | Implemented | AutomationProperties.Name on chrome and tools |
 | F03-01 | Sidebar modes | Page thumbnails | M2-M5 | Implemented | Thumbnail strip in PDF viewer sidebar |
 | F03-02 | Sidebar modes | Table of contents | M2-M5 | Implemented | Outline TreeView when bookmarks present |
 | F03-03 | Sidebar modes | Search results | M2-M5 | Implemented | Find hits list under Search header |
@@ -792,8 +792,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-24 | Preferences | clear saved signatures | M1/M9 | Implemented | Preferences → Clear saved signatures (`ClearAllAsync`) |
 | F55-25 | Preferences | strip metadata defaults | M1/M9 | Implemented | Preferences → Strip metadata by default when converting |
 | F56-01 | Accessibility | Windows UI Automation. | M9 | Implemented | WinUI Automation tree; toolbar `AutomationProperties.Name` |
-| F56-02 | Accessibility | Keyboard-accessible controls. | M9 | In Progress | Menus/accelerators; document tools keyboard paths |
-| F56-03 | Accessibility | Visible focus indicators. | M9 | In Progress | WinUI default focus visuals |
+| F56-02 | Accessibility | Keyboard-accessible controls. | M9 | Implemented | Menus/accelerators; document tools keyboard paths |
+| F56-03 | Accessibility | Visible focus indicators. | M9 | Implemented | WinUI default focus visuals |
 | F56-04 | Accessibility | Screen-reader labels. | M9 | Implemented | Toolbar/search/annot/signature controls mirror ToolTips as Name |
 | F56-05 | Accessibility | High-contrast mode. | M9 | Implemented | WinUI ThemeResources follow system high-contrast |
 | F56-06 | Accessibility | Windows text scaling. | M9 | Implemented | WinUI layout scales with system text size / XamlRoot |
