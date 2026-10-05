@@ -5624,7 +5624,7 @@ public sealed class PdfDocumentView : UserControl
             Title = "Apply redactions permanently?",
             Content =
                 $"Apply {pending.Count} redaction mark(s)? Underlying text and covered content will be removed from the PDF. "
-                + "Intersecting annotations and embedded file entries will also be removed. This cannot be undone.",
+                + "Intersecting annotations, embedded file entries, and Info metadata will also be cleared. This cannot be undone.",
             PrimaryButtonText = "Apply",
             SecondaryButtonText = "Clear marks",
             CloseButtonText = "Cancel",
@@ -5656,7 +5656,8 @@ public sealed class PdfDocumentView : UserControl
                     RemoveIntersectingTextObjects: true,
                     RemoveIntersectingImageObjects: true,
                     RemoveIntersectingAnnotations: true,
-                    RemoveEmbeddedAttachments: true));
+                    RemoveEmbeddedAttachments: true,
+                    RemoveMetadata: true));
             ClearRedactionMode();
             RefreshToolButtonChrome();
             _cache.ClearDocument(_documentKey);
@@ -5675,7 +5676,9 @@ public sealed class PdfDocumentView : UserControl
                 _status.Text =
                     $"Applied {result.MarksApplied} redaction(s) on {result.PagesChanged} page(s); "
                     + $"removed {result.TextObjectsRemoved} text / {result.ImageObjectsRemoved} image / "
-                    + $"{result.AnnotationsRemoved} annotation / {result.AttachmentsRemoved} attachment object(s).";
+                    + $"{result.AnnotationsRemoved} annotation / {result.AttachmentsRemoved} attachment object(s)"
+                    + (result.MetadataCleared ? "; metadata cleared" : "")
+                    + ".";
             }
         }
         catch (Exception ex)

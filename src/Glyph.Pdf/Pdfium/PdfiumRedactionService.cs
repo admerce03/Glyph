@@ -12,6 +12,8 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
     private const int PageObjPath = 2;
     private const int PageObjImage = 3;
     private const int FillModeWinding = 2;
+    // PDFium FPDF_NO_INCREMENTAL — full rewrite before Info patch (stable trailer).
+    private const uint SaveNoIncremental = 2;
 
     private readonly PdfRedactionPendingStore _store = new();
 
@@ -72,6 +74,7 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
                     var annotationsRemoved = 0;
                     var attachmentsRemoved = 0;
                     var marks = 0;
+                    var metadataCleared = false;
 
                     foreach (var group in byPage)
                     {
@@ -128,8 +131,23 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
                         attachmentsRemoved = RemoveAllEmbeddedAttachments(pdfium.Handle);
                     }
 
+                    if (opts.RemoveMetadata && marks > 0)
+                    {
+                        var cleared = PdfInfoDictionaryPatcher.Apply(
+                            PdfiumDocumentSaver.SaveToBytes(pdfium.Handle, SaveNoIncremental),
+                            new PdfInfoFields(
+                                Title: string.Empty,
+                                Author: string.Empty,
+                                Subject: string.Empty,
+                                Keywords: string.Empty,
+                                Creator: string.Empty,
+                                Producer: string.Empty));
+                        pdfium.ReplaceFromBytes(cleared);
+                        metadataCleared = true;
+                    }
+
                     _store.Clear(pdfium);
-                    if (pagesChanged > 0)
+                    if (pagesChanged > 0 || metadataCleared)
                     {
                         pdfium.NotifyAnnotationsChanged();
                     }
@@ -140,7 +158,8 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
                         textRemoved,
                         imagesRemoved,
                         annotationsRemoved,
-                        attachmentsRemoved);
+                        attachmentsRemoved,
+                        metadataCleared);
                 }
             },
             cancellationToken);

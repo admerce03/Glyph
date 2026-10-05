@@ -286,7 +286,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Progress notes
 
-- Redact mark/preview/apply removes intersecting text/images/annotations + attachment name-tree entries
+- Redact mark/preview/apply removes intersecting text/images/annotations + attachment name-tree entries + Info metadata
 - Info dialog: encryption/permissions, version, page size, fonts, attachment count; Edit writes Title/Author/Subject/Keywords
 - Optimize presets + Custom + estimate; F24-08 JPEG rewrite blocked (PDFiumCore FILEACCESS); font subset/linearize deferred (ADR-016)
 - Page Export → PNG/JPEG/WebP/TIFF/BMP/GIF/AVIF/JP2 with DPI/quality, Title/Author metadata, sRGB ICC (F45-07), alpha where codec allows

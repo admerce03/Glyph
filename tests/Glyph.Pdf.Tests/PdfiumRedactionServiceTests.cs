@@ -222,6 +222,44 @@ public class PdfiumRedactionServiceTests
         }
     }
 
+    [Fact]
+    public async Task Apply_clears_document_info_metadata()
+    {
+        var path = CreateInfoPdf();
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var redaction = new PdfiumRedactionService();
+            var infoService = new PdfiumDocumentInfoService();
+            await using var document = await factory.OpenAsync(path);
+
+            var before = infoService.GetInfo(document);
+            before.Title.Should().Be("Glyph Title");
+            before.Author.Should().Be("Glyph Author");
+
+            redaction.MarkRectangle(document, 0, new PdfRect(50, 700, 200, 740), "box");
+            var result = await redaction.ApplyAsync(
+                document,
+                new PdfRedactionApplyOptions(
+                    RemoveIntersectingTextObjects: false,
+                    RemoveIntersectingImageObjects: false,
+                    RemoveIntersectingAnnotations: false,
+                    RemoveEmbeddedAttachments: false,
+                    RemoveMetadata: true));
+            result.MetadataCleared.Should().BeTrue();
+
+            var after = infoService.GetInfo(document);
+            after.Title.Should().BeNullOrEmpty();
+            after.Author.Should().BeNullOrEmpty();
+            after.Subject.Should().BeNullOrEmpty();
+            after.Keywords.Should().BeNullOrEmpty();
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static unsafe void AddAttachment(FpdfDocumentT handle, string name, byte[] contents)
     {
         var nameBytes = Encoding.Unicode.GetBytes(name + "\0");
@@ -248,6 +286,21 @@ public class PdfiumRedactionServiceTests
         var font = builder.AddStandard14Font(Standard14Font.Helvetica);
         var page = builder.AddPage(PageSize.Letter);
         page.AddText(text, 18, new PdfPoint(72, 720), font);
+        File.WriteAllBytes(path, builder.Build());
+        return path;
+    }
+
+    private static string CreateInfoPdf()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-redact-info-" + Guid.NewGuid().ToString("N") + ".pdf");
+        var builder = new PdfDocumentBuilder();
+        builder.DocumentInformation.Title = "Glyph Title";
+        builder.DocumentInformation.Author = "Glyph Author";
+        builder.DocumentInformation.Subject = "Glyph Subject";
+        builder.DocumentInformation.Keywords = "glyph, test";
+        var font = builder.AddStandard14Font(Standard14Font.Helvetica);
+        var page = builder.AddPage(PageSize.Letter);
+        page.AddText("Info sample", 14, new PdfPoint(72, 720), font);
         File.WriteAllBytes(path, builder.Build());
         return path;
     }
