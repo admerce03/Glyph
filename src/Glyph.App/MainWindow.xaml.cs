@@ -401,6 +401,83 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Folder prev/next: reuse the active image tab when possible instead of stacking tabs.
+    /// </summary>
+    private async Task OpenImageSiblingAsync(string path)
+    {
+        try
+        {
+            if (!File.Exists(path))
+            {
+                StatusText.Text = "File not found.";
+                return;
+            }
+
+            if (_workspace.FindByPath(path) is not null)
+            {
+                await OpenPathAsync(path);
+                return;
+            }
+
+            var active = _workspace.ActiveDocument;
+            var tab = active is null
+                ? null
+                : DocumentTabs.TabItems.OfType<TabViewItem>()
+                    .FirstOrDefault(t => t.Tag is DocumentId d && d.Equals(active.Id));
+
+            if (active is null
+                || active.Kind != DocumentKind.Image
+                || tab is null
+                || active.IsDirty)
+            {
+                await OpenPathAsync(path);
+                return;
+            }
+
+            if (active.Path is not null)
+            {
+                try
+                {
+                    await _viewStateStore.SaveAsync(active.Path, active.ViewState);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to persist view state for {Path}", active.Path);
+                }
+            }
+
+            if (_openEngines.Remove(active.Id, out var engine))
+            {
+                await engine.DisposeAsync();
+            }
+
+            var displayName = System.IO.Path.GetFileName(path);
+            active.Path = path;
+            active.DisplayName = displayName;
+            active.MarkClean();
+
+            var content = await CreateDocumentContentAsync(active);
+            if (content is null)
+            {
+                StatusText.Text = "Failed to open image.";
+                return;
+            }
+
+            tab.Header = displayName;
+            tab.Content = content;
+            await _recentFiles.AddAsync(path);
+            RefreshRecentList();
+            StatusText.Text = $"Opened image: {displayName}";
+            _logger.LogInformation("Navigated image tab to {Path}", path);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to navigate to image {Path}", path);
+            StatusText.Text = "Failed to open file.";
+        }
+    }
+
     private async Task<FrameworkElement?> CreateDocumentContentAsync(DocumentSession session)
     {
         if (session.Kind == DocumentKind.Pdf && session.Path is not null)
@@ -457,7 +534,7 @@ public sealed partial class MainWindow : Window
                 _imageProcessor,
                 _imageEncoder,
                 session.ViewState,
-                openSibling: OpenPathAsync);
+                openSibling: OpenImageSiblingAsync);
         }
 
         return CreatePlaceholderContent(session);
