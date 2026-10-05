@@ -255,6 +255,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - PDF **OCR** current/selected/entire document on `PdfDocumentView` (chooser → render → BGRA → engine + result dialog)
 - **Cancel OCR** + `n/m` status progress for multi-page PDF recognition
 - Document **Find** merges session OCR page text (`PdfPageTextSearch`) when OCR has been run
+- Find on image-only PDFs offers OCR-current-page fallback; **Find sel** searches the text selection
 - Text-layer embed / entity actions / Live Text overlays still outstanding
 ---
 
