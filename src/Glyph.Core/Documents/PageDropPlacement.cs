@@ -22,4 +22,10 @@ public static class PageDropPlacement
         => hasStorageItems && !hasTextPayload
             ? "Insert PDF pages"
             : "Move or copy pages here";
+
+    /// <summary>
+    /// Ctrl forces copy; Explorer PDF drops (storage without text payload) are copy-only.
+    /// </summary>
+    public static bool PreferCopyOnly(bool controlHeld, bool storageItemsWithoutText) =>
+        controlHeld || storageItemsWithoutText;
 }

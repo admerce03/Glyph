@@ -1851,12 +1851,11 @@ public sealed class PdfDocumentView : UserControl
 
     private static DataPackageOperation PreferredDropOperation(DragEventArgs e)
     {
-        if (e.Modifiers.HasFlag(DragDropModifiers.Control))
-        {
-            return DataPackageOperation.Copy;
-        }
-
-        if (e.DataView.Contains(StandardDataFormats.StorageItems) && !e.DataView.Contains(StandardDataFormats.Text))
+        var storageOnly = e.DataView.Contains(StandardDataFormats.StorageItems)
+            && !e.DataView.Contains(StandardDataFormats.Text);
+        if (PageDropPlacement.PreferCopyOnly(
+                e.Modifiers.HasFlag(DragDropModifiers.Control),
+                storageOnly))
         {
             return DataPackageOperation.Copy;
         }

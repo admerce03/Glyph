@@ -85,7 +85,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-06 | PDF viewing | Support rotated pages. | M2 | Tested | `FPDFPageGetRotation` + size swap; Pdf.Tests cover /Rotate 90 |
 | F04-07 | PDF viewing | Support PDFs containing different page sizes. | M2 | Implemented | Per-page size from PDFium |
 | F04-08 | PDF viewing | Password-protected PDF opening. | M2 | Tested | `PdfPasswordRequiredException` + ContentDialog prompt |
-| F04-09 | PDF viewing | Continuous scrolling. | M2 | Implemented | Continuous scroll with windowed page virtualization |
+| F04-09 | PDF viewing | Continuous scrolling. | M2 | Tested | Continuous scroll + `ContinuousPageWindow` virtualization unit tests |
 | F04-10 | PDF viewing | Single-page mode. | M2 | Tested | Layout combo → SinglePage; `PageLayoutCombo` unit tests |
 | F04-11 | PDF viewing | Two-page/facing-page mode. | M2 | Tested | Even/odd spreads; `PageLayoutCombo` + calculator |
 | F04-12 | PDF viewing | Optional cover-page behavior for facing pages. | M2 | Tested | `TwoPageWithCover` layout + calculator tests |
@@ -161,16 +161,16 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F08-10 | OCR / Live Text equivalent | Optionally embed OCR text layer into PDF. | M6 | Tested | OCR→PDF export via `OcrSearchablePdfWriter`; Ocr.Tests |
 | F08-11 | OCR / Live Text equivalent | Preserve image underneath the OCR layer. | M6 | Implemented | Full-bleed page render under invisible text layer |
 | F08-12 | OCR / Live Text equivalent | URLs | M6 | Tested | `OcrEntityDetector` + Entities dialog Open; Ocr.Tests |
-| F08-13 | OCR / Live Text equivalent | email addresses | M6 | Implemented | `OcrEntityDetector` + mailto launch |
-| F08-14 | OCR / Live Text equivalent | phone numbers | M6 | Implemented | `OcrEntityDetector` + Copy value |
-| F08-15 | OCR / Live Text equivalent | physical addresses | M6 | Implemented | `OcrEntityDetector` street + city/ST/ZIP |
-| F08-16 | OCR / Live Text equivalent | dates | M6 | Implemented | `OcrEntityDetector` date patterns |
-| F08-17 | OCR / Live Text equivalent | times | M6 | Implemented | `OcrEntityDetector` time patterns |
+| F08-13 | OCR / Live Text equivalent | email addresses | M6 | Tested | `OcrEntityDetector` + mailto launch; Ocr.Tests |
+| F08-14 | OCR / Live Text equivalent | phone numbers | M6 | Tested | `OcrEntityDetector` + Copy value; Ocr.Tests |
+| F08-15 | OCR / Live Text equivalent | physical addresses | M6 | Tested | `OcrEntityDetector` street + city/ST/ZIP; Ocr.Tests |
+| F08-16 | OCR / Live Text equivalent | dates | M6 | Tested | `OcrEntityDetector` date patterns; Ocr.Tests |
+| F08-17 | OCR / Live Text equivalent | times | M6 | Tested | `OcrEntityDetector` time patterns; Ocr.Tests |
 | F08-18 | OCR / Live Text equivalent | Open URL in default browser. | M6 | Implemented | Entities → Open / act |
 | F08-19 | OCR / Live Text equivalent | Create email in default mail application. | M6 | Implemented | Entities → mailto: |
 | F08-20 | OCR / Live Text equivalent | Copy phone number. | M6 | Implemented | Entities → Copy value |
 | F08-21 | OCR / Live Text equivalent | Open address in user's default mapping/web service. | M6 | Implemented | Entities → Bing Maps query |
-| F08-22 | OCR / Live Text equivalent | Create calendar event through appropriate Windows/system mechanism where feasible. | M6 | Implemented | Entities → temp `.ics` via `OcrCalendarInvite` |
+| F08-22 | OCR / Live Text equivalent | Create calendar event through appropriate Windows/system mechanism where feasible. | M6 | Tested | Entities → temp `.ics` via `OcrCalendarInvite`; Ocr.Tests |
 | F08-23 | OCR / Live Text equivalent | Search web. | M6 | Implemented | Entities dialog → Bing |
 | F08-24 | OCR / Live Text equivalent | Copy recognized value. | M6 | Implemented | Entities → Copy value |
 | F09-01 | PDF bookmarks | Add bookmark at current page/location. | M2/M4 | Tested | Sidebar Bookmarks +; view-state bookmark round-trip unit test |
@@ -210,7 +210,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F11-03 | Preview-style PDF drag-and-drop workflows | multiple noncontiguous pages | M3 | Tested | Noncontiguous selection preserved in `PageDragPayload` |
 | F11-04 | Preview-style PDF drag-and-drop workflows | insertion before/after any page | M3 | Tested | Drop Y half via `PageDropPlacement.IsInsertAfter` unit tests |
 | F11-05 | Preview-style PDF drag-and-drop workflows | visible insertion indicator | M3 | Implemented | Orange before/after border highlight |
-| F11-06 | Preview-style PDF drag-and-drop workflows | insert entire PDF at drop location. | M3 | Implemented | Explorer `.pdf` StorageItems → insert |
+| F11-06 | Preview-style PDF drag-and-drop workflows | insert entire PDF at drop location. | M3 | Tested | Explorer `.pdf` StorageItems → insert; `PageDropPlacement.PreferCopyOnly`/`Caption` |
 | F11-07 | Preview-style PDF drag-and-drop workflows | create a new PDF containing those selected pages. | M3 | Implemented | Deferred StorageItems extract on drag-out |
 | F11-08 | Preview-style PDF drag-and-drop workflows | different windows | M3 | Implemented | File → New Window; per-window workspace + shared page drag registry |
 | F11-09 | Preview-style PDF drag-and-drop workflows | different tabs | M3 | Implemented | Cross-tab insert via `PdfPageDragRegistry` |

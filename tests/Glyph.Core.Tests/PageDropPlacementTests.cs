@@ -31,4 +31,14 @@ public class PageDropPlacementTests
     {
         PageDropPlacement.Caption(storage, text).Should().Be(expected);
     }
+
+    [Theory]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    [InlineData(false, false, false)]
+    public void PreferCopyOnly_for_ctrl_or_storage_insert(bool ctrl, bool storageOnly, bool expected)
+    {
+        PageDropPlacement.PreferCopyOnly(ctrl, storageOnly).Should().Be(expected);
+    }
 }
