@@ -8398,7 +8398,8 @@ public sealed class PdfDocumentView : UserControl
         var box = new TextBox
         {
             Text = field.Value,
-            AcceptsReturn = field.Kind == PdfFormFieldKind.TextField,
+            AcceptsReturn = FormMultilinePolicy.TextFieldAcceptsReturn
+                && field.Kind == PdfFormFieldKind.TextField,
             TextWrapping = TextWrapping.Wrap,
             Height = 100,
             PlaceholderText = field.Name,

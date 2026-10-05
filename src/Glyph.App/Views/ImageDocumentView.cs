@@ -3804,7 +3804,8 @@ public sealed class ImageDocumentView : UserControl
             dialogOpen = false;
             if (result != ContentDialogResult.Primary)
             {
-                if (baseline is not null)
+                if (ImageAdjustLivePreviewPolicy.ShouldRestoreBaselineOnCancel(baseline is not null)
+                    && baseline is not null)
                 {
                     _document.RestoreCheckpoint(baseline);
                     baseline = null;

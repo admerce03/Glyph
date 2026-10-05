@@ -349,7 +349,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F19-15 | PDF signatures | delete | M4 | Implemented | Sidebar Delete |
 | F19-16 | PDF signatures | preserve transparency | M4 | Tested | BGRA alpha channel |
 | F20-01 | PDF forms | text fields | M4 | Tested | `IPdfFormStore.SetTextValueAsync` + Form toolbar |
-| F20-02 | PDF forms | multiline fields | M4 | Implemented | Same text path; AcceptsReturn in edit dialog |
+| F20-02 | PDF forms | multiline fields | M4 | Tested | Text fields AcceptsReturn; `FormMultilinePolicy` unit tests |
 | F20-03 | PDF forms | checkboxes | M4 | Tested | `SetCheckBoxAsync` sets `/V`+`/AS` |
 | F20-04 | PDF forms | radio buttons | M4 | Tested | `SetRadioButtonAsync` mutual exclusion by `/T` |
 | F20-05 | PDF forms | dropdowns | M4 | Tested | Combo `/Opt` via PdfPig + Form picker |
@@ -525,7 +525,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F33-12 | Image color adjustments | Gamma where useful | M5 | Tested | Adjust dialog Gamma → Magick `Level` gamma |
 | F33-13 | Image color adjustments | Reset individual adjustment | M5 | Tested | Adjust ↺ per slider; `ImageAdjustments.IsIdentity` unit tests |
 | F33-14 | Image color adjustments | Reset all | M5 | Tested | Adjust Reset all → identity; `ImageAdjustments.IsIdentity` |
-| F33-15 | Image color adjustments | live preview | M5 | Implemented | Adjust dialog previews via checkpoint clone/restore |
+| F33-15 | Image color adjustments | live preview | M5 | Tested | Checkpoint clone/restore; `ImageAdjustLivePreviewPolicy` |
 | F33-16 | Image color adjustments | histogram | M5 | Tested | Adjust luminance histogram; `ImageLuminanceHistogram.BuildBins` unit tests |
 | F34-01 | Image markup | mouse drawing | M5 | Tested | Draw toolbar → non-destructive overlay; Flatten / Save bakes via `FlattenMarkupAsync` |
 | F34-02 | Image markup | shapes | M5 | Tested | Draw → Rectangle/Ellipse overlay; FlattenMarkupAsync |
@@ -608,8 +608,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F40-02 | Clipboard integration | PDF region → bitmap | M1/M5 | Tested | `CopyRegionAsBitmapAsync`; `PdfRegionCopyPolicy` |
 | F40-03 | Clipboard integration | image selection → image | M1/M5 | Tested | Copy sel → PNG; `ImageSelectionClipboardPolicy` |
 | F40-04 | Clipboard integration | whole image → image | M1/M5 | Tested | Copy toolbar / Ctrl+C without selection |
-| F40-05 | Clipboard integration | recognized OCR text → text | M1/M5 | Implemented | OCR dialog / Copy OCR toolbar → clipboard text |
-| F40-06 | Clipboard integration | annotation where possible | M1/M5 | Implemented | Annot copy/cut/paste clipboard + Ctrl+V |
+| F40-05 | Clipboard integration | recognized OCR text → text | M1/M5 | Tested | OCR Copy; `OcrResultDialog` / `OcrWordSelectionPolicy` |
+| F40-06 | Clipboard integration | annotation where possible | M1/M5 | Tested | Annot cut/copy/paste; `AnnotationClipboardPolicy` |
 | F40-07 | Clipboard integration | image from clipboard into image document | M1/M5 | Implemented | Paste / Ctrl+V → system bitmap or selection clipboard via `PasteFileAsync` |
 | F40-08 | Clipboard integration | image clipboard → create new image | M1/M5 | Implemented | File → New from Clipboard → temp PNG tab |
 | F40-09 | Clipboard integration | text into annotation/text field | M1/M5 | Implemented | Note/textbox/form dialogs seed from clipboard + TextBox Ctrl+V |
