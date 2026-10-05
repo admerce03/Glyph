@@ -12,7 +12,13 @@ public class ShellMenuCatalogTests
         var root = FindRepoRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src/Glyph.App/MainWindow.xaml"));
         ShellMenuCatalog.DeclaresMenus(xaml).Should().BeTrue();
+        ShellMenuCatalog.TopLevelMenus.Should().Contain("Help");
         foreach (var command in ShellMenuCatalog.FileCommands)
+        {
+            xaml.Should().Contain($"Text=\"{command}\"", because: command);
+        }
+
+        foreach (var command in ShellMenuCatalog.HelpCommands)
         {
             xaml.Should().Contain($"Text=\"{command}\"", because: command);
         }

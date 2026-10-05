@@ -89,14 +89,6 @@ when present in the NuGet cache during publish.
 
 ---
 
-## CommunityToolkit.Mvvm
-
-**Use:** Optional MVVM helpers.  
-**License:** MIT  
-**Source:** https://github.com/CommunityToolkit/dotnet
-
----
-
 ## Test-only packages (not redistributed in the app package)
 
 | Package | License |

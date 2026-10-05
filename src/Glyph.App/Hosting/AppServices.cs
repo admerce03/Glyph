@@ -79,7 +79,7 @@ internal static class AppServices
         services.AddSingleton<IImageEncoder, MagickImageEncoder>();
         services.AddSingleton<IImageProcessor, MagickImageProcessor>();
         services.AddSingleton<IOcrEngine, WindowsOcrEngine>();
-        services.AddSingleton<PageRenderCache>(_ => new PageRenderCache(capacity: 48));
+        services.AddSingleton<PageRenderCache>(_ => new PageRenderCache(PageRenderCache.DefaultCapacity));
         services.AddTransient<MainWindow>();
 
         return services.BuildServiceProvider();

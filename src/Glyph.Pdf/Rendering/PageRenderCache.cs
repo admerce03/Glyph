@@ -7,16 +7,21 @@ namespace Glyph.Pdf.Rendering;
 /// </summary>
 public sealed class PageRenderCache
 {
+    /// <summary>Default LRU capacity used by DI and docs (F57-10 / F58-05).</summary>
+    public const int DefaultCapacity = 32;
+
     private readonly int _capacity;
     private readonly Dictionary<string, LinkedListNode<Entry>> _map = new(StringComparer.Ordinal);
     private readonly LinkedList<Entry> _lru = new();
     private readonly object _gate = new();
 
-    public PageRenderCache(int capacity = 32)
+    public PageRenderCache(int capacity = DefaultCapacity)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
         _capacity = capacity;
     }
+
+    public int Capacity => _capacity;
 
     public int Count
     {
