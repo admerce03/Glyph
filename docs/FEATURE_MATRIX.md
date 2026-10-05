@@ -240,7 +240,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-14 | PDF annotations | Speech-bubble-like callouts | M4 | Not Started |  |
 | F13-15 | PDF annotations | Stamps, optionally | M4 | Tested | Same path as signatures (`AddStampAsync`) |
 | F13-16 | PDF annotations | Signatures | M4 | Tested | Stamp via `AddStampAsync` + Sign toolbar |
-| F13-17 | PDF annotations | Freeform shapes | M4 | Not Started |  |
+| F13-17 | PDF annotations | Freeform shapes | M4 | Tested | `AddFreeformAsync` closed ink; Freeform draw mode |
 | F13-18 | PDF annotations | Annotation selection tool | M4 | Tested | Click annot on page / sidebar; drag moves |
 | F13-19 | PDF annotations | move | M4 | Tested | `MoveAsync` API + drag on page |
 | F13-20 | PDF annotations | resize | M4 | Tested | Selection handles → `MoveAsync` new bounds |
@@ -306,7 +306,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F17-03 | Shapes | rectangle | M4 | Not Started |  |
 | F17-04 | Shapes | rounded rectangle | M4 | Not Started |  |
 | F17-05 | Shapes | ellipse | M4 | Not Started |  |
-| F17-06 | Shapes | polygon | M4 | Not Started |  |
+| F17-06 | Shapes | polygon | M4 | Implemented | Freeform closed ink path |
 | F17-07 | Shapes | star | M4 | Not Started |  |
 | F17-08 | Shapes | speech bubble/callout | M4 | Not Started |  |
 | F17-09 | Shapes | translucent highlight rectangle | M4 | Not Started |  |

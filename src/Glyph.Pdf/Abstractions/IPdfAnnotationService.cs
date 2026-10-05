@@ -30,6 +30,17 @@ public interface IPdfAnnotationService
         float borderWidthPoints = 2f,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Closed freeform ink path (first point appended at end when needed).
+    /// </summary>
+    Task<PdfAnnotationInfo> AddFreeformAsync(
+        IPdfDocument document,
+        int pageIndex,
+        IReadOnlyList<PdfPagePoint> strokePoints,
+        PdfAnnotationColor color,
+        float borderWidthPoints = 2f,
+        CancellationToken cancellationToken = default);
+
     Task<PdfAnnotationInfo> AddShapeAsync(
         IPdfDocument document,
         int pageIndex,

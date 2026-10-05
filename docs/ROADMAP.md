@@ -193,6 +193,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Sticky notes: `AddStickyNoteAsync` + Note toolbar dialog (text + color presets); Contents/color/move APIs; notes appear in sidebar.
 - Freehand ink: `AddInkAsync` + Ink draw mode on page surface (stroke color + width picker); listed in annotation sidebar.
 - Shapes: `AddShapeAsync` for rectangle/ellipse (Square/Circle), line, and arrow (ink strokes; arrow adds head wings); Rect/Ellipse/Line/Arrow draw modes with border/fill color and width picker.
+- Freeform: `AddFreeformAsync` closed ink path; Freeform draw mode.
 - Text boxes: `AddTextBoxAsync` FreeText with Contents + DA + optional fill/border; TextBox toolbar dialog; listed in sidebar.
 - Callouts: `AddCalloutAsync` FreeText (`Subj=Callout`) + ink pointer; Callout draw mode (drag tip → box).
 - Flatten: `FlattenAsync` via `FPDFPage_Flatten` + Flatten toolbar (confirm dialog); editable annots removed after bake.

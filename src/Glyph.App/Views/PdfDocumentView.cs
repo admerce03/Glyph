@@ -82,6 +82,7 @@ public sealed class PdfDocumentView : UserControl
     private IReadOnlyList<PdfAnnotationInfo> _annotationItems = [];
     private bool _suppressAnnotationNav;
     private bool _inkMode;
+    private bool _freeformMode;
     private PdfAnnotationColor _drawStrokeColor = PdfAnnotationColor.InkRed;
     private float _drawStrokeWidth = 2f;
     private bool _highlightMode;
@@ -101,6 +102,7 @@ public sealed class PdfDocumentView : UserControl
     private Windows.Foundation.Point _shapeStart;
     private FrameworkElement? _shapePreview;
     private Button? _inkButton;
+    private Button? _freeformButton;
     private Button? _highlightButton;
     private Button? _formButton;
     private Button? _signButton;
@@ -346,12 +348,14 @@ public sealed class PdfDocumentView : UserControl
         var sign = new Button { Content = "Sign" };
         var formFill = new Button { Content = "Form" };
         var ink = new Button { Content = "Ink" };
+        var freeform = new Button { Content = "Freeform" };
         var rect = new Button { Content = "Rect" };
         var ellipse = new Button { Content = "Ellipse" };
         var line = new Button { Content = "Line" };
         var arrow = new Button { Content = "Arrow" };
         _signButton = sign;
         _inkButton = ink;
+        _freeformButton = freeform;
         _highlightButton = highlight;
         _formButton = formFill;
         _rectButton = rect;
@@ -382,6 +386,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(sign, "Signature: draw with mouse or import PNG/JPEG (saved to library)");
         ToolTipService.SetToolTip(formFill, "Form fill: overlay mode or field list (Tab order)");
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
+        ToolTipService.SetToolTip(freeform, "Draw a closed freeform shape (auto-closes path)");
         ToolTipService.SetToolTip(rect, "Draw a rectangle annotation");
         ToolTipService.SetToolTip(ellipse, "Draw an ellipse annotation");
         ToolTipService.SetToolTip(line, "Draw a line (stored as a 2-point ink stroke)");
@@ -438,6 +443,7 @@ public sealed class PdfDocumentView : UserControl
         sign.Click += async (_, _) => await BeginSignatureAsync();
         formFill.Click += async (_, _) => await OnFormButtonClickAsync();
         ink.Click += async (_, _) => await ToggleInkModeAsync();
+        freeform.Click += async (_, _) => await ToggleFreeformModeAsync();
         rect.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Rectangle);
         ellipse.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Ellipse);
         line.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Line);
@@ -456,7 +462,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, sign, formFill, ink, rect, ellipse, line, arrow,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, sign, formFill, ink, freeform, rect, ellipse, line, arrow,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -1411,7 +1417,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (_inkMode || _signatureMode)
+        if (_inkMode || _freeformMode || _signatureMode)
         {
             BeginInkStroke(border, pageIndex, e);
             e.Handled = true;
@@ -1470,7 +1476,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if ((_inkMode || _signatureMode) && _inkDrawing)
+        if ((_inkMode || _freeformMode || _signatureMode) && _inkDrawing)
         {
             if (sender is Border { Tag: int inkPage } inkBorder && inkPage == _inkPageIndex)
             {
@@ -1567,7 +1573,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if ((_inkMode || _signatureMode) && _inkDrawing && pageIndex == _inkPageIndex)
+        if ((_inkMode || _freeformMode || _signatureMode) && _inkDrawing && pageIndex == _inkPageIndex)
         {
             if (_signatureMode)
             {
@@ -2224,6 +2230,17 @@ public sealed class PdfDocumentView : UserControl
         }
 
         ClearCalloutMode();
+        ClearFreeformMode();
+        if (_inkMode)
+        {
+            _inkMode = false;
+            CancelInkStroke();
+        }
+
+        if (_cropMode)
+        {
+            CancelCropMode();
+        }
 
         _highlightMode = true;
         _highlightModeColor = picked.Value;
@@ -2519,6 +2536,7 @@ public sealed class PdfDocumentView : UserControl
                 PdfShapeKind.Ellipse => "Ellipse",
                 PdfShapeKind.Line => "Line",
                 PdfShapeKind.Arrow => "Arrow",
+                PdfShapeKind.Freeform => "Freeform",
                 _ => "Shape",
             };
             return $"{shapeName} · p.{info.PageIndex + 1}";
@@ -2550,6 +2568,7 @@ public sealed class PdfDocumentView : UserControl
         ClearShapeMode();
         ClearSignatureMode();
         ClearHighlightMode();
+        ClearFreeformMode();
         if (_formOverlayMode)
         {
             ClearFormOverlayMode();
@@ -2659,6 +2678,7 @@ public sealed class PdfDocumentView : UserControl
         ClearSignatureMode();
         ClearHighlightMode();
         ClearCalloutMode();
+        ClearFreeformMode();
         if (_formOverlayMode)
         {
             ClearFormOverlayMode();
@@ -2692,6 +2712,61 @@ public sealed class PdfDocumentView : UserControl
         _status.Text = "Ink mode on — draw on the page.";
     }
 
+    private async Task ToggleFreeformModeAsync()
+    {
+        ClearShapeMode();
+        ClearSignatureMode();
+        ClearHighlightMode();
+        ClearCalloutMode();
+        if (_inkMode)
+        {
+            _inkMode = false;
+            CancelInkStroke();
+        }
+
+        if (_formOverlayMode)
+        {
+            ClearFormOverlayMode();
+        }
+
+        if (_freeformMode)
+        {
+            ClearFreeformMode();
+            _status.Text = "Freeform mode off.";
+            RefreshToolButtonChrome();
+            return;
+        }
+
+        var picked = await PickStrokeStyleAsync("Freeform stroke");
+        if (picked is null)
+        {
+            _status.Text = "Freeform mode cancelled.";
+            return;
+        }
+
+        _drawStrokeColor = picked.Value.Color;
+        _drawStrokeWidth = picked.Value.WidthPoints;
+        if (_cropMode)
+        {
+            CancelCropMode();
+        }
+
+        _freeformMode = true;
+        RefreshToolButtonChrome();
+        _status.Text = "Freeform mode on — draw a closed shape.";
+    }
+
+    private void ClearFreeformMode()
+    {
+        if (!_freeformMode)
+        {
+            return;
+        }
+
+        _freeformMode = false;
+        CancelInkStroke();
+    }
+
     private async Task ToggleShapeModeAsync(PdfShapeKind kind)
     {
         if (_inkMode)
@@ -2700,6 +2775,7 @@ public sealed class PdfDocumentView : UserControl
             CancelInkStroke();
         }
 
+        ClearFreeformMode();
         ClearSignatureMode();
         ClearHighlightMode();
         ClearCalloutMode();
@@ -2835,6 +2911,11 @@ public sealed class PdfDocumentView : UserControl
         if (_inkButton is not null)
         {
             _inkButton.Background = _inkMode ? active : null;
+        }
+
+        if (_freeformButton is not null)
+        {
+            _freeformButton.Background = _freeformMode ? active : null;
         }
 
         if (_highlightButton is not null)
@@ -3184,31 +3265,46 @@ public sealed class PdfDocumentView : UserControl
         var pageIndex = _inkPageIndex;
         CancelInkStroke();
 
-        if (points.Count < 2 || pageIndex < 0)
+        if ((_freeformMode && points.Count < 3) || (!_freeformMode && points.Count < 2) || pageIndex < 0)
         {
-            _status.Text = "Ink stroke too short.";
+            _status.Text = _freeformMode ? "Freeform needs at least three points." : "Ink stroke too short.";
             return;
         }
 
         try
         {
-            _status.Text = "Saving ink…";
-            await _annotations.AddInkAsync(
-                _document,
-                pageIndex,
-                points,
-                _drawStrokeColor,
-                borderWidthPoints: _drawStrokeWidth);
+            if (_freeformMode)
+            {
+                _status.Text = "Saving freeform…";
+                await _annotations.AddFreeformAsync(
+                    _document,
+                    pageIndex,
+                    points,
+                    _drawStrokeColor,
+                    borderWidthPoints: _drawStrokeWidth);
+                _status.Text = "Freeform shape added.";
+            }
+            else
+            {
+                _status.Text = "Saving ink…";
+                await _annotations.AddInkAsync(
+                    _document,
+                    pageIndex,
+                    points,
+                    _drawStrokeColor,
+                    borderWidthPoints: _drawStrokeWidth);
+                _status.Text = "Ink stroke added.";
+            }
+
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = "Ink stroke added.";
         }
         catch (Exception ex)
         {
-            _status.Text = "Ink failed: " + ex.Message;
+            _status.Text = (_freeformMode ? "Freeform" : "Ink") + " failed: " + ex.Message;
         }
     }
 
@@ -3273,6 +3369,7 @@ public sealed class PdfDocumentView : UserControl
         ClearShapeMode();
         ClearHighlightMode();
         ClearCalloutMode();
+        ClearFreeformMode();
         if (_formOverlayMode)
         {
             ClearFormOverlayMode();
@@ -3505,6 +3602,7 @@ public sealed class PdfDocumentView : UserControl
         ClearSignatureMode();
         ClearHighlightMode();
         ClearCalloutMode();
+        ClearFreeformMode();
         if (_inkMode)
         {
             _inkMode = false;

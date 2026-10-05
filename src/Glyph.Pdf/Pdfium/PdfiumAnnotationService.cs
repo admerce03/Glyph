@@ -343,6 +343,39 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             cancellationToken);
     }
 
+    public async Task<PdfAnnotationInfo> AddFreeformAsync(
+        IPdfDocument document,
+        int pageIndex,
+        IReadOnlyList<PdfPagePoint> strokePoints,
+        PdfAnnotationColor color,
+        float borderWidthPoints = 2f,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(strokePoints);
+        if (strokePoints.Count < 3)
+        {
+            throw new ArgumentException("Freeform shape requires at least three points.", nameof(strokePoints));
+        }
+
+        var closed = strokePoints.ToList();
+        var first = closed[0];
+        var last = closed[^1];
+        if (Math.Abs(first.X - last.X) > 0.5 || Math.Abs(first.Y - last.Y) > 0.5)
+        {
+            closed.Add(first);
+        }
+
+        var created = await AddLabeledInkAsync(
+            document,
+            pageIndex,
+            [closed],
+            color,
+            borderWidthPoints,
+            contents: "Freeform",
+            cancellationToken);
+        return created with { ShapeKind = PdfShapeKind.Freeform, IsInk = true };
+    }
+
     public Task<PdfAnnotationInfo> AddShapeAsync(
         IPdfDocument document,
         int pageIndex,
@@ -1753,6 +1786,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         {
             "Line" => PdfShapeKind.Line,
             "Arrow" => PdfShapeKind.Arrow,
+            "Freeform" => PdfShapeKind.Freeform,
             _ => null,
         };
 
