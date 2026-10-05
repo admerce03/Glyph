@@ -26,4 +26,12 @@ public class AppShellStatusTests
         ScanDialogUi.NoScannersDialogTitle.Should().Be("No scanners");
         WebcamCaptureUi.CaptureDialogTitle.Should().Be("Camera capture");
     }
+
+    [Fact]
+    public void Rename_and_snapshot_button_labels_are_stable()
+    {
+        AppShellStatus.NewFileNameHeader.Should().Contain("file name");
+        AppShellStatus.RestoreButton.Should().Be("Restore");
+        AppShellStatus.DeleteButton.Should().Be("Delete");
+    }
 }

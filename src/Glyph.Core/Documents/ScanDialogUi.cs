@@ -18,6 +18,13 @@ public static class ScanDialogUi
     public const string FailedPrefix = "Scan failed: ";
     public const string OpenPdfFirstToInsert = "Open a PDF first to insert scanned pages.";
     public const string PdfEngineUnavailable = "PDF engine unavailable for insert.";
+    public const string ScannerHeader = "Scanner";
+    public const string SourceHeader = "Source";
+    public const string ColorHeader = "Color";
+    public const string DpiHeader = "DPI";
+    public const string AutoCropHeader = "Auto crop";
+    public const string PaperSizeHeader = "Paper size";
+    public const string DestinationHeader = "Destination";
     public const string DuplexLabel = "Duplex (feeder)";
     public const string StraightenLabel = "Straighten (deskew after scan)";
     public const string MaxPagesHeader = "Max pages (feeder)";

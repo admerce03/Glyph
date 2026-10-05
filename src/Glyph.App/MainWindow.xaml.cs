@@ -322,7 +322,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var box = new TextBox { PlaceholderText = "Search all open PDFs", Width = 360 };
+        var box = new TextBox { PlaceholderText = FindAllOpenPdfsStatus.QueryPlaceholder, Width = 360 };
         var dialog = new ContentDialog
         {
             Title = FindAllOpenPdfsStatus.DialogTitle,
@@ -829,28 +829,28 @@ public sealed partial class MainWindow : Window
 
             var deviceBox = new ComboBox
             {
-                Header = "Scanner",
+                Header = ScanDialogUi.ScannerHeader,
                 Width = 320,
                 ItemsSource = devices.Select(d => d.Name).ToList(),
                 SelectedIndex = 0,
             };
             var sourceBox = new ComboBox
             {
-                Header = "Source",
+                Header = ScanDialogUi.SourceHeader,
                 Width = 320,
                 ItemsSource = ScanDialogUi.SourceLabels.ToList(),
                 SelectedIndex = 0,
             };
             var colorBox = new ComboBox
             {
-                Header = "Color",
+                Header = ScanDialogUi.ColorHeader,
                 Width = 320,
                 ItemsSource = ScanDialogUi.ColorModeLabels.ToList(),
                 SelectedIndex = 0,
             };
             var dpiBox = new ComboBox
             {
-                Header = "DPI",
+                Header = ScanDialogUi.DpiHeader,
                 Width = 320,
                 ItemsSource = new[] { "150", "200", "300", "600" },
                 SelectedIndex = 2,
@@ -858,7 +858,7 @@ public sealed partial class MainWindow : Window
             var duplex = new CheckBox { Content = ScanDialogUi.DuplexLabel };
             var cropBox = new ComboBox
             {
-                Header = "Auto crop",
+                Header = ScanDialogUi.AutoCropHeader,
                 Width = 320,
                 ItemsSource = ScanDialogUi.AutoCropLabels.ToList(),
                 SelectedIndex = 1,
@@ -866,7 +866,7 @@ public sealed partial class MainWindow : Window
             var straighten = new CheckBox { Content = ScanDialogUi.StraightenLabel };
             var paperBox = new ComboBox
             {
-                Header = "Paper size",
+                Header = ScanDialogUi.PaperSizeHeader,
                 Width = 320,
                 ItemsSource = ScanDialogUi.PaperSizeLabels.ToList(),
                 SelectedIndex = 0,
@@ -882,7 +882,7 @@ public sealed partial class MainWindow : Window
             };
             var destBox = new ComboBox
             {
-                Header = "Destination",
+                Header = ScanDialogUi.DestinationHeader,
                 Width = 320,
                 ItemsSource = ScanDialogUi.DestinationLabels.ToList(),
                 SelectedIndex = 1,
@@ -1314,7 +1314,7 @@ public sealed partial class MainWindow : Window
             var currentName = System.IO.Path.GetFileName(active.Path);
             var box = new TextBox
             {
-                Header = "New file name",
+                Header = AppShellStatus.NewFileNameHeader,
                 Text = currentName,
                 Width = 320,
             };
@@ -2863,8 +2863,8 @@ public sealed partial class MainWindow : Window
 
         string? action = null;
         var openCopy = new Button { Content = AppShellStatus.OpenAsCopyButton, Margin = new Thickness(0, 0, 8, 0) };
-        var restore = new Button { Content = "Restore", Margin = new Thickness(0, 0, 8, 0) };
-        var delete = new Button { Content = "Delete" };
+        var restore = new Button { Content = AppShellStatus.RestoreButton, Margin = new Thickness(0, 0, 8, 0) };
+        var delete = new Button { Content = AppShellStatus.DeleteButton };
         var buttons = new StackPanel
         {
             Orientation = Orientation.Horizontal,

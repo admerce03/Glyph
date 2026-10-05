@@ -81,6 +81,7 @@ public static class AppShellStatus
 
     public const string RenameDialogTitle = "Rename";
     public const string RenameButton = "Rename";
+    public const string NewFileNameHeader = "New file name";
     public const string ReplaceExistingTitle = "Replace existing file?";
     public const string VersionSnapshotsTitlePrefix = "Version snapshots — ";
     public const string RestoreSnapshotTitle = "Restore snapshot?";
@@ -89,6 +90,7 @@ public static class AppShellStatus
     public const string ReplaceButton = "Replace";
     public const string OpenAsCopyButton = "Open as copy";
     public const string RestoreButton = "Restore";
+    public const string DeleteButton = "Delete";
 
     public static string FormatReplaceExistingBody(string fileName) =>
         $"“{fileName}” already exists in the destination folder.";

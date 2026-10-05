@@ -22,6 +22,9 @@ public class ScanDialogUiTests
     {
         ScanDialogUi.SourceLabels.Should().Contain("Flatbed");
         ScanDialogUi.ColorModeLabels.Should().Contain("Grayscale");
+        ScanDialogUi.ScannerHeader.Should().Be("Scanner");
+        ScanDialogUi.DpiHeader.Should().Be("DPI");
+        ScanDialogUi.DestinationHeader.Should().Contain("Destination");
         ScanDialogUi.ClampDpi(72).Should().Be(150);
         ScanDialogUi.ClampDpi(1200).Should().Be(600);
         ScanDialogUi.ClampDpi(300).Should().Be(300);
