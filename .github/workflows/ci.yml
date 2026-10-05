@@ -38,8 +38,8 @@ jobs:
         run: ./scripts/format.ps1 -Verify
         shell: pwsh
 
-      - name: MSIX publish smoke (unsigned)
-        run: ./scripts/publish-msix.ps1 -Configuration Release -Runtime win-x64
+      - name: MSIX publish smoke (test-signed)
+        run: ./scripts/publish-msix.ps1 -Configuration Release -Runtime win-x64 -TestSign
         shell: pwsh
 
       - name: Upload MSIX layout

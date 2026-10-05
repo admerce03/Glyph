@@ -6,7 +6,7 @@ Authoritative product scope: [`docs/FEATURES.md`](docs/FEATURES.md).
 
 ## Current status
 
-Milestones **M0–M8** are matrix-**Tested** on `main` (password-write Blocked on ADR-015; HDR/HEIF/ML and packaging associations Deferred). **M9** is In Progress (unsigned `.msix` builds on Windows CI; signing/sideload verify + interactive demos pending).
+Milestones **M0–M8** are matrix-**Tested** on `main` (password-write Blocked on ADR-015; HDR/HEIF/ML and packaging associations Deferred). **M9** is In Progress (test-signed `.msix` builds on Windows CI; sideload verify + interactive demos pending).
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) and [`docs/FEATURE_MATRIX.md`](docs/FEATURE_MATRIX.md).
 
@@ -77,10 +77,14 @@ dotnet run --project ./src/Glyph.App/Glyph.App.csproj -c Debug -r win-x64
 Default builds stay unpackaged. To produce a self-contained MSIX layout on Windows:
 
 ```powershell
+# Unsigned package (layout / tooling smoke)
 ./scripts/publish-msix.ps1 -Configuration Release -Runtime win-x64
+
+# CI / Developer Mode sideload: ephemeral self-signed cert + .cer
+./scripts/publish-msix.ps1 -Configuration Release -Runtime win-x64 -TestSign
 ```
 
-Output lands under `artifacts/msix/` (includes `Glyph.App_*.msix`). Signing and Store/sideload verification are still open (ADR-012 associations remain Deferred until verified).
+Output lands under `artifacts/msix/` (`Glyph.App_*.msix`; with `-TestSign`, also `Glyph.CI.TestSign.cer`). Install the `.cer` into **Trusted People**, enable Developer Mode, then `Add-AppxPackage`. Store signing and association verification remain open (ADR-012).
 
 ## Contributing / agents
 
