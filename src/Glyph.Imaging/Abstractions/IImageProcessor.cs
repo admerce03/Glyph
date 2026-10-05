@@ -122,6 +122,21 @@ public interface IImageProcessor
         int destinationX,
         int destinationY,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Flood-fills from image corners with transparency using <paramref name="fuzzPercent"/>
+    /// color tolerance (0–100). Useful for flat studio / solid backgrounds (F29).
+    /// </summary>
+    Task RemoveBackgroundAsync(
+        IImageDocument document,
+        double fuzzPercent = 12,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Crops to the bounding box of non-transparent pixels. No-ops when the image is fully opaque
+    /// or fully transparent.
+    /// </summary>
+    Task TrimTransparentAsync(IImageDocument document, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

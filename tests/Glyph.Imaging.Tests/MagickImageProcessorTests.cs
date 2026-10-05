@@ -2,6 +2,7 @@ using FluentAssertions;
 using Glyph.Imaging.Abstractions;
 using Glyph.Imaging.Magick;
 using ImageMagick;
+using ImageMagick.Drawing;
 
 namespace Glyph.Imaging.Tests;
 
@@ -792,6 +793,79 @@ public class MagickImageProcessorTests
             document.PixelWidth.Should().Be(32);
             document.PixelHeight.Should().Be(32);
             document.FormatName.Should().NotBeNullOrWhiteSpace();
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task RemoveBackground_makes_corner_transparent_keeps_subject()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-bg-" + Guid.NewGuid().ToString("N") + ".png");
+        try
+        {
+            using (var image = new MagickImage(MagickColors.White, 40, 40))
+            {
+                new Drawables()
+                    .FillColor(MagickColors.Red)
+                    .Rectangle(10, 10, 30, 30)
+                    .Draw(image);
+                image.Format = MagickFormat.Png;
+                image.Write(path);
+            }
+
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            await using var document = await decoder.OpenAsync(path);
+            await processor.RemoveBackgroundAsync(document, fuzzPercent: 5);
+
+            var pixels = await document.GetPixelsAsync();
+            // Corner should be transparent
+            pixels.BgraPixels[3].Should().Be(0);
+            // Center of red square (~20,20) should remain opaque
+            var center = (20 * 40 + 20) * 4;
+            pixels.BgraPixels[center + 3].Should().BeGreaterThan((byte)200);
+            pixels.BgraPixels[center + 2].Should().BeGreaterThan((byte)200); // R in BGRA
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task TrimTransparent_crops_to_opaque_bounds()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-trim-" + Guid.NewGuid().ToString("N") + ".png");
+        try
+        {
+            using (var image = new MagickImage(MagickColors.White, 50, 40))
+            {
+                new Drawables()
+                    .FillColor(MagickColors.Blue)
+                    .Rectangle(15, 10, 35, 30)
+                    .Draw(image);
+                image.Format = MagickFormat.Png;
+                image.Write(path);
+            }
+
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            await using var document = await decoder.OpenAsync(path);
+            await processor.RemoveBackgroundAsync(document, fuzzPercent: 5);
+            await processor.TrimTransparentAsync(document);
+            document.PixelWidth.Should().BeLessThan(50);
+            document.PixelHeight.Should().BeLessThan(40);
+            document.PixelWidth.Should().BeGreaterThanOrEqualTo(20);
+            document.PixelHeight.Should().BeGreaterThanOrEqualTo(20);
         }
         finally
         {

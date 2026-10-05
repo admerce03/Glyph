@@ -471,17 +471,17 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F28-11 | Image selection tools | Paste. | M5 | Tested | Paste / Ctrl+V → `PasteRectAsync` at selection origin |
 | F28-12 | Image selection tools | Delete selection. | M5 | Tested | Del sel → `ClearRectAsync` transparent |
 | F28-13 | Image selection tools | Crop to selection. | M5 | Implemented | Crop sel → `CropAsync` |
-| F29-01 | Smart object/background selection | Smart Lasso. | M8 | Not Started |  |
-| F29-02 | Smart object/background selection | Edge-aware selection. | M8 | Not Started |  |
-| F29-03 | Smart object/background selection | Background removal. | M8 | Not Started |  |
-| F29-04 | Smart object/background selection | Subject extraction. | M8 | Not Started |  |
-| F29-05 | Smart object/background selection | Automatic subject detection. | M8 | Not Started |  |
-| F29-06 | Smart object/background selection | Remove background. | M8 | Not Started |  |
-| F29-07 | Smart object/background selection | Preserve transparent background. | M8 | Not Started |  |
-| F29-08 | Smart object/background selection | Offer conversion to transparency-capable format if source format cannot support alpha. | M8 | Not Started |  |
-| F29-09 | Smart object/background selection | Undo. | M8 | Not Started |  |
-| F29-10 | Smart object/background selection | Copy extracted subject. | M8 | Not Started |  |
-| F29-11 | Smart object/background selection | Save extracted subject as separate image. | M8 | Not Started |  |
+| F29-01 | Smart object/background selection | Smart Lasso. | M8 | Implemented | Same as F28-04 edge-snapping Smart selection |
+| F29-02 | Smart object/background selection | Edge-aware selection. | M8 | Implemented | Sobel edge map in Smart lasso (F28-04) |
+| F29-03 | Smart object/background selection | Background removal. | M8 | Tested | BG dialog → corner flood-fill + fuzz |
+| F29-04 | Smart object/background selection | Subject extraction. | M8 | Implemented | BG → Extract subject (clipboard or PNG) |
+| F29-05 | Smart object/background selection | Automatic subject detection. | M8 | Deferred | Needs on-device ML model; flood-fill covers solid BG |
+| F29-06 | Smart object/background selection | Remove background. | M8 | Tested | Alias of F29-03 |
+| F29-07 | Smart object/background selection | Preserve transparent background. | M8 | Implemented | Remove keeps alpha; Convert PNG/WebP/TIFF keep alpha |
+| F29-08 | Smart object/background selection | Offer conversion to transparency-capable format if source format cannot support alpha. | M8 | Implemented | Status hints Save/Convert to PNG after BG remove on JPEG |
+| F29-09 | Smart object/background selection | Undo. | M8 | Implemented | MutateAsync checkpoint undo (Ctrl+Z) |
+| F29-10 | Smart object/background selection | Copy extracted subject. | M8 | Implemented | BG → Extract subject → clipboard PNG |
+| F29-11 | Smart object/background selection | Save extracted subject as separate image. | M8 | Implemented | BG → Extract subject → save PNG |
 | F30-01 | Image crop | Interactive crop box. | M5 | Implemented | Drag rectangle overlay (Crop…) |
 | F30-02 | Image crop | Free aspect ratio. | M5 | Implemented | Free drag selection |
 | F30-03 | Image crop | Original aspect ratio. | M5 | Tested | Crop… aspect dropdown → Original (`ImageCropAspect`) |

@@ -820,6 +820,131 @@ public sealed class MagickImageProcessor : IImageProcessor
             cancellationToken);
     }
 
+    public Task RemoveBackgroundAsync(
+        IImageDocument document,
+        double fuzzPercent = 12,
+        CancellationToken cancellationToken = default)
+    {
+        var magick = RequireMagick(document);
+        var fuzz = Math.Clamp(fuzzPercent, 0, 100);
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                RemoveBackgroundCore(magick.Native, fuzz);
+            },
+            cancellationToken);
+    }
+
+    public Task TrimTransparentAsync(IImageDocument document, CancellationToken cancellationToken = default)
+    {
+        var magick = RequireMagick(document);
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                TrimTransparentCore(magick.Native);
+            },
+            cancellationToken);
+    }
+
+    internal static void RemoveBackgroundCore(MagickImage image, double fuzzPercent)
+    {
+        image.Alpha(AlphaOption.Set);
+        image.ColorFuzz = new Percentage(fuzzPercent);
+        var w = checked((int)image.Width);
+        var h = checked((int)image.Height);
+        if (w <= 0 || h <= 0)
+        {
+            return;
+        }
+
+        var transparent = MagickColors.Transparent;
+        // Flood from each corner so connected background regions go transparent.
+        image.FloodFill(transparent, 0, 0);
+        if (w > 1)
+        {
+            image.FloodFill(transparent, w - 1, 0);
+        }
+
+        if (h > 1)
+        {
+            image.FloodFill(transparent, 0, h - 1);
+        }
+
+        if (w > 1 && h > 1)
+        {
+            image.FloodFill(transparent, w - 1, h - 1);
+        }
+    }
+
+    internal static void TrimTransparentCore(MagickImage image)
+    {
+        image.Alpha(AlphaOption.Set);
+        var w = checked((int)image.Width);
+        var h = checked((int)image.Height);
+        if (w <= 0 || h <= 0)
+        {
+            return;
+        }
+
+        using var clone = image.Clone();
+        clone.Depth = 8;
+        clone.ColorType = ColorType.TrueColorAlpha;
+        var bgra = clone.ToByteArray(MagickFormat.Bgra);
+        var minX = w;
+        var minY = h;
+        var maxX = -1;
+        var maxY = -1;
+        for (var y = 0; y < h; y++)
+        {
+            var row = y * w * 4;
+            for (var x = 0; x < w; x++)
+            {
+                var a = bgra[row + x * 4 + 3];
+                if (a == 0)
+                {
+                    continue;
+                }
+
+                if (x < minX)
+                {
+                    minX = x;
+                }
+
+                if (y < minY)
+                {
+                    minY = y;
+                }
+
+                if (x > maxX)
+                {
+                    maxX = x;
+                }
+
+                if (y > maxY)
+                {
+                    maxY = y;
+                }
+            }
+        }
+
+        if (maxX < minX || maxY < minY)
+        {
+            return;
+        }
+
+        if (minX == 0 && minY == 0 && maxX == w - 1 && maxY == h - 1)
+        {
+            return;
+        }
+
+        var cropW = maxX - minX + 1;
+        var cropH = maxY - minY + 1;
+        image.Crop(new MagickGeometry(minX, minY, (uint)cropW, (uint)cropH));
+        image.ResetPage();
+    }
+
     private static MagickImageDocument RequireMagick(IImageDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);

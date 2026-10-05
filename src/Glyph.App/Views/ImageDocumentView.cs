@@ -244,6 +244,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(_flattenMarkupButton, "Bake markup strokes into pixels");
         var resize = new Button { Content = "Resize" };
         var adjust = new Button { Content = "Adjust" };
+        var bgRemove = new Button { Content = "BG" };
         var stamp = new Button { Content = "Stamp" };
         var meta = new Button { Content = "Meta" };
         var ocrButton = new Button { Content = "OCR" };
@@ -287,6 +288,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(_cancelCropButton, "Cancel interactive crop");
         ToolTipService.SetToolTip(resize, "Resize width/height with optional aspect lock");
         ToolTipService.SetToolTip(adjust, "Brightness / contrast / saturation / levels");
+        ToolTipService.SetToolTip(bgRemove, "Remove solid background / extract subject (corner flood-fill)");
         ToolTipService.SetToolTip(stamp, "Stamp a signature from the library onto the image");
         ToolTipService.SetToolTip(meta, "Image metadata, EXIF/IPTC/XMP, and GPS");
         ToolTipService.SetToolTip(ocrButton, "Run offline OCR on this image");
@@ -350,6 +352,7 @@ public sealed class ImageDocumentView : UserControl
         _flattenMarkupButton.Click += async (_, _) => await FlattenMarkupAsync();
         resize.Click += async (_, _) => await ResizeAsync();
         adjust.Click += async (_, _) => await AdjustAsync();
+        bgRemove.Click += async (_, _) => await BackgroundToolsAsync();
         stamp.Click += async (_, _) => await StampSignatureAsync();
         meta.Click += async (_, _) => await ShowMetadataAsync();
         ocrButton.Click += async (_, _) => await RunOcrAsync();
@@ -403,7 +406,7 @@ public sealed class ImageDocumentView : UserControl
                 _cropBox, crop, _interactiveCropButton, _cropAspectBox, _applyCropButton, _cancelCropButton,
                 _selectButton, _selectionKindBox, _selectAllButton, _invertSelButton, _deselectButton, _copySelButton, _cutSelButton, _pasteSelButton, _deleteSelButton, _cropSelButton,
                 _drawButton, _flattenMarkupButton,
-                resize, adjust, stamp, meta, ocrButton, copyImage, pasteImage, save, exportPng, exportJpeg, convert, _status,
+                resize, adjust, bgRemove, stamp, meta, ocrButton, copyImage, pasteImage, save, exportPng, exportJpeg, convert, _status,
             },
         };
 
@@ -623,6 +626,7 @@ public sealed class ImageDocumentView : UserControl
         }
 
         _viewState.IsSlideshowActive = true;
+        StopAnimationPlayback();
         StopSlideshowTimerOnly();
         _slideshowTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
         _slideshowTimer.Tick += async (_, _) => await AdvanceSlideshowAsync();
@@ -1278,11 +1282,13 @@ public sealed class ImageDocumentView : UserControl
         IImageEditCheckpoint? checkpoint = null;
         try
         {
+            PauseAnimation();
             checkpoint = _document.CaptureCheckpoint();
             await mutation();
             PushUndo(checkpoint);
             checkpoint = null;
             await RefreshAsync();
+            RefreshAnimationChrome();
             UpdateStatus();
             _status.Text = okStatus;
         }
@@ -2980,6 +2986,184 @@ public sealed class ImageDocumentView : UserControl
 
     private static double EstimateRawMb(int width, int height) =>
         width * (double)height * 4.0 / (1024.0 * 1024.0);
+
+    private async Task BackgroundToolsAsync()
+    {
+        var fuzzSlider = new Slider
+        {
+            Minimum = 0,
+            Maximum = 40,
+            StepFrequency = 1,
+            Value = 12,
+            Width = 220,
+        };
+        var fuzzLabel = new TextBlock { Text = "Fuzz 12%" };
+        fuzzSlider.ValueChanged += (_, args) =>
+        {
+            fuzzLabel.Text = $"Fuzz {args.NewValue:0}%";
+        };
+        var trimBox = new CheckBox
+        {
+            Content = "Trim to opaque bounds after remove",
+            IsChecked = true,
+        };
+        var actionBox = new ComboBox
+        {
+            Width = 280,
+            ItemsSource = new[]
+            {
+                "Remove background (edit in place)",
+                "Extract subject → clipboard PNG",
+                "Extract subject → save PNG",
+            },
+            SelectedIndex = 0,
+        };
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = "Corner flood-fill removes connected background colors (studio / solid BG).",
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 320,
+                    Opacity = 0.8,
+                },
+                fuzzLabel,
+                fuzzSlider,
+                trimBox,
+                actionBox,
+            },
+        };
+        var dialog = new ContentDialog
+        {
+            Title = "Background / subject",
+            Content = panel,
+            PrimaryButtonText = "Apply",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var fuzz = fuzzSlider.Value;
+        var trim = trimBox.IsChecked == true;
+        var action = actionBox.SelectedIndex;
+
+        try
+        {
+            if (action == 0)
+            {
+                await MutateAsync(
+                    async () =>
+                    {
+                        await _processor.RemoveBackgroundAsync(_document, fuzz);
+                        if (trim)
+                        {
+                            await _processor.TrimTransparentAsync(_document);
+                        }
+                    },
+                    trim
+                        ? $"Background removed (fuzz {fuzz:0}%) and trimmed."
+                        : $"Background removed (fuzz {fuzz:0}%).");
+                var format = _document.FormatName;
+                if (format.Contains("Jpeg", StringComparison.OrdinalIgnoreCase)
+                    || format.Contains("Jpg", StringComparison.OrdinalIgnoreCase)
+                    || format.Contains("Bmp", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(format, "Gif", StringComparison.OrdinalIgnoreCase))
+                {
+                    _status.Text += " · Save/Convert to PNG/WebP to keep transparency.";
+                }
+
+                return;
+            }
+
+            // Extract without keeping edits: mutate, capture pixels, restore.
+            PauseAnimation();
+            var restore = _document.CaptureCheckpoint();
+            try
+            {
+                await _processor.RemoveBackgroundAsync(_document, fuzz);
+                if (trim)
+                {
+                    await _processor.TrimTransparentAsync(_document);
+                }
+
+                var buffer = await _document.GetPixelsAsync();
+                if (action == 1)
+                {
+                    var temp = System.IO.Path.Combine(
+                        System.IO.Path.GetTempPath(),
+                        "glyph-subject-" + Guid.NewGuid().ToString("N") + ".png");
+                    try
+                    {
+                        await _encoder.WriteBgraAsync(
+                            buffer.BgraPixels,
+                            buffer.Width,
+                            buffer.Height,
+                            temp,
+                            ImageEncodeFormat.Png);
+                        var file = await Windows.Storage.StorageFile.GetFileFromPathAsync(temp);
+                        var stream = await file.OpenReadAsync();
+                        var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                        package.SetBitmap(Windows.Storage.Streams.RandomAccessStreamReference.CreateFromStream(stream));
+                        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+                        _status.Text = $"Subject copied ({buffer.Width}×{buffer.Height}).";
+                    }
+                    finally
+                    {
+                        if (System.IO.File.Exists(temp))
+                        {
+                            System.IO.File.Delete(temp);
+                        }
+                    }
+                }
+                else
+                {
+                    var window = App.CurrentApp.MainWindowInstance
+                        ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+                    var picker = new Windows.Storage.Pickers.FileSavePicker();
+                    var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+                    WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+                    picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary;
+                    picker.FileTypeChoices.Add("PNG", [".png"]);
+                    var baseName = string.IsNullOrWhiteSpace(_document.Path)
+                        ? "subject"
+                        : System.IO.Path.GetFileNameWithoutExtension(_document.Path);
+                    picker.SuggestedFileName = baseName + "-subject.png";
+                    var file = await picker.PickSaveFileAsync();
+                    if (file is null)
+                    {
+                        _status.Text = "Save subject cancelled.";
+                    }
+                    else
+                    {
+                        await _encoder.WriteBgraAsync(
+                            buffer.BgraPixels,
+                            buffer.Width,
+                            buffer.Height,
+                            file.Path,
+                            ImageEncodeFormat.Png);
+                        _status.Text = "Subject saved → " + file.Name;
+                    }
+                }
+            }
+            finally
+            {
+                _document.RestoreCheckpoint(restore);
+                await RefreshAsync();
+                UpdateStatus();
+            }
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Background tools failed: " + ex.Message;
+        }
+    }
 
     private async Task AdjustAsync()
     {
