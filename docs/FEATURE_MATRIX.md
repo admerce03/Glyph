@@ -208,7 +208,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F11-01 | Preview-style PDF drag-and-drop workflows | one page | M3 | Tested | Thumbnail CanDrag + `PageDragPayload` format/parse unit tests |
 | F11-02 | Preview-style PDF drag-and-drop workflows | multiple contiguous pages | M3 | Tested | Multi-select drag; payload preserves sorted indexes |
 | F11-03 | Preview-style PDF drag-and-drop workflows | multiple noncontiguous pages | M3 | Tested | Noncontiguous selection preserved in `PageDragPayload` |
-| F11-04 | Preview-style PDF drag-and-drop workflows | insertion before/after any page | M3 | Implemented | Drop Y half chooses before/after |
+| F11-04 | Preview-style PDF drag-and-drop workflows | insertion before/after any page | M3 | Tested | Drop Y half via `PageDropPlacement.IsInsertAfter` unit tests |
 | F11-05 | Preview-style PDF drag-and-drop workflows | visible insertion indicator | M3 | Implemented | Orange before/after border highlight |
 | F11-06 | Preview-style PDF drag-and-drop workflows | insert entire PDF at drop location. | M3 | Implemented | Explorer `.pdf` StorageItems → insert |
 | F11-07 | Preview-style PDF drag-and-drop workflows | create a new PDF containing those selected pages. | M3 | Implemented | Deferred StorageItems extract on drag-out |

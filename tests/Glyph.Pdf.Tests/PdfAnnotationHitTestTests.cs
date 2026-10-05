@@ -34,6 +34,16 @@ public class PdfAnnotationHitTestTests
     }
 
     [Fact]
+    public void SameIdentity_matches_page_and_annot_index()
+    {
+        var a = new PdfAnnotationInfo(1, 2, null, new PdfRect(0, 0, 1, 1), null);
+        var b = new PdfAnnotationInfo(1, 2, null, new PdfRect(9, 9, 10, 10), null, IsInk: true);
+        var c = new PdfAnnotationInfo(1, 3, null, new PdfRect(0, 0, 1, 1), null);
+        PdfAnnotationHitTest.SameIdentity(a, b).Should().BeTrue();
+        PdfAnnotationHitTest.SameIdentity(a, c).Should().BeFalse();
+    }
+
+    [Fact]
     public void HitTestWithPad_hits_inside_pad_outside_bounds()
     {
         var annots = new List<PdfAnnotationInfo>

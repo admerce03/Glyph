@@ -1751,7 +1751,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (sender is Border border)
         {
-            var insertAfter = e.GetPosition(border).Y > border.ActualHeight / 2;
+            var insertAfter = PageDropPlacement.IsInsertAfter(e.GetPosition(border).Y, border.ActualHeight);
             ShowDropHighlight(border, insertAfter);
         }
     }
@@ -1784,7 +1784,8 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var insertBefore = e.GetPosition((UIElement)sender).Y > ((FrameworkElement)sender).ActualHeight / 2
+        var fe = (FrameworkElement)sender;
+        var insertBefore = PageDropPlacement.IsInsertAfter(e.GetPosition((UIElement)sender).Y, fe.ActualHeight)
             ? dropIndex + 1
             : dropIndex;
         await HandleThumbnailDropAsync(e, insertBefore);
@@ -1864,9 +1865,9 @@ public sealed class PdfDocumentView : UserControl
     }
 
     private static string DropCaption(DataPackageView data) =>
-        data.Contains(StandardDataFormats.StorageItems) && !data.Contains(StandardDataFormats.Text)
-            ? "Insert PDF pages"
-            : "Move or copy pages here";
+        PageDropPlacement.Caption(
+            data.Contains(StandardDataFormats.StorageItems),
+            data.Contains(StandardDataFormats.Text));
 
     private void ShowDropHighlight(Border border, bool insertAfter)
     {
@@ -9378,16 +9379,14 @@ public sealed class PdfDocumentView : UserControl
             : $"Selected {_selectedAnnots.Count} annotations.";
     }
 
-    private static bool SameAnnot(PdfAnnotationInfo a, PdfAnnotationInfo b) =>
-        a.PageIndex == b.PageIndex && a.AnnotIndex == b.AnnotIndex;
 
     private void ToggleAnnotInSelection(PdfAnnotationInfo hit)
     {
-        var existing = _selectedAnnots.FindIndex(a => SameAnnot(a, hit));
+        var existing = _selectedAnnots.FindIndex(a => PdfAnnotationHitTest.SameIdentity(a, hit));
         if (existing >= 0)
         {
             _selectedAnnots.RemoveAt(existing);
-            if (_selectedAnnot is not null && SameAnnot(_selectedAnnot, hit))
+            if (_selectedAnnot is not null && PdfAnnotationHitTest.SameIdentity(_selectedAnnot, hit))
             {
                 _selectedAnnot = _selectedAnnots.Count > 0 ? _selectedAnnots[^1] : null;
             }
@@ -9431,7 +9430,7 @@ public sealed class PdfDocumentView : UserControl
         Windows.Foundation.Point uiPoint,
         PointerRoutedEventArgs e)
     {
-        var alreadyInSelection = _selectedAnnots.Exists(a => SameAnnot(a, hit));
+        var alreadyInSelection = _selectedAnnots.Exists(a => PdfAnnotationHitTest.SameIdentity(a, hit));
         if (!alreadyInSelection)
         {
             // Selecting one member of a group selects the whole group on that page.
@@ -9568,7 +9567,7 @@ public sealed class PdfDocumentView : UserControl
         Windows.Foundation.Point uiPoint,
         PointerRoutedEventArgs e)
     {
-        if (!_selectedAnnots.Exists(a => SameAnnot(a, hit)))
+        if (!_selectedAnnots.Exists(a => PdfAnnotationHitTest.SameIdentity(a, hit)))
         {
             ReplaceAnnotSelection(hit);
         }
@@ -9904,7 +9903,7 @@ public sealed class PdfDocumentView : UserControl
             _annotationList.SelectedItems.Clear();
             foreach (var a in _selectedAnnots)
             {
-                var index = _annotationItems.FindIndex(x => SameAnnot(x, a));
+                var index = _annotationItems.FindIndex(x => PdfAnnotationHitTest.SameIdentity(x, a));
                 if (index >= 0 && index < _annotationList.Items.Count)
                 {
                     _annotationList.SelectedItems.Add(_annotationList.Items[index]);
@@ -9913,7 +9912,7 @@ public sealed class PdfDocumentView : UserControl
 
             if (_selectedAnnot is not null)
             {
-                var primary = _annotationItems.FindIndex(x => SameAnnot(x, _selectedAnnot));
+                var primary = _annotationItems.FindIndex(x => PdfAnnotationHitTest.SameIdentity(x, _selectedAnnot));
                 if (primary >= 0)
                 {
                     _annotationList.SelectedIndex = primary;
@@ -9939,7 +9938,7 @@ public sealed class PdfDocumentView : UserControl
                     origin.Right + dxPoints,
                     origin.Top + dyPoints),
             };
-            AddAnnotSelectionChrome(preview, primary: _selectedAnnot is not null && SameAnnot(info, _selectedAnnot));
+            AddAnnotSelectionChrome(preview, primary: _selectedAnnot is not null && PdfAnnotationHitTest.SameIdentity(info, _selectedAnnot));
         }
     }
 
@@ -9954,8 +9953,8 @@ public sealed class PdfDocumentView : UserControl
         var drawn = false;
         foreach (var a in _selectedAnnots)
         {
-            var boundsInfo = SameAnnot(a, info) ? info : a;
-            AddAnnotSelectionChrome(boundsInfo, primary: _selectedAnnot is not null && SameAnnot(a, _selectedAnnot));
+            var boundsInfo = PdfAnnotationHitTest.SameIdentity(a, info) ? info : a;
+            AddAnnotSelectionChrome(boundsInfo, primary: _selectedAnnot is not null && PdfAnnotationHitTest.SameIdentity(a, _selectedAnnot));
             drawn = true;
         }
 

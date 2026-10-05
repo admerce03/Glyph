@@ -7,6 +7,9 @@ namespace Glyph.Pdf.Editing;
 /// </summary>
 public static class PdfAnnotationHitTest
 {
+    public static bool SameIdentity(PdfAnnotationInfo a, PdfAnnotationInfo b) =>
+        a.PageIndex == b.PageIndex && a.AnnotIndex == b.AnnotIndex;
+
     public static PdfAnnotationInfo? HitTest(
         IReadOnlyList<PdfAnnotationInfo> annotations,
         int pageIndex,
