@@ -7,4 +7,8 @@ public sealed record PdfFormFieldInfo(
     PdfFormFieldKind Kind,
     string Value,
     PdfRect Bounds,
-    int TabOrder);
+    int TabOrder,
+    IReadOnlyList<string>? Options = null)
+{
+    public IReadOnlyList<string> ChoiceOptions => Options ?? Array.Empty<string>();
+}

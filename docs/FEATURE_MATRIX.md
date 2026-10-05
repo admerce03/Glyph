@@ -352,9 +352,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F20-02 | PDF forms | multiline fields | M4 | Implemented | Same text path; AcceptsReturn in edit dialog |
 | F20-03 | PDF forms | checkboxes | M4 | Tested | `SetCheckBoxAsync` sets `/V`+`/AS` |
 | F20-04 | PDF forms | radio buttons | M4 | Tested | `SetRadioButtonAsync` mutual exclusion by `/T` |
-| F20-05 | PDF forms | dropdowns | M4 | Not Started |  |
-| F20-06 | PDF forms | combo boxes | M4 | Implemented | Set via same `/V` text path |
-| F20-07 | PDF forms | list boxes | M4 | Not Started | Listed; edit later |
+| F20-05 | PDF forms | dropdowns | M4 | Tested | Combo `/Opt` via PdfPig + Form picker |
+| F20-06 | PDF forms | combo boxes | M4 | Tested | `SetTextValueAsync` + option list UI |
+| F20-07 | PDF forms | list boxes | M4 | Tested | `SetTextValueAsync` + `/Opt` picker |
 | F20-08 | PDF forms | buttons where applicable | M4 | Not Started |  |
 | F20-09 | PDF forms | signatures where supported | M4 | Not Started |  |
 | F20-10 | PDF forms | tab-order navigation | M4 | Tested | `FocusAdjacentAsync` + Form dialog Next |

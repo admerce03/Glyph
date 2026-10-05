@@ -1,5 +1,8 @@
 using Glyph.Pdf.Abstractions;
 using PDFiumCore;
+using UglyToad.PdfPig;
+using UglyToad.PdfPig.AcroForms;
+using UglyToad.PdfPig.AcroForms.Fields;
 
 namespace Glyph.Pdf.Pdfium;
 
@@ -107,6 +110,7 @@ public sealed class PdfiumFormStore : IPdfFormStore
                         }
                     }
 
+                    EnrichChoiceOptions(pdfium.Path, fields);
                     return (IReadOnlyList<PdfFormFieldInfo>)fields;
                 }
             },
@@ -156,7 +160,9 @@ public sealed class PdfiumFormStore : IPdfFormStore
                             }
 
                             var kind = MapKind(annot);
-                            if (kind is not (PdfFormFieldKind.TextField or PdfFormFieldKind.ComboBox))
+                            if (kind is not (PdfFormFieldKind.TextField
+                                or PdfFormFieldKind.ComboBox
+                                or PdfFormFieldKind.ListBox))
                             {
                                 throw new NotSupportedException(
                                     $"Setting values for form field kind {kind} is not supported yet.");
@@ -504,6 +510,79 @@ public sealed class PdfiumFormStore : IPdfFormStore
         }
 
         return "Yes";
+    }
+
+    private static void EnrichChoiceOptions(string? path, List<PdfFormFieldInfo> fields)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path) || fields.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            using var pig = PdfDocument.Open(path);
+            if (!pig.TryGetForm(out var form) || form is null)
+            {
+                return;
+            }
+
+            var optionsByName = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+            foreach (var field in form.GetFields())
+            {
+                IReadOnlyList<AcroChoiceOption>? options = field switch
+                {
+                    AcroComboBoxField combo => combo.Options,
+                    AcroListBoxField list => list.Options,
+                    _ => null,
+                };
+                if (options is null || options.Count == 0)
+                {
+                    continue;
+                }
+
+                var name = field.Information.PartialName
+                    ?? field.Information.AlternateName
+                    ?? field.Information.MappingName
+                    ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    continue;
+                }
+
+                optionsByName[name] = options
+                    .Select(o => !string.IsNullOrEmpty(o.Name) ? o.Name : o.ExportValue)
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Cast<string>()
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList();
+            }
+
+            if (optionsByName.Count == 0)
+            {
+                return;
+            }
+
+            for (var i = 0; i < fields.Count; i++)
+            {
+                var f = fields[i];
+                if (f.Kind is not (PdfFormFieldKind.ComboBox or PdfFormFieldKind.ListBox))
+                {
+                    continue;
+                }
+
+                if (!optionsByName.TryGetValue(f.Name, out var opts) || opts.Count == 0)
+                {
+                    continue;
+                }
+
+                fields[i] = f with { Options = opts };
+            }
+        }
+        catch
+        {
+            // Options are enrichment only; listing must still succeed without PdfPig form parse.
+        }
     }
 
     private static PdfRect ReadRect(FpdfAnnotationT annot)
