@@ -298,7 +298,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Page Export → PNG/JPEG/WebP/TIFF/BMP/GIF/AVIF/JP2 with DPI/quality, Title/Author metadata, sRGB ICC (F45-07), alpha where codec allows
 - FreeText Align / `/Q` quadding via post-save dict patch (F13-38 / F16-15)
 - Bookmarks → PDF `/Outlines` export (F09-08)
-- Password-protect write blocked on ADR-015 (Needs approval)
+- Password-protect write blocked on ADR-015 (Needs approval); `IPdfSecurityService` / `BlockedPdfSecurityService` + Protect toolbar dialog surface the block
 - Landed on main via squash-merge #67 (`364011d`); Magick text/callout font fallback + WebcamCapture preview + OemComma accelerator fixes included
 - Local polish (+238 extracts) + Format verify / IDE0005 CI hardening shipped with #67
 - FEATURE_MATRIX: no Implemented/In Progress rows; Blocked = ADR-015 password-write; Deferred catalogs unit-tested (`PackagingDeferredPolicy`, `PdfOptimizeDeferredPolicy`, `ImageAdvancedDeferredPolicy`, …)

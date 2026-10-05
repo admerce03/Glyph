@@ -15,6 +15,7 @@ using Glyph.Ocr.Abstractions;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Pdfium;
 using Glyph.Pdf.Rendering;
+using Glyph.Pdf.Security;
 using Glyph.Pdf.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -67,6 +68,7 @@ internal static class AppServices
         services.AddSingleton<IPdfAnnotationService, PdfiumAnnotationService>();
         services.AddSingleton<IPdfRedactionService, PdfiumRedactionService>();
         services.AddSingleton<IPdfDocumentInfoService, PdfiumDocumentInfoService>();
+        services.AddSingleton<IPdfSecurityService, BlockedPdfSecurityService>();
         services.AddSingleton<IPdfImageJpegEncoder, MagickPdfImageJpegEncoder>();
         services.AddSingleton<IPdfOptimizeService>(sp =>
             new PdfiumOptimizeService(sp.GetRequiredService<IPdfImageJpegEncoder>()));

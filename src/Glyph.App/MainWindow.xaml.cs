@@ -64,6 +64,7 @@ public sealed partial class MainWindow : Window
     private readonly IPdfRedactionService _pdfRedaction;
     private readonly IPdfDocumentInfoService _pdfInfo;
     private readonly IPdfOptimizeService _pdfOptimize;
+    private readonly IPdfSecurityService _pdfSecurity;
     private readonly ISignatureLibrary _signatures;
     private readonly IFormValueHistory _formValueHistory;
     private readonly IFormAutofillProfileStore _formProfile;
@@ -96,6 +97,7 @@ public sealed partial class MainWindow : Window
         IPdfRedactionService pdfRedaction,
         IPdfDocumentInfoService pdfInfo,
         IPdfOptimizeService pdfOptimize,
+        IPdfSecurityService pdfSecurity,
         ISignatureLibrary signatures,
         IFormValueHistory formValueHistory,
         IFormAutofillProfileStore formProfile,
@@ -126,6 +128,7 @@ public sealed partial class MainWindow : Window
         _pdfRedaction = pdfRedaction;
         _pdfInfo = pdfInfo;
         _pdfOptimize = pdfOptimize;
+        _pdfSecurity = pdfSecurity;
         _signatures = signatures;
         _formValueHistory = formValueHistory;
         _formProfile = formProfile;
@@ -1780,6 +1783,7 @@ public sealed partial class MainWindow : Window
                 _pdfRedaction,
                 _pdfInfo,
                 _pdfOptimize,
+                _pdfSecurity,
                 _imageEncoder,
                 _signatures,
                 _pdfForms,
