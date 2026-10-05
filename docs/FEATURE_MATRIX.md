@@ -508,7 +508,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F32-03 | Image orientation | Rotate 180°. | M5 | Tested | ImageDocumentView 180° + RotateAsync(180) |
 | F32-04 | Image orientation | Flip horizontal. | M5 | Tested | Flip H + FlipHorizontalAsync |
 | F32-05 | Image orientation | Flip vertical. | M5 | Tested | Flip V + FlipVerticalAsync |
-| F32-06 | Image orientation | Batch operations on selected images. | M5 | Not Started |  |
+| F32-06 | Image orientation | Batch operations on selected images. | M5 | Implemented | Batch… toolbar → rotate/flip/orient all folder images |
 | F32-07 | Image orientation | Respect EXIF orientation. | M5 | Tested | MagickImageDecoder AutoOrient on open |
 | F32-08 | Image orientation | Option to normalize EXIF orientation into pixels. | M5 | Tested | Orient toolbar + NormalizeOrientationAsync |
 | F33-01 | Image color adjustments | Auto Levels | M5 | Tested | Adjust dialog → `AutoLevels` → Magick `AutoLevel` |

@@ -236,6 +236,7 @@ public sealed class ImageDocumentView : UserControl
         var ocrButton = new Button { Content = "OCR" };
         var rotate180 = new Button { Content = "180°" };
         var orient = new Button { Content = "Orient" };
+        var batchOrient = new Button { Content = "Batch…" };
         var fullscreen = new Button { Content = "Fullscreen" };
         var save = new Button { Content = "Save" };
         var exportPng = new Button { Content = "→PNG" };
@@ -259,6 +260,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(ocrButton, "Run offline OCR on this image");
         ToolTipService.SetToolTip(rotate180, "Rotate 180°");
         ToolTipService.SetToolTip(orient, "Apply EXIF orientation into pixels");
+        ToolTipService.SetToolTip(batchOrient, "Rotate/flip all images in the folder (overwrites on disk)");
         ToolTipService.SetToolTip(fullscreen, "Toggle window fullscreen");
         ToolTipService.SetToolTip(exportPng, "Export as PNG");
         ToolTipService.SetToolTip(exportJpeg, "Export as JPEG");
@@ -278,6 +280,7 @@ public sealed class ImageDocumentView : UserControl
         rotateRight.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 90), "Rotated right.");
         rotate180.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 180), "Rotated 180°.");
         orient.Click += async (_, _) => await MutateAsync(() => _processor.NormalizeOrientationAsync(_document), "Orientation normalized.");
+        batchOrient.Click += async (_, _) => await BatchOrientFolderAsync();
         fullscreen.Click += (_, _) => ToggleFullscreen();
         flipH.Click += async (_, _) => await MutateAsync(() => _processor.FlipHorizontalAsync(_document), "Flipped horizontally.");
         flipV.Click += async (_, _) => await MutateAsync(() => _processor.FlipVerticalAsync(_document), "Flipped vertically.");
@@ -349,7 +352,7 @@ public sealed class ImageDocumentView : UserControl
             Padding = new Thickness(8),
             Children =
             {
-                _prevButton, _nextButton, _slideshowButton, _undoButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
+                _prevButton, _nextButton, _slideshowButton, _undoButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, batchOrient, fullscreen, flipH, flipV,
                 _cropBox, crop, _interactiveCropButton, _cropAspectBox, _applyCropButton, _cancelCropButton,
                 _selectButton, _selectionKindBox, _selectAllButton, _invertSelButton, _deselectButton, _copySelButton, _cutSelButton, _pasteSelButton, _deleteSelButton, _cropSelButton,
                 _drawButton, _flattenMarkupButton,
@@ -2155,6 +2158,108 @@ public sealed class ImageDocumentView : UserControl
         }
 
         return updated;
+    }
+
+    private async Task BatchOrientFolderAsync()
+    {
+        if (_decoder is null || _siblings.Count < 2 || string.IsNullOrWhiteSpace(_document.Path))
+        {
+            _status.Text = "Batch orientation needs a folder with multiple images.";
+            return;
+        }
+
+        var opBox = new ComboBox
+        {
+            Header = "Operation",
+            Width = 220,
+            ItemsSource = new[]
+            {
+                "Rotate left 90°",
+                "Rotate right 90°",
+                "Rotate 180°",
+                "Flip horizontal",
+                "Flip vertical",
+                "Normalize EXIF orientation",
+            },
+            SelectedIndex = 1,
+        };
+        var includeCurrent = new CheckBox
+        {
+            Content = "Also apply to the open image (in memory until Save)",
+            IsChecked = true,
+        };
+        var dialog = new ContentDialog
+        {
+            Title = "Batch orientation",
+            Content = new StackPanel
+            {
+                Spacing = 10,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = $"Applies to {_siblings.Count} images in this folder. Sibling files are overwritten on disk.",
+                        Opacity = 0.75,
+                        TextWrapping = TextWrapping.Wrap,
+                        MaxWidth = 320,
+                    },
+                    opBox,
+                    includeCurrent,
+                },
+            },
+            PrimaryButtonText = "Apply",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var op = opBox.SelectedIndex;
+        async Task ApplyAsync(IImageDocument doc) => op switch
+        {
+            0 => await _processor.RotateAsync(doc, -90),
+            1 => await _processor.RotateAsync(doc, 90),
+            2 => await _processor.RotateAsync(doc, 180),
+            3 => await _processor.FlipHorizontalAsync(doc),
+            4 => await _processor.FlipVerticalAsync(doc),
+            _ => await _processor.NormalizeOrientationAsync(doc),
+        };
+
+        var label = opBox.SelectedItem?.ToString() ?? "orientation";
+        if (includeCurrent.IsChecked == true)
+        {
+            await MutateAsync(() => ApplyAsync(_document), $"Current image: {label}.");
+        }
+
+        var current = System.IO.Path.GetFullPath(_document.Path);
+        var updated = 0;
+        foreach (var sibling in _siblings)
+        {
+            var full = System.IO.Path.GetFullPath(sibling);
+            if (string.Equals(full, current, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            try
+            {
+                await using var doc = await _decoder.OpenAsync(sibling);
+                await ApplyAsync(doc);
+                await _encoder.SaveAsync(doc, sibling);
+                updated++;
+            }
+            catch (Exception ex)
+            {
+                _status.Text = $"Batch orient skipped {System.IO.Path.GetFileName(sibling)}: {ex.Message}";
+            }
+        }
+
+        _status.Text = $"Batch {label}: updated {updated} folder image(s)"
+            + (includeCurrent.IsChecked == true ? " (+ current)." : ".");
     }
 
     private static double EstimateRawMb(int width, int height) =>
