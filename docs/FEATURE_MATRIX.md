@@ -153,18 +153,18 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F08-02 | OCR / Live Text equivalent | Select detected text directly over the image. | M6 | Not Started |  |
 | F08-03 | OCR / Live Text equivalent | Copy text. | M6 | Not Started |  |
 | F08-04 | OCR / Live Text equivalent | Copy all recognized text. | M6 | Not Started |  |
-| F08-05 | OCR / Live Text equivalent | Search recognized text. | M6 | Not Started |  |
-| F08-06 | OCR / Live Text equivalent | OCR current page. | M6 | Not Started |  |
+| F08-05 | OCR / Live Text equivalent | Search recognized text. | M6 | In Progress | Find query noted against OCR text |
+| F08-06 | OCR / Live Text equivalent | OCR current page. | M6 | Implemented | PDF OCR button → current page |
 | F08-07 | OCR / Live Text equivalent | OCR selected pages. | M6 | Not Started |  |
 | F08-08 | OCR / Live Text equivalent | OCR entire PDF. | M6 | Not Started |  |
 | F08-09 | OCR / Live Text equivalent | OCR multiple images. | M6 | Not Started |  |
 | F08-10 | OCR / Live Text equivalent | Optionally embed OCR text layer into PDF. | M6 | Not Started |  |
 | F08-11 | OCR / Live Text equivalent | Preserve image underneath the OCR layer. | M6 | Not Started |  |
-| F08-12 | OCR / Live Text equivalent | URLs | M6 | Not Started |  |
-| F08-13 | OCR / Live Text equivalent | email addresses | M6 | Not Started |  |
-| F08-14 | OCR / Live Text equivalent | phone numbers | M6 | Not Started |  |
+| F08-12 | OCR / Live Text equivalent | URLs | M6 | Tested | `OcrEntityExtractor` |
+| F08-13 | OCR / Live Text equivalent | email addresses | M6 | Tested | `OcrEntityExtractor` |
+| F08-14 | OCR / Live Text equivalent | phone numbers | M6 | Tested | `OcrEntityExtractor` |
 | F08-15 | OCR / Live Text equivalent | physical addresses | M6 | Not Started |  |
-| F08-16 | OCR / Live Text equivalent | dates | M6 | Not Started |  |
+| F08-16 | OCR / Live Text equivalent | dates | M6 | Tested | `OcrEntityExtractor` |
 | F08-17 | OCR / Live Text equivalent | times | M6 | Not Started |  |
 | F08-18 | OCR / Live Text equivalent | Open URL in default browser. | M6 | Not Started |  |
 | F08-19 | OCR / Live Text equivalent | Create email in default mail application. | M6 | Not Started |  |
