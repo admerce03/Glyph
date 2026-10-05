@@ -67,7 +67,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-06 | Sidebar modes | Image list | M2-M5 | Not Started |  |
 | F03-07 | Sidebar modes | Contact sheet | M2-M5 | Not Started |  |
 | F03-08 | Sidebar modes | Document attachments, if supported | M2-M5 | Not Started |  |
-| F03-09 | Sidebar modes | Metadata/properties where useful | M2-M5 | Not Started |  |
+| F03-09 | Sidebar modes | Metadata/properties where useful | M2-M5 | Implemented | PDF sidebar Properties summary + More/Edit (F48) |
 | F03-10 | Sidebar modes | Switch sidebar mode without opening another window. | M2-M5 | In Progress | Thumbs/TOC/search coexist in one panel; dedicated mode switcher later |
 | F03-11 | Sidebar modes | Resize thumbnail size. | M2-M5 | Implemented | Pages S/M/L buttons; `ThumbnailWidth` persisted |
 | F03-12 | Sidebar modes | Multi-select sidebar items. | M2-M5 | Implemented | Page thumbnails via `PageSelection`; annotations Extended ListView |

@@ -95,6 +95,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly ListView _searchResults;
     private StackPanel? _toolbar;
     private readonly ListView _annotationList;
+    private readonly TextBlock _propertiesSummary;
     private readonly TextBox _searchBox;
     private readonly TextBox _gotoBox;
     private readonly CheckBox _caseSensitiveBox;
@@ -385,6 +386,8 @@ public sealed class PdfDocumentView : UserControl
                 new RowDefinition { Height = new GridLength(100) },
                 new RowDefinition { Height = GridLength.Auto },
                 new RowDefinition { Height = new GridLength(120) },
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = GridLength.Auto },
             },
         };
         _sidePanel = sidePanel;
@@ -556,6 +559,53 @@ public sealed class PdfDocumentView : UserControl
         sidePanel.Children.Add(annotHeaderRow);
         Grid.SetRow(_annotationList, 9);
         sidePanel.Children.Add(_annotationList);
+
+        var propertiesHeader = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            Margin = new Thickness(8, 8, 8, 4),
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = "Properties",
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+            },
+        };
+        var propertiesMore = new Button { Content = "More…", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(propertiesMore, "Open full document info dialog");
+        propertiesMore.Click += async (_, _) => await ShowDocumentInfoAsync();
+        var propertiesEdit = new Button { Content = "Edit…", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(propertiesEdit, "Edit title, author, subject, and keywords");
+        propertiesEdit.Click += async (_, _) =>
+        {
+            try
+            {
+                var info = _documentInfo.GetInfo(_document);
+                await EditDocumentInfoAsync(info);
+            }
+            catch (Exception ex)
+            {
+                _status.Text = "Edit properties failed: " + ex.Message;
+            }
+        };
+        propertiesHeader.Children.Add(propertiesMore);
+        propertiesHeader.Children.Add(propertiesEdit);
+        Grid.SetRow(propertiesHeader, 10);
+        sidePanel.Children.Add(propertiesHeader);
+        _propertiesSummary = new TextBlock
+        {
+            Margin = new Thickness(8, 0, 8, 8),
+            FontSize = 11,
+            Opacity = 0.85,
+            TextWrapping = TextWrapping.Wrap,
+            Text = "Loading…",
+        };
+        Grid.SetRow(_propertiesSummary, 11);
+        sidePanel.Children.Add(_propertiesSummary);
 
         _status = new TextBlock { Opacity = 0.75, FontSize = 12, Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
         _gotoBox = new TextBox { PlaceholderText = "#", Width = 48 };
@@ -847,6 +897,7 @@ public sealed class PdfDocumentView : UserControl
         _ = LoadOutlineAsync();
         RefreshBookmarkList();
         _ = RefreshAnnotationSidebarAsync();
+        RefreshPropertiesSidebar();
     }
 
     private void PdfDocumentView_Unloaded(object sender, RoutedEventArgs e)
@@ -12125,11 +12176,50 @@ public sealed class PdfDocumentView : UserControl
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
+            RefreshPropertiesSidebar();
+            NotifyEdited();
             _status.Text = "Document info updated. Save the PDF to keep changes on disk.";
         }
         catch (Exception ex)
         {
             _status.Text = "Info edit failed: " + ex.Message;
+        }
+    }
+
+    private void RefreshPropertiesSidebar()
+    {
+        try
+        {
+            var info = _documentInfo.GetInfo(_document);
+            static string Val(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
+            static string Bytes(long? size) =>
+                size is null ? "—" : size.Value < 1024
+                    ? $"{size.Value} B"
+                    : size.Value < 1024 * 1024
+                        ? $"{size.Value / 1024.0:0.#} KB"
+                        : $"{size.Value / (1024.0 * 1024.0):0.##} MB";
+
+            var pageSize = info.PageWidthPoints is null || info.PageHeightPoints is null
+                ? "—"
+                : $"{info.PageWidthPoints:0.#}×{info.PageHeightPoints:0.#} pt";
+            var fileName = info.FilePath is null
+                ? "—"
+                : System.IO.Path.GetFileName(info.FilePath);
+
+            _propertiesSummary.Text =
+                $"Title: {Val(info.Title)}\n"
+                + $"Author: {Val(info.Author)}\n"
+                + $"Pages: {info.PageCount} · {pageSize}\n"
+                + $"File: {fileName} · {Bytes(info.FileSizeBytes)}\n"
+                + $"PDF: {Val(info.PdfVersion)}"
+                + (info.IsEncrypted ? " · Encrypted" : string.Empty)
+                + (info.EmbeddedAttachmentCount > 0
+                    ? $"\nAttachments: {info.EmbeddedAttachmentCount}"
+                    : string.Empty);
+        }
+        catch (Exception ex)
+        {
+            _propertiesSummary.Text = "Properties unavailable: " + ex.Message;
         }
     }
 }
