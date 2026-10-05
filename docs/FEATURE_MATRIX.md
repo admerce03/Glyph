@@ -253,7 +253,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-27 | PDF annotations | multi-select | M4 | Not Started |  |
 | F13-28 | PDF annotations | group where useful | M4 | Not Started |  |
 | F13-29 | PDF annotations | change border color | M4 | Tested | Set on create + `SetColorAsync` |
-| F13-30 | PDF annotations | change fill color | M4 | Tested | InteriorColor on shape create |
+| F13-30 | PDF annotations | change fill color | M4 | Tested | `SetFillColorAsync` (InteriorColor) + sidebar Fill; also on shape create |
 | F13-31 | PDF annotations | change opacity | M4 | Tested | `SetOpacityAsync` + sidebar Opacity slider |
 | F13-32 | PDF annotations | change line thickness | M4 | Tested | Create + sidebar Width → `SetBorderWidthAsync` (ink/shapes/text box) |
 | F13-33 | PDF annotations | change line style | M4 | Tested | Line/Arrow ink: Solid/Dashed/Dotted via segmented strokes |
@@ -300,7 +300,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F16-14 | Text boxes and callouts | Opacity. | M4 | Implemented | Sidebar Opacity → `SetOpacityAsync` |
 | F16-15 | Text boxes and callouts | Alignment. | M4 | Blocked | Same Quadding limitation as F13-38 |
 | F16-16 | Text boxes and callouts | Callout pointer. | M4 | Tested | Ink pointer from tip to nearest box edge |
-| F16-17 | Text boxes and callouts | Move pointer separately from text box. | M4 | Not Started |  |
+| F16-17 | Text boxes and callouts | Move pointer separately from text box. | M4 | Tested | Sidebar Tip → click page; `SetCalloutTipAsync` rebuilds ink pointer |
 | F17-01 | Shapes | line | M4 | Tested | Same as F13-05 Line draw mode |
 | F17-02 | Shapes | arrow | M4 | Tested | Same as F13-06 Arrow draw mode |
 | F17-03 | Shapes | rectangle | M4 | Tested | Same as F13-07 Rect draw mode |

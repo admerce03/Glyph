@@ -149,6 +149,28 @@ public interface IPdfAnnotationService
         float borderWidthPoints,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Set fill/interior color for square, circle, and FreeText annotations.
+    /// Pass <c>null</c> to clear the fill when supported (sets transparent alpha).
+    /// </summary>
+    Task SetFillColorAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        PdfAnnotationColor? fillColor,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reposition the ink pointer tip for a FreeText callout (Subj=Callout), keeping the text box fixed.
+    /// </summary>
+    Task SetCalloutTipAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int calloutAnnotIndex,
+        PdfPagePoint tip,
+        float pointerWidthPoints = 1.5f,
+        CancellationToken cancellationToken = default);
+
     Task MoveAsync(
         IPdfDocument document,
         int pageIndex,

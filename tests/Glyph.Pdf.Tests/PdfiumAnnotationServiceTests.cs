@@ -439,6 +439,25 @@ public class PdfiumAnnotationServiceTests
                 created.IsTextBox.Should().BeTrue();
                 created.Contents.Should().Be("Look here");
 
+                await annots.SetFillColorAsync(
+                    document,
+                    0,
+                    created.AnnotIndex,
+                    new PdfAnnotationColor(255, 240, 200));
+
+                await annots.SetCalloutTipAsync(
+                    document,
+                    0,
+                    created.AnnotIndex,
+                    tip: new PdfPagePoint(40, 450));
+
+                var afterTip = await annots.ListAsync(document, 0);
+                afterTip.Should().Contain(a => a.IsCallout && a.Contents == "Look here");
+                afterTip.Should().Contain(a =>
+                    a.IsInk
+                    && a.Contents != null
+                    && a.Contents.StartsWith("CalloutPointer:", StringComparison.Ordinal));
+
                 await editor.SaveAsync(document, outPath);
             }
 
@@ -446,7 +465,10 @@ public class PdfiumAnnotationServiceTests
             {
                 var listed = await annots.ListAsync(reopened, 0);
                 listed.Should().Contain(a => a.IsCallout && a.Contents == "Look here");
-                listed.Should().Contain(a => a.IsInk && a.Contents == "CalloutPointer");
+                listed.Should().Contain(a =>
+                    a.IsInk
+                    && a.Contents != null
+                    && a.Contents.StartsWith("CalloutPointer:", StringComparison.Ordinal));
             }
         }
         finally

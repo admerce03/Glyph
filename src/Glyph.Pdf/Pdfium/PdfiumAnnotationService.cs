@@ -840,10 +840,30 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             [[tip, anchor]],
             borderColor.Value,
             pointerWidthPoints,
-            contents: "CalloutPointer",
+            contents: FormatCalloutPointerContents(box.AnnotIndex),
             cancellationToken);
 
         return box with { IsCallout = true, IsTextBox = true };
+    }
+
+    private static string FormatCalloutPointerContents(int calloutAnnotIndex) =>
+        $"CalloutPointer:{calloutAnnotIndex}";
+
+    private static bool IsCalloutPointerContents(string? contents) =>
+        !string.IsNullOrEmpty(contents)
+        && (contents.Equals("CalloutPointer", StringComparison.Ordinal)
+            || contents.StartsWith("CalloutPointer:", StringComparison.Ordinal));
+
+    private static bool TryParseCalloutPointerOwner(string? contents, out int ownerIndex)
+    {
+        ownerIndex = -1;
+        if (string.IsNullOrEmpty(contents)
+            || !contents.StartsWith("CalloutPointer:", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return int.TryParse(contents.AsSpan("CalloutPointer:".Length), out ownerIndex);
     }
 
     public Task<PdfAnnotationInfo> AddStampAsync(
@@ -1215,6 +1235,116 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             or PdfiumAnnotSubtypes.Square
             or PdfiumAnnotSubtypes.Circle
             or PdfiumAnnotSubtypes.FreeText;
+
+    private static bool SupportsFillColor(int subtype) =>
+        subtype is PdfiumAnnotSubtypes.Square
+            or PdfiumAnnotSubtypes.Circle
+            or PdfiumAnnotSubtypes.FreeText;
+
+    public Task SetFillColorAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        PdfAnnotationColor? fillColor,
+        CancellationToken cancellationToken = default)
+    {
+        return MutateAnnotAsync(
+            document,
+            pageIndex,
+            annotIndex,
+            cancellationToken,
+            annot =>
+            {
+                var subtype = fpdf_annot.FPDFAnnotGetSubtype(annot);
+                if (!SupportsFillColor(subtype))
+                {
+                    throw new NotSupportedException(
+                        "Fill color can only be changed on rectangle, ellipse, and text box annotations.");
+                }
+
+                var color = fillColor ?? new PdfAnnotationColor(255, 255, 255, A: 0);
+                if (fpdf_annot.FPDFAnnotSetColor(
+                        annot,
+                        FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_InteriorColor,
+                        color.R,
+                        color.G,
+                        color.B,
+                        color.A) == 0)
+                {
+                    throw new InvalidOperationException("Failed to set annotation fill color.");
+                }
+            });
+    }
+
+    public async Task SetCalloutTipAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int calloutAnnotIndex,
+        PdfPagePoint tip,
+        float pointerWidthPoints = 1.5f,
+        CancellationToken cancellationToken = default)
+    {
+        if (pointerWidthPoints <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(pointerWidthPoints));
+        }
+
+        var listed = await ListAsync(document, pageIndex, cancellationToken);
+        var callout = listed.FirstOrDefault(a => a.AnnotIndex == calloutAnnotIndex && a.IsCallout)
+            ?? throw new InvalidOperationException("Selected annotation is not a callout.");
+
+        var pointer = listed
+            .Where(a => a.IsInk && IsCalloutPointerContents(a.Contents))
+            .Select(a =>
+            {
+                var owned = TryParseCalloutPointerOwner(a.Contents, out var owner)
+                    && owner == calloutAnnotIndex;
+                var cx = (callout.Bounds.Left + callout.Bounds.Right) / 2;
+                var cy = (callout.Bounds.Bottom + callout.Bounds.Top) / 2;
+                var dx = ((a.Bounds.Left + a.Bounds.Right) / 2) - cx;
+                var dy = ((a.Bounds.Bottom + a.Bounds.Top) / 2) - cy;
+                var dist = (dx * dx) + (dy * dy);
+                return (Info: a, Owned: owned, Dist: dist);
+            })
+            .OrderByDescending(x => x.Owned)
+            .ThenBy(x => x.Dist)
+            .Select(x => x.Info)
+            .FirstOrDefault();
+
+        var borderColor = callout.Color ?? new PdfAnnotationColor(40, 40, 40);
+        var bounds = callout.Bounds;
+        var boxCx = (bounds.Left + bounds.Right) / 2;
+        var boxCy = (bounds.Bottom + bounds.Top) / 2;
+        var candidates = new[]
+        {
+            new PdfPagePoint(boxCx, bounds.Bottom),
+            new PdfPagePoint(boxCx, bounds.Top),
+            new PdfPagePoint(bounds.Left, boxCy),
+            new PdfPagePoint(bounds.Right, boxCy),
+        };
+        var anchor = candidates
+            .OrderBy(p => ((p.X - tip.X) * (p.X - tip.X)) + ((p.Y - tip.Y) * (p.Y - tip.Y)))
+            .First();
+
+        if (pointer is not null)
+        {
+            var pointerIndex = pointer.AnnotIndex;
+            await RemoveAsync(document, pageIndex, pointerIndex, cancellationToken);
+            if (pointerIndex < calloutAnnotIndex)
+            {
+                calloutAnnotIndex--;
+            }
+        }
+
+        await AddLabeledInkAsync(
+            document,
+            pageIndex,
+            [[tip, anchor]],
+            borderColor,
+            pointerWidthPoints,
+            contents: FormatCalloutPointerContents(calloutAnnotIndex),
+            cancellationToken);
+    }
 
     public Task MoveAsync(
         IPdfDocument document,

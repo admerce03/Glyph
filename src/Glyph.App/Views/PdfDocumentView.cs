@@ -148,6 +148,8 @@ public sealed class PdfDocumentView : UserControl
     private Button? _calloutButton;
     private Button? _redactButton;
     private bool _calloutMode;
+    private bool _calloutTipEditMode;
+    private PdfAnnotationInfo? _calloutTipTarget;
     private bool _redactionMode;
     private bool _redactionDrawing;
     private int _redactionPageIndex = -1;
@@ -391,6 +393,14 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(colorAnnot, "Change selected annotation color");
         colorAnnot.Click += async (_, _) => await SetSelectedAnnotationColorAsync();
         annotHeaderRow.Children.Add(colorAnnot);
+        var fillAnnot = new Button { Content = "Fill", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(fillAnnot, "Change fill color for shapes and text boxes");
+        fillAnnot.Click += async (_, _) => await SetSelectedAnnotationFillAsync();
+        annotHeaderRow.Children.Add(fillAnnot);
+        var tipAnnot = new Button { Content = "Tip", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(tipAnnot, "Reposition callout pointer tip (click on page)");
+        tipAnnot.Click += (_, _) => BeginCalloutTipEdit();
+        annotHeaderRow.Children.Add(tipAnnot);
         var opacityAnnot = new Button { Content = "Opacity", Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(opacityAnnot, "Change selected annotation opacity");
         opacityAnnot.Click += async (_, _) => await SetSelectedAnnotationOpacityAsync();
@@ -1300,6 +1310,14 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (_calloutTipEditMode && e.Key == VirtualKey.Escape)
+        {
+            ClearCalloutTipEditMode();
+            _status.Text = "Callout tip edit cancelled.";
+            e.Handled = true;
+            return;
+        }
+
         if (_polygonMode && e.Key == VirtualKey.Escape)
         {
             ClearPolygonMode();
@@ -1694,6 +1712,13 @@ public sealed class PdfDocumentView : UserControl
         if (_eraserMode)
         {
             await EraseAnnotationAtAsync(border, pageIndex, e);
+            e.Handled = true;
+            return;
+        }
+
+        if (_calloutTipEditMode && _calloutTipTarget is not null)
+        {
+            await FinishCalloutTipEditAsync(border, pageIndex, e);
             e.Handled = true;
             return;
         }
@@ -3598,6 +3623,143 @@ public sealed class PdfDocumentView : UserControl
         return PdfAnnotationColor.HighlightPresets[index].Color;
     }
 
+    private void BeginCalloutTipEdit()
+    {
+        if (!TryGetSelectedAnnotation(out var item) || !item.IsCallout)
+        {
+            _status.Text = "Select a callout to move its tip.";
+            return;
+        }
+
+        ClearShapeMode();
+        ClearInkMode();
+        ClearFreeformMode();
+        ClearPolygonMode();
+        ClearSignatureMode();
+        ClearHighlightMode();
+        ClearCalloutMode();
+        ClearEraserMode();
+        _calloutTipEditMode = true;
+        _calloutTipTarget = item;
+        _status.Text = "Callout tip — click on the page where the pointer should point.";
+    }
+
+    private void ClearCalloutTipEditMode()
+    {
+        _calloutTipEditMode = false;
+        _calloutTipTarget = null;
+    }
+
+    private async Task FinishCalloutTipEditAsync(Border border, int pageIndex, PointerRoutedEventArgs e)
+    {
+        var target = _calloutTipTarget;
+        ClearCalloutTipEditMode();
+        if (target is null || pageIndex != target.PageIndex)
+        {
+            _status.Text = "Callout tip edit cancelled (wrong page).";
+            return;
+        }
+
+        var page = _document.GetPage(pageIndex);
+        var pt = e.GetCurrentPoint(border).Position;
+        var tip = new PdfPagePoint(pt.X / _scale, page.HeightPoints - (pt.Y / _scale));
+
+        try
+        {
+            _status.Text = "Moving callout tip…";
+            await _annotations.SetCalloutTipAsync(
+                _document,
+                pageIndex,
+                target.AnnotIndex,
+                tip,
+                pointerWidthPoints: Math.Max(1f, _drawStrokeWidth));
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            var refreshed = _annotationItems.FirstOrDefault(a => a.IsCallout && a.PageIndex == pageIndex)
+                ?? target;
+            _selectedAnnot = refreshed;
+            SyncSidebarSelection(refreshed);
+            DrawAnnotSelection(refreshed);
+            _status.Text = "Callout tip moved.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Callout tip failed: " + ex.Message;
+        }
+    }
+
+    private async Task SetSelectedAnnotationFillAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for fill dialog.");
+
+        if (!TryGetSelectedAnnotation(out var item))
+        {
+            _status.Text = "Select a shape or text box to change fill.";
+            return;
+        }
+
+        if (!(item.IsTextBox || item.ShapeKind is PdfShapeKind.Rectangle
+                or PdfShapeKind.RoundedRectangle
+                or PdfShapeKind.HighlightRectangle
+                or PdfShapeKind.Ellipse))
+        {
+            _status.Text = "Fill applies to rectangles, ellipses, and text boxes.";
+            return;
+        }
+
+        var fills = new (string Name, PdfAnnotationColor? Color)[]
+        {
+            ("None (clear)", null),
+            ("White", new PdfAnnotationColor(255, 255, 255)),
+            ("Yellow", new PdfAnnotationColor(255, 250, 180)),
+            ("Light blue", new PdfAnnotationColor(200, 230, 255)),
+            ("Light green", new PdfAnnotationColor(210, 245, 210)),
+            ("Translucent yellow", new PdfAnnotationColor(255, 230, 80, 70)),
+        };
+        var list = new ListView
+        {
+            Height = 220,
+            SelectionMode = ListViewSelectionMode.Single,
+            ItemsSource = fills.Select(f => f.Name).ToList(),
+            SelectedIndex = 1,
+        };
+        var dialog = new ContentDialog
+        {
+            Title = $"Fill — {FormatAnnotationLabel(item)}",
+            Content = list,
+            PrimaryButtonText = "Apply",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var fill = fills[Math.Clamp(list.SelectedIndex, 0, fills.Length - 1)].Color;
+        try
+        {
+            await _annotations.SetFillColorAsync(_document, item.PageIndex, item.AnnotIndex, fill);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = fill is null ? "Fill cleared." : "Fill color updated.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Fill failed: " + ex.Message;
+        }
+    }
+
     private async Task SetSelectedAnnotationColorAsync()
     {
         var window = _ownerWindow
@@ -3710,7 +3872,8 @@ public sealed class PdfDocumentView : UserControl
             _annotationItems = all
                 .Where(a =>
                     (a.TextMarkupKind is not null || a.IsStickyNote || a.IsInk || a.ShapeKind is not null || a.IsTextBox || a.IsStamp)
-                    && !(a.IsInk && a.Contents == "CalloutPointer"))
+                    && !(a.IsInk && (a.Contents == "CalloutPointer"
+                        || (a.Contents?.StartsWith("CalloutPointer:", StringComparison.Ordinal) == true))))
                 .OrderBy(a => a.PageIndex)
                 .ThenBy(a => a.AnnotIndex)
                 .ToList();
@@ -4562,6 +4725,7 @@ public sealed class PdfDocumentView : UserControl
 
         _calloutMode = false;
         CancelShapeDrag();
+        ClearCalloutTipEditMode();
     }
 
     private void ClearSignatureMode()
