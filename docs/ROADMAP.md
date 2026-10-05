@@ -390,7 +390,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 - Prefs, toolbar customization, shortcut customization (F52-23), check-for-updates (F55-04), session restore, crash recovery, version snapshots, a11y Names, cold-start timing shipped in matrix
 - MSIX: Windows CI produces test-signed `Glyph.App_*.msix` + `Glyph.CI.TestSign.cer` via `scripts/publish-msix.ps1 -TestSign` (`GenerateAppxPackageOnBuild`, artifact `glyph-msix-layout`). `scripts/install-msix-test.ps1` trusts the cert, sideloads, and probes installed `uap:FileType` associations (`-VerifyOnly` supported). F01-06/07 remain Deferred until Explorer default-app verification (ADR-012). **Blocked:** ADR-015 password-write (Needs approval, prefer Option A PdfSharp).
-- Matrix audit (2026-10-05): 881 rows — 860 Tested / 14 Deferred / 7 Blocked (all Blocked = ADR-015 password-write); zero Not Started / In Progress / Implemented
+- Matrix audit (2026-10-05): 881 rows — 862 Tested / 12 Deferred / 7 Blocked (all Blocked = ADR-015 password-write); zero Not Started / In Progress / Implemented
 - Interactive proof debt: M1 shell screenshot, M2 viewer screenshots, M3 §11 cross-doc DnD recording (Windows interactive environment required)
 - Deferred catalogs unit-tested (`PackagingDeferredPolicy`, `PdfOptimizeDeferredPolicy`, `ImageAdvancedDeferredPolicy`, …)
 
