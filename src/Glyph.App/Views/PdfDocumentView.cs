@@ -2047,7 +2047,7 @@ public sealed class PdfDocumentView : UserControl
         {
             ClearHighlightMode();
             RefreshToolButtonChrome();
-            _status.Text = "Highlight mode off.";
+            _status.Text = AnnotationToolModeStatus.HighlightOff;
             e.Handled = true;
             return;
         }
@@ -2074,7 +2074,7 @@ public sealed class PdfDocumentView : UserControl
         {
             ClearEraserMode();
             RefreshToolButtonChrome();
-            _status.Text = "Eraser off.";
+            _status.Text = AnnotationToolModeStatus.EraserOff;
             e.Handled = true;
             return;
         }
@@ -2082,7 +2082,7 @@ public sealed class PdfDocumentView : UserControl
         if (_calloutTipEditMode && e.Key == VirtualKey.Escape)
         {
             ClearCalloutTipEditMode();
-            _status.Text = "Callout tip edit cancelled.";
+            _status.Text = AnnotationToolModeStatus.CalloutTipEditCancelled;
             e.Handled = true;
             return;
         }
@@ -2091,7 +2091,7 @@ public sealed class PdfDocumentView : UserControl
         {
             ClearPolygonMode();
             RefreshToolButtonChrome();
-            _status.Text = "Polygon cancelled.";
+            _status.Text = AnnotationToolModeStatus.PolygonCancelled;
             e.Handled = true;
             return;
         }
@@ -4292,7 +4292,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         EnsureViewLoupePopup();
-        _status.Text = "Magnifier on — move over a page (Esc to exit).";
+        _status.Text = AnnotationToolModeStatus.MagnifierOn;
     }
 
     private void ClearViewLoupeMode()
@@ -4308,7 +4308,7 @@ public sealed class PdfDocumentView : UserControl
             _viewLoupePopup.Visibility = Visibility.Collapsed;
         }
 
-        _status.Text = "Magnifier off.";
+        _status.Text = AnnotationToolModeStatus.MagnifierOff;
     }
 
     private void EnsureViewLoupePopup()
@@ -4504,7 +4504,7 @@ public sealed class PdfDocumentView : UserControl
 
         await SetLayoutModeAsync(_layoutBeforePresentation);
         await SetScaleAsync(_scaleBeforePresentation);
-        _status.Text = "Exited presentation mode.";
+        _status.Text = AnnotationToolModeStatus.ExitedPresentation;
     }
 
     private async Task ZoomToDisplayAreaAsync(int pageIndex, double leftUi, double topUi, double widthUi, double heightUi)
@@ -4806,14 +4806,14 @@ public sealed class PdfDocumentView : UserControl
         {
             ClearHighlightMode();
             RefreshToolButtonChrome();
-            _status.Text = "Highlight mode off.";
+            _status.Text = AnnotationToolModeStatus.HighlightOff;
             return;
         }
 
         var picked = await PickHighlightColorAsync();
         if (picked is null)
         {
-            _status.Text = "Highlight mode cancelled.";
+            _status.Text = AnnotationToolModeStatus.HighlightCancelled;
             return;
         }
 
@@ -4847,7 +4847,7 @@ public sealed class PdfDocumentView : UserControl
         _highlightMode = PersistentHighlightMode.Toggle(false);
         _highlightModeColor = picked.Value;
         RefreshToolButtonChrome();
-        _status.Text = "Highlight mode on — select text to highlight (Esc to exit).";
+        _status.Text = AnnotationToolModeStatus.HighlightOn;
 
         if (_selectionPageIndex >= 0
             && _selectionQuads.Count > 0
@@ -4884,7 +4884,7 @@ public sealed class PdfDocumentView : UserControl
                 var picked = await PickHighlightColorAsync();
                 if (picked is null)
                 {
-                    _status.Text = "Highlight cancelled.";
+                    _status.Text = AnnotationToolModeStatus.HighlightMarkCancelled;
                     return;
                 }
 
@@ -4991,7 +4991,7 @@ public sealed class PdfDocumentView : UserControl
         ClearEraserMode();
         _calloutTipEditMode = true;
         _calloutTipTarget = item;
-        _status.Text = "Callout tip — click on the page where the pointer should point.";
+        _status.Text = AnnotationToolModeStatus.CalloutTipPrompt;
     }
 
     private async Task FinishCalloutTipEditAsync(Border border, int pageIndex, PointerRoutedEventArgs e)
@@ -5000,7 +5000,7 @@ public sealed class PdfDocumentView : UserControl
         ClearCalloutTipEditMode();
         if (target is null || pageIndex != target.PageIndex)
         {
-            _status.Text = "Callout tip edit cancelled (wrong page).";
+            _status.Text = AnnotationToolModeStatus.CalloutTipWrongPage;
             return;
         }
 
@@ -5027,7 +5027,7 @@ public sealed class PdfDocumentView : UserControl
             _selectedAnnot = refreshed;
             SyncSidebarSelection(refreshed);
             DrawAnnotSelection(refreshed);
-            _status.Text = "Callout tip moved.";
+            _status.Text = AnnotationToolModeStatus.CalloutTipMoved;
         }
         catch (Exception ex)
         {
@@ -5294,7 +5294,7 @@ public sealed class PdfDocumentView : UserControl
         {
             _calloutMode = false;
             CancelShapeDrag();
-            _status.Text = "Callout mode off.";
+            _status.Text = AnnotationToolModeStatus.CalloutOff;
             RefreshToolButtonChrome();
             return;
         }
@@ -5307,7 +5307,7 @@ public sealed class PdfDocumentView : UserControl
         CancelShapeDrag();
         _calloutMode = true;
         RefreshToolButtonChrome();
-        _status.Text = "Callout mode — drag from tip to where the text box should sit.";
+        _status.Text = AnnotationToolModeStatus.CalloutOn;
     }
 
     private async Task EndCalloutDragAsync(Border border, PointerRoutedEventArgs e)
@@ -5409,7 +5409,7 @@ public sealed class PdfDocumentView : UserControl
         };
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
         {
-            _status.Text = "Callout cancelled.";
+            _status.Text = AnnotationToolModeStatus.CalloutCancelled;
             return;
         }
 
@@ -5444,7 +5444,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = "Callout added.";
+            _status.Text = AnnotationToolModeStatus.CalloutAdded;
         }
         catch (Exception ex)
         {
@@ -5471,7 +5471,7 @@ public sealed class PdfDocumentView : UserControl
         {
             _inkMode = false;
             CancelInkStroke();
-            _status.Text = "Ink mode off.";
+            _status.Text = AnnotationToolModeStatus.InkOff;
             RefreshToolButtonChrome();
             return;
         }
@@ -5479,7 +5479,7 @@ public sealed class PdfDocumentView : UserControl
         var picked = await PickStrokeStyleAsync("Ink stroke");
         if (picked is null)
         {
-            _status.Text = "Ink mode cancelled.";
+            _status.Text = AnnotationToolModeStatus.InkCancelled;
             return;
         }
 
@@ -5492,7 +5492,7 @@ public sealed class PdfDocumentView : UserControl
 
         _inkMode = true;
         RefreshToolButtonChrome();
-        _status.Text = "Ink mode on — draw on the page.";
+        _status.Text = AnnotationToolModeStatus.InkOn;
     }
 
     private void ToggleEraserMode()
@@ -5518,7 +5518,7 @@ public sealed class PdfDocumentView : UserControl
         if (_eraserMode)
         {
             ClearEraserMode();
-            _status.Text = "Eraser off.";
+            _status.Text = AnnotationToolModeStatus.EraserOff;
             RefreshToolButtonChrome();
             return;
         }
@@ -5533,7 +5533,7 @@ public sealed class PdfDocumentView : UserControl
         _selectedAnnot = null;
         _selectedAnnots.Clear();
         RefreshToolButtonChrome();
-        _status.Text = "Eraser on — click an annotation to remove it (Esc to exit).";
+        _status.Text = AnnotationToolModeStatus.EraserOn;
     }
 
     private void ClearEraserMode()
@@ -5556,7 +5556,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (hit is null)
         {
-            _status.Text = "Eraser: no annotation under cursor.";
+            _status.Text = AnnotationToolModeStatus.EraserMiss;
             return;
         }
 
@@ -5610,7 +5610,7 @@ public sealed class PdfDocumentView : UserControl
         if (_freeformMode)
         {
             ClearFreeformMode();
-            _status.Text = "Freeform mode off.";
+            _status.Text = AnnotationToolModeStatus.FreeformOff;
             RefreshToolButtonChrome();
             return;
         }
@@ -5618,7 +5618,7 @@ public sealed class PdfDocumentView : UserControl
         var picked = await PickStrokeStyleAsync("Freeform stroke");
         if (picked is null)
         {
-            _status.Text = "Freeform mode cancelled.";
+            _status.Text = AnnotationToolModeStatus.FreeformCancelled;
             return;
         }
 
@@ -5631,7 +5631,7 @@ public sealed class PdfDocumentView : UserControl
 
         _freeformMode = true;
         RefreshToolButtonChrome();
-        _status.Text = "Freeform mode on — draw a closed shape.";
+        _status.Text = AnnotationToolModeStatus.FreeformOn;
     }
 
     private void ClearFreeformMode()
@@ -5669,7 +5669,7 @@ public sealed class PdfDocumentView : UserControl
         if (_polygonMode)
         {
             ClearPolygonMode();
-            _status.Text = "Polygon mode off.";
+            _status.Text = AnnotationToolModeStatus.PolygonOff;
             RefreshToolButtonChrome();
             return;
         }
@@ -5677,7 +5677,7 @@ public sealed class PdfDocumentView : UserControl
         var picked = await PickStrokeStyleAsync("Polygon stroke");
         if (picked is null)
         {
-            _status.Text = "Polygon mode cancelled.";
+            _status.Text = AnnotationToolModeStatus.PolygonModeCancelled;
             return;
         }
 
@@ -5693,7 +5693,7 @@ public sealed class PdfDocumentView : UserControl
         _polygonVertices.Clear();
         ClearPolygonPreview();
         RefreshToolButtonChrome();
-        _status.Text = "Polygon mode — click vertices; Enter to close (Esc cancels).";
+        _status.Text = AnnotationToolModeStatus.PolygonOn;
     }
 
     private void ClearPolygonMode()
@@ -5800,7 +5800,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (_polygonVertices.Count < 3 || _polygonPageIndex < 0)
         {
-            _status.Text = "Polygon needs at least three vertices.";
+            _status.Text = AnnotationToolModeStatus.PolygonNeedsVertices;
             return;
         }
 
@@ -5829,7 +5829,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = "Polygon added.";
+            _status.Text = AnnotationToolModeStatus.PolygonAdded;
         }
         catch (Exception ex)
         {
@@ -5860,7 +5860,7 @@ public sealed class PdfDocumentView : UserControl
         if (_shapeMode == kind)
         {
             ClearShapeMode();
-            _status.Text = "Shape mode off.";
+            _status.Text = AnnotationToolModeStatus.ShapeOff;
             RefreshToolButtonChrome();
             return;
         }
@@ -5891,7 +5891,7 @@ public sealed class PdfDocumentView : UserControl
                 includeArrowheadStyle: kind == PdfShapeKind.Arrow);
             if (picked is null)
             {
-                _status.Text = "Shape mode cancelled.";
+                _status.Text = AnnotationToolModeStatus.ShapeCancelled;
                 return;
             }
 
@@ -11167,7 +11167,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         RedrawCropOverlay();
-        _status.Text = "Crop mode — drag handles, Enter to apply, Esc to cancel.";
+        _status.Text = AnnotationToolModeStatus.CropOn;
     }
 
     private void EnsureCropChrome()
