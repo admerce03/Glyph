@@ -218,9 +218,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F12-02 | PDF crop | Visual crop handles. | M3 | Tested | Interactive overlay handles; `PdfCropMargins.ClampMargin` unit-tested |
 | F12-03 | PDF crop | Numeric crop dimensions. | M3 | Implemented | L/T/R/B inset dialog |
 | F12-04 | PDF crop | Units: | M3 | Tested | pt / in / cm / mm via `PdfLengthUnits` unit tests |
-| F12-05 | PDF crop | Apply to current page. | M3 | Implemented | Selection defaults to current page |
+| F12-05 | PDF crop | Apply to current page. | M3 | Tested | `PageSelection.SelectedOrFallback` when none selected |
 | F12-06 | PDF crop | Apply to selected pages. | M3 | Tested | Multi-select crop |
-| F12-07 | PDF crop | Apply to all pages. | M3 | Implemented | Dialog checkbox |
+| F12-07 | PDF crop | Apply to all pages. | M3 | Tested | Dialog checkbox → `PageSelection.ResolveTargets` |
 | F12-08 | PDF crop | Undo crop. | M3 | Implemented | Via `PdfPageEditHistory` snapshots |
 | F12-09 | PDF crop | Preserve underlying PDF content if using non-destructive CropBox changes. | M3 | Tested | Sets CropBox only |
 | F12-10 | PDF crop | Optional permanent crop/export function. | M3 | Tested | `PermanentCropPagesAsync` + Export cropped… |
@@ -338,7 +338,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F19-04 | PDF signatures | save signature | M4 | Tested | `FileSignatureLibrary.SaveAsync` |
 | F19-05 | PDF signatures | name signature | M4 | Tested | Named on save; list/contents labels via `SignatureDisplayText` |
 | F19-06 | PDF signatures | delete signature | M4 | Tested | `DeleteAsync` |
-| F19-07 | PDF signatures | reorder signatures | M4 | Implemented | Library dialog ↑/↓ → `ISignatureLibrary.ReorderAsync` |
+| F19-07 | PDF signatures | reorder signatures | M4 | Tested | Library dialog ↑/↓ → `ReorderAsync`; Infra.Tests `Reorder_persists_new_order` |
 | F19-08 | PDF signatures | local storage | M4 | Tested | `%LocalAppData%\Glyph\signatures` |
 | F19-09 | PDF signatures | optional application-specific cloud sync later | M4 | Deferred | Explicitly later |
 | F19-10 | PDF signatures | insert | M4 | Implemented | Sign toolbar |

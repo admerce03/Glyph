@@ -69,4 +69,28 @@ public class PageSelectionTests
         selection.ApplyKeyboardMove(0, extendRange: false);
         selection.SelectedIndexes.Should().Equal(0);
     }
+
+    [Fact]
+    public void SelectedOrFallback_uses_selection_or_current()
+    {
+        var selection = new PageSelection();
+        selection.SelectedOrFallback(5).Should().Equal(5);
+        selection.SelectOnly(2);
+        selection.Toggle(0);
+        selection.SelectedOrFallback(5).Should().Equal(0, 2);
+    }
+
+    [Fact]
+    public void ResolveTargets_all_pages_or_selection()
+    {
+        var selection = new PageSelection();
+        selection.SelectOnly(1);
+        PageSelection.ResolveTargets(allPages: true, selection, pageCount: 4, currentPageIndex: 0)
+            .Should().Equal(0, 1, 2, 3);
+        PageSelection.ResolveTargets(allPages: false, selection, pageCount: 4, currentPageIndex: 0)
+            .Should().Equal(1);
+        selection.Clear();
+        PageSelection.ResolveTargets(allPages: false, selection, pageCount: 4, currentPageIndex: 3)
+            .Should().Equal(3);
+    }
 }

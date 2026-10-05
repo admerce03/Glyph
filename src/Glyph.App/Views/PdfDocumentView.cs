@@ -4754,15 +4754,8 @@ public sealed class PdfDocumentView : UserControl
         _status.Text = "Pages reordered.";
     }
 
-    private List<int> SelectedOrCurrentPages()
-    {
-        if (_pageSelection.Count > 0)
-        {
-            return _pageSelection.SelectedIndexes.OrderBy(i => i).ToList();
-        }
-
-        return [CurrentPageIndex];
-    }
+    private List<int> SelectedOrCurrentPages() =>
+        _pageSelection.SelectedOrFallback(CurrentPageIndex).ToList();
 
     private async Task InsertBlankAfterSelectionAsync()
     {
@@ -11587,10 +11580,11 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (allPages.IsChecked == true)
-        {
-            indexes = Enumerable.Range(0, _document.PageCount).ToList();
-        }
+        indexes = PageSelection.ResolveTargets(
+            allPages.IsChecked == true,
+            _pageSelection,
+            _document.PageCount,
+            CurrentPageIndex).ToList();
 
         try
         {
