@@ -130,6 +130,17 @@ public sealed class MagickImageEncoder : IImageEncoder
             image.Settings.SetDefine(MagickFormat.WebP, "lossless", true);
         }
 
+        if (options.EmbedSrgbProfile)
+        {
+            // ImageMagick drops the standard sRGB ICC from PNG unless preserve-iCCP is set.
+            if (format == ImageEncodeFormat.Png)
+            {
+                image.Settings.SetDefine("png:preserve-iCCP", "true");
+            }
+
+            image.SetProfile(ColorProfiles.SRGB);
+        }
+
         if (!string.IsNullOrWhiteSpace(options.Title))
         {
             image.SetAttribute("Title", options.Title);

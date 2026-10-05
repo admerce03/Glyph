@@ -664,7 +664,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F45-04 | Exporting | compression | M5-M9 | Implemented | WebP lossless option; codec defaults for PNG/JPEG/AVIF |
 | F45-05 | Exporting | dimensions | M5-M9 | Implemented | PDF Export render DPI control |
 | F45-06 | Exporting | metadata preservation | M5-M9 | Tested | PDF Info Title/Author → image Title/Artist on page export |
-| F45-07 | Exporting | color profile | M5-M9 | Not Started |  |
+| F45-07 | Exporting | color profile | M5-M9 | Tested | PDF page Export embeds sRGB ICC (`EmbedSrgbProfile`; PNG `preserve-iCCP`); JP2 may drop profile |
 | F45-08 | Exporting | transparency | M5-M9 | Implemented | PNG/WebP/TIFF/AVIF keep render alpha; JPEG/JP2/BMP/GIF flatten |
 | F45-09 | Exporting | PDF security | M5-M9 | Blocked | Needs ADR-015 password-write |
 | F45-10 | Exporting | annotation flattening | M5-M9 | Implemented | Raster page export renders annotations into pixels |

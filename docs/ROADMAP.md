@@ -274,8 +274,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 - True redaction (content removal) — mark/preview/apply, find-matches, annotation sanitize
 - Password open + Info encryption/permissions display; write-protect deferred pending ADR-015
-- Optimization presets + custom controls
-- Metadata view (version, page size, Info dictionary); edit later
+- Optimization presets + custom controls + page image export
+- Metadata view/edit (version, page size, fonts, title/author/subject/keywords)
 
 ### Completion criteria
 
@@ -283,6 +283,14 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Optimization size estimate within reasonable tolerance
 - Tests for security round-trips and metadata edits
 - ADR-015 approved before shipping password-protect / permission-write
+
+### Progress notes
+
+- Redact mark/preview/apply removes intersecting text/images/annotations + attachment name-tree entries
+- Info dialog: encryption/permissions, version, page size, fonts, attachment count; Edit writes Title/Author/Subject/Keywords
+- Optimize presets + Custom + estimate; F24-08 JPEG rewrite blocked (PDFiumCore FILEACCESS); font subset/linearize deferred (ADR-016)
+- Page Export → PNG/JPEG/WebP/TIFF/BMP/GIF/AVIF/JP2 with DPI/quality, Title/Author metadata, sRGB ICC (F45-07), alpha where codec allows
+- Password-protect write blocked on ADR-015 (Needs approval)
 
 ---
 
@@ -350,7 +358,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Redaction | §21 | M7 | In Progress (mark/preview/apply content removal) |
 | Flattening | §22 | M4 | Not Started |
 | PDF security | §23 | M7 | In Progress (open + info/permissions; write-protect blocked on ADR-015) |
-| Optimization | §24 | M7 | In Progress (presets + image downsample + estimate; JPEG/metadata later) |
+| Optimization | §24 | M7 | In Progress (presets + downsample + estimate + page export/ICC; JPEG rewrite blocked) |
 | PDF metadata | §25 | M7 | In Progress (read + edit title/author/subject/keywords) |
 | Image viewing/editing | §26–35 | M5 | In Progress |
 | Batch images | §36 | M8 | Not Started |
@@ -359,7 +367,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Clipboard/screenshots | §40–41 | M1, M5 | Not Started |
 | Scanner/webcam | §42–43 | M8 | Not Started |
 | Printing | §44 | M8 | Not Started |
-| Export/share/integration | §45–48 | M5–M9 | Not Started |
+| Export/share/integration | §45–48 | M5–M9 | In Progress (PDF page export formats/DPI/quality/metadata/ICC/alpha) |
 | Undo/autosave/snapshots | §49–51 | M1–M4, M9 | Not Started |
 | Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Not Started |
 | Accessibility | §56 | M9 | Not Started |

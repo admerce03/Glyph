@@ -92,4 +92,50 @@ public class MagickBgraWriteTests
             }
         }
     }
+
+    [Theory]
+    [InlineData(ImageEncodeFormat.Png, ".png")]
+    [InlineData(ImageEncodeFormat.Jpeg, ".jpg")]
+    [InlineData(ImageEncodeFormat.Webp, ".webp")]
+    [InlineData(ImageEncodeFormat.Tiff, ".tif")]
+    public async Task WriteBgra_embeds_srgb_icc_profile(ImageEncodeFormat format, string extension)
+    {
+        var width = 16;
+        var height = 16;
+        var bgra = new byte[width * height * 4];
+        for (var i = 0; i < bgra.Length; i += 4)
+        {
+            bgra[i] = 30;
+            bgra[i + 1] = 60;
+            bgra[i + 2] = 90;
+            bgra[i + 3] = 255;
+        }
+
+        var path = Path.Combine(Path.GetTempPath(), "glyph-icc-" + Guid.NewGuid().ToString("N") + extension);
+        try
+        {
+            var encoder = new MagickImageEncoder();
+            await encoder.WriteBgraAsync(
+                bgra,
+                width,
+                height,
+                path,
+                format,
+                new ImageEncodeOptions(
+                    Quality: format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Webp ? 85 : null,
+                    EmbedSrgbProfile: true));
+
+            using var image = new MagickImage(path);
+            var profile = image.GetColorProfile();
+            profile.Should().NotBeNull();
+            profile!.Description.Should().ContainEquivalentOf("sRGB");
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
 }

@@ -40,9 +40,12 @@ public enum ImageEncodeFormat
 /// Optional encode knobs. Quality is 1–100 when set (JPEG/WebP/AVIF).
 /// Lossless applies to WebP when true.
 /// Title/Author are written into image metadata when the codec supports it.
+/// EmbedSrgbProfile writes an sRGB ICC profile when the codec retains it
+/// (PNG needs <c>png:preserve-iCCP</c>; JPEG 2000 may drop the profile).
 /// </summary>
 public sealed record ImageEncodeOptions(
     int? Quality = null,
     bool? Lossless = null,
     string? Title = null,
-    string? Author = null);
+    string? Author = null,
+    bool EmbedSrgbProfile = false);

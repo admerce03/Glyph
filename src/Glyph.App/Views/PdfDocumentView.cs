@@ -7334,13 +7334,13 @@ public sealed class PdfDocumentView : UserControl
 
         var scale = dpi / 72.0;
         ImageEncodeOptions? options = format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Webp or ImageEncodeFormat.Avif
-            ? new ImageEncodeOptions(Quality: (int)qualityBox.Value)
-            : null;
+            ? new ImageEncodeOptions(Quality: (int)qualityBox.Value, EmbedSrgbProfile: true)
+            : new ImageEncodeOptions(EmbedSrgbProfile: true);
 
         try
         {
             var info = _documentInfo.GetInfo(_document);
-            options = (options ?? new ImageEncodeOptions()) with
+            options = options with
             {
                 Title = info.Title,
                 Author = info.Author,
