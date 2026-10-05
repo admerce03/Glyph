@@ -26,9 +26,9 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/DECISIONS.md`](doc
 src/Glyph.App            WinUI shell
 src/Glyph.Core           Document sessions, commands, undo
 src/Glyph.Infrastructure Settings/recent files/paths
-src/Glyph.Pdf            PDF abstractions (+ later PDFium adapter)
-src/Glyph.Imaging        Image abstractions (+ later codecs)
-src/Glyph.Ocr            OCR abstractions (+ later engines)
+src/Glyph.Pdf            PDF abstractions + PDFium/PdfPig adapters
+src/Glyph.Imaging        Image abstractions + Magick.NET adapter
+src/Glyph.Ocr            OCR abstractions + Windows OCR / Tesseract engines
 tests/                   xUnit behavior tests
 docs/                    Product + engineering docs
 scripts/                 Build/test/format helpers
