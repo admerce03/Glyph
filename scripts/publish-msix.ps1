@@ -101,6 +101,31 @@ try {
         throw "dotnet build (MSIX) failed with exit code $LASTEXITCODE"
     }
 
+    # Ship curated notices + vendor NOTICE/LICENSE files when NuGet cache has them.
+    $noticesSrc = Join-Path $repoRoot 'THIRD_PARTY_NOTICES.md'
+    if (Test-Path -LiteralPath $noticesSrc) {
+        Copy-Item -LiteralPath $noticesSrc -Destination (Join-Path $outDir 'THIRD_PARTY_NOTICES.md') -Force
+        Write-Host "Copied THIRD_PARTY_NOTICES.md to $outDir"
+    }
+    $vendorDir = Join-Path $outDir 'third-party'
+    New-Item -ItemType Directory -Force -Path $vendorDir | Out-Null
+    $nuget = Join-Path $env:USERPROFILE '.nuget' 'packages'
+    $magickNotice = Get-ChildItem -Path (Join-Path $nuget 'magick.net-q16-anycpu') -Filter Notice.txt -Recurse -ErrorAction SilentlyContinue |
+        Sort-Object FullName -Descending |
+        Select-Object -First 1
+    if ($null -ne $magickNotice) {
+        Copy-Item -LiteralPath $magickNotice.FullName -Destination (Join-Path $vendorDir 'Magick.NET-Notice.txt') -Force
+        Write-Host "Copied Magick.NET Notice.txt"
+    }
+    $pdfiumLicense = Get-ChildItem -Path (Join-Path $nuget 'pdfiumcore') -Filter LICENSE -Recurse -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -match 'win-x64|win-arm64|linux-x64' } |
+        Sort-Object FullName -Descending |
+        Select-Object -First 1
+    if ($null -ne $pdfiumLicense) {
+        Copy-Item -LiteralPath $pdfiumLicense.FullName -Destination (Join-Path $vendorDir 'PDFium-LICENSE.txt') -Force
+        Write-Host "Copied PDFium LICENSE"
+    }
+
     $msix = @(Get-ChildItem -Path $outDir -Filter *.msix -Recurse -ErrorAction SilentlyContinue)
     $manifest = @(Get-ChildItem -Path $outDir -Filter AppxManifest.xml -Recurse -ErrorAction SilentlyContinue)
     Write-Host "MSIX build completed under $outDir"
