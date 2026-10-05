@@ -24,7 +24,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M4 | PDF markup and editing | **Implemented** (matrix-complete; Quadding `/Q` via dict patch) | M2 (forms/security touch M7) |
 | M5 | Image viewer/editor | **Implemented** (matrix-complete; HDR/HEIF deferred) | M1 (shares shell/DnD with M3) |
 | M6 | OCR and scanned-document capabilities | **In Progress** (PRs #62–#66 stacked; Actions billing blocks CI/merge) | M2, M5 |
-| M7 | Redaction, PDF security, optimization, metadata | **In Progress** (redact/optimize/metadata shipped; password-write → ADR-015) | M2–M4 |
+| M7 | Redaction, PDF security, optimization, metadata | **In Progress** (redact/optimize/metadata Tested; password-write → ADR-015) | M2–M4 |
 | M8 | Batch ops, scanner, color management, advanced | **Implemented** (hardware validation TBD; ML subject deferred) | M5–M7 |
 | M9 | Performance, polish, a11y, installer, audit | **In Progress** (prefs/a11y/perf/session; MSIX → ADR-012) | M1–M8 core paths |
 
@@ -272,7 +272,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 7 — Redaction, PDF security, optimization, metadata
 
-**Status:** In Progress · Depends on M2–M4
+**Status:** In Progress (write-protect → ADR-015) · Depends on M2–M4
 
 ### Scope (`FEATURES.md` §21, §23–25)
 
@@ -297,7 +297,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - FreeText Align / `/Q` quadding via post-save dict patch (F13-38 / F16-15)
 - Bookmarks → PDF `/Outlines` export (F09-08)
 - Password-protect write blocked on ADR-015 (Needs approval)
-- Local polish (+13 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
+- Local polish (+15 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
 
 ---
 

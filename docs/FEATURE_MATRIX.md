@@ -17,8 +17,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-07 | Application and file handling | Configurable default associations for supported formats. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
 | F01-08 | Application and file handling | Drag files from Explorer into an existing application window. | M1/M9 | Implemented | Explorer → window drop opens documents |
 | F01-09 | Application and file handling | Drag files from the application into Explorer where meaningful. | M1/M9 | Implemented | Thumbnail drag exposes extracted PDF via deferred StorageItems |
-| F01-10 | Application and file handling | Open files from: | M1/M9 | Implemented | Local/UNC/OneDrive/removable via `PathUtilities.NormalizeOpenPath` |
-| F01-11 | Application and file handling | Normal Windows long-path and Unicode filename support. | M1/M9 | Implemented | Unicode paths + `\\?\` long-path prefix when ≥260 chars |
+| F01-10 | Application and file handling | Open files from: | M1/M9 | Tested | Local/UNC/OneDrive/removable via `PathUtilities.NormalizeOpenPath` unit tests |
+| F01-11 | Application and file handling | Normal Windows long-path and Unicode filename support. | M1/M9 | Tested | Unicode + `\\?\` long-path prefix unit tests |
 | F01-12 | Application and file handling | Read-only file detection. | M1/M9 | Implemented | Sets session.IsReadOnly; tab header + status |
 | F01-13 | Application and file handling | Warn when attempting to overwrite a read-only file. | M1/M9 | Implemented | Save prompts Save As when target is read-only |
 | F01-14 | Application and file handling | File → New from Clipboard. | M1/M9 | Implemented | Menu + Ctrl+Shift+N; clipboard → temp PNG image tab |
@@ -772,8 +772,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-04 | Preferences | check for updates | M1/M9 | Deferred | Needs installer/update channel (ADR-012 MSIX) |
 | F55-05 | Preferences | default page layout | M1/M9 | Tested | Preferences combo; `Save_and_load_round_trips_pdf_open_defaults` |
 | F55-06 | Preferences | default zoom | M1/M9 | Tested | Preferences NumberBox; `Save_and_load_round_trips_pdf_open_defaults` |
-| F55-07 | Preferences | remember last page | M1/M9 | Implemented | `JsonDocumentViewStateStore` per-path page index |
-| F55-08 | Preferences | remember zoom | M1/M9 | Implemented | View-state zoom restored on open |
+| F55-07 | Preferences | remember last page | M1/M9 | Tested | `JsonDocumentViewStateStore` page index round-trip |
+| F55-08 | Preferences | remember zoom | M1/M9 | Tested | `JsonDocumentViewStateStore` zoom round-trip |
 | F55-09 | Preferences | open PDF in tabs/windows | M1/M9 | Implemented | Preferences → Open each file in a separate window |
 | F55-10 | Preferences | annotation author | M1/M9 | Implemented | Preferences + PDF Author button; persisted |
 | F55-11 | Preferences | OCR behavior | M1/M9 | Tested | Preferred BCP-47 language; `Save_and_load_round_trips_ocr_language` |
@@ -788,7 +788,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-20 | Preferences | signature handling | M1/M9 | Implemented | Signature library save/delete/reorder/descriptions + prefs clear |
 | F55-21 | Preferences | crash recovery interval | M1/M9 | Tested | Seconds NumberBox; clamped 0–3600 in `JsonSettingsStore` |
 | F55-22 | Preferences | local-only OCR preference | M1/M9 | Tested | Always on-device; `LocalOnlyOcr` asserted true in OCR settings test |
-| F55-23 | Preferences | clear recent files | M1/M9 | Implemented | File → Clear Recent + Preferences Privacy button |
+| F55-23 | Preferences | clear recent files | M1/M9 | Tested | File → Clear Recent; `ClearAsync_empties_persisted_list` |
 | F55-24 | Preferences | clear saved signatures | M1/M9 | Implemented | Preferences → Clear saved signatures (`ClearAllAsync`) |
 | F55-25 | Preferences | strip metadata defaults | M1/M9 | Tested | Preferences toggle; settings round-trip |
 | F56-01 | Accessibility | Windows UI Automation. | M9 | Implemented | WinUI Automation tree; toolbar `AutomationProperties.Name` |

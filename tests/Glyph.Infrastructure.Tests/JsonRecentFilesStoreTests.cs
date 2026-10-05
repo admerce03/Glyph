@@ -60,4 +60,29 @@ public class JsonRecentFilesStoreTests
             }
         }
     }
+
+    [Fact]
+    public async Task ClearAsync_empties_persisted_list()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-recent-clear-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonRecentFilesStore(path, capacity: 5);
+            await store.AddAsync(Path.Combine(Path.GetTempPath(), "keep-me.pdf"));
+            store.GetRecent().Should().ContainSingle();
+
+            await store.ClearAsync();
+            store.GetRecent().Should().BeEmpty();
+
+            var reloaded = new JsonRecentFilesStore(path, capacity: 5);
+            reloaded.GetRecent().Should().BeEmpty();
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
 }
