@@ -114,6 +114,47 @@ public class PdfiumAnnotationServiceTests
     }
 
     [Fact]
+    public async Task Add_text_box_sets_contents_and_survives_save()
+    {
+        var path = CreateTextPdf("Text box host page");
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-textbox-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var created = await annots.AddTextBoxAsync(
+                    document,
+                    0,
+                    new PdfRect(72, 640, 280, 720),
+                    "Hello text box",
+                    new PdfAnnotationColor(20, 20, 20));
+                created.IsTextBox.Should().BeTrue();
+                created.Contents.Should().Be("Hello text box");
+
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var listed = await annots.ListAsync(reopened, 0);
+                listed.Should().Contain(a => a.IsTextBox && a.Contents == "Hello text box");
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Add_rectangle_and_ellipse_survive_save()
     {
         var path = CreateTextPdf("Shape host page");
