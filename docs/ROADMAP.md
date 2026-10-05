@@ -22,7 +22,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M2 | Core PDF viewer | **Implemented** (landed via PR #7 → `33deca2`) | M1 |
 | M3 | Core PDF page manipulation | **In Progress** | M2 |
 | M4 | PDF markup and editing | **In Progress** | M2 (forms/security touch M7) |
-| M5 | Image viewer/editor | Not Started | M1 (shares shell/DnD with M3) |
+| M5 | Image viewer/editor | **In Progress** | M1 (shares shell/DnD with M3) |
 | M6 | OCR and scanned-document capabilities | Not Started | M2, M5 |
 | M7 | Redaction, PDF security, optimization, metadata | Not Started | M2–M4 |
 | M8 | Batch ops, scanner, color management, advanced | Not Started | M5–M7 |
@@ -194,7 +194,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 5 — Image viewer/editor
 
-**Status:** Not Started · Depends on M1
+**Status:** In Progress · Depends on M1
 
 ### Scope (`FEATURES.md` §26–35, §37–38, §61 image parts)
 
@@ -210,6 +210,12 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Open large images without mandatory full decode
 - Round-trip edit tests for crop/resize/rotate
 - Screenshots of viewer and crop UI
+
+### Progress notes
+
+- Magick.NET adapter: `MagickImageDecoder` / `Encoder` / `Processor` + probe + capped BGRA preview.
+- `ImageDocumentView`: zoom/pan/fit/100%, rotate/flip, numeric crop, Save, export PNG/JPEG.
+- Tests: probe/open preview + crop/resize/rotate/flip round-trip.
 
 ---
 

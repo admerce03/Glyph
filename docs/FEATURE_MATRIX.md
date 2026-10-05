@@ -423,28 +423,28 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F25-17 | PDF metadata | author | M7 | Not Started |  |
 | F25-18 | PDF metadata | subject | M7 | Not Started |  |
 | F25-19 | PDF metadata | keywords | M7 | Not Started |  |
-| F26-01 | Image viewing | JPEG/JPG | M5 | Not Started |  |
-| F26-02 | Image viewing | PNG | M5 | Not Started |  |
-| F26-03 | Image viewing | GIF | M5 | Not Started |  |
-| F26-04 | Image viewing | BMP | M5 | Not Started |  |
-| F26-05 | Image viewing | TIFF | M5 | Not Started |  |
-| F26-06 | Image viewing | WebP | M5 | Not Started |  |
+| F26-01 | Image viewing | JPEG/JPG | M5 | Implemented | Magick.NET decoder |
+| F26-02 | Image viewing | PNG | M5 | Tested | Magick open/save round-trip |
+| F26-03 | Image viewing | GIF | M5 | Implemented | Magick.NET decoder |
+| F26-04 | Image viewing | BMP | M5 | Implemented | Magick.NET decoder |
+| F26-05 | Image viewing | TIFF | M5 | Implemented | Magick.NET decoder |
+| F26-06 | Image viewing | WebP | M5 | Implemented | Magick.NET decoder |
 | F26-07 | Image viewing | HEIF/HEIC where codecs are available | M5 | Not Started |  |
 | F26-08 | Image viewing | AVIF where practical | M5 | Not Started |  |
 | F26-09 | Image viewing | ICO | M5 | Not Started |  |
 | F26-10 | Image viewing | JPEG 2000 where practical | M5 | Not Started |  |
-| F26-11 | Image viewing | fast opening | M5 | Not Started |  |
-| F26-12 | Image viewing | zoom | M5 | Not Started |  |
-| F26-13 | Image viewing | pan | M5 | Not Started |  |
-| F26-14 | Image viewing | fit image | M5 | Not Started |  |
-| F26-15 | Image viewing | actual size | M5 | Not Started |  |
+| F26-11 | Image viewing | fast opening | M5 | Tested | `ProbeAsync` + capped `GetPixelsAsync` |
+| F26-12 | Image viewing | zoom | M5 | Implemented | ImageDocumentView ± zoom |
+| F26-13 | Image viewing | pan | M5 | Implemented | ScrollViewer pan |
+| F26-14 | Image viewing | fit image | M5 | Implemented | Fit toolbar |
+| F26-15 | Image viewing | actual size | M5 | Implemented | 100% toolbar |
 | F26-16 | Image viewing | fullscreen | M5 | Not Started |  |
 | F26-17 | Image viewing | next/previous image | M5 | Not Started |  |
 | F26-18 | Image viewing | image list sidebar | M5 | Not Started |  |
 | F26-19 | Image viewing | open group of images together | M5 | Not Started |  |
 | F26-20 | Image viewing | slideshow | M5 | Not Started |  |
 | F26-21 | Image viewing | drag-and-drop navigation | M5 | Not Started |  |
-| F26-22 | Image viewing | high-resolution image support | M5 | Not Started |  |
+| F26-22 | Image viewing | high-resolution image support | M5 | Implemented | Preview decode capped (max edge) |
 | F26-23 | Image viewing | alpha transparency | M5 | Not Started |  |
 | F26-24 | Image viewing | HDR display where Windows/display stack supports it | M5 | Not Started |  |
 | F26-25 | Image viewing | color-managed display | M5 | Not Started |  |

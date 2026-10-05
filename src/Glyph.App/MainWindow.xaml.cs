@@ -5,6 +5,7 @@ using Glyph.Core.Workspace;
 using Glyph.Infrastructure.Documents;
 using Glyph.Infrastructure.RecentFiles;
 using Glyph.Infrastructure.Settings;
+using Glyph.Imaging.Abstractions;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Rendering;
 using Glyph.Pdf.Text;
@@ -40,6 +41,9 @@ public sealed partial class MainWindow : Window
     private readonly IPdfLinkService _pdfLinks;
     private readonly IPdfPageEditor _pdfPageEditor;
     private readonly IPdfAnnotationStore _pdfAnnotations;
+    private readonly IImageDecoder _imageDecoder;
+    private readonly IImageEncoder _imageEncoder;
+    private readonly IImageProcessor _imageProcessor;
     private readonly PageRenderCache _pageCache;
     private readonly ILogger<MainWindow> _logger;
     private readonly Dictionary<DocumentId, IAsyncDisposable> _openEngines = new();
@@ -57,6 +61,9 @@ public sealed partial class MainWindow : Window
         IPdfLinkService pdfLinks,
         IPdfPageEditor pdfPageEditor,
         IPdfAnnotationStore pdfAnnotations,
+        IImageDecoder imageDecoder,
+        IImageEncoder imageEncoder,
+        IImageProcessor imageProcessor,
         PageRenderCache pageCache,
         ILogger<MainWindow> logger)
     {
@@ -72,6 +79,9 @@ public sealed partial class MainWindow : Window
         _pdfLinks = pdfLinks;
         _pdfPageEditor = pdfPageEditor;
         _pdfAnnotations = pdfAnnotations;
+        _imageDecoder = imageDecoder;
+        _imageEncoder = imageEncoder;
+        _imageProcessor = imageProcessor;
         _pageCache = pageCache;
         _logger = logger;
 
@@ -368,7 +378,7 @@ public sealed partial class MainWindow : Window
                 ? kind switch
                 {
                     DocumentKind.Pdf => $"Opened PDF: {displayName}",
-                    DocumentKind.Image => $"Opened image (viewer arrives in Milestone 5): {displayName}",
+                    DocumentKind.Image => $"Opened image: {displayName}",
                     _ => $"Opened {displayName}",
                 }
                 : $"Activated {displayName}";
@@ -417,6 +427,20 @@ public sealed partial class MainWindow : Window
                 _pdfAnnotations,
                 _pdfFactory,
                 session.ViewState);
+        }
+
+        if (session.Kind == DocumentKind.Image && session.Path is not null)
+        {
+            var image = await _imageDecoder.OpenAsync(session.Path);
+            var saved = await _viewStateStore.TryLoadAsync(session.Path);
+            if (saved is not null)
+            {
+                session.ViewState.Zoom = saved.Zoom;
+            }
+
+            _openEngines[session.Id] = image;
+            SidebarStatus.Text = $"{image.FormatName} · {image.PixelWidth}×{image.PixelHeight}";
+            return new ImageDocumentView(image, _imageProcessor, _imageEncoder, session.ViewState);
         }
 
         return CreatePlaceholderContent(session);

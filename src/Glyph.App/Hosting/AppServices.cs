@@ -3,6 +3,8 @@ using Glyph.Infrastructure.Documents;
 using Glyph.Infrastructure.Paths;
 using Glyph.Infrastructure.RecentFiles;
 using Glyph.Infrastructure.Settings;
+using Glyph.Imaging.Abstractions;
+using Glyph.Imaging.Magick;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Pdfium;
 using Glyph.Pdf.Rendering;
@@ -41,6 +43,9 @@ internal static class AppServices
         services.AddSingleton<IPdfPageEditor, PdfiumPageEditor>();
         services.AddSingleton<IPdfAnnotationStore, PdfiumAnnotationStore>();
         services.AddSingleton<IPdfTextSearchService, PdfPigTextSearchService>();
+        services.AddSingleton<IImageDecoder, MagickImageDecoder>();
+        services.AddSingleton<IImageEncoder, MagickImageEncoder>();
+        services.AddSingleton<IImageProcessor, MagickImageProcessor>();
         services.AddSingleton<PageRenderCache>(_ => new PageRenderCache(capacity: 48));
         services.AddSingleton<MainWindow>();
 
