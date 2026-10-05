@@ -46,6 +46,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly IOcrEngine? _ocr;
     private readonly Button _ocrCancelButton;
     private CancellationTokenSource? _ocrCts;
+    private readonly Dictionary<int, string> _ocrPageTexts = new();
     private readonly Window? _ownerWindow;
     private readonly DocumentViewState _viewState;
     private readonly DocumentNavigationHistory _history = new();
@@ -1961,6 +1962,15 @@ public sealed class PdfDocumentView : UserControl
                 totalLines += result.Lines.Count;
                 totalWords += result.Lines.Sum(l => l.Words.Count);
                 var body = string.IsNullOrWhiteSpace(result.Text) ? "(no text recognized)" : result.Text.Trim();
+                if (!string.IsNullOrWhiteSpace(result.Text))
+                {
+                    _ocrPageTexts[pageIndex] = result.Text;
+                }
+                else
+                {
+                    _ocrPageTexts.Remove(pageIndex);
+                }
+
                 sections.Add(pages.Count == 1
                     ? body
                     : $"--- Page {pageIndex + 1} ---\n{body}");
@@ -2053,9 +2063,36 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        _hits = result.Hits;
+        var ocrHits = PdfPageTextSearch.Find(_ocrPageTexts, query, _searchCaseSensitive);
+        var merged = MergeSearchHits(result.Hits, ocrHits);
+        var usedOcr = ocrHits.Count > 0;
+        var status = result.Status;
+        string? message = result.Message;
+
+        if (merged.Count > 0)
+        {
+            status = PdfSearchStatus.Success;
+            message = usedOcr && result.Hits.Count == 0
+                ? $"{merged.Count} OCR match{(merged.Count == 1 ? string.Empty : "es")}"
+                : usedOcr
+                    ? $"{merged.Count} match{(merged.Count == 1 ? string.Empty : "es")} (incl. OCR)"
+                    : null;
+        }
+        else if (status == PdfSearchStatus.NoExtractableText && _ocrPageTexts.Count == 0)
+        {
+            message = result.Message ?? "OCR required.";
+        }
+        else if (status is PdfSearchStatus.NoExtractableText or PdfSearchStatus.NoMatches
+                 && _ocrPageTexts.Count > 0
+                 && !string.IsNullOrWhiteSpace(query))
+        {
+            status = PdfSearchStatus.NoMatches;
+            message = "No matches in document text or OCR cache.";
+        }
+
+        _hits = merged;
         _activeHitIndex = _hits.Count > 0 ? 0 : -1;
-        if (result.Status is PdfSearchStatus.EmptyQuery or PdfSearchStatus.NoMatches)
+        if (status is PdfSearchStatus.EmptyQuery or PdfSearchStatus.NoMatches or PdfSearchStatus.NoExtractableText)
         {
             _searchQuery = string.Empty;
             foreach (var overlay in _pageOverlays.Values)
@@ -2064,18 +2101,27 @@ public sealed class PdfDocumentView : UserControl
             }
         }
         _searchResults.ItemsSource = _hits
-            .Select(h => $"p.{h.PageIndex + 1}: {h.Snippet}")
+            .Select(h =>
+            {
+                var ocrTag = ocrHits.Any(o =>
+                    o.PageIndex == h.PageIndex
+                    && o.MatchStart == h.MatchStart
+                    && o.MatchLength == h.MatchLength)
+                    ? " [OCR]"
+                    : string.Empty;
+                return $"p.{h.PageIndex + 1}{ocrTag}: {h.Snippet}";
+            })
             .ToList();
 
-        _status.Text = result.Status switch
+        _status.Text = status switch
         {
-            PdfSearchStatus.EmptyQuery => result.Message ?? "Enter search text.",
-            PdfSearchStatus.NoMatches => result.Message ?? "No matches.",
-            PdfSearchStatus.NoExtractableText => result.Message ?? "OCR required.",
-            PdfSearchStatus.DocumentEncrypted => result.Message ?? "Password required.",
-            PdfSearchStatus.Failed => result.Message ?? "Search failed.",
-            PdfSearchStatus.Success => $"{_hits.Count} match{(_hits.Count == 1 ? string.Empty : "es")}",
-            _ => result.Message ?? _status.Text,
+            PdfSearchStatus.EmptyQuery => message ?? "Enter search text.",
+            PdfSearchStatus.NoMatches => message ?? "No matches.",
+            PdfSearchStatus.NoExtractableText => message ?? "OCR required.",
+            PdfSearchStatus.DocumentEncrypted => message ?? "Password required.",
+            PdfSearchStatus.Failed => message ?? "Search failed.",
+            PdfSearchStatus.Success => message ?? $"{_hits.Count} match{(_hits.Count == 1 ? string.Empty : "es")}",
+            _ => message ?? _status.Text,
         };
 
         if (_activeHitIndex >= 0)
@@ -2085,6 +2131,36 @@ public sealed class PdfDocumentView : UserControl
         }
 
         await RefreshSearchHighlightsAsync();
+    }
+
+    private static IReadOnlyList<PdfSearchHit> MergeSearchHits(
+        IReadOnlyList<PdfSearchHit> nativeHits,
+        IReadOnlyList<PdfSearchHit> ocrHits)
+    {
+        if (ocrHits.Count == 0)
+        {
+            return nativeHits;
+        }
+
+        if (nativeHits.Count == 0)
+        {
+            return ocrHits;
+        }
+
+        var seen = new HashSet<(int Page, int Start, int Length)>();
+        var merged = new List<PdfSearchHit>(nativeHits.Count + ocrHits.Count);
+        foreach (var hit in nativeHits.Concat(ocrHits).OrderBy(h => h.PageIndex).ThenBy(h => h.MatchStart))
+        {
+            var key = (hit.PageIndex, hit.MatchStart, hit.MatchLength);
+            if (!seen.Add(key))
+            {
+                continue;
+            }
+
+            merged.Add(hit);
+        }
+
+        return merged;
     }
 
     private void ClearSearchResults(string status)

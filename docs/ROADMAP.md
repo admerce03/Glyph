@@ -254,7 +254,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - `UnsupportedOcrEngine` + Fake engine coverage in `Glyph.Ocr.Tests` (Linux)
 - PDF **OCR** current/selected/entire document on `PdfDocumentView` (chooser → render → BGRA → engine + result dialog)
 - **Cancel OCR** + `n/m` status progress for multi-page PDF recognition
-- Text-layer embed / entity actions / Live Text overlays / OCR search still outstanding
+- Document **Find** merges session OCR page text (`PdfPageTextSearch`) when OCR has been run
+- Text-layer embed / entity actions / Live Text overlays still outstanding
 ---
 
 ## Milestone 7 — Redaction, PDF security, optimization, metadata
