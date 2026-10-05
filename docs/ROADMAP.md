@@ -389,7 +389,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 ### Progress notes
 
 - Prefs, toolbar customization, session restore, crash recovery, version snapshots, a11y Names, cold-start timing shipped in matrix
-- MSIX scaffold: `Package.appxmanifest` + Assets + `scripts/publish-msix.ps1` (self-contained; default build stays unpackaged). Path fix for Windows CI output dir; associations/signing still Deferred until sideload verify.
+- MSIX scaffold: single-project MSIX (`EnableMsixTooling` + `GenerateAppxPackageOnBuild` + PublishProfiles); `scripts/publish-msix.ps1` copies AppxPackageDir to `artifacts/msix`. Associations/signing still Deferred until sideload verify.
 - Matrix audit (2026-10-05): 880 rows — 858 Tested / 15 Deferred / 7 Blocked (all Blocked = ADR-015 password-write); zero Not Started / In Progress / Implemented
 - Interactive proof debt: M1 shell screenshot, M2 viewer screenshots, M3 §11 cross-doc DnD recording (Windows interactive environment required)
 - Deferred catalogs unit-tested (`PackagingDeferredPolicy`, `PdfOptimizeDeferredPolicy`, `ImageAdvancedDeferredPolicy`, …)
