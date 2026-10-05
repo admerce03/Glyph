@@ -1572,7 +1572,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (!TryGetSelectedAnnotation(out _))
         {
-            _status.Text = "Select an annotation, then right-click for actions.";
+            _status.Text = AnnotationSelectionStatus.AnnotationContextHint;
             return;
         }
 
@@ -1613,7 +1613,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (_bookmarkList.SelectedItem is not BookmarkListItem)
         {
-            _status.Text = "Select a bookmark, then right-click for actions.";
+            _status.Text = AnnotationSelectionStatus.BookmarkContextHint;
             return;
         }
 
@@ -4041,7 +4041,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (string.IsNullOrWhiteSpace(_selectedText))
         {
-            _status.Text = "Select text on the page first.";
+            _status.Text = AnnotationSelectionStatus.SelectTextFirst;
             return;
         }
 
@@ -4977,7 +4977,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (!TryGetSelectedAnnotation(out var item) || !item.IsCallout)
         {
-            _status.Text = "Select a callout to move its tip.";
+            _status.Text = AnnotationSelectionStatus.CalloutTip;
             return;
         }
 
@@ -5043,7 +5043,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (!TryGetSelectedAnnotation(out var item))
         {
-            _status.Text = "Select a shape or text box to change fill.";
+            _status.Text = AnnotationSelectionStatus.ShapeOrTextBoxFill;
             return;
         }
 
@@ -5117,7 +5117,7 @@ public sealed class PdfDocumentView : UserControl
             : _selectedAnnot;
         if (item is null)
         {
-            _status.Text = "Select an annotation to change color.";
+            _status.Text = AnnotationSelectionStatus.AnnotationColor;
             return;
         }
 
@@ -9449,7 +9449,7 @@ public sealed class PdfDocumentView : UserControl
             : TryGetSelectedAnnotation(out var one) ? [one] : [];
         if (members.Count < 2)
         {
-            _status.Text = "Select at least two annotations to group (Ctrl+click).";
+            _status.Text = AnnotationSelectionStatus.GroupAtLeastTwo;
             return;
         }
 
@@ -9483,7 +9483,7 @@ public sealed class PdfDocumentView : UserControl
             : TryGetSelectedAnnotation(out var one) ? [one] : [];
         if (members.Count == 0)
         {
-            _status.Text = "Select grouped annotation(s) to ungroup.";
+            _status.Text = AnnotationSelectionStatus.Ungroup;
             return;
         }
 
@@ -10179,7 +10179,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (!TryGetSelectedAnnotation(out var item))
         {
-            _status.Text = "Select an annotation to rotate.";
+            _status.Text = AnnotationSelectionStatus.Rotate;
             return;
         }
 
@@ -10215,7 +10215,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (!TryGetSelectedAnnotation(out var item) || !item.IsTextBox)
         {
-            _status.Text = "Select a text box or callout to underline.";
+            _status.Text = AnnotationSelectionStatus.UnderlineTextBoxOrCallout;
             return;
         }
 
@@ -10244,7 +10244,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (!TryGetSelectedAnnotation(out var item) || !item.IsTextBox)
         {
-            _status.Text = "Select a text box or callout to set alignment.";
+            _status.Text = AnnotationSelectionStatus.AlignmentTextBoxOrCallout;
             return;
         }
 
@@ -10669,7 +10669,7 @@ public sealed class PdfDocumentView : UserControl
         {
             if (_selectedAnnot is null)
             {
-                _status.Text = "Select an annotation to duplicate.";
+                _status.Text = AnnotationSelectionStatus.Duplicate;
                 return;
             }
         }
@@ -10797,7 +10797,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (!TryGetSelectedAnnotation(out var item))
         {
-            _status.Text = "Select an ink or shape annotation to change width.";
+            _status.Text = AnnotationSelectionStatus.InkOrShapeWidth;
             return;
         }
 
@@ -10871,7 +10871,7 @@ public sealed class PdfDocumentView : UserControl
             : _selectedAnnot;
         if (item is null)
         {
-            _status.Text = "Select an annotation to change opacity.";
+            _status.Text = AnnotationSelectionStatus.Opacity;
             return;
         }
 
@@ -10933,7 +10933,7 @@ public sealed class PdfDocumentView : UserControl
             : TryGetSelectedAnnotation(out var one) ? [one] : [];
         if (toRemove.Count == 0)
         {
-            _status.Text = "Select an annotation to delete.";
+            _status.Text = AnnotationSelectionStatus.Delete;
             return;
         }
 
@@ -12154,7 +12154,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (_bookmarkList.SelectedItem is not BookmarkListItem item)
         {
-            _status.Text = "Select a bookmark to rename.";
+            _status.Text = AnnotationSelectionStatus.RenameBookmark;
             return;
         }
 
@@ -12189,7 +12189,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (_bookmarkList.SelectedItem is not BookmarkListItem item)
         {
-            _status.Text = "Select a bookmark to delete.";
+            _status.Text = AnnotationSelectionStatus.DeleteBookmark;
             return;
         }
 
@@ -13141,7 +13141,7 @@ public sealed class PdfDocumentView : UserControl
             || _attachmentList.SelectedIndex < 0
             || _attachmentList.SelectedIndex >= _attachmentItems.Count)
         {
-            _status.Text = "Select an attachment, then right-click to save.";
+            _status.Text = AnnotationSelectionStatus.AttachmentContextHint;
             return;
         }
 
@@ -13164,7 +13164,7 @@ public sealed class PdfDocumentView : UserControl
             || _attachmentList.SelectedIndex < 0
             || _attachmentList.SelectedIndex >= _attachmentItems.Count)
         {
-            _status.Text = "Select an attachment to save.";
+            _status.Text = AnnotationSelectionStatus.SaveAttachment;
             return;
         }
 
