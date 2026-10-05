@@ -981,7 +981,7 @@ public sealed class PdfDocumentView : UserControl
             }
             else
             {
-                _status.Text = "Sidebar toggle unavailable.";
+                _status.Text = SidebarModeCombo.ToggleUnavailable;
             }
         };
         formFill.Click += async (_, _) => await OnFormButtonClickAsync();
@@ -1180,7 +1180,7 @@ public sealed class PdfDocumentView : UserControl
     private async Task EnterContactSheetAsync()
     {
         _contactSheetMode = true;
-        _status.Text = "Contact sheet — click a page to open it.";
+        _status.Text = ContactSheetLayout.OpenHint;
         BuildContactSheet();
         _scrollViewer.Content = _contactSheetHost;
         SyncViewState();
@@ -5010,7 +5010,7 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
-            _status.Text = "Moving callout tip…";
+            _status.Text = AnnotationPersistStatus.MovingCalloutTip;
             await _annotations.SetCalloutTipAsync(
                 _document,
                 pageIndex,
@@ -5053,7 +5053,7 @@ public sealed class PdfDocumentView : UserControl
                 or PdfShapeKind.Ellipse
                 or PdfShapeKind.Loupe))
         {
-            _status.Text = "Fill applies to rectangles, ellipses, loupes, and text boxes.";
+            _status.Text = AnnotationPersistStatus.FillAppliesHint;
             return;
         }
 
@@ -5813,7 +5813,7 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
-            _status.Text = "Saving polygon…";
+            _status.Text = AnnotationPersistStatus.SavingPolygon;
             await _annotations.AddPolygonAsync(_document, pageIndex, vertices, color, width);
             // Re-list to capture the created annot for stroke undo.
             var listed = await _annotations.ListAsync(_document, pageIndex);
@@ -6317,7 +6317,7 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
-            _status.Text = "Saving shape…";
+            _status.Text = AnnotationPersistStatus.SavingShape;
             await _annotations.AddShapeAsync(
                 _document,
                 pageIndex,
@@ -6572,18 +6572,18 @@ public sealed class PdfDocumentView : UserControl
             PdfAnnotationInfo created;
             if (_freeformMode)
             {
-                _status.Text = "Saving freeform…";
+                _status.Text = AnnotationPersistStatus.SavingFreeform;
                 created = await _annotations.AddFreeformAsync(
                     _document,
                     pageIndex,
                     points,
                     _drawStrokeColor,
                     borderWidthPoints: _drawStrokeWidth);
-                _status.Text = "Freeform shape added.";
+                _status.Text = AnnotationPersistStatus.FreeformShapeAdded;
             }
             else
             {
-                _status.Text = "Saving ink…";
+                _status.Text = AnnotationPersistStatus.SavingInk;
                 created = await _annotations.AddInkAsync(
                     _document,
                     pageIndex,
@@ -6719,7 +6719,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (!_strokeUndoStack.TryPop(out var stroke))
         {
-            _status.Text = "Nothing to undo.";
+            _status.Text = DocumentUndoRedoStatus.NothingToUndo;
             return;
         }
 
@@ -7410,14 +7410,14 @@ public sealed class PdfDocumentView : UserControl
             ?? throw new InvalidOperationException("Main window unavailable for camera.");
         try
         {
-            _status.Text = "Starting camera…";
+            _status.Text = WebcamCaptureUi.StartingCamera;
             var captured = await WebcamCaptureHelper.CaptureAsync(
                 window.Content.XamlRoot,
                 title: "Capture into PDF",
                 hint: "Frame the page or photo, then Capture. It will be stamped on the current PDF page.");
             if (captured is null)
             {
-                _status.Text = "Camera capture cancelled or unavailable.";
+                _status.Text = WebcamCaptureUi.CaptureCancelledOrUnavailable;
                 return;
             }
 
@@ -7437,7 +7437,7 @@ public sealed class PdfDocumentView : UserControl
     {
         try
         {
-            _status.Text = "Starting webcam…";
+            _status.Text = WebcamCaptureUi.StartingWebcam;
             var captured = await WebcamCaptureHelper.CaptureAsync(
                 window.Content.XamlRoot,
                 title: "Photograph signature",
@@ -9648,7 +9648,7 @@ public sealed class PdfDocumentView : UserControl
         {
             if (_multiDragOrigins.Count > 1)
             {
-                _status.Text = $"Moving {_multiDragOrigins.Count} annotations…";
+                _status.Text = AnnotationPersistStatus.FormatMovingAnnotations(_multiDragOrigins.Count);
                 foreach (var (info, origin) in _multiDragOrigins
                              .Where(o => o.Info.PageIndex == _selectedAnnot.PageIndex)
                              .OrderByDescending(o => o.Info.AnnotIndex))
@@ -9663,7 +9663,7 @@ public sealed class PdfDocumentView : UserControl
             }
             else
             {
-                _status.Text = "Moving annotation…";
+                _status.Text = AnnotationPersistStatus.MovingAnnotation;
                 await _annotations.MoveAsync(
                     _document,
                     _selectedAnnot.PageIndex,
@@ -11086,11 +11086,11 @@ public sealed class PdfDocumentView : UserControl
     {
         if (!_editHistory.CanUndo)
         {
-            _status.Text = "Nothing to undo.";
+            _status.Text = DocumentUndoRedoStatus.NothingToUndo;
             return;
         }
 
-        _status.Text = "Undoing…";
+        _status.Text = DocumentUndoRedoStatus.Undoing;
         await _editHistory.UndoAsync(_document, _pageEditor);
         await ReloadAfterPageEditAsync();
         _status.Text = PageEditStatus.UndidPageEdit;
@@ -11100,11 +11100,11 @@ public sealed class PdfDocumentView : UserControl
     {
         if (!_editHistory.CanRedo)
         {
-            _status.Text = "Nothing to redo.";
+            _status.Text = DocumentUndoRedoStatus.NothingToRedo;
             return;
         }
 
-        _status.Text = "Redoing…";
+        _status.Text = DocumentUndoRedoStatus.Redoing;
         await _editHistory.RedoAsync(_document, _pageEditor);
         await ReloadAfterPageEditAsync();
         _status.Text = PageEditStatus.RedidPageEdit;
@@ -12327,7 +12327,7 @@ public sealed class PdfDocumentView : UserControl
 
             if (await dialog.ShowAsync() != ContentDialogResult.Primary)
             {
-                _status.Text = "Print cancelled.";
+                _status.Text = PrintPageScopeChooser.CancelledStatus;
                 return;
             }
 

@@ -24,6 +24,8 @@ public class WebcamCaptureUiTests
         WebcamCaptureUi.CaptureButton.Should().Be("Camera");
         WebcamCaptureUi.InsertsIntoPdfAsStamp.Should().BeTrue();
         WebcamCaptureUi.OpensAsImageTab.Should().BeTrue();
+        WebcamCaptureUi.StartingCamera.Should().Contain("camera");
+        WebcamCaptureUi.CaptureCancelledOrUnavailable.Should().Contain("unavailable");
     }
 }
 

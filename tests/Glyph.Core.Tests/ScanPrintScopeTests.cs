@@ -24,5 +24,6 @@ public class PrintPageScopeChooserTests
         PrintPageScopeChooser.Labels.Should().HaveCount(4);
         PrintPageScopeChooser.FromComboIndex(0).Should().Be(PrintPageScopeChooser.Scope.CurrentPage);
         PrintPageScopeChooser.FromComboIndex(3).Should().Be(PrintPageScopeChooser.Scope.AllPages);
+        PrintPageScopeChooser.CancelledStatus.Should().Contain("cancelled");
     }
 }

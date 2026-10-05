@@ -13,6 +13,7 @@ public static class SidebarModeCombo
     public const int AnnotationsIndex = 4;
     public const int PropertiesIndex = 5;
     public const int AttachmentsIndex = 6;
+    public const string ToggleUnavailable = "Sidebar toggle unavailable.";
 
     public static readonly IReadOnlyList<string> Labels =
     [

@@ -8,6 +8,7 @@ public static class ContactSheetLayout
     public const int DefaultColumns = 4;
     public const double DefaultCellWidth = 140;
     public const double DefaultSpacing = 12;
+    public const string OpenHint = "Contact sheet — click a page to open it.";
 
     public static (int Row, int Column) Cell(int pageIndex, int columns = DefaultColumns)
     {
