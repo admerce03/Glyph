@@ -223,8 +223,8 @@ public sealed class PdfDocumentView : UserControl
         var searchButton = new Button { Content = "Find" };
         searchButton.Click += async (_, _) => await RunSearchAsync();
         var ocrPage = new Button { Content = "OCR" };
-        ocrPage.Click += async (_, _) => await RunOcrSelectedPagesAsync();
-        ToolTipService.SetToolTip(ocrPage, "Run offline OCR on the selected page(s)");
+        ocrPage.Click += async (_, _) => await OnOcrButtonClickAsync();
+        ToolTipService.SetToolTip(ocrPage, "Run offline OCR on selected pages or the entire PDF");
         var clearSearch = new Button { Content = "Clear" };
         ToolTipService.SetToolTip(clearSearch, "Clear search results");
         clearSearch.Click += async (_, _) => await ClearSearchAsync();
@@ -1842,7 +1842,7 @@ public sealed class PdfDocumentView : UserControl
         e.Handled = true;
     }
 
-    private async Task RunOcrSelectedPagesAsync()
+    private async Task OnOcrButtonClickAsync()
     {
         if (_ocr is null)
         {
@@ -1850,7 +1850,46 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var pages = SelectedOrCurrentPages();
+        var selected = SelectedOrCurrentPages();
+        var selectedLabel = selected.Count == 1
+            ? $"Selected / current (page {selected[0] + 1})"
+            : $"Selected pages ({selected.Count})";
+
+        var chooser = new ContentDialog
+        {
+            Title = "OCR",
+            Content = new TextBlock
+            {
+                Text = $"Recognize text offline.\n\n• {selectedLabel}\n• Entire document ({_document.PageCount} pages)",
+                TextWrapping = TextWrapping.Wrap,
+            },
+            PrimaryButtonText = selected.Count == 1 ? "Current page" : "Selected pages",
+            SecondaryButtonText = "Entire document",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+
+        var choice = await chooser.ShowAsync();
+        if (choice == ContentDialogResult.Primary)
+        {
+            await RunOcrPagesAsync(selected);
+        }
+        else if (choice == ContentDialogResult.Secondary)
+        {
+            var all = Enumerable.Range(0, _document.PageCount).ToList();
+            await RunOcrPagesAsync(all);
+        }
+    }
+
+    private async Task RunOcrPagesAsync(IReadOnlyList<int> pages)
+    {
+        if (_ocr is null)
+        {
+            _status.Text = "OCR engine unavailable.";
+            return;
+        }
+
         if (pages.Count == 0)
         {
             _status.Text = "No pages selected for OCR.";
