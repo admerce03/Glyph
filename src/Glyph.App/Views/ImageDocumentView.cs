@@ -810,41 +810,104 @@ public sealed class ImageDocumentView : UserControl
             return;
         }
 
+        var meta = await _document.GetMetadataAsync();
+        var currentDpi = meta.DpiX is > 0 ? meta.DpiX.Value : (meta.DpiY is > 0 ? meta.DpiY.Value : 96.0);
         var aspect = (double)srcW / srcH;
         var updating = false;
-        var widthBox = new TextBox { Text = srcW.ToString(), Width = 96, Header = "Width (px)" };
-        var heightBox = new TextBox { Text = srcH.ToString(), Width = 96, Header = "Height (px)" };
+        var unitBox = new ComboBox
+        {
+            Header = "Units",
+            Width = 140,
+            ItemsSource = new[] { "Pixels", "Inches", "Centimeters" },
+            SelectedIndex = 0,
+        };
+        var dpiBox = new NumberBox
+        {
+            Header = "DPI / PPI",
+            Value = currentDpi,
+            Minimum = 1,
+            Maximum = 1200,
+            SmallChange = 1,
+            LargeChange = 10,
+            Width = 140,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact,
+        };
+        var widthBox = new TextBox { Text = srcW.ToString(), Width = 96, Header = "Width" };
+        var heightBox = new TextBox { Text = srcH.ToString(), Width = 96, Header = "Height" };
         var percentBox = new TextBox { Text = "100", Width = 96, Header = "Scale %" };
         var lockAspect = new CheckBox { Content = "Lock aspect ratio", IsChecked = true };
+        var filterBox = new ComboBox
+        {
+            Header = "Resampling",
+            Width = 180,
+            ItemsSource = new[] { "Auto", "Nearest-neighbor", "Bilinear", "Bicubic" },
+            SelectedIndex = 0,
+        };
         var preview = new TextBlock
         {
-            Text = $"Result: {srcW}×{srcH}",
+            Text = $"Result: {srcW}×{srcH} px · ~{EstimateRawMb(srcW, srcH):0.##} MB raw",
             Opacity = 0.8,
             Margin = new Thickness(0, 8, 0, 0),
+            TextWrapping = TextWrapping.Wrap,
         };
 
-        void SyncFromWidth()
+        double ActiveDpi() => dpiBox.Value > 0 ? dpiBox.Value : 96;
+
+        (int PxW, int PxH) ParsePixelSize()
         {
-            if (updating || !int.TryParse(widthBox.Text, out var w) || w <= 0)
+            if (!double.TryParse(widthBox.Text, out var wVal) || wVal <= 0
+                || !double.TryParse(heightBox.Text, out var hVal) || hVal <= 0)
             {
+                return (0, 0);
+            }
+
+            return unitBox.SelectedIndex switch
+            {
+                1 => (
+                    Math.Max(1, (int)Math.Round(wVal * ActiveDpi())),
+                    Math.Max(1, (int)Math.Round(hVal * ActiveDpi()))),
+                2 => (
+                    Math.Max(1, (int)Math.Round(wVal / 2.54 * ActiveDpi())),
+                    Math.Max(1, (int)Math.Round(hVal / 2.54 * ActiveDpi()))),
+                _ => (Math.Max(1, (int)Math.Round(wVal)), Math.Max(1, (int)Math.Round(hVal))),
+            };
+        }
+
+        void UpdatePreview()
+        {
+            var (w, h) = ParsePixelSize();
+            if (w <= 0 || h <= 0)
+            {
+                preview.Text = "Result: —";
                 return;
             }
 
+            preview.Text = $"Result: {w}×{h} px @ {ActiveDpi():0.#} DPI · ~{EstimateRawMb(w, h):0.##} MB raw BGRA";
+        }
+
+        void WritePhysicalFromPixels(int pxW, int pxH)
+        {
             updating = true;
             try
             {
-                if (lockAspect.IsChecked == true)
+                if (unitBox.SelectedIndex == 1)
                 {
-                    var h = Math.Max(1, (int)Math.Round(w / aspect));
-                    heightBox.Text = h.ToString();
-                    percentBox.Text = Math.Round(100.0 * w / srcW).ToString("0");
-                    preview.Text = $"Result: {w}×{h}";
+                    widthBox.Text = (pxW / ActiveDpi()).ToString("0.###");
+                    heightBox.Text = (pxH / ActiveDpi()).ToString("0.###");
                 }
-                else if (int.TryParse(heightBox.Text, out var h) && h > 0)
+                else if (unitBox.SelectedIndex == 2)
                 {
-                    percentBox.Text = Math.Round(100.0 * w / srcW).ToString("0");
-                    preview.Text = $"Result: {w}×{h}";
+                    widthBox.Text = (pxW / ActiveDpi() * 2.54).ToString("0.###");
+                    heightBox.Text = (pxH / ActiveDpi() * 2.54).ToString("0.###");
                 }
+                else
+                {
+                    widthBox.Text = pxW.ToString();
+                    heightBox.Text = pxH.ToString();
+                }
+
+                percentBox.Text = Math.Round(100.0 * pxW / srcW).ToString("0");
+                UpdatePreview();
             }
             finally
             {
@@ -852,32 +915,51 @@ public sealed class ImageDocumentView : UserControl
             }
         }
 
-        void SyncFromHeight()
+        void SyncFromWidth()
         {
-            if (updating || !int.TryParse(heightBox.Text, out var h) || h <= 0)
+            if (updating)
             {
                 return;
             }
 
-            updating = true;
-            try
+            var (w, h) = ParsePixelSize();
+            if (w <= 0)
             {
-                if (lockAspect.IsChecked == true)
-                {
-                    var w = Math.Max(1, (int)Math.Round(h * aspect));
-                    widthBox.Text = w.ToString();
-                    percentBox.Text = Math.Round(100.0 * h / srcH).ToString("0");
-                    preview.Text = $"Result: {w}×{h}";
-                }
-                else if (int.TryParse(widthBox.Text, out var w) && w > 0)
-                {
-                    percentBox.Text = Math.Round(100.0 * h / srcH).ToString("0");
-                    preview.Text = $"Result: {w}×{h}";
-                }
+                return;
             }
-            finally
+
+            if (lockAspect.IsChecked == true)
             {
-                updating = false;
+                h = Math.Max(1, (int)Math.Round(w / aspect));
+                WritePhysicalFromPixels(w, h);
+            }
+            else
+            {
+                UpdatePreview();
+            }
+        }
+
+        void SyncFromHeight()
+        {
+            if (updating)
+            {
+                return;
+            }
+
+            var (w, h) = ParsePixelSize();
+            if (h <= 0)
+            {
+                return;
+            }
+
+            if (lockAspect.IsChecked == true)
+            {
+                w = Math.Max(1, (int)Math.Round(h * aspect));
+                WritePhysicalFromPixels(w, h);
+            }
+            else
+            {
+                UpdatePreview();
             }
         }
 
@@ -888,39 +970,44 @@ public sealed class ImageDocumentView : UserControl
                 return;
             }
 
-            updating = true;
-            try
-            {
-                var w = Math.Max(1, (int)Math.Round(srcW * pct / 100.0));
-                var h = lockAspect.IsChecked == true
-                    ? Math.Max(1, (int)Math.Round(w / aspect))
-                    : Math.Max(1, (int)Math.Round(srcH * pct / 100.0));
-                widthBox.Text = w.ToString();
-                heightBox.Text = h.ToString();
-                preview.Text = $"Result: {w}×{h}";
-            }
-            finally
-            {
-                updating = false;
-            }
+            var w = Math.Max(1, (int)Math.Round(srcW * pct / 100.0));
+            var h = lockAspect.IsChecked == true
+                ? Math.Max(1, (int)Math.Round(w / aspect))
+                : Math.Max(1, (int)Math.Round(srcH * pct / 100.0));
+            WritePhysicalFromPixels(w, h);
         }
 
         widthBox.TextChanged += (_, _) => SyncFromWidth();
         heightBox.TextChanged += (_, _) => SyncFromHeight();
         percentBox.TextChanged += (_, _) => SyncFromPercent();
         lockAspect.Checked += (_, _) => SyncFromWidth();
-        lockAspect.Unchecked += (_, _) => SyncFromWidth();
+        lockAspect.Unchecked += (_, _) => UpdatePreview();
+        unitBox.SelectionChanged += (_, _) => WritePhysicalFromPixels(srcW, srcH);
+        dpiBox.ValueChanged += (_, _) =>
+        {
+            if (unitBox.SelectedIndex != 0)
+            {
+                SyncFromWidth();
+            }
+            else
+            {
+                UpdatePreview();
+            }
+        };
 
         var panel = new StackPanel
         {
             Spacing = 8,
             Children =
             {
-                new TextBlock { Text = $"Current: {srcW}×{srcH} px" },
+                new TextBlock { Text = $"Current: {srcW}×{srcH} px · {currentDpi:0.#} DPI" },
+                unitBox,
+                dpiBox,
                 widthBox,
                 heightBox,
                 percentBox,
                 lockAspect,
+                filterBox,
                 preview,
             },
         };
@@ -940,17 +1027,22 @@ public sealed class ImageDocumentView : UserControl
             return;
         }
 
-        if (!int.TryParse(widthBox.Text, out var width) || width <= 0
-            || !int.TryParse(heightBox.Text, out var height) || height <= 0)
+        var (width, height) = ParsePixelSize();
+        if (width <= 0 || height <= 0)
         {
             _status.Text = "Resize needs positive width and height.";
             return;
         }
 
+        var filter = (ImageResizeFilter)Math.Clamp(filterBox.SelectedIndex, 0, 3);
+        var options = new ImageResizeOptions(Filter: filter, DensityDpi: ActiveDpi());
         await MutateAsync(
-            () => _processor.ResizeAsync(_document, width, height),
-            $"Resized to {width}×{height}.");
+            () => _processor.ResizeAsync(_document, width, height, options),
+            $"Resized to {width}×{height} @ {ActiveDpi():0.#} DPI.");
     }
+
+    private static double EstimateRawMb(int width, int height) =>
+        width * (double)height * 4.0 / (1024.0 * 1024.0);
 
     private async Task AdjustAsync()
     {

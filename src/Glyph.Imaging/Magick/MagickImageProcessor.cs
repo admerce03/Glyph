@@ -23,7 +23,12 @@ public sealed class MagickImageProcessor : IImageProcessor
             cancellationToken);
     }
 
-    public Task ResizeAsync(IImageDocument document, int width, int height, CancellationToken cancellationToken = default)
+    public Task ResizeAsync(
+        IImageDocument document,
+        int width,
+        int height,
+        ImageResizeOptions? options = null,
+        CancellationToken cancellationToken = default)
     {
         var magick = RequireMagick(document);
         if (width <= 0 || height <= 0)
@@ -35,7 +40,22 @@ public sealed class MagickImageProcessor : IImageProcessor
             () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (options?.Filter is { } filter and not ImageResizeFilter.Auto)
+                {
+                    magick.Native.FilterType = filter switch
+                    {
+                        ImageResizeFilter.NearestNeighbor => FilterType.Point,
+                        ImageResizeFilter.Bilinear => FilterType.Triangle,
+                        ImageResizeFilter.Bicubic => FilterType.Cubic,
+                        _ => magick.Native.FilterType,
+                    };
+                }
+
                 magick.Native.Resize((uint)width, (uint)height);
+                if (options?.DensityDpi is double dpi && dpi > 0)
+                {
+                    magick.Native.Density = new Density(dpi, dpi, DensityUnit.PixelsPerInch);
+                }
             },
             cancellationToken);
     }

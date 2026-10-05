@@ -110,6 +110,34 @@ public class MagickImageProcessorTests
     }
 
     [Fact]
+    public async Task Resize_with_filter_and_dpi_updates_density()
+    {
+        var path = CreateSolidPng(80, 60);
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            await using var document = await decoder.OpenAsync(path);
+
+            await processor.ResizeAsync(
+                document,
+                40,
+                30,
+                new ImageResizeOptions(Filter: ImageResizeFilter.Bicubic, DensityDpi: 150));
+            document.PixelWidth.Should().Be(40);
+            document.PixelHeight.Should().Be(30);
+
+            var meta = await document.GetMetadataAsync();
+            meta.DpiX.Should().BeApproximately(150, 0.5);
+            meta.DpiY.Should().BeApproximately(150, 0.5);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Adjust_brightness_contrast_saturation_keeps_dimensions()
     {
         var path = CreateSolidPng(64, 48);

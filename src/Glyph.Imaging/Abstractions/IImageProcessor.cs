@@ -4,7 +4,12 @@ public interface IImageProcessor
 {
     Task CropAsync(IImageDocument document, ImageRect pixels, CancellationToken cancellationToken = default);
 
-    Task ResizeAsync(IImageDocument document, int width, int height, CancellationToken cancellationToken = default);
+    Task ResizeAsync(
+        IImageDocument document,
+        int width,
+        int height,
+        ImageResizeOptions? options = null,
+        CancellationToken cancellationToken = default);
 
     Task RotateAsync(IImageDocument document, int degreesClockwise, CancellationToken cancellationToken = default);
 
@@ -29,6 +34,21 @@ public interface IImageProcessor
 /// Axis-aligned crop rectangle in image pixel space (origin top-left).
 /// </summary>
 public readonly record struct ImageRect(int X, int Y, int Width, int Height);
+
+public enum ImageResizeFilter
+{
+    Auto = 0,
+    NearestNeighbor = 1,
+    Bilinear = 2,
+    Bicubic = 3,
+}
+
+/// <summary>
+/// Optional resize knobs: resampling filter and output density (DPI).
+/// </summary>
+public sealed record ImageResizeOptions(
+    ImageResizeFilter Filter = ImageResizeFilter.Auto,
+    double? DensityDpi = null);
 
 public sealed record ImageAdjustments(
     double Brightness = 0,

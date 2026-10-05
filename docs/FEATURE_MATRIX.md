@@ -495,13 +495,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F31-03 | Image resizing | Lock aspect ratio. | M5 | Implemented | Resize dialog lock checkbox |
 | F31-04 | Image resizing | Percentage scaling. | M5 | Implemented | Resize dialog scale % |
 | F31-05 | Image resizing | Pixel units. | M5 | Implemented | Width/height in pixels |
-| F31-06 | Image resizing | Physical units. | M5 | Not Started |  |
-| F31-07 | Image resizing | DPI/PPI. | M5 | Not Started |  |
-| F31-08 | Image resizing | Resampling toggle. | M5 | Not Started |  |
-| F31-09 | Image resizing | Resampling algorithm options, possibly: | M5 | Not Started |  |
+| F31-06 | Image resizing | Physical units. | M5 | Tested | Resize dialog Units: Pixels / Inches / Centimeters |
+| F31-07 | Image resizing | DPI/PPI. | M5 | Tested | Resize dialog DPI + `ImageResizeOptions.DensityDpi` |
+| F31-08 | Image resizing | Resampling toggle. | M5 | Tested | Resize dialog Resampling combo (Auto/Nearest/Bilinear/Bicubic) |
+| F31-09 | Image resizing | Resampling algorithm options, possibly: | M5 | Tested | Nearest / Bilinear / Bicubic via Magick FilterType |
 | F31-10 | Image resizing | Preserve aspect ratio. | M5 | Implemented | Same as lock aspect |
 | F31-11 | Image resizing | Estimated resulting dimensions. | M5 | Implemented | Live result preview in dialog |
-| F31-12 | Image resizing | Estimated file size. | M5 | Not Started |  |
+| F31-12 | Image resizing | Estimated file size. | M5 | Implemented | Preview shows ~raw BGRA MB estimate |
 | F31-13 | Image resizing | Batch resize selected images. | M5 | Not Started |  |
 | F32-01 | Image orientation | Rotate left 90°. | M5 | Tested | MagickImageProcessor.RotateAsync |
 | F32-02 | Image orientation | Rotate right 90°. | M5 | Tested | ImageDocumentView ⟳ + RotateAsync(90) |
