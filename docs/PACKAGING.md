@@ -50,6 +50,9 @@ Then manually confirm:
 
 Until those steps pass on a real Windows host, keep F01-06/07 **Deferred**.
 
+Full interactive proof checklist (associations + M1/M2 screenshots + M3 §11 DnD
+recording + Store signing / ADR-015 escalate): [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md).
+
 ## Production / Store signing (open)
 
 Test certs are for CI and Developer Mode only. Closing the M9 installer gate for clean-machine installs needs one of:

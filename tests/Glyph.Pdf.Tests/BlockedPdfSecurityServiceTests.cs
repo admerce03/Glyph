@@ -67,6 +67,7 @@ public class PdfSecurityWriteUiCopyTests
     {
         PdfSecurityWriteUiCopy.ToolbarLabel.Should().Be("Protect");
         PdfSecurityWriteUiCopy.DialogBody().Should().Contain("ADR-015");
+        PdfSecurityWriteUiCopy.DialogBody().Should().Contain("PdfSharp");
         PdfSecurityWriteUiCopy.DialogBody().Should().Contain("Opening encrypted");
         PdfSecurityWriteUiCopy.StatusBlocked.Should().Contain("ADR-015");
     }
