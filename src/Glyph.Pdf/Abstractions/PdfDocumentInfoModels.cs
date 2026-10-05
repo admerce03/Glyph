@@ -38,6 +38,15 @@ public sealed record PdfDocumentPermissions(
     bool CanAssemble,
     bool CanPrintHighQuality)
 {
+    // PDF Reference §7.6.3.2 user-access permission bits.
+    private const uint PermPrint = 1u << 2;
+    private const uint PermModify = 1u << 3;
+    private const uint PermCopy = 1u << 4;
+    private const uint PermAnnotate = 1u << 5;
+    private const uint PermFillForms = 1u << 8;
+    private const uint PermAssemble = 1u << 10;
+    private const uint PermPrintHighQuality = 1u << 11;
+
     /// <summary>F23-09 — PDF permission flags are not a security boundary.</summary>
     public const string AdvisoryNotice =
         "Permissions (PDF flags — enforcement is advisory)";
@@ -45,6 +54,17 @@ public sealed record PdfDocumentPermissions(
     /// <summary>Status-line form of <see cref="AdvisoryNotice"/> when the document is encrypted.</summary>
     public const string EncryptedAdvisoryStatus =
         "Document is encrypted — permissions shown are advisory.";
+
+    /// <summary>Decode standard security handler <c>/P</c> flags.</summary>
+    public static PdfDocumentPermissions FromFlags(uint flags) =>
+        new(
+            CanPrint: (flags & PermPrint) != 0,
+            CanModify: (flags & PermModify) != 0,
+            CanCopy: (flags & PermCopy) != 0,
+            CanAnnotate: (flags & PermAnnotate) != 0,
+            CanFillForms: (flags & PermFillForms) != 0,
+            CanAssemble: (flags & PermAssemble) != 0,
+            CanPrintHighQuality: (flags & PermPrintHighQuality) != 0);
 
     public string FormatLines() =>
         $"Print: {(CanPrint ? "yes" : "no")}\n"

@@ -321,7 +321,10 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
 
     private static void ValidateBounds(PdfRect bounds)
     {
-        if (bounds.Width <= 0 || bounds.Height <= 0)
+        // Use absolute extents so inverted drag corners can still normalize.
+        var width = Math.Abs(bounds.Right - bounds.Left);
+        var height = Math.Abs(bounds.Top - bounds.Bottom);
+        if (width <= 0 || height <= 0)
         {
             throw new ArgumentException("Redaction bounds must have positive width and height.", nameof(bounds));
         }

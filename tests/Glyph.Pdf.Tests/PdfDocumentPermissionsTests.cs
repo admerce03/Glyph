@@ -7,6 +7,34 @@ namespace Glyph.Pdf.Tests;
 public class PdfDocumentPermissionsTests
 {
     [Fact]
+    public void FromFlags_decodes_print_copy_annotate_bits()
+    {
+        // Bits 3,5,6 (print/copy/annotate) — 1-based PDF bit numbers → shifts 2,4,5.
+        uint flags = (1u << 2) | (1u << 4) | (1u << 5);
+        var perms = PdfDocumentPermissions.FromFlags(flags);
+        perms.CanPrint.Should().BeTrue();
+        perms.CanModify.Should().BeFalse();
+        perms.CanCopy.Should().BeTrue();
+        perms.CanAnnotate.Should().BeTrue();
+        perms.CanFillForms.Should().BeFalse();
+        perms.CanAssemble.Should().BeFalse();
+        perms.CanPrintHighQuality.Should().BeFalse();
+    }
+
+    [Fact]
+    public void FromFlags_all_clear_when_zero()
+    {
+        var perms = PdfDocumentPermissions.FromFlags(0);
+        perms.CanPrint.Should().BeFalse();
+        perms.CanModify.Should().BeFalse();
+        perms.CanCopy.Should().BeFalse();
+        perms.CanAnnotate.Should().BeFalse();
+        perms.CanFillForms.Should().BeFalse();
+        perms.CanAssemble.Should().BeFalse();
+        perms.CanPrintHighQuality.Should().BeFalse();
+    }
+
+    [Fact]
     public void AdvisoryNotice_states_enforcement_is_advisory()
     {
         PdfDocumentPermissions.AdvisoryNotice.Should().Contain("advisory");

@@ -270,6 +270,30 @@ public class PdfiumOptimizeServiceTests
     }
 
     [Fact]
+    public void FromPreset_Balanced_targets_150dpi_above_225()
+    {
+        var opts = PdfOptimizeOptions.FromPreset(PdfOptimizePreset.Balanced);
+        opts.DownsampleImages.Should().BeTrue();
+        opts.DownsampleAboveDpi.Should().Be(225);
+        opts.TargetDpi.Should().Be(150);
+        opts.JpegQuality.Should().Be(75);
+        opts.RemoveEmbeddedAttachments.Should().BeFalse();
+        opts.RemoveMetadata.Should().BeFalse();
+    }
+
+    [Fact]
+    public void FromPreset_SmallFile_strips_attachments_and_metadata()
+    {
+        var opts = PdfOptimizeOptions.FromPreset(PdfOptimizePreset.SmallFile);
+        opts.DownsampleImages.Should().BeTrue();
+        opts.DownsampleAboveDpi.Should().Be(150);
+        opts.TargetDpi.Should().Be(96);
+        opts.JpegQuality.Should().Be(55);
+        opts.RemoveEmbeddedAttachments.Should().BeTrue();
+        opts.RemoveMetadata.Should().BeTrue();
+    }
+
+    [Fact]
     public void FromPreset_Lossless_disables_downsample()
     {
         var opts = PdfOptimizeOptions.FromPreset(PdfOptimizePreset.Lossless);

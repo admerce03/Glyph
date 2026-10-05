@@ -8,15 +8,6 @@ namespace Glyph.Pdf.Pdfium;
 
 public sealed class PdfiumDocumentInfoService : IPdfDocumentInfoService
 {
-    // PDF Reference user-access permission bits (1-based bit numbers in the spec).
-    private const uint PermPrint = 1u << 2;
-    private const uint PermModify = 1u << 3;
-    private const uint PermCopy = 1u << 4;
-    private const uint PermAnnotate = 1u << 5;
-    private const uint PermFillForms = 1u << 8;
-    private const uint PermAssemble = 1u << 10;
-    private const uint PermPrintHighQuality = 1u << 11;
-
     public PdfDocumentInfo GetInfo(IPdfDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
@@ -253,7 +244,7 @@ public sealed class PdfiumDocumentInfoService : IPdfDocumentInfoService
             IsEncrypted: pdfium.IsEncrypted,
             SecurityHandlerRevision: revision,
             PermissionFlags: flags,
-            Permissions: DecodePermissions(flags));
+            Permissions: PdfDocumentPermissions.FromFlags(flags));
     }
 
     private static IReadOnlyList<string> CollectFontNames(FpdfDocumentT handle, int pageCount)
@@ -360,16 +351,6 @@ public sealed class PdfiumDocumentInfoService : IPdfDocumentInfoService
             return null;
         }
     }
-
-    private static PdfDocumentPermissions DecodePermissions(uint flags) =>
-        new(
-            CanPrint: (flags & PermPrint) != 0,
-            CanModify: (flags & PermModify) != 0,
-            CanCopy: (flags & PermCopy) != 0,
-            CanAnnotate: (flags & PermAnnotate) != 0,
-            CanFillForms: (flags & PermFillForms) != 0,
-            CanAssemble: (flags & PermAssemble) != 0,
-            CanPrintHighQuality: (flags & PermPrintHighQuality) != 0);
 
     private static string? ReadMeta(FpdfDocumentT handle, string tag)
     {

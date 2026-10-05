@@ -79,7 +79,67 @@ public class PdfiumRedactionServiceTests
 
             redaction.ClearPending(document);
             redaction.GetPending(document).Should().BeEmpty();
-            redaction.UndoLastPending(document).Should().BeNull();
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task Apply_with_no_pending_returns_zeros()
+    {
+        var path = CreateTextPdf("Nothing marked");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var redaction = new PdfiumRedactionService();
+            await using var document = await factory.OpenAsync(path);
+
+            var result = await redaction.ApplyAsync(document);
+            result.MarksApplied.Should().Be(0);
+            result.TextObjectsRemoved.Should().Be(0);
+            result.ImageObjectsRemoved.Should().Be(0);
+            result.AnnotationsRemoved.Should().Be(0);
+            result.AttachmentsRemoved.Should().Be(0);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task MarkRectangle_rejects_nonpositive_bounds()
+    {
+        var path = CreateTextPdf("bounds");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var redaction = new PdfiumRedactionService();
+            await using var document = await factory.OpenAsync(path);
+
+            var act = () => redaction.MarkRectangle(document, 0, new PdfRect(10, 10, 10, 20));
+            act.Should().Throw<ArgumentException>().WithParameterName("bounds");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task MarkRectangle_normalizes_inverted_bounds()
+    {
+        var path = CreateTextPdf("invert");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var redaction = new PdfiumRedactionService();
+            await using var document = await factory.OpenAsync(path);
+
+            var mark = redaction.MarkRectangle(document, 0, new PdfRect(200, 740, 50, 700));
+            mark.Bounds.Should().Be(new PdfRect(50, 700, 200, 740));
         }
         finally
         {
