@@ -84,7 +84,13 @@ Default builds stay unpackaged. To produce a self-contained MSIX layout on Windo
 ./scripts/publish-msix.ps1 -Configuration Release -Runtime win-x64 -TestSign
 ```
 
-Output lands under `artifacts/msix/` (`Glyph.App_*.msix`; with `-TestSign`, also `Glyph.CI.TestSign.cer`). Install the `.cer` into **Trusted People**, enable Developer Mode, then `Add-AppxPackage`. Store signing and association verification remain open (ADR-012).
+Output lands under `artifacts/msix/` (`Glyph.App_*.msix`; with `-TestSign`, also `Glyph.CI.TestSign.cer`). On a Windows machine with Developer Mode:
+
+```powershell
+./scripts/install-msix-test.ps1 -PackageDir artifacts/msix -Force
+```
+
+That imports the test cert into Trusted People and runs `Add-AppxPackage`. Store signing and association verification remain open (ADR-012).
 
 ## Contributing / agents
 
