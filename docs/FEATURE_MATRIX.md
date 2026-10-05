@@ -521,8 +521,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F33-08 | Image color adjustments | Tint | M5 | Tested | Adjust dialog Tint → ColorMatrix green/magenta |
 | F33-09 | Image color adjustments | Sharpness | M5 | Tested | Adjust dialog Sharpness → Magick `Sharpen` |
 | F33-10 | Image color adjustments | Sepia | M5 | Tested | Adjust dialog Sepia → Magick `SepiaTone` |
-| F33-11 | Image color adjustments | Black point / levels | M5 | Not Started |  |
-| F33-12 | Image color adjustments | Gamma where useful | M5 | Not Started |  |
+| F33-11 | Image color adjustments | Black point / levels | M5 | Tested | Adjust dialog Black/White point → Magick `Level` |
+| F33-12 | Image color adjustments | Gamma where useful | M5 | Tested | Adjust dialog Gamma → Magick `Level` gamma |
 | F33-13 | Image color adjustments | Reset individual adjustment | M5 | Not Started |  |
 | F33-14 | Image color adjustments | Reset all | M5 | Implemented | Adjust dialog Reset |
 | F33-15 | Image color adjustments | live preview | M5 | Not Started |  |
@@ -552,8 +552,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F35-12 | Image format conversion | WebP quality/lossless | M5 | Tested | Convert dialog Quality / Lossless WebP |
 | F35-13 | Image format conversion | AVIF quality | M5 | Tested | Convert dialog Quality slider for AVIF |
 | F35-14 | Image format conversion | TIFF compression | M5 | Not Started |  |
-| F35-15 | Image format conversion | preserve/remove alpha | M5 | Not Started |  |
-| F35-16 | Image format conversion | preserve/remove metadata | M5 | Not Started |  |
+| F35-15 | Image format conversion | preserve/remove alpha | M5 | Tested | Convert dialog Preserve alpha → `ImageEncodeOptions.PreserveAlpha` |
+| F35-16 | Image format conversion | preserve/remove metadata | M5 | Tested | Convert dialog Preserve metadata → Strip when false |
 | F35-17 | Image format conversion | color profile handling | M5 | Not Started |  |
 | F36-01 | Batch image operations | resize | M8 | Not Started |  |
 | F36-02 | Batch image operations | rotate | M8 | Not Started |  |
@@ -841,7 +841,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F60-08 | Context-sensitive commands | Delete | M1/M3 | Not Started |  |
 | F60-09 | Context-sensitive commands | Copy | M1/M3 | Not Started |  |
 | F61-01 | Non-destructive editing where practical | PDF annotations | M3-M5 | Not Started |  |
-| F61-02 | Non-destructive editing where practical | image markup | M3-M5 | Not Started |  |
+| F61-02 | Non-destructive editing where practical | image markup | M3-M5 | In Progress | Draw overlay until Flatten/Save (F34) |
 | F61-03 | Non-destructive editing where practical | crops | M3-M5 | Tested | CropBox-only until optional permanent export |
 | F61-04 | Non-destructive editing where practical | adjustments | M3-M5 | Not Started |  |
 | F61-05 | Non-destructive editing where practical | signatures | M3-M5 | Not Started |  |

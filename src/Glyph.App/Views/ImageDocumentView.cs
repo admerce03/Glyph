@@ -1678,6 +1678,10 @@ public sealed class ImageDocumentView : UserControl
         var saturation = MakeSlider("Saturation (−100…100)", -100, 100, 0);
         var highlights = MakeSlider("Highlights (−100 recover…100)", -100, 100, 0);
         var shadows = MakeSlider("Shadows (−100 crush…100 lift)", -100, 100, 0);
+        var blackPoint = MakeSlider("Black point (0…100)", 0, 100, 0);
+        var whitePoint = MakeSlider("White point (0…100)", 0, 100, 100);
+        var gamma = MakeSlider("Gamma (0.1…3.0)", 0.1, 3.0, 1.0);
+        gamma.StepFrequency = 0.05;
         var temperature = MakeSlider("Temperature (−100 cold…100 warm)", -100, 100, 0);
         var tint = MakeSlider("Tint (−100 green…100 magenta)", -100, 100, 0);
         var sharpness = MakeSlider("Sharpness (0…100)", 0, 100, 0);
@@ -1691,6 +1695,9 @@ public sealed class ImageDocumentView : UserControl
             saturation.Value = 0;
             highlights.Value = 0;
             shadows.Value = 0;
+            blackPoint.Value = 0;
+            whitePoint.Value = 100;
+            gamma.Value = 1.0;
             temperature.Value = 0;
             tint.Value = 0;
             sharpness.Value = 0;
@@ -1714,6 +1721,9 @@ public sealed class ImageDocumentView : UserControl
                 contrast,
                 highlights,
                 shadows,
+                blackPoint,
+                whitePoint,
+                gamma,
                 saturation,
                 temperature,
                 tint,
@@ -1747,6 +1757,9 @@ public sealed class ImageDocumentView : UserControl
             && Math.Abs(saturation.Value) < 0.0001
             && Math.Abs(highlights.Value) < 0.0001
             && Math.Abs(shadows.Value) < 0.0001
+            && Math.Abs(blackPoint.Value) < 0.0001
+            && Math.Abs(whitePoint.Value - 100) < 0.0001
+            && Math.Abs(gamma.Value - 1.0) < 0.0001
             && Math.Abs(temperature.Value) < 0.0001
             && Math.Abs(tint.Value) < 0.0001
             && Math.Abs(sharpness.Value) < 0.0001)
@@ -1765,7 +1778,10 @@ public sealed class ImageDocumentView : UserControl
             Temperature: temperature.Value,
             Tint: tint.Value,
             Highlights: highlights.Value,
-            Shadows: shadows.Value);
+            Shadows: shadows.Value,
+            BlackPoint: blackPoint.Value,
+            WhitePoint: whitePoint.Value,
+            Gamma: gamma.Value);
         await MutateAsync(
             () => _processor.AdjustAsync(_document, adjustments),
             "Color adjustments applied.");
@@ -1790,6 +1806,8 @@ public sealed class ImageDocumentView : UserControl
             Width = 240,
         };
         var lossless = new CheckBox { Content = "Lossless WebP", IsChecked = false };
+        var preserveAlpha = new CheckBox { Content = "Preserve alpha", IsChecked = true };
+        var preserveMeta = new CheckBox { Content = "Preserve metadata (EXIF/IPTC/XMP)", IsChecked = true };
         void SyncWebpOptions()
         {
             var selected = formatBox.SelectedItem as string;
@@ -1806,7 +1824,11 @@ public sealed class ImageDocumentView : UserControl
         lossless.Unchecked += (_, _) => SyncWebpOptions();
         SyncWebpOptions();
 
-        var panel = new StackPanel { Spacing = 8, Children = { formatBox, lossless, quality } };
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children = { formatBox, lossless, quality, preserveAlpha, preserveMeta },
+        };
         var dialog = new ContentDialog
         {
             Title = "Convert image",
@@ -1835,15 +1857,24 @@ public sealed class ImageDocumentView : UserControl
         };
 
         ImageEncodeOptions? options = null;
+        var keepAlpha = preserveAlpha.IsChecked != false;
+        var keepMeta = preserveMeta.IsChecked != false;
         if (format == ImageEncodeFormat.Webp)
         {
             options = lossless.IsChecked == true
-                ? new ImageEncodeOptions(Lossless: true)
-                : new ImageEncodeOptions(Quality: (int)quality.Value);
+                ? new ImageEncodeOptions(Lossless: true, PreserveAlpha: keepAlpha, PreserveMetadata: keepMeta)
+                : new ImageEncodeOptions(Quality: (int)quality.Value, PreserveAlpha: keepAlpha, PreserveMetadata: keepMeta);
         }
         else if (format is ImageEncodeFormat.Avif or ImageEncodeFormat.Heic)
         {
-            options = new ImageEncodeOptions(Quality: (int)quality.Value);
+            options = new ImageEncodeOptions(
+                Quality: (int)quality.Value,
+                PreserveAlpha: keepAlpha,
+                PreserveMetadata: keepMeta);
+        }
+        else
+        {
+            options = new ImageEncodeOptions(PreserveAlpha: keepAlpha, PreserveMetadata: keepMeta);
         }
 
         await ExportAsync(format, extension, options);

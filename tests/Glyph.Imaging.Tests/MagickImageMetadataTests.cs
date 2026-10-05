@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Glyph.Imaging.Abstractions;
 using Glyph.Imaging.Magick;
 using ImageMagick;
 
@@ -82,6 +83,42 @@ public class MagickImageMetadataTests
         finally
         {
             File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task SaveAs_can_strip_metadata_while_keeping_pixels()
+    {
+        var path = CreateExifJpeg();
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-strip-" + Guid.NewGuid().ToString("N") + ".png");
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var encoder = new MagickImageEncoder();
+            await using var document = await decoder.OpenAsync(path);
+            var before = await document.GetMetadataAsync();
+            before.Make.Should().Be("GlyphCam");
+
+            await encoder.SaveAsAsync(
+                document,
+                outPath,
+                ImageEncodeFormat.Png,
+                new ImageEncodeOptions(PreserveMetadata: false));
+
+            await using var reopened = await decoder.OpenAsync(outPath);
+            var after = await reopened.GetMetadataAsync();
+            after.Make.Should().BeNull();
+            after.GpsLatitude.Should().BeNull();
+            reopened.PixelWidth.Should().Be(40);
+            reopened.PixelHeight.Should().Be(30);
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
         }
     }
 

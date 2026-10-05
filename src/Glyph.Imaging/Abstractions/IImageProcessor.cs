@@ -120,4 +120,10 @@ public sealed record ImageAdjustments(
     double Temperature = 0,
     double Tint = 0,
     double Highlights = 0,
-    double Shadows = 0);
+    double Shadows = 0,
+    /// <summary>Black-point percentage for levels (0–100; higher crushes more shadows).</summary>
+    double BlackPoint = 0,
+    /// <summary>White-point percentage for levels (0–100; lower clips more highlights).</summary>
+    double WhitePoint = 100,
+    /// <summary>Gamma multiplier (typically 0.1–3.0; 1.0 = unchanged).</summary>
+    double Gamma = 1.0);

@@ -358,7 +358,10 @@ public class MagickImageProcessorTests
                     Temperature: 25,
                     Tint: -15,
                     Highlights: -20,
-                    Shadows: 30));
+                    Shadows: 30,
+                    BlackPoint: 5,
+                    WhitePoint: 95,
+                    Gamma: 1.1));
             document.PixelWidth.Should().Be(48);
             document.PixelHeight.Should().Be(32);
         }

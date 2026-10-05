@@ -49,4 +49,8 @@ public sealed record ImageEncodeOptions(
     bool? Lossless = null,
     string? Title = null,
     string? Author = null,
-    bool EmbedSrgbProfile = false);
+    bool EmbedSrgbProfile = false,
+    /// <summary>When false, strip alpha before writing (JPEG always strips).</summary>
+    bool PreserveAlpha = true,
+    /// <summary>When false, strip EXIF/IPTC/XMP and other profiles before writing.</summary>
+    bool PreserveMetadata = true);

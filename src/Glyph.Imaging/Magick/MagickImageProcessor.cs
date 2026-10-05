@@ -162,6 +162,19 @@ public sealed class MagickImageProcessor : IImageProcessor
                         Math.Clamp(adjustments.Highlights, -100, 100));
                 }
 
+                var blackPoint = Math.Clamp(adjustments.BlackPoint, 0, 100);
+                var whitePoint = Math.Clamp(adjustments.WhitePoint, 0, 100);
+                var gamma = Math.Clamp(adjustments.Gamma, 0.1, 3.0);
+                if (blackPoint > 0.0001 || whitePoint < 99.9999 || Math.Abs(gamma - 1.0) > 0.0001)
+                {
+                    if (whitePoint <= blackPoint)
+                    {
+                        whitePoint = Math.Min(100, blackPoint + 1);
+                    }
+
+                    magick.Native.Level(new Percentage(blackPoint), new Percentage(whitePoint), gamma);
+                }
+
                 if (adjustments.Sharpness > 0.0001)
                 {
                     // Radius/sigma scaled from a 0–100 UI slider.

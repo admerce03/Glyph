@@ -48,6 +48,19 @@ public sealed class MagickImageEncoder : IImageEncoder
                 };
 
                 ApplyOptions(clone, format, options);
+                if (options?.PreserveMetadata == false)
+                {
+                    clone.Strip();
+                    // Re-apply encode knobs that Strip may have cleared (title/author/ICC).
+                    ApplyOptions(clone, format, options);
+                }
+
+                if (options?.PreserveAlpha == false
+                    || format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Jpeg2000)
+                {
+                    clone.Alpha(AlphaOption.Remove);
+                }
+
                 clone.Write(path);
                 magick.Path = path;
             },
@@ -96,12 +109,19 @@ public sealed class MagickImageEncoder : IImageEncoder
                     _ => MagickFormat.Png,
                 };
 
-                if (format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Jpeg2000)
+                if (options?.PreserveMetadata == false)
+                {
+                    image.Strip();
+                }
+
+                ApplyOptions(image, format, options);
+
+                if (options?.PreserveAlpha == false
+                    || format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Jpeg2000)
                 {
                     image.Alpha(AlphaOption.Remove);
                 }
 
-                ApplyOptions(image, format, options);
                 image.Write(path);
             },
             cancellationToken);
