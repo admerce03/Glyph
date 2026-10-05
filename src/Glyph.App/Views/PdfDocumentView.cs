@@ -223,8 +223,8 @@ public sealed class PdfDocumentView : UserControl
         var searchButton = new Button { Content = "Find" };
         searchButton.Click += async (_, _) => await RunSearchAsync();
         var ocrPage = new Button { Content = "OCR" };
-        ocrPage.Click += async (_, _) => await RunOcrCurrentPageAsync();
-        ToolTipService.SetToolTip(ocrPage, "Run offline OCR on the current page");
+        ocrPage.Click += async (_, _) => await RunOcrSelectedPagesAsync();
+        ToolTipService.SetToolTip(ocrPage, "Run offline OCR on the selected page(s)");
         var clearSearch = new Button { Content = "Clear" };
         ToolTipService.SetToolTip(clearSearch, "Clear search results");
         clearSearch.Click += async (_, _) => await ClearSearchAsync();
@@ -1842,7 +1842,7 @@ public sealed class PdfDocumentView : UserControl
         e.Handled = true;
     }
 
-    private async Task RunOcrCurrentPageAsync()
+    private async Task RunOcrSelectedPagesAsync()
     {
         if (_ocr is null)
         {
@@ -1850,25 +1850,50 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        var pages = SelectedOrCurrentPages();
+        if (pages.Count == 0)
+        {
+            _status.Text = "No pages selected for OCR.";
+            return;
+        }
+
         try
         {
-            _status.Text = $"Running OCR on page {CurrentPageIndex + 1}…";
-            using var rendered = await _renderer.RenderPageAsync(
-                _document,
-                CurrentPageIndex,
-                new PdfRenderRequest(
-                    Scale: 4.0,
-                    MaxWidthPixels: OcrMaxEdgePixels,
-                    MaxHeightPixels: OcrMaxEdgePixels));
+            var sections = new List<string>(pages.Count);
+            var totalLines = 0;
+            var totalWords = 0;
 
-            var pixels = rendered.Pixels.ToArray();
-            var result = await _ocr.RecognizeAsync(
-                new OcrRequest(rendered.Width, rendered.Height, pixels));
+            for (var i = 0; i < pages.Count; i++)
+            {
+                var pageIndex = pages[i];
+                _status.Text = pages.Count == 1
+                    ? $"Running OCR on page {pageIndex + 1}…"
+                    : $"Running OCR on page {pageIndex + 1} ({i + 1}/{pages.Count})…";
 
-            var text = string.IsNullOrWhiteSpace(result.Text) ? "(no text recognized)" : result.Text;
+                using var rendered = await _renderer.RenderPageAsync(
+                    _document,
+                    pageIndex,
+                    new PdfRenderRequest(
+                        Scale: 4.0,
+                        MaxWidthPixels: OcrMaxEdgePixels,
+                        MaxHeightPixels: OcrMaxEdgePixels));
+
+                var pixels = rendered.Pixels.ToArray();
+                var result = await _ocr.RecognizeAsync(
+                    new OcrRequest(rendered.Width, rendered.Height, pixels));
+
+                totalLines += result.Lines.Count;
+                totalWords += result.Lines.Sum(l => l.Words.Count);
+                var body = string.IsNullOrWhiteSpace(result.Text) ? "(no text recognized)" : result.Text.Trim();
+                sections.Add(pages.Count == 1
+                    ? body
+                    : $"--- Page {pageIndex + 1} ---\n{body}");
+            }
+
+            var combined = string.Join("\n\n", sections);
             var box = new TextBox
             {
-                Text = text,
+                Text = combined,
                 IsReadOnly = true,
                 AcceptsReturn = true,
                 TextWrapping = TextWrapping.Wrap,
@@ -1879,21 +1904,21 @@ public sealed class PdfDocumentView : UserControl
             copy.Click += (_, _) =>
             {
                 var package = new DataPackage();
-                package.SetText(result.Text ?? string.Empty);
+                package.SetText(combined);
                 Clipboard.SetContent(package);
                 _status.Text = "OCR text copied.";
             };
+
+            var summary = pages.Count == 1
+                ? $"Page {pages[0] + 1} · {totalLines} line(s) · {totalWords} word(s)"
+                : $"{pages.Count} pages · {totalLines} line(s) · {totalWords} word(s)";
 
             var panel = new StackPanel
             {
                 Spacing = 8,
                 Children =
                 {
-                    new TextBlock
-                    {
-                        Text = $"Page {CurrentPageIndex + 1} · {result.Lines.Count} line(s) · {result.Lines.Sum(l => l.Words.Count)} word(s)",
-                        Opacity = 0.75,
-                    },
+                    new TextBlock { Text = summary, Opacity = 0.75 },
                     box,
                     copy,
                 },
@@ -1901,15 +1926,19 @@ public sealed class PdfDocumentView : UserControl
 
             var dialog = new ContentDialog
             {
-                Title = "OCR result",
+                Title = pages.Count == 1 ? "OCR result" : "OCR results",
                 Content = panel,
                 CloseButtonText = "Close",
                 XamlRoot = XamlRoot,
             };
             await dialog.ShowAsync();
-            _status.Text = string.IsNullOrWhiteSpace(result.Text)
-                ? $"OCR page {CurrentPageIndex + 1} — no text."
-                : $"OCR page {CurrentPageIndex + 1} — {result.Lines.Count} line(s).";
+            _status.Text = totalLines == 0
+                ? (pages.Count == 1
+                    ? $"OCR page {pages[0] + 1} — no text."
+                    : $"OCR {pages.Count} pages — no text.")
+                : (pages.Count == 1
+                    ? $"OCR page {pages[0] + 1} — {totalLines} line(s)."
+                    : $"OCR {pages.Count} pages — {totalLines} line(s).");
         }
         catch (Exception ex)
         {
