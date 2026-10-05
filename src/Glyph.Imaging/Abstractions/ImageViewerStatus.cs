@@ -78,4 +78,46 @@ public static class ImageViewerStatus
         $"Print skipped {fileName}: {message}";
 
     public static string FormatFailed(string prefix, string message) => prefix + message;
+
+    public static string FormatSubjectSaved(string fileName) =>
+        "Subject saved → " + fileName;
+
+    public static string FormatExported(string fileName) =>
+        "Exported " + fileName;
+
+    public const string AlreadyFirst = "Already at first image.";
+    public const string AlreadyLast = "Already at last image.";
+    public const string AnimationFinishedLooping = "Animation finished looping.";
+    public const string ToolbarShown = "Toolbar shown.";
+    public const string ToolbarHidden = "Toolbar hidden.";
+    public const string FolderOcrCancelled = "Folder OCR cancelled.";
+    public const string FolderOcrNoResults = "Folder OCR produced no results.";
+    public const string OcrFinishedNoText = "OCR finished — no text.";
+    public const string MarkupUndone = "Markup undone.";
+    public const string CalloutMarkupPrompt =
+        "Callout markup — drag a box on the image (Esc exits).";
+    public const string TextMarkupPrompt =
+        "Text markup — click on image to place (Esc exits).";
+
+    public static string FormatSelectionInverted(int width, int height) =>
+        $"Selection inverted — copy/cut/delete apply outside {width}×{height}.";
+
+    public static string FormatSelectionRestored(string kindLabel, int width, int height) =>
+        $"Selection restored ({kindLabel} {width}×{height}).";
+
+    public static string FormatOcrFinished(int lineCount) =>
+        $"OCR finished — {lineCount} line(s).";
+
+    public static string FormatFolderOcrCancelledAfter(int updated) =>
+        $"Folder OCR cancelled after {updated} image(s).";
+
+    public static string FormatFolderOcrFinished(int updated) =>
+        $"Folder OCR finished — {updated} image(s).";
+
+    public static string FormatMarkupUndone(int remaining) =>
+        remaining == 0 ? MarkupUndone : $"Markup undone ({remaining} left).";
+
+    public static string FormatPrintUiShown(int imageCount, int pagesPerSheet) =>
+        $"Print UI shown · {imageCount} image(s)"
+        + (pagesPerSheet > 1 ? $" · {pagesPerSheet}-up." : ".");
 }

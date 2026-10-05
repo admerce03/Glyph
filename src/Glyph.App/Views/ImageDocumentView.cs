@@ -608,7 +608,7 @@ public sealed class ImageDocumentView : UserControl
             : ImageFolderNavigator.Next(_siblings, _document.Path);
         if (target is null)
         {
-            _status.Text = delta < 0 ? "Already at first image." : "Already at last image.";
+            _status.Text = delta < 0 ? ImageViewerStatus.AlreadyFirst : ImageViewerStatus.AlreadyLast;
             return;
         }
 
@@ -836,7 +836,7 @@ public sealed class ImageDocumentView : UserControl
         {
             PauseAnimation();
             _status.Text = _animLoopBox.IsChecked == true
-                ? "Animation finished looping."
+                ? ImageViewerStatus.AnimationFinishedLooping
                 : AnimationFrameNav.Finished(_document.FrameCount);
             return;
         }
@@ -1527,7 +1527,7 @@ public sealed class ImageDocumentView : UserControl
         _toolbar.Visibility = _toolbar.Visibility == Visibility.Visible
             ? Visibility.Collapsed
             : Visibility.Visible;
-        _status.Text = _toolbar.Visibility == Visibility.Visible ? "Toolbar shown." : "Toolbar hidden.";
+        _status.Text = _toolbar.Visibility == Visibility.Visible ? ImageViewerStatus.ToolbarShown : ImageViewerStatus.ToolbarHidden;
     }
 
     public bool IsToolbarVisible => _toolbar?.Visibility != Visibility.Collapsed;
@@ -1985,8 +1985,8 @@ public sealed class ImageDocumentView : UserControl
         _selectionInverted = !_selectionInverted;
         ApplySelectionChrome();
         _status.Text = _selectionInverted
-            ? $"Selection inverted — copy/cut/delete apply outside {sel.Width}×{sel.Height}."
-            : $"Selection restored ({SelectionKindLabel()} {sel.Width}×{sel.Height}).";
+            ? ImageViewerStatus.FormatSelectionInverted(sel.Width, sel.Height)
+            : ImageViewerStatus.FormatSelectionRestored(SelectionKindLabel(), sel.Width, sel.Height);
     }
 
     private void ApplySelectionChrome()
@@ -3549,7 +3549,7 @@ public sealed class ImageDocumentView : UserControl
                             buffer.Height,
                             file.Path,
                             ImageEncodeFormat.Png);
-                        _status.Text = "Subject saved → " + file.Name;
+                        _status.Text = ImageViewerStatus.FormatSubjectSaved(file.Name);
                     }
                 }
             }
@@ -4088,8 +4088,7 @@ public sealed class ImageDocumentView : UserControl
                 autoRotate: true,
                 pagesPerSheet: pagesPerSheet);
             await helper.PrintAsync(bitmaps);
-            _status.Text = $"Print UI shown · {bitmaps.Count} image(s)"
-                + (pagesPerSheet > 1 ? $" · {pagesPerSheet}-up." : ".");
+            _status.Text = ImageViewerStatus.FormatPrintUiShown(bitmaps.Count, pagesPerSheet);
         }
         catch (Exception ex)
         {
@@ -4495,7 +4494,7 @@ public sealed class ImageDocumentView : UserControl
             {
                 await _encoder.SaveAsync(_document, _document.Path);
                 ClearUnsavedEdits();
-                _status.Text = "Saved " + System.IO.Path.GetFileName(_document.Path);
+                _status.Text = DocumentSaveStatus.SavedFileName(System.IO.Path.GetFileName(_document.Path));
                 App.CurrentApp.MainWindowInstance?.NotifyActiveDocumentSaved(_document.Path!);
                 return;
             }
@@ -4520,7 +4519,7 @@ public sealed class ImageDocumentView : UserControl
 
             await _encoder.SaveAsAsync(_document, file.Path, format);
             ClearUnsavedEdits();
-            _status.Text = "Saved " + file.Name;
+            _status.Text = DocumentSaveStatus.SavedFileName(file.Name);
             App.CurrentApp.MainWindowInstance?.NotifyActiveDocumentSaved(file.Path);
         }
         catch (Exception ex)
@@ -4690,8 +4689,8 @@ public sealed class ImageDocumentView : UserControl
             };
             await dialog.ShowAsync();
             _status.Text = string.IsNullOrWhiteSpace(result.Text)
-                ? "OCR finished — no text."
-                : $"OCR finished — {result.Lines.Count} line(s).";
+                ? ImageViewerStatus.OcrFinishedNoText
+                : ImageViewerStatus.FormatOcrFinished(result.Lines.Count);
         }
         catch (Exception ex)
         {
@@ -4737,7 +4736,7 @@ public sealed class ImageDocumentView : UserControl
 
         if (sections.Count == 0)
         {
-            _status.Text = cancelled ? "Folder OCR cancelled." : "Folder OCR produced no results.";
+            _status.Text = cancelled ? ImageViewerStatus.FolderOcrCancelled : ImageViewerStatus.FolderOcrNoResults;
             return;
         }
 
@@ -4784,8 +4783,8 @@ public sealed class ImageDocumentView : UserControl
         };
         await dialog.ShowAsync();
         _status.Text = cancelled
-            ? $"Folder OCR cancelled after {updated} image(s)."
-            : $"Folder OCR finished — {updated} image(s).";
+            ? ImageViewerStatus.FormatFolderOcrCancelledAfter(updated)
+            : ImageViewerStatus.FormatFolderOcrFinished(updated);
     }
 
     private async Task SaveAsync()
@@ -4804,7 +4803,7 @@ public sealed class ImageDocumentView : UserControl
             }
 
             await _encoder.SaveAsync(_document, _document.Path);
-            _status.Text = "Saved " + System.IO.Path.GetFileName(_document.Path);
+            _status.Text = DocumentSaveStatus.SavedFileName(System.IO.Path.GetFileName(_document.Path));
         }
         catch (Exception ex)
         {
@@ -4837,7 +4836,7 @@ public sealed class ImageDocumentView : UserControl
             }
 
             await _encoder.SaveAsAsync(_document, file.Path, format, options);
-            _status.Text = "Exported " + file.Name;
+            _status.Text = ImageViewerStatus.FormatExported(file.Name);
         }
         catch (Exception ex)
         {
@@ -4993,8 +4992,8 @@ public sealed class ImageDocumentView : UserControl
                 : textBox.Text.Trim();
             _pendingFontSize = fontSlider.Value;
             _status.Text = isCallout
-                ? "Callout markup — drag a box on the image (Esc exits)."
-                : "Text markup — click on image to place (Esc exits).";
+                ? ImageViewerStatus.CalloutMarkupPrompt
+                : ImageViewerStatus.TextMarkupPrompt;
         }
         else
         {
@@ -5081,9 +5080,7 @@ public sealed class ImageDocumentView : UserControl
         RebuildMarkupOverlay();
         UpdateFlattenButtonVisibility();
         var remaining = _markupStrokes.Count + _markupShapes.Count;
-        _status.Text = remaining == 0
-            ? "Markup undone."
-            : $"Markup undone ({remaining} left).";
+        _status.Text = ImageViewerStatus.FormatMarkupUndone(remaining);
     }
 
     private void ClearActiveShapePreview()
