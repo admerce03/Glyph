@@ -13065,19 +13065,19 @@ public sealed class PdfDocumentView : UserControl
             var fileName = DisplayValue.OrEmDash(
                 info.FilePath is null ? null : System.IO.Path.GetFileName(info.FilePath));
 
-            _propertiesSummary.Text =
-                $"Title: {DisplayValue.OrEmDash(info.Title)}\n"
-                + $"Author: {DisplayValue.OrEmDash(info.Author)}\n"
-                + $"Subject: {DisplayValue.OrEmDash(info.Subject)}\n"
-                + $"Creator: {DisplayValue.OrEmDash(info.Creator)}\n"
-                + $"Producer: {DisplayValue.OrEmDash(info.Producer)}\n"
-                + $"Pages: {info.PageCount} · {pageSize}\n"
-                + $"File: {fileName} · {Bytes(info.FileSizeBytes)}\n"
-                + $"PDF: {DisplayValue.OrEmDash(info.PdfVersion)}"
-                + PdfDocumentPermissions.PropertiesEncryptedMarker(info.IsEncrypted)
-                + (info.EmbeddedAttachmentCount > 0
-                    ? $"\nAttachments: {info.EmbeddedAttachmentCount}"
-                    : string.Empty);
+            _propertiesSummary.Text = PdfDocumentInfoUi.FormatSidebarSummary(
+                DisplayValue.OrEmDash(info.Title),
+                DisplayValue.OrEmDash(info.Author),
+                DisplayValue.OrEmDash(info.Subject),
+                DisplayValue.OrEmDash(info.Creator),
+                DisplayValue.OrEmDash(info.Producer),
+                info.PageCount,
+                pageSize,
+                fileName,
+                Bytes(info.FileSizeBytes),
+                DisplayValue.OrEmDash(info.PdfVersion),
+                PdfDocumentPermissions.PropertiesEncryptedMarker(info.IsEncrypted),
+                info.EmbeddedAttachmentCount);
         }
         catch (Exception ex)
         {

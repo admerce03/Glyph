@@ -17,5 +17,8 @@ public class PdfDocumentInfoUiTests
         PdfDocumentInfoUi.ClearedStatus.Should().Contain("cleared");
         PdfDocumentInfoUi.UpdatedStatus.Should().Contain("updated");
         PdfDocumentInfoUi.FailedStatus("x").Should().Contain("x");
+        PdfDocumentInfoUi.FormatSidebarSummary(
+                "T", "A", "S", "C", "P", 3, "Letter", "a.pdf", "1 KB", "1.7", "", 2)
+            .Should().Contain("Attachments: 2");
     }
 }

@@ -36,4 +36,36 @@ public static class PdfDocumentInfoUi
     ];
 
     public static string FailedStatus(string message) => FailedPrefix + message;
+
+    public static string FormatSidebarSummary(
+        string title,
+        string author,
+        string subject,
+        string creator,
+        string producer,
+        int pageCount,
+        string pageSize,
+        string fileName,
+        string fileSize,
+        string pdfVersion,
+        string encryptedMarker,
+        int embeddedAttachmentCount)
+    {
+        var text =
+            $"{FieldTitle}: {title}\n"
+            + $"{FieldAuthor}: {author}\n"
+            + $"{FieldSubject}: {subject}\n"
+            + $"{FieldCreator}: {creator}\n"
+            + $"{FieldProducer}: {producer}\n"
+            + $"Pages: {pageCount} · {pageSize}\n"
+            + $"File: {fileName} · {fileSize}\n"
+            + $"PDF: {pdfVersion}"
+            + encryptedMarker;
+        if (embeddedAttachmentCount > 0)
+        {
+            text += $"\nAttachments: {embeddedAttachmentCount}";
+        }
+
+        return text;
+    }
 }
