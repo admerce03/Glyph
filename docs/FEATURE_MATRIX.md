@@ -486,7 +486,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F30-02 | Image crop | Free aspect ratio. | M5 | Tested | Free drag; `ImageCropAspect.Constrain` free-mode unit test |
 | F30-03 | Image crop | Original aspect ratio. | M5 | Tested | Crop… aspect dropdown → Original (`ImageCropAspect`) |
 | F30-04 | Image crop | Common presets: | M5 | Tested | Crop… aspect: 1:1, 4:3, 3:2, 16:9 (+ Free/Original) |
-| F30-05 | Image crop | Numeric width/height. | M5 | Implemented | Crop x,y,w,h text box |
+| F30-05 | Image crop | Numeric width/height. | M5 | Tested | Crop x,y,w,h text box; `ImageCropRectParser` unit tests |
 | F30-06 | Image crop | Apply crop. | M5 | Tested | Crop → `MagickImageProcessor.CropAsync`; crop round-trip unit tests |
 | F30-07 | Image crop | Undo. | M5 | Tested | Undo / Ctrl+Z via `CaptureCheckpoint`/`RestoreCheckpoint` (crop and other edits) |
 | F30-08 | Image crop | Non-destructive editing internally until save where practical. | M5 | Implemented | Edits mutate in-memory Magick image; disk unchanged until Save |

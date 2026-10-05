@@ -1729,19 +1729,15 @@ public sealed class ImageDocumentView : UserControl
 
     private async Task CropAsync()
     {
-        var parts = (_cropBox.Text ?? string.Empty)
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length != 4
-            || !int.TryParse(parts[0], out var x)
-            || !int.TryParse(parts[1], out var y)
-            || !int.TryParse(parts[2], out var w)
-            || !int.TryParse(parts[3], out var h))
+        if (ImageCropRectParser.TryParse(_cropBox.Text) is not { } rect)
         {
             _status.Text = "Crop needs x,y,w,h integers.";
             return;
         }
 
-        await MutateAsync(() => _processor.CropAsync(_document, new ImageRect(x, y, w, h)), $"Cropped to {w}×{h}.");
+        await MutateAsync(
+            () => _processor.CropAsync(_document, rect),
+            $"Cropped to {rect.Width}×{rect.Height}.");
     }
 
     private void EnterCropMode()
