@@ -13,5 +13,6 @@ public class PdfPasswordPromptUiTests
         PdfPasswordPromptUi.PromptBody("a.pdf").Should().Contain("a.pdf");
         PdfPasswordPromptUi.IncorrectStatus.Should().Contain("Incorrect");
         PdfPasswordPromptUi.CancelledStatus.Should().Contain("cancelled");
+        PdfPasswordPromptUi.MaxAttempts.Should().BeGreaterThan(0);
     }
 }

@@ -12,6 +12,7 @@ public static class PdfPasswordPromptUi
     public const string CancelledStatus = "PDF open cancelled — password required.";
     public const string IncorrectStatus = "Incorrect PDF password.";
     public const string FailedStatus = "Could not open password-protected PDF.";
+    public const int MaxAttempts = 3;
 
     public static string PromptBody(string fileName) =>
         $"Enter the password for “{fileName}”.";

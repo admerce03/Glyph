@@ -1825,7 +1825,7 @@ public sealed partial class MainWindow : Window
             // Fall through to password prompt.
         }
 
-        for (var attempt = 0; attempt < 3; attempt++)
+        for (var attempt = 0; attempt < PdfPasswordPromptUi.MaxAttempts; attempt++)
         {
             var password = await PromptForPdfPasswordAsync(
                 System.IO.Path.GetFileName(path),
