@@ -1,11 +1,12 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-  Publish Glyph as a self-contained MSIX package (Milestone 9 / ADR-006, ADR-012).
+  Build Glyph as a single-project MSIX package (Milestone 9 / ADR-006, ADR-012).
 
 .DESCRIPTION
   Keeps the default solution build unpackaged (WindowsPackageType=None).
-  Passes -p:GlyphPackage=MSIX so the app csproj enables MSIX tooling for this publish only.
+  Passes -p:GlyphPackage=MSIX + GenerateAppxPackageOnBuild so WinUI single-project
+  MSIX tooling emits a .msix (see Microsoft Learn: single-project MSIX).
 
   Unsigned packages are fine for local sideload with developer mode / test certs.
   Production signing and Store submission remain a separate distribution step.
@@ -25,6 +26,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $project = Join-Path $repoRoot 'src' 'Glyph.App' 'Glyph.App.csproj'
+$platform = if ($Runtime -eq 'win-arm64') { 'ARM64' } else { 'x64' }
 
 if ([System.IO.Path]::IsPathRooted($Output)) {
     $outDir = $Output
@@ -35,30 +37,34 @@ else {
 
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
-Write-Host "Publishing Glyph MSIX ($Configuration / $Runtime) → $outDir"
+Write-Host "Building Glyph MSIX ($Configuration / $Runtime / $platform) → $outDir"
 
-dotnet publish $project `
+# Single-project MSIX uses GenerateAppxPackageOnBuild (not plain dotnet publish -o).
+# https://learn.microsoft.com/windows/apps/windows-app-sdk/single-project-msix
+dotnet build $project `
     -c $Configuration `
     -r $Runtime `
-    --self-contained true `
+    -p:Platform=$platform `
     -p:GlyphPackage=MSIX `
     -p:WindowsAppSDKSelfContained=true `
-    -p:PublishReadyToRun=false `
-    -o $outDir
+    -p:GenerateAppxPackageOnBuild=true `
+    -p:AppxPackageSigningEnabled=false `
+    -p:AppxBundle=Never `
+    -p:AppxPackageDir="$outDir\\"
 
 if ($LASTEXITCODE -ne 0) {
-    throw "dotnet publish failed with exit code $LASTEXITCODE"
+    throw "dotnet build (MSIX) failed with exit code $LASTEXITCODE"
 }
 
-$msix = Get-ChildItem -Path $outDir -Filter *.msix -Recurse -ErrorAction SilentlyContinue
-$manifest = Get-ChildItem -Path $outDir -Filter AppxManifest.xml -Recurse -ErrorAction SilentlyContinue
-Write-Host "MSIX publish completed under $outDir"
-if ($msix) {
+$msix = @(Get-ChildItem -Path $outDir -Filter *.msix -Recurse -ErrorAction SilentlyContinue)
+$manifest = @(Get-ChildItem -Path $outDir -Filter AppxManifest.xml -Recurse -ErrorAction SilentlyContinue)
+Write-Host "MSIX build completed under $outDir"
+if ($msix.Count -gt 0) {
     Write-Host ("Found MSIX: " + (($msix | ForEach-Object FullName) -join ', '))
 }
-elseif ($manifest) {
+elseif ($manifest.Count -gt 0) {
     Write-Host ("Found AppxManifest layout: " + (($manifest | ForEach-Object FullName) -join ', '))
 }
 else {
-    Write-Host "Note: no .msix / AppxManifest.xml found yet — inspect $outDir for publish layout."
+    throw "No .msix or AppxManifest.xml under $outDir — single-project MSIX packaging did not emit a package."
 }
