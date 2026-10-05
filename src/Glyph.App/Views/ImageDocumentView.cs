@@ -178,15 +178,6 @@ public sealed class ImageDocumentView : UserControl
         _nextButton.Click += async (_, _) => await NavigateSiblingAsync(1);
         _slideshowButton.Click += (_, _) => ToggleSlideshow();
         KeyDown += ImageDocumentView_KeyDown;
-        Loaded += async (_, _) =>
-        {
-            if (_viewState.IsSlideshowActive)
-            {
-                StartSlideshow(resume: true);
-            }
-
-            await Task.CompletedTask;
-        };
         Unloaded += (_, _) => StopSlideshowTimerOnly();
 
         _cropOverlay.PointerPressed += CropOverlay_PointerPressed;
@@ -263,6 +254,10 @@ public sealed class ImageDocumentView : UserControl
         RefreshSiblingList();
         await RefreshAsync();
         UpdateStatus();
+        if (_viewState.IsSlideshowActive)
+        {
+            StartSlideshow(resume: true);
+        }
     }
 
     private void RefreshSiblingList()
