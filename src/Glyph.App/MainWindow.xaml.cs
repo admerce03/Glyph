@@ -2669,6 +2669,13 @@ public sealed partial class MainWindow : Window
     private async Task ShowPreferencesAsync()
     {
         var settings = _settingsStore.Current;
+        var themeBox = new ComboBox
+        {
+            Header = PreferencesDialogUi.ThemeHeader,
+            Width = 280,
+            ItemsSource = PreferencesDialogUi.ThemeLabels.ToList(),
+            SelectedIndex = PreferencesDialogUi.ThemeIndex(settings.Theme.ToString()),
+        };
         var restoreBox = new CheckBox
         {
             Content = PreferencesDialogUi.RestoreTabs,
@@ -3035,7 +3042,7 @@ public sealed partial class MainWindow : Window
             Spacing = 12,
             Children =
             {
-                restoreBox, autoSaveBox, intervalBox, recentBox, snapshotsBox, snapshotCapBox,
+                themeBox, restoreBox, autoSaveBox, intervalBox, recentBox, snapshotsBox, snapshotCapBox,
                 separateWindowsBox, authorBox, compactToolbarBox, toolbarPanel, shortcutPanel,
                 highlightColorBox, strokeColorBox, stickyColorBox, strokeWidthBox,
                 animationAutoplayBox, stripMetadataBox, layoutBox, defaultZoomBox,
@@ -3082,6 +3089,12 @@ public sealed partial class MainWindow : Window
         }
 
         settings.RestorePreviousSession = restoreBox.IsChecked == true;
+        settings.Theme = PreferencesDialogUi.ThemeSetting(themeBox.SelectedIndex) switch
+        {
+            "Light" => ThemePreference.Light,
+            "Dark" => ThemePreference.Dark,
+            _ => ThemePreference.System,
+        };
         settings.AutoSaveToOriginal = autoSaveBox.IsChecked == true;
         settings.CrashRecoveryIntervalSeconds = (int)Math.Clamp(intervalBox.Value, 0, 3600);
         settings.RecentFileCapacity = (int)Math.Clamp(recentBox.Value, 1, 100);
@@ -3114,6 +3127,7 @@ public sealed partial class MainWindow : Window
         settings.LocalOnlyOcr = true;
         settings.OcrLanguageTag = ocrLanguageBox.Text?.Trim() ?? string.Empty;
         await _settingsStore.SaveAsync(settings);
+        App.CurrentApp.ApplyThemePreference(settings.Theme);
         ApplyShellKeyboardShortcuts();
         ApplyToolbarCustomizationToOpenDocuments(settings);
         ConfigureRecoveryTimer();
