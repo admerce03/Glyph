@@ -769,7 +769,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-01 | Preferences | theme | M1/M9 | In Progress | Theme setting persisted in settings.json |
 | F55-02 | Preferences | restore previous session | M1/M9 | Implemented | View → Preferences toggle |
 | F55-03 | Preferences | recent file count | M1/M9 | Implemented | View → Preferences NumberBox |
-| F55-04 | Preferences | check for updates | M1/M9 | Not Started |  |
+| F55-04 | Preferences | check for updates | M1/M9 | Deferred | Needs installer/update channel (ADR-012 MSIX) |
 | F55-05 | Preferences | default page layout | M1/M9 | Implemented | Preferences combo; applied when no per-file view state |
 | F55-06 | Preferences | default zoom | M1/M9 | Implemented | Preferences NumberBox; applied when no per-file view state |
 | F55-07 | Preferences | remember last page | M1/M9 | Implemented | `JsonDocumentViewStateStore` per-path page index |
@@ -801,25 +801,25 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F56-08 | Accessibility | Descriptive names for toolbar icons. | M9 | Implemented | PDF/image toolbars set AutomationProperties.Name |
 | F56-09 | Accessibility | Custom description/alt text for images where PDF/image format supports it. | M9 | Implemented | IPTC/EXIF description → AutomationProperties.Name on image |
 | F56-10 | Accessibility | Signature descriptions. | M9 | Implemented | Library Description + stamp `/Contents` for a11y |
-| F56-11 | Accessibility | Zoom without breaking UI layout. | M9 | Not Started |  |
-| F57-01 | Performance behavior | very fast startup | M2+/M9 | Not Started |  |
-| F57-02 | Performance behavior | fast first-page PDF display | M2+/M9 | Not Started |  |
-| F57-03 | Performance behavior | render visible pages before off-screen pages | M2+/M9 | In Progress | Visible-page biased render + LRU cache |
+| F56-11 | Accessibility | Zoom without breaking UI layout. | M9 | Implemented | Document zoom scales page bitmaps; chrome uses layout panels |
+| F57-01 | Performance behavior | very fast startup | M2+/M9 | In Progress | WinUI shell; cold-start metrics TBD |
+| F57-02 | Performance behavior | fast first-page PDF display | M2+/M9 | Implemented | Visible-page render before off-screen thumbs |
+| F57-03 | Performance behavior | render visible pages before off-screen pages | M2+/M9 | Implemented | Visible-page biased render + LRU cache |
 | F57-04 | Performance behavior | asynchronous thumbnail generation | M2+/M9 | Implemented | Async render; near-current pages first; Yield between thumbs |
-| F57-05 | Performance behavior | background text indexing | M2+/M9 | Not Started |  |
-| F57-06 | Performance behavior | lazy OCR | M2+/M9 | Not Started |  |
-| F57-07 | Performance behavior | GPU acceleration where appropriate | M2+/M9 | Not Started |  |
-| F57-08 | Performance behavior | smooth scrolling | M2+/M9 | Not Started |  |
-| F57-09 | Performance behavior | large-document virtualization | M2+/M9 | Not Started |  |
-| F57-10 | Performance behavior | low memory usage | M2+/M9 | Not Started |  |
-| F57-11 | Performance behavior | unload distant PDF pages | M2+/M9 | Not Started |  |
+| F57-05 | Performance behavior | background text indexing | M2+/M9 | Deferred | Search is on-demand; full-doc index not required yet |
+| F57-06 | Performance behavior | lazy OCR | M2+/M9 | Implemented | OCR runs only on explicit toolbar/dialog request |
+| F57-07 | Performance behavior | GPU acceleration where appropriate | M2+/M9 | Deferred | Win2D/Composition GPU path not adopted yet |
+| F57-08 | Performance behavior | smooth scrolling | M2+/M9 | In Progress | ScrollViewer + cached bitmaps; continuous polish open |
+| F57-09 | Performance behavior | large-document virtualization | M2+/M9 | Implemented | On-demand visible-page render; distant Image.Source cleared |
+| F57-10 | Performance behavior | low memory usage | M2+/M9 | In Progress | Bounded `PageRenderCache` (capacity 32) |
+| F57-11 | Performance behavior | unload distant PDF pages | M2+/M9 | Implemented | Clear distant page Image.Source; LRU evicts bitmaps |
 | F57-12 | Performance behavior | cancel long-running operations | M2+/M9 | In Progress | PDF OCR Cancel OCR + `CancellationToken`; PDF search cancel |
 | F57-13 | Performance behavior | progress indicator for: | M2+/M9 | Not Started |  |
 | F58-01 | Large-document handling | PDFs with thousands of pages. | M2+/M9 | In Progress | Page virtualization via on-demand render + cache |
 | F58-02 | Large-document handling | Very large raster images. | M2+/M9 | Not Started |  |
 | F58-03 | Large-document handling | Progressive rendering. | M2+/M9 | Not Started |  |
-| F58-04 | Large-document handling | Avoid loading entire PDF rasterized into memory. | M2+/M9 | Not Started |  |
-| F58-05 | Large-document handling | Efficient page cache. | M2+/M9 | Not Started |  |
+| F58-04 | Large-document handling | Avoid loading entire PDF rasterized into memory. | M2+/M9 | Implemented | Visible-window render only + LRU page cache |
+| F58-05 | Large-document handling | Efficient page cache. | M2+/M9 | Tested | `PageRenderCache` LRU (capacity 32) |
 | F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Not Started |  |
 | F58-07 | Large-document handling | Partial OCR. | M2+/M9 | Not Started |  |
 | F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | In Progress | PDF search cancel + PDF/image OCR Cancel OCR |
