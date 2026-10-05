@@ -21,7 +21,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M1 | Application shell and basic file opening | **Implemented** (CI green; interactive screenshot pending) | M0 |
 | M2 | Core PDF viewer | **Implemented** (landed via PR #7 → `33deca2`) | M1 |
 | M3 | Core PDF page manipulation | **Implemented** (CI green; §11 cross-doc DnD screen recording pending) | M2 |
-| M4 | PDF markup and editing | Not Started | M2 (forms/security touch M7) |
+| M4 | PDF markup and editing | **In Progress** | M2 (forms/security touch M7) |
 | M5 | Image viewer/editor | Not Started | M1 (shares shell/DnD with M3) |
 | M6 | OCR and scanned-document capabilities | Not Started | M2, M5 |
 | M7 | Redaction, PDF security, optimization, metadata | Not Started | M2–M4 |
@@ -166,7 +166,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 4 — PDF markup and editing
 
-**Status:** Not Started · Depends on M2
+**Status:** In Progress · Depends on M2
 
 ### Scope (`FEATURES.md` §13–20, §22)
 
@@ -184,6 +184,11 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Flatten produces non-editable visuals
 - Form field tab order works on sample AcroForms
 - Tests for annotation model serialization
+
+### Progress notes
+
+- `IPdfAnnotationService` / `PdfiumAnnotationService`: create/list/remove text markup (Highlight / Underline / StrikeOut) with QuadPoints + color; round-trip save/reopen covered by Pdf.Tests.
+- Viewer: select text → Highlight / Underline / Strike toolbar actions.
 
 ---
 
@@ -305,8 +310,13 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | PDF text interaction | §7 | M2, M6 | Implemented |
 | OCR / Live Text | §8 | M6 | Not Started |
 | User bookmarks | §9 | M2/M4 | Not Started |
+<<<<<<< HEAD
 | PDF page manipulation | §10–12 | M3 | Implemented |
 | PDF annotations/markup | §13–19 | M4 | Not Started |
+=======
+| PDF page manipulation | §10–12 | M3 | In Progress |
+| PDF annotations/markup | §13–19 | M4 | In Progress |
+>>>>>>> 0dee837 (Milestone 4: PDF text markup annotations (highlight/underline/strike))
 | PDF forms | §20 | M4 | Not Started |
 | Redaction | §21 | M7 | Not Started |
 | Flattening | §22 | M4 | Not Started |

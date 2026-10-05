@@ -44,6 +44,12 @@ internal sealed class PdfiumDocument : IPdfDocument
         PagesChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// Raises <see cref="PagesChanged"/> after in-place annotation edits so viewers refresh
+    /// rendered pages without rebuilding the page catalog.
+    /// </summary>
+    internal void NotifyAnnotationsChanged() => PagesChanged?.Invoke(this, EventArgs.Empty);
+
     internal void ReplaceHandle(FpdfDocumentT newHandle)
     {
         ThrowIfDisposed();

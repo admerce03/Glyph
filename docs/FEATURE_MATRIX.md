@@ -224,9 +224,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F12-08 | PDF crop | Undo crop. | M3 | Implemented | Via `PdfPageEditHistory` snapshots |
 | F12-09 | PDF crop | Preserve underlying PDF content if using non-destructive CropBox changes. | M3 | Tested | Sets CropBox only |
 | F12-10 | PDF crop | Optional permanent crop/export function. | M3 | Tested | `PermanentCropPagesAsync` + Export cropped… |
-| F13-01 | PDF annotations | Highlight | M4 | Not Started |  |
-| F13-02 | PDF annotations | Underline | M4 | Not Started |  |
-| F13-03 | PDF annotations | Strikethrough | M4 | Not Started |  |
+| F13-01 | PDF annotations | Highlight | M4 | Tested | `AddTextMarkupAsync(Highlight)` + toolbar |
+| F13-02 | PDF annotations | Underline | M4 | Tested | `AddTextMarkupAsync(Underline)` + toolbar |
+| F13-03 | PDF annotations | Strikethrough | M4 | Tested | `AddTextMarkupAsync(StrikeOut)` + toolbar |
 | F13-04 | PDF annotations | Freehand ink | M4 | Not Started |  |
 | F13-05 | PDF annotations | Lines | M4 | Not Started |  |
 | F13-06 | PDF annotations | Arrows | M4 | Not Started |  |
@@ -246,7 +246,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-20 | PDF annotations | resize | M4 | Not Started |  |
 | F13-21 | PDF annotations | rotate where appropriate | M4 | Not Started |  |
 | F13-22 | PDF annotations | duplicate | M4 | Not Started |  |
-| F13-23 | PDF annotations | delete | M4 | Not Started |  |
+| F13-23 | PDF annotations | delete | M4 | Tested | `RemoveAsync` by page/annot index |
 | F13-24 | PDF annotations | cut | M4 | Not Started |  |
 | F13-25 | PDF annotations | copy | M4 | Not Started |  |
 | F13-26 | PDF annotations | paste | M4 | Not Started |  |
@@ -262,13 +262,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-36 | PDF annotations | change font size | M4 | Not Started |  |
 | F13-37 | PDF annotations | change text color | M4 | Not Started |  |
 | F13-38 | PDF annotations | change text alignment | M4 | Not Started |  |
-| F14-01 | Highlight workflow | Select text and apply highlight. | M4 | Not Started |  |
+| F14-01 | Highlight workflow | Select text and apply highlight. | M4 | Implemented | Selection quads → Highlight toolbar |
 | F14-02 | Highlight workflow | Persistent highlight mode: | M4 | Not Started |  |
-| F14-03 | Highlight workflow | Multiple highlight colors. | M4 | Not Started |  |
+| F14-03 | Highlight workflow | Multiple highlight colors. | M4 | Not Started | Default yellow; API accepts color |
 | F14-04 | Highlight workflow | Change existing highlight color. | M4 | Not Started |  |
-| F14-05 | Highlight workflow | Underline selection. | M4 | Not Started |  |
-| F14-06 | Highlight workflow | Strikethrough selection. | M4 | Not Started |  |
-| F14-07 | Highlight workflow | Remove markup. | M4 | Not Started |  |
+| F14-05 | Highlight workflow | Underline selection. | M4 | Implemented | Underline toolbar |
+| F14-06 | Highlight workflow | Strikethrough selection. | M4 | Implemented | Strike toolbar |
+| F14-07 | Highlight workflow | Remove markup. | M4 | Tested | API remove; UI delete later |
 | F14-08 | Highlight workflow | Annotation sidebar showing all: | M4 | Not Started |  |
 | F14-09 | Highlight workflow | Click annotation in sidebar to jump to it. | M4 | Not Started |  |
 | F15-01 | Notes | Add sticky note. | M4 | Not Started |  |
