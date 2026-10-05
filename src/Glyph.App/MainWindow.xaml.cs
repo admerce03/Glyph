@@ -49,6 +49,7 @@ public sealed partial class MainWindow : Window
     private readonly IPdfOptimizeService _pdfOptimize;
     private readonly ISignatureLibrary _signatures;
     private readonly IFormValueHistory _formValueHistory;
+    private readonly IFormAutofillProfileStore _formProfile;
     private readonly IPdfFormStore _pdfForms;
     private readonly IImageDecoder _imageDecoder;
     private readonly IImageEncoder _imageEncoder;
@@ -76,6 +77,7 @@ public sealed partial class MainWindow : Window
         IPdfOptimizeService pdfOptimize,
         ISignatureLibrary signatures,
         IFormValueHistory formValueHistory,
+        IFormAutofillProfileStore formProfile,
         IPdfFormStore pdfForms,
         IImageDecoder imageDecoder,
         IImageEncoder imageEncoder,
@@ -101,6 +103,7 @@ public sealed partial class MainWindow : Window
         _pdfOptimize = pdfOptimize;
         _signatures = signatures;
         _formValueHistory = formValueHistory;
+        _formProfile = formProfile;
         _pdfForms = pdfForms;
         _imageDecoder = imageDecoder;
         _imageEncoder = imageEncoder;
@@ -637,6 +640,7 @@ public sealed partial class MainWindow : Window
                 _signatures,
                 _pdfForms,
                 _formValueHistory,
+                _formProfile,
                 _pdfFactory,
                 session.ViewState,
                 ownerWindow: this,

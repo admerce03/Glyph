@@ -49,6 +49,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly ISignatureLibrary _signatures;
     private readonly IPdfFormStore _forms;
     private readonly IFormValueHistory _formValueHistory;
+    private readonly IFormAutofillProfileStore _formProfile;
     private readonly IPdfDocumentFactory _documentFactory;
     private readonly IOcrEngine? _ocr;
     private readonly Button _ocrCancelButton;
@@ -210,6 +211,7 @@ public sealed class PdfDocumentView : UserControl
         ISignatureLibrary signatures,
         IPdfFormStore forms,
         IFormValueHistory formValueHistory,
+        IFormAutofillProfileStore formProfile,
         IPdfDocumentFactory documentFactory,
         DocumentViewState? viewState = null,
         Window? ownerWindow = null,
@@ -231,6 +233,7 @@ public sealed class PdfDocumentView : UserControl
         _signatures = signatures;
         _forms = forms;
         _formValueHistory = formValueHistory;
+        _formProfile = formProfile;
         _documentFactory = documentFactory;
         _ocr = ocr;
         _ownerWindow = ownerWindow;
@@ -5812,28 +5815,165 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        var options = new ListView
+        {
+            Height = 180,
+            SelectionMode = ListViewSelectionMode.Single,
+            ItemsSource = new[]
+            {
+                "Overlay — click fields on the page",
+                "List fields — classic picker",
+                "AutoFill from profile",
+                "Edit AutoFill profile",
+            },
+            SelectedIndex = 0,
+        };
         var chooser = new ContentDialog
         {
             Title = "Form fill",
-            Content = "Overlay draws clickable field boxes on the page. List opens the classic field picker.",
-            PrimaryButtonText = "Overlay",
-            SecondaryButtonText = "List fields",
+            Content = options,
+            PrimaryButtonText = "Go",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
 
-        var choice = await chooser.ShowAsync();
-        if (choice == ContentDialogResult.Primary)
+        if (await chooser.ShowAsync() != ContentDialogResult.Primary)
         {
-            await BeginFormOverlayModeAsync();
             return;
         }
 
-        if (choice == ContentDialogResult.Secondary)
+        switch (options.SelectedIndex)
         {
-            await EditFormFieldsAsync();
+            case 0:
+                await BeginFormOverlayModeAsync();
+                break;
+            case 1:
+                await EditFormFieldsAsync();
+                break;
+            case 2:
+                await AutoFillFromProfileAsync();
+                break;
+            case 3:
+                await EditFormAutofillProfileAsync();
+                break;
         }
+    }
+
+    private async Task EditFormAutofillProfileAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for profile dialog.");
+
+        var current = _formProfile.Current;
+        var nameBox = new TextBox { Header = "Name", Text = current.Name, Width = 320 };
+        var addressBox = new TextBox
+        {
+            Header = "Address",
+            Text = current.Address,
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            Height = 72,
+            Width = 320,
+        };
+        var emailBox = new TextBox { Header = "Email", Text = current.Email, Width = 320 };
+        var phoneBox = new TextBox { Header = "Phone", Text = current.Phone, Width = 320 };
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children = { nameBox, addressBox, emailBox, phoneBox },
+        };
+        var dialog = new ContentDialog
+        {
+            Title = "AutoFill profile",
+            Content = panel,
+            PrimaryButtonText = "Save",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            _status.Text = "Profile edit cancelled.";
+            return;
+        }
+
+        var profile = new FormAutofillProfile(
+            nameBox.Text?.Trim() ?? string.Empty,
+            addressBox.Text?.Trim() ?? string.Empty,
+            emailBox.Text?.Trim() ?? string.Empty,
+            phoneBox.Text?.Trim() ?? string.Empty);
+        await _formProfile.SaveAsync(profile);
+        _status.Text = profile.HasAnyValue
+            ? "AutoFill profile saved."
+            : "AutoFill profile cleared.";
+    }
+
+    private async Task AutoFillFromProfileAsync()
+    {
+        var profile = _formProfile.Current;
+        if (!profile.HasAnyValue)
+        {
+            _status.Text = "AutoFill profile is empty — choose Edit AutoFill profile first.";
+            await EditFormAutofillProfileAsync();
+            profile = _formProfile.Current;
+            if (!profile.HasAnyValue)
+            {
+                return;
+            }
+        }
+
+        var fields = await _forms.ListFieldsAsync(_document);
+        var filled = 0;
+        foreach (var field in fields)
+        {
+            if (field.Kind is not (PdfFormFieldKind.TextField
+                or PdfFormFieldKind.ComboBox
+                or PdfFormFieldKind.ListBox))
+            {
+                continue;
+            }
+
+            var value = FormAutofillMatcher.ResolveValue(profile, field.Name);
+            if (value is null)
+            {
+                continue;
+            }
+
+            // Skip fields that already have a non-empty value.
+            if (!string.IsNullOrWhiteSpace(field.Value))
+            {
+                continue;
+            }
+
+            try
+            {
+                await _forms.SetTextValueAsync(_document, field.PageIndex, field.AnnotIndex, value);
+                await _formValueHistory.RememberAsync(field.Name, value);
+                filled++;
+            }
+            catch
+            {
+                // Continue filling other fields.
+            }
+        }
+
+        if (filled > 0)
+        {
+            _cache.ClearDocument(_documentKey);
+            await RenderVisibleAsync();
+            if (_formOverlayMode)
+            {
+                _formOverlayFields = await _forms.ListFieldsAsync(_document);
+                DrawFormOverlays();
+            }
+        }
+
+        _status.Text = filled == 0
+            ? "AutoFill found no empty matching fields."
+            : $"AutoFill updated {filled} field(s).";
     }
 
     private async Task BeginFormOverlayModeAsync()
@@ -6249,6 +6389,7 @@ public sealed class PdfDocumentView : UserControl
                         field.PageIndex,
                         field.AnnotIndex,
                         choice);
+                    await _formValueHistory.RememberAsync(field.Name, choice);
                     _status.Text = $"Updated {field.Name}.";
                     return true;
                 }

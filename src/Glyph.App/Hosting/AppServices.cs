@@ -44,6 +44,8 @@ internal static class AppServices
             new JsonDocumentViewStateStore(GlyphPaths.DocumentViewStateFile));
         services.AddSingleton<ISignatureLibrary>(_ => new FileSignatureLibrary(GlyphPaths.SignaturesDirectory));
         services.AddSingleton<IFormValueHistory>(_ => new JsonFormValueHistory(GlyphPaths.FormValueHistoryFile));
+        services.AddSingleton<IFormAutofillProfileStore>(_ =>
+            new JsonFormAutofillProfileStore(GlyphPaths.FormAutofillProfileFile));
         services.AddSingleton<IPdfDocumentFactory, PdfiumDocumentFactory>();
         services.AddSingleton<IPdfRenderer, PdfiumRenderer>();
         services.AddSingleton<IPdfTextExtractor, PdfiumTextExtractor>();

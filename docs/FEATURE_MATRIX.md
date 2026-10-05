@@ -361,8 +361,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F20-11 | PDF forms | form-filling mode that overlays text fields manually. | M4 | Implemented | Form → Overlay draws clickable field boxes; Tab/Enter/Esc |
 | F20-12 | PDF forms | automatic font sizing | M4 | Not Started |  |
 | F20-13 | PDF forms | remember recently entered values, optionally | M4 | Tested | `IFormValueHistory` JSON store; text edit dialog Recent values list |
-| F20-14 | PDF forms | user-defined profile for: | M4 | Not Started |  |
-| F20-15 | PDF forms | optional AutoFill from that application profile | M4 | Not Started |  |
+| F20-14 | PDF forms | user-defined profile for: | M4 | Tested | Name/Address/Email/Phone via `IFormAutofillProfileStore` |
+| F20-15 | PDF forms | optional AutoFill from that application profile | M4 | Tested | Form → AutoFill matches field names; skips non-empty |
 | F21-01 | Redaction | Mark text for redaction. | M7 | Implemented | Context menu / Redact → Mark selection → `MarkTextRegion` |
 | F21-02 | Redaction | Mark rectangular areas for redaction. | M7 | Implemented | Redact draw mode + region mark → `MarkRectangle` |
 | F21-03 | Redaction | Preview pending redactions. | M7 | Implemented | Pending marks drawn on dedicated overlay canvas |

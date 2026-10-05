@@ -22,5 +22,7 @@ public static class GlyphPaths
 
     public static string FormValueHistoryFile => System.IO.Path.Combine(LocalAppDataRoot, "form-values.json");
 
+    public static string FormAutofillProfileFile => System.IO.Path.Combine(LocalAppDataRoot, "form-profile.json");
+
     public static string TempDirectory => System.IO.Path.Combine(System.IO.Path.GetTempPath(), "Glyph");
 }
