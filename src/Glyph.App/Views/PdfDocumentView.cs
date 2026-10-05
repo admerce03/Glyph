@@ -851,7 +851,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(textBox, "Add a FreeText text box on the current page");
         ToolTipService.SetToolTip(callout, "Draw a callout: drag from tip to text box");
         ToolTipService.SetToolTip(flatten, "Flatten annotations into page content (permanent)");
-        ToolTipService.SetToolTip(redact, "Mark areas/text for redaction; apply permanently removes content");
+        ToolTipService.SetToolTip(redact, PdfRedactionUiCopy.ToolbarTooltip);
         ToolTipService.SetToolTip(info, "Document metadata, encryption, and permissions");
         ToolTipService.SetToolTip(optimize, "Downsample images / shrink PDF (presets)");
         ToolTipService.SetToolTip(export, "Export selected/current page(s) as PNG, JPEG, WebP, TIFF, BMP, GIF, AVIF, or JPEG 2000");
@@ -2056,7 +2056,7 @@ public sealed class PdfDocumentView : UserControl
         {
             ClearRedactionMode();
             RefreshToolButtonChrome();
-            _status.Text = "Redact mode off.";
+            _status.Text = PdfRedactionUiCopy.ModeOff;
             e.Handled = true;
             return;
         }
@@ -2800,7 +2800,7 @@ public sealed class PdfDocumentView : UserControl
             findItem.Click += async (_, _) => await SearchSelectedTextAsync();
             var webItem = new MenuFlyoutItem { Text = PdfTextInteractionUi.SearchWeb };
             webItem.Click += async (_, _) => await SearchWebAsync(_selectedText);
-            var redactTextItem = new MenuFlyoutItem { Text = "Mark for redaction" };
+            var redactTextItem = new MenuFlyoutItem { Text = PdfRedactionUiCopy.MarkForRedactionMenu };
             redactTextItem.Click += (_, _) => MarkSelectionForRedaction();
             flyout.Items.Add(copyItem);
             flyout.Items.Add(highlightItem);
@@ -2841,7 +2841,7 @@ public sealed class PdfDocumentView : UserControl
 
             var imageItem = new MenuFlyoutItem { Text = PdfTextInteractionUi.CopyRegionAsImage };
             imageItem.Click += async (_, _) => await CopyRegionAsBitmapAsync();
-            var redactRegionItem = new MenuFlyoutItem { Text = "Mark region for redaction" };
+            var redactRegionItem = new MenuFlyoutItem { Text = PdfRedactionUiCopy.MarkRegionForRedactionMenu };
             redactRegionItem.Click += (_, _) => MarkRegionForRedaction();
             flyout.Items.Add(imageItem);
             flyout.Items.Add(redactRegionItem);
@@ -8556,44 +8556,42 @@ public sealed class PdfDocumentView : UserControl
         {
             ClearRedactionMode();
             RefreshToolButtonChrome();
-            _status.Text = pending.Count == 0
-                ? "Redact mode off."
-                : $"Redact mode off — {pending.Count} pending mark(s). Use Redact → Apply when ready.";
+            _status.Text = PdfRedactionUiCopy.ModeOffWithPending(pending.Count);
             return;
         }
 
         var dialog = new ContentDialog
         {
-            Title = "Redaction",
+            Title = PdfRedactionUiCopy.DialogTitle,
             Content = pending.Count == 0
-                ? "Mark areas to remove permanently. Drag rectangles in draw mode, or mark the current selection/region."
+                ? PdfRedactionUiCopy.EmptyIntro
                 : PdfRedactionUiCopy.FormatPendingStatus(pending.Count),
             XamlRoot = window.Content.XamlRoot,
         };
 
         if (pending.Count > 0)
         {
-            dialog.PrimaryButtonText = "Apply…";
-            dialog.SecondaryButtonText = "Draw marks";
+            dialog.PrimaryButtonText = PdfRedactionUiCopy.ApplyButton;
+            dialog.SecondaryButtonText = PdfRedactionUiCopy.DrawMarksButton;
             dialog.CloseButtonText = "Cancel";
             dialog.DefaultButton = ContentDialogButton.Close;
         }
         else
         {
-            dialog.PrimaryButtonText = "Draw marks";
+            dialog.PrimaryButtonText = PdfRedactionUiCopy.DrawMarksButton;
             dialog.CloseButtonText = "Cancel";
             dialog.DefaultButton = ContentDialogButton.Primary;
             if (hasFindMatches)
             {
-                dialog.SecondaryButtonText = $"Mark find matches ({_hits.Count})";
+                dialog.SecondaryButtonText = PdfRedactionUiCopy.MarkFindMatchesButton(_hits.Count);
             }
             else if (hasSelection)
             {
-                dialog.SecondaryButtonText = "Mark selection";
+                dialog.SecondaryButtonText = PdfRedactionUiCopy.MarkSelectionButton;
             }
             else if (hasRegion)
             {
-                dialog.SecondaryButtonText = "Mark region";
+                dialog.SecondaryButtonText = PdfRedactionUiCopy.MarkRegionButton;
             }
         }
 
@@ -8612,7 +8610,7 @@ public sealed class PdfDocumentView : UserControl
                 return;
             }
 
-            _status.Text = "Redaction cancelled.";
+            _status.Text = PdfRedactionUiCopy.CancelledStatus;
             return;
         }
 
@@ -8665,7 +8663,7 @@ public sealed class PdfDocumentView : UserControl
 
         _redactionMode = true;
         RefreshToolButtonChrome();
-        _status.Text = "Redact mode — drag a rectangle to mark. Esc to exit.";
+        _status.Text = PdfRedactionUiCopy.ModeEnter;
     }
 
     private void ClearRedactionMode()
@@ -8746,7 +8744,7 @@ public sealed class PdfDocumentView : UserControl
         var height = Math.Abs(end.Y - start.Y);
         if (width < 4 || height < 4)
         {
-            _status.Text = "Redaction mark too small.";
+            _status.Text = PdfRedactionUiCopy.MarkTooSmallStatus;
             return;
         }
 
@@ -8764,11 +8762,11 @@ public sealed class PdfDocumentView : UserControl
             _redaction.MarkRectangle(_document, pageIndex, bounds);
             RefreshPendingRedactionOverlay(pageIndex);
             var count = _redaction.GetPending(_document).Count;
-            _status.Text = $"Marked redaction ({count} pending). Redact → Apply when ready.";
+            _status.Text = PdfRedactionUiCopy.FormatMarkedStatus(count);
         }
         catch (Exception ex)
         {
-            _status.Text = "Mark failed: " + ex.Message;
+            _status.Text = PdfRedactionUiCopy.FormatMarkFailed(ex.Message);
         }
     }
 
@@ -8790,7 +8788,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (_selectionPageIndex < 0 || _selectionQuads.Count == 0 || string.IsNullOrWhiteSpace(_selectedText))
         {
-            _status.Text = "Select text to mark for redaction.";
+            _status.Text = PdfRedactionUiCopy.SelectTextPrompt;
             return;
         }
 
@@ -8812,11 +8810,11 @@ public sealed class PdfDocumentView : UserControl
             _redaction.MarkTextRegion(_document, _selectionPageIndex, union, TrimForStatus(_selectedText));
             RefreshPendingRedactionOverlay(_selectionPageIndex);
             var count = _redaction.GetPending(_document).Count;
-            _status.Text = $"Marked text for redaction ({count} pending).";
+            _status.Text = PdfRedactionUiCopy.FormatMarkedTextStatus(count);
         }
         catch (Exception ex)
         {
-            _status.Text = "Mark failed: " + ex.Message;
+            _status.Text = PdfRedactionUiCopy.FormatMarkFailed(ex.Message);
         }
     }
 
@@ -8827,7 +8825,7 @@ public sealed class PdfDocumentView : UserControl
                 _regionCopyDisplayRect.Width,
                 _regionCopyDisplayRect.Height))
         {
-            _status.Text = "Drag a region first.";
+            _status.Text = PdfRedactionUiCopy.DragRegionPrompt;
             return;
         }
 
@@ -8844,11 +8842,11 @@ public sealed class PdfDocumentView : UserControl
             _redaction.MarkRectangle(_document, _regionCopyPageIndex, bounds);
             RefreshPendingRedactionOverlay(_regionCopyPageIndex);
             var count = _redaction.GetPending(_document).Count;
-            _status.Text = $"Marked region for redaction ({count} pending).";
+            _status.Text = PdfRedactionUiCopy.FormatMarkedRegionStatus(count);
         }
         catch (Exception ex)
         {
-            _status.Text = "Mark failed: " + ex.Message;
+            _status.Text = PdfRedactionUiCopy.FormatMarkFailed(ex.Message);
         }
     }
 
@@ -8866,9 +8864,7 @@ public sealed class PdfDocumentView : UserControl
 
         RefreshAllPendingRedactionOverlays();
         var remaining = _redaction.GetPending(_document).Count;
-        _status.Text = remaining == 0
-            ? "Removed redaction mark."
-            : $"Removed redaction mark ({remaining} pending).";
+        _status.Text = PdfRedactionUiCopy.FormatRemovedStatus(remaining);
         e.Handled = true;
     }
 
@@ -8911,7 +8907,7 @@ public sealed class PdfDocumentView : UserControl
                 StrokeThickness = 1.5,
                 Tag = mark.Id,
             };
-            ToolTipService.SetToolTip(rect, "Click to remove pending redaction");
+            ToolTipService.SetToolTip(rect, PdfRedactionUiCopy.PendingOverlayTooltip);
             rect.PointerPressed += PendingRedactionRect_PointerPressed;
             Canvas.SetLeft(rect, mapped.Left);
             Canvas.SetTop(rect, mapped.Top);
@@ -8996,7 +8992,7 @@ public sealed class PdfDocumentView : UserControl
         {
             _redaction.ClearPending(_document);
             RefreshAllPendingRedactionOverlays();
-            _status.Text = "Cleared pending redactions.";
+            _status.Text = PdfRedactionUiCopy.ClearedPendingStatus;
             return;
         }
 
@@ -9008,7 +9004,7 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
-            _status.Text = "Applying redactions…";
+            _status.Text = PdfRedactionUiCopy.ApplyingStatus;
             var result = await _redaction.ApplyAsync(
                 _document,
                 new PdfRedactionApplyOptions(
@@ -9028,21 +9024,23 @@ public sealed class PdfDocumentView : UserControl
             RefreshAllPendingRedactionOverlays();
             if (result.MarksApplied == 0)
             {
-                _status.Text = "Nothing to apply.";
+                _status.Text = PdfRedactionUiCopy.NothingToApplyStatus;
             }
             else
             {
-                _status.Text =
-                    $"Applied {result.MarksApplied} redaction(s) on {result.PagesChanged} page(s); "
-                    + $"removed {result.TextObjectsRemoved} text / {result.ImageObjectsRemoved} image / "
-                    + $"{result.AnnotationsRemoved} annotation / {result.AttachmentsRemoved} attachment object(s)"
-                    + (result.MetadataCleared ? "; metadata cleared" : "")
-                    + ".";
+                _status.Text = PdfRedactionUiCopy.FormatAppliedStatus(
+                    result.MarksApplied,
+                    result.PagesChanged,
+                    result.TextObjectsRemoved,
+                    result.ImageObjectsRemoved,
+                    result.AnnotationsRemoved,
+                    result.AttachmentsRemoved,
+                    result.MetadataCleared);
             }
         }
         catch (Exception ex)
         {
-            _status.Text = "Apply failed: " + ex.Message;
+            _status.Text = PdfRedactionUiCopy.FormatApplyFailed(ex.Message);
         }
     }
 
@@ -11033,9 +11031,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 RefreshPendingRedactionOverlay(removed.PageIndex);
                 var remaining = _redaction.GetPending(_document).Count;
-                _status.Text = remaining == 0
-                    ? "Undid pending redaction mark."
-                    : $"Undid pending redaction ({remaining} remaining).";
+                _status.Text = PdfRedactionUiCopy.FormatUndidStatus(remaining);
                 return;
             }
         }
