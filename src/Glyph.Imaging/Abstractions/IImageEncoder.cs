@@ -53,4 +53,15 @@ public sealed record ImageEncodeOptions(
     /// <summary>When false, strip alpha before writing (JPEG always strips).</summary>
     bool PreserveAlpha = true,
     /// <summary>When false, strip EXIF/IPTC/XMP and other profiles before writing.</summary>
-    bool PreserveMetadata = true);
+    bool PreserveMetadata = true,
+    /// <summary>TIFF compression when format is TIFF.</summary>
+    ImageTiffCompression? TiffCompression = null);
+
+public enum ImageTiffCompression
+{
+    Default = 0,
+    None = 1,
+    Lzw = 2,
+    Zip = 3,
+    Jpeg = 4,
+}

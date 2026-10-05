@@ -153,6 +153,18 @@ public sealed class MagickImageEncoder : IImageEncoder
             image.Settings.SetDefine(MagickFormat.WebP, "lossless", true);
         }
 
+        if (format == ImageEncodeFormat.Tiff && options.TiffCompression is { } tiffCompression)
+        {
+            image.Settings.Compression = tiffCompression switch
+            {
+                ImageTiffCompression.None => CompressionMethod.NoCompression,
+                ImageTiffCompression.Lzw => CompressionMethod.LZW,
+                ImageTiffCompression.Zip => CompressionMethod.Zip,
+                ImageTiffCompression.Jpeg => CompressionMethod.JPEG,
+                _ => image.Settings.Compression,
+            };
+        }
+
         if (options.EmbedSrgbProfile)
         {
             // ImageMagick drops the standard sRGB ICC from PNG unless preserve-iCCP is set.

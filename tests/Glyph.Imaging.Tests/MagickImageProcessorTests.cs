@@ -405,6 +405,37 @@ public class MagickImageProcessorTests
         }
     }
 
+    [Fact]
+    public async Task SaveAs_tiff_with_lzw_compression_writes_file()
+    {
+        var path = CreateSolidPng(32, 24);
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-tiff-" + Guid.NewGuid().ToString("N") + ".tif");
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var encoder = new MagickImageEncoder();
+            await using var document = await decoder.OpenAsync(path);
+            await encoder.SaveAsAsync(
+                document,
+                outPath,
+                ImageEncodeFormat.Tiff,
+                new ImageEncodeOptions(TiffCompression: ImageTiffCompression.Lzw));
+            File.Exists(outPath).Should().BeTrue();
+            new FileInfo(outPath).Length.Should().BeGreaterThan(0);
+            await using var reopened = await decoder.OpenAsync(outPath);
+            reopened.PixelWidth.Should().Be(32);
+            reopened.PixelHeight.Should().Be(24);
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
     [Theory]
     [InlineData(ImageEncodeFormat.Jpeg, ".jpg")]
     [InlineData(ImageEncodeFormat.Webp, ".webp")]

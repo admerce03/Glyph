@@ -551,10 +551,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F35-11 | Image format conversion | JPEG quality | M5 | Tested | ImageEncodeOptions.Quality + →JPEG dialog |
 | F35-12 | Image format conversion | WebP quality/lossless | M5 | Tested | Convert dialog Quality / Lossless WebP |
 | F35-13 | Image format conversion | AVIF quality | M5 | Tested | Convert dialog Quality slider for AVIF |
-| F35-14 | Image format conversion | TIFF compression | M5 | Not Started |  |
+| F35-14 | Image format conversion | TIFF compression | M5 | Tested | Convert → TIFF compression None/LZW/ZIP/JPEG |
 | F35-15 | Image format conversion | preserve/remove alpha | M5 | Tested | Convert dialog Preserve alpha → `ImageEncodeOptions.PreserveAlpha` |
 | F35-16 | Image format conversion | preserve/remove metadata | M5 | Tested | Convert dialog Preserve metadata → Strip when false |
-| F35-17 | Image format conversion | color profile handling | M5 | Not Started |  |
+| F35-17 | Image format conversion | color profile handling | M5 | Implemented | Convert → Embed sRGB ICC (`EmbedSrgbProfile`) |
 | F36-01 | Batch image operations | resize | M8 | Not Started |  |
 | F36-02 | Batch image operations | rotate | M8 | Not Started |  |
 | F36-03 | Batch image operations | flip | M8 | Not Started |  |
@@ -605,11 +605,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F39-09 | Color management | Rendering intent selection: | M8 | Not Started |  |
 | F40-01 | Clipboard integration | PDF text → text | M1/M5 | Not Started |  |
 | F40-02 | Clipboard integration | PDF region → bitmap | M1/M5 | Not Started |  |
-| F40-03 | Clipboard integration | image selection → image | M1/M5 | Not Started |  |
-| F40-04 | Clipboard integration | whole image → image | M1/M5 | Not Started |  |
+| F40-03 | Clipboard integration | image selection → image | M1/M5 | Implemented | Copy sel / Ctrl+C with selection → clipboard PNG |
+| F40-04 | Clipboard integration | whole image → image | M1/M5 | Implemented | Copy toolbar / Ctrl+C without selection → clipboard PNG |
 | F40-05 | Clipboard integration | recognized OCR text → text | M1/M5 | Not Started |  |
 | F40-06 | Clipboard integration | annotation where possible | M1/M5 | Not Started |  |
-| F40-07 | Clipboard integration | image from clipboard into image document | M1/M5 | Not Started |  |
+| F40-07 | Clipboard integration | image from clipboard into image document | M1/M5 | Implemented | Paste / Ctrl+V → system bitmap or selection clipboard via `PasteFileAsync` |
 | F40-08 | Clipboard integration | image clipboard → create new image | M1/M5 | In Progress | New from Clipboard creates image document |
 | F40-09 | Clipboard integration | text into annotation/text field | M1/M5 | Not Started |  |
 | F40-10 | Clipboard integration | file paths where appropriate | M1/M5 | Not Started |  |

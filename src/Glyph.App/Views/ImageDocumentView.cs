@@ -232,6 +232,8 @@ public sealed class ImageDocumentView : UserControl
         var exportPng = new Button { Content = "→PNG" };
         var exportJpeg = new Button { Content = "→JPEG" };
         var convert = new Button { Content = "Convert" };
+        var copyImage = new Button { Content = "Copy" };
+        var pasteImage = new Button { Content = "Paste" };
         _prevButton = new Button { Content = "◀", Width = 36 };
         _nextButton = new Button { Content = "▶", Width = 36 };
         _slideshowButton = new Button { Content = "Slideshow" };
@@ -251,7 +253,9 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(fullscreen, "Toggle window fullscreen");
         ToolTipService.SetToolTip(exportPng, "Export as PNG");
         ToolTipService.SetToolTip(exportJpeg, "Export as JPEG");
-        ToolTipService.SetToolTip(convert, "Export as WebP, TIFF, BMP, or GIF");
+        ToolTipService.SetToolTip(convert, "Export as WebP, TIFF, BMP, GIF, AVIF, JP2, or HEIC");
+        ToolTipService.SetToolTip(copyImage, "Copy whole image to clipboard (Ctrl+C; selection copies when active)");
+        ToolTipService.SetToolTip(pasteImage, "Paste image from clipboard (Ctrl+V)");
         ToolTipService.SetToolTip(_prevButton, "Previous image in folder");
         ToolTipService.SetToolTip(_nextButton, "Next image in folder");
         ToolTipService.SetToolTip(_slideshowButton, "Play/stop folder slideshow (3s, loops; Esc stops)");
@@ -298,6 +302,8 @@ public sealed class ImageDocumentView : UserControl
         exportPng.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Png, ".png");
         exportJpeg.Click += async (_, _) => await ExportJpegAsync();
         convert.Click += async (_, _) => await ConvertAsync();
+        copyImage.Click += async (_, _) => await CopyImageAsync();
+        pasteImage.Click += async (_, _) => await PasteImageAsync();
         _prevButton.Click += async (_, _) => await NavigateSiblingAsync(-1);
         _nextButton.Click += async (_, _) => await NavigateSiblingAsync(1);
         _slideshowButton.Click += (_, _) => ToggleSlideshow();
@@ -334,7 +340,7 @@ public sealed class ImageDocumentView : UserControl
                 _cropBox, crop, _interactiveCropButton, _cropAspectBox, _applyCropButton, _cancelCropButton,
                 _selectButton, _selectionKindBox, _selectAllButton, _deselectButton, _copySelButton, _cutSelButton, _pasteSelButton, _deleteSelButton, _cropSelButton,
                 _drawButton, _flattenMarkupButton,
-                resize, adjust, stamp, meta, ocrButton, save, exportPng, exportJpeg, convert, _status,
+                resize, adjust, stamp, meta, ocrButton, copyImage, pasteImage, save, exportPng, exportJpeg, convert, _status,
             },
         };
 
@@ -670,9 +676,9 @@ public sealed class ImageDocumentView : UserControl
             return;
         }
 
-        if (ctrl && e.Key == Windows.System.VirtualKey.C && _pixelSelection is not null)
+        if (ctrl && e.Key == Windows.System.VirtualKey.C)
         {
-            _ = CopySelectionAsync();
+            _ = CopyImageAsync();
             e.Handled = true;
             return;
         }
@@ -686,7 +692,7 @@ public sealed class ImageDocumentView : UserControl
 
         if (ctrl && e.Key == Windows.System.VirtualKey.V)
         {
-            _ = PasteSelectionAsync();
+            _ = PasteImageAsync();
             e.Handled = true;
             return;
         }
@@ -733,6 +739,93 @@ public sealed class ImageDocumentView : UserControl
             () => _processor.MoveRectAsync(_document, sel, destX, destY, _selectionKind),
             $"Moved selection to ({destX},{destY}).");
         SetPixelSelection(new ImageRect(destX, destY, sel.Width, sel.Height));
+    }
+
+    private async Task CopyImageAsync()
+    {
+        if (_pixelSelection is { } sel && sel.Width >= 1 && sel.Height >= 1)
+        {
+            await CopySelectionAsync();
+            return;
+        }
+
+        try
+        {
+            var full = new ImageRect(0, 0, _document.PixelWidth, _document.PixelHeight);
+            var buffer = await _processor.ExtractRectAsync(_document, full);
+            _selectionClipboard = buffer;
+            var temp = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
+                "glyph-img-" + Guid.NewGuid().ToString("N") + ".png");
+            try
+            {
+                await _encoder.WriteBgraAsync(
+                    buffer.BgraPixels,
+                    buffer.Width,
+                    buffer.Height,
+                    temp,
+                    ImageEncodeFormat.Png);
+                var file = await Windows.Storage.StorageFile.GetFileFromPathAsync(temp);
+                var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                package.SetBitmap(Windows.Storage.Streams.RandomAccessStreamReference.CreateFromFile(file));
+                Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+                _status.Text = $"Copied image {buffer.Width}×{buffer.Height}.";
+            }
+            finally
+            {
+                try { System.IO.File.Delete(temp); } catch { /* ignore */ }
+            }
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Copy image failed: " + ex.Message;
+        }
+    }
+
+    private async Task PasteImageAsync()
+    {
+        try
+        {
+            var content = Windows.ApplicationModel.DataTransfer.Clipboard.GetContent();
+            if (content.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.Bitmap))
+            {
+                var streamRef = await content.GetBitmapAsync();
+                using var stream = await streamRef.OpenReadAsync();
+                var temp = System.IO.Path.Combine(
+                    System.IO.Path.GetTempPath(),
+                    "glyph-paste-" + Guid.NewGuid().ToString("N") + ".bmp");
+                try
+                {
+                    await using (var file = System.IO.File.Create(temp))
+                    {
+                        var input = stream.AsStreamForRead();
+                        await input.CopyToAsync(file);
+                    }
+
+                    var destX = _pixelSelection?.X ?? 0;
+                    var destY = _pixelSelection?.Y ?? 0;
+                    await MutateAsync(
+                        () => _processor.PasteFileAsync(_document, temp, destX, destY),
+                        $"Pasted clipboard image at ({destX},{destY}).");
+                    return;
+                }
+                finally
+                {
+                    try { System.IO.File.Delete(temp); } catch { /* ignore */ }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Fall through to internal selection clipboard.
+            if (_selectionClipboard is null)
+            {
+                _status.Text = "Paste failed: " + ex.Message;
+                return;
+            }
+        }
+
+        await PasteSelectionAsync();
     }
 
     private async Task CopySelectionAsync()
@@ -1896,26 +1989,39 @@ public sealed class ImageDocumentView : UserControl
         var lossless = new CheckBox { Content = "Lossless WebP", IsChecked = false };
         var preserveAlpha = new CheckBox { Content = "Preserve alpha", IsChecked = true };
         var preserveMeta = new CheckBox { Content = "Preserve metadata (EXIF/IPTC/XMP)", IsChecked = true };
+        var embedSrgb = new CheckBox { Content = "Embed sRGB ICC profile", IsChecked = false };
+        var tiffCompression = new ComboBox
+        {
+            Header = "TIFF compression",
+            Width = 200,
+            Visibility = Visibility.Collapsed,
+            ItemsSource = new[] { "Default", "None", "LZW", "ZIP", "JPEG" },
+            SelectedIndex = 0,
+        };
         void SyncWebpOptions()
         {
             var selected = formatBox.SelectedItem as string;
             var isWebp = selected == "WebP";
-            var needsQuality = selected is "WebP" or "AVIF" or "HEIC";
+            var isTiff = selected == "TIFF";
+            var needsQuality = selected is "WebP" or "AVIF" or "HEIC"
+                || (isTiff && tiffCompression.SelectedIndex == 4);
             quality.Visibility = needsQuality && !(isWebp && lossless.IsChecked == true)
                 ? Visibility.Visible
                 : Visibility.Collapsed;
             lossless.Visibility = isWebp ? Visibility.Visible : Visibility.Collapsed;
+            tiffCompression.Visibility = isTiff ? Visibility.Visible : Visibility.Collapsed;
         }
 
         formatBox.SelectionChanged += (_, _) => SyncWebpOptions();
         lossless.Checked += (_, _) => SyncWebpOptions();
         lossless.Unchecked += (_, _) => SyncWebpOptions();
+        tiffCompression.SelectionChanged += (_, _) => SyncWebpOptions();
         SyncWebpOptions();
 
         var panel = new StackPanel
         {
             Spacing = 8,
-            Children = { formatBox, lossless, quality, preserveAlpha, preserveMeta },
+            Children = { formatBox, lossless, tiffCompression, quality, preserveAlpha, preserveMeta, embedSrgb },
         };
         var dialog = new ContentDialog
         {
@@ -1947,22 +2053,46 @@ public sealed class ImageDocumentView : UserControl
         ImageEncodeOptions? options = null;
         var keepAlpha = preserveAlpha.IsChecked != false;
         var keepMeta = preserveMeta.IsChecked != false;
+        var embedProfile = embedSrgb.IsChecked == true;
+        ImageTiffCompression? tiffComp = format == ImageEncodeFormat.Tiff
+            ? tiffCompression.SelectedIndex switch
+            {
+                1 => ImageTiffCompression.None,
+                2 => ImageTiffCompression.Lzw,
+                3 => ImageTiffCompression.Zip,
+                4 => ImageTiffCompression.Jpeg,
+                _ => ImageTiffCompression.Default,
+            }
+            : null;
         if (format == ImageEncodeFormat.Webp)
         {
             options = lossless.IsChecked == true
-                ? new ImageEncodeOptions(Lossless: true, PreserveAlpha: keepAlpha, PreserveMetadata: keepMeta)
-                : new ImageEncodeOptions(Quality: (int)quality.Value, PreserveAlpha: keepAlpha, PreserveMetadata: keepMeta);
+                ? new ImageEncodeOptions(Lossless: true, PreserveAlpha: keepAlpha, PreserveMetadata: keepMeta, EmbedSrgbProfile: embedProfile)
+                : new ImageEncodeOptions(Quality: (int)quality.Value, PreserveAlpha: keepAlpha, PreserveMetadata: keepMeta, EmbedSrgbProfile: embedProfile);
         }
         else if (format is ImageEncodeFormat.Avif or ImageEncodeFormat.Heic)
         {
             options = new ImageEncodeOptions(
                 Quality: (int)quality.Value,
                 PreserveAlpha: keepAlpha,
-                PreserveMetadata: keepMeta);
+                PreserveMetadata: keepMeta,
+                EmbedSrgbProfile: embedProfile);
+        }
+        else if (format == ImageEncodeFormat.Tiff)
+        {
+            options = new ImageEncodeOptions(
+                Quality: tiffComp == ImageTiffCompression.Jpeg ? (int)quality.Value : null,
+                PreserveAlpha: keepAlpha,
+                PreserveMetadata: keepMeta,
+                EmbedSrgbProfile: embedProfile,
+                TiffCompression: tiffComp);
         }
         else
         {
-            options = new ImageEncodeOptions(PreserveAlpha: keepAlpha, PreserveMetadata: keepMeta);
+            options = new ImageEncodeOptions(
+                PreserveAlpha: keepAlpha,
+                PreserveMetadata: keepMeta,
+                EmbedSrgbProfile: embedProfile);
         }
 
         await ExportAsync(format, extension, options);
