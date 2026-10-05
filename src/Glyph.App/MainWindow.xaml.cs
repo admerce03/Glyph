@@ -793,17 +793,17 @@ public sealed partial class MainWindow : Window
                     // ignore
                 }
 
-                StatusText.Text = "Camera capture discarded.";
+                StatusText.Text = WebcamCaptureUi.CaptureDiscarded;
                 return;
             }
 
             await OpenPathAsync(file.Path);
-            StatusText.Text = $"Opened camera capture: {file.Name}";
+            StatusText.Text = WebcamCaptureUi.FormatOpenedCapture(file.Name);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Camera capture failed");
-            StatusText.Text = "Camera capture failed: " + ex.Message;
+            StatusText.Text = WebcamCaptureUi.FormatCaptureFailed(ex.Message);
         }
     }
 
@@ -811,11 +811,11 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            StatusText.Text = "Looking for scanners…";
+            StatusText.Text = ScanDialogUi.LookingForScanners;
             var devices = await ScannerCaptureHelper.DiscoverAsync();
             if (devices.Count == 0)
             {
-                StatusText.Text = "No scanners found.";
+                StatusText.Text = ScanDialogUi.NoScannersFound;
                 var none = new ContentDialog
                 {
                     Title = "No scanners",
@@ -971,7 +971,7 @@ public sealed partial class MainWindow : Window
                 _ => (Windows.Graphics.Printing.PrintMediaSize.Default, false),
             };
 
-            StatusText.Text = $"Scanning with {device.Name}…";
+            StatusText.Text = ScanDialogUi.FormatScanningWith(device.Name);
             var files = await ScannerCaptureHelper.ScanToFolderAsync(
                 device.Id,
                 sessionFolder,
@@ -990,14 +990,14 @@ public sealed partial class MainWindow : Window
 
             if (files.Count == 0)
             {
-                StatusText.Text = "Scan produced no files.";
+                StatusText.Text = ScanDialogUi.ProducedNoFiles;
                 return;
             }
 
             var paths = files.Select(f => f.Path).ToList();
             if (straighten.IsChecked == true)
             {
-                StatusText.Text = $"Straightening {paths.Count} scan(s)…";
+                StatusText.Text = ScanDialogUi.FormatStraightening(paths.Count);
                 foreach (var path in paths)
                 {
                     try
@@ -1020,7 +1020,7 @@ public sealed partial class MainWindow : Window
                         await OpenPathAsync(path);
                     }
 
-                    StatusText.Text = $"Opened {paths.Count} scanned image(s).";
+                    StatusText.Text = ScanDialogUi.FormatOpenedImages(paths.Count);
                     break;
                 case 2:
                     await InsertScansIntoActivePdfAsync(paths);
@@ -1031,14 +1031,14 @@ public sealed partial class MainWindow : Window
                         CaptureFileName.ScanPdf(DateTime.Now));
                     await _imageEncoder.WriteImagesAsPdfAsync(paths, pdfPath);
                     await OpenPathAsync(pdfPath);
-                    StatusText.Text = $"Created PDF from {paths.Count} scan(s).";
+                    StatusText.Text = ScanDialogUi.FormatCreatedPdf(paths.Count);
                     break;
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Scan failed");
-            StatusText.Text = "Scan failed: " + ex.Message;
+            StatusText.Text = ScanDialogUi.FormatFailed(ex.Message);
         }
     }
 
@@ -1047,13 +1047,13 @@ public sealed partial class MainWindow : Window
         var active = _workspace.ActiveDocument;
         if (active is null || active.Kind != DocumentKind.Pdf)
         {
-            StatusText.Text = "Open a PDF first to insert scanned pages.";
+            StatusText.Text = ScanDialogUi.OpenPdfFirstToInsert;
             return;
         }
 
         if (!_openEngines.TryGetValue(active.Id, out var engine) || engine is not IPdfDocument pdf)
         {
-            StatusText.Text = "PDF engine unavailable for insert.";
+            StatusText.Text = ScanDialogUi.PdfEngineUnavailable;
             return;
         }
 
@@ -1068,7 +1068,7 @@ public sealed partial class MainWindow : Window
             Enumerable.Range(0, scanDoc.PageCount).ToList(),
             pdf.PageCount);
         active.MarkDirty();
-        StatusText.Text = $"Inserted {imagePaths.Count} scanned page(s) into PDF.";
+        StatusText.Text = ScanDialogUi.FormatInsertedPages(imagePaths.Count);
     }
 
     private void ShareActiveDocument()

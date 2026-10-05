@@ -13,6 +13,10 @@ public class ScanDialogUiExtendedTests
         ScanDialogUi.AutoCropLabels.Should().Contain("Single region");
         ScanDialogUi.DuplexLabel.Should().Contain("Duplex");
         ScanDialogUi.DestinationLabels.Should().Contain("Insert into current PDF");
+        ScanDialogUi.LookingForScanners.Should().Contain("Looking");
+        ScanDialogUi.FormatScanningWith("X").Should().Contain("X");
+        ScanDialogUi.FormatFailed("e").Should().Contain("failed: e");
+        ScanDialogUi.FormatInsertedPages(2).Should().Contain("2");
     }
 }
 

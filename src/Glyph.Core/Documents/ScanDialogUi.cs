@@ -8,6 +8,12 @@ public static class ScanDialogUi
     public const string Title = "Scan";
     public const string PrimaryButton = "Scan";
     public const string Cancelled = "Scan cancelled.";
+    public const string LookingForScanners = "Looking for scanners…";
+    public const string NoScannersFound = "No scanners found.";
+    public const string ProducedNoFiles = "Scan produced no files.";
+    public const string FailedPrefix = "Scan failed: ";
+    public const string OpenPdfFirstToInsert = "Open a PDF first to insert scanned pages.";
+    public const string PdfEngineUnavailable = "PDF engine unavailable for insert.";
     public const string DuplexLabel = "Duplex (feeder)";
     public const string StraightenLabel = "Straighten (deskew after scan)";
     public const string MaxPagesHeader = "Max pages (feeder)";
@@ -76,4 +82,21 @@ public static class ScanDialogUi
         var clamped = ClampTone(value);
         return clamped == ToneNeutral ? null : clamped;
     }
+
+    public static string FormatFailed(string message) => FailedPrefix + message;
+
+    public static string FormatScanningWith(string deviceName) =>
+        $"Scanning with {deviceName}…";
+
+    public static string FormatStraightening(int count) =>
+        $"Straightening {count} scan(s)…";
+
+    public static string FormatOpenedImages(int count) =>
+        $"Opened {count} scanned image(s).";
+
+    public static string FormatCreatedPdf(int count) =>
+        $"Created PDF from {count} scan(s).";
+
+    public static string FormatInsertedPages(int count) =>
+        $"Inserted {count} scanned page(s) into PDF.";
 }

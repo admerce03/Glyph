@@ -1509,11 +1509,11 @@ public sealed class ImageDocumentView : UserControl
         if (App.CurrentApp.MainWindowInstance is MainWindow window)
         {
             window.ToggleFullscreen();
-            _status.Text = "Fullscreen toggled.";
+            _status.Text = FullscreenTogglePolicy.Toggled;
             return;
         }
 
-        _status.Text = "Fullscreen unavailable.";
+        _status.Text = FullscreenTogglePolicy.Unavailable;
     }
 
     public void ToggleToolbarVisibility()

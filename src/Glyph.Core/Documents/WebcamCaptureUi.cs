@@ -13,6 +13,14 @@ public static class WebcamCaptureUi
     public const string CaptureCancelledOrUnavailable =
         "Camera capture cancelled or unavailable.";
     public const string CameraUiUnavailable = "Camera UI unavailable.";
+    public const string CaptureDiscarded = "Camera capture discarded.";
+    public const string CaptureFailedPrefix = "Camera capture failed: ";
     public const bool InsertsIntoPdfAsStamp = true;
     public const bool OpensAsImageTab = true;
+
+    public static string FormatOpenedCapture(string fileName) =>
+        $"Opened camera capture: {fileName}";
+
+    public static string FormatCaptureFailed(string message) =>
+        CaptureFailedPrefix + message;
 }
