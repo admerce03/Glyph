@@ -32,10 +32,12 @@ public sealed class ImageDocumentView : UserControl
     private readonly ListView _siblingList;
     private readonly Button _prevButton;
     private readonly Button _nextButton;
+    private readonly Button _slideshowButton;
     private readonly Button _interactiveCropButton;
     private readonly Button _applyCropButton;
     private readonly Button _cancelCropButton;
     private IReadOnlyList<string> _siblings = Array.Empty<string>();
+    private DispatcherTimer? _slideshowTimer;
     private double _zoom = 1.0;
     private bool _loaded;
     private bool _syncingList;
@@ -60,6 +62,7 @@ public sealed class ImageDocumentView : UserControl
         _openSibling = openSibling;
         _ocr = ocr;
         _zoom = _viewState.Zoom <= 0 ? 1.0 : _viewState.Zoom;
+        IsTabStop = true;
 
         _image = new Image
         {
@@ -128,9 +131,12 @@ public sealed class ImageDocumentView : UserControl
         var convert = new Button { Content = "Convert" };
         _prevButton = new Button { Content = "◀", Width = 36 };
         _nextButton = new Button { Content = "▶", Width = 36 };
+        _slideshowButton = new Button { Content = "Slideshow" };
 
         ToolTipService.SetToolTip(crop, "Crop using x,y,w,h pixels (origin top-left)");
         ToolTipService.SetToolTip(_interactiveCropButton, "Drag a rectangle on the image to crop");
+        ToolTipService.SetToolTip(_applyCropButton, "Apply the dragged crop rectangle");
+        ToolTipService.SetToolTip(_cancelCropButton, "Cancel interactive crop");
         ToolTipService.SetToolTip(resize, "Resize width/height with optional aspect lock");
         ToolTipService.SetToolTip(adjust, "Brightness / contrast / saturation");
         ToolTipService.SetToolTip(meta, "Image metadata, EXIF, and GPS");
@@ -143,6 +149,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(convert, "Export as WebP, TIFF, BMP, or GIF");
         ToolTipService.SetToolTip(_prevButton, "Previous image in folder");
         ToolTipService.SetToolTip(_nextButton, "Next image in folder");
+        ToolTipService.SetToolTip(_slideshowButton, "Play/stop folder slideshow (3s, loops; Esc stops)");
 
         zoomOut.Click += async (_, _) => await SetZoomAsync(_zoom / 1.25);
         zoomIn.Click += async (_, _) => await SetZoomAsync(_zoom * 1.25);
@@ -169,6 +176,18 @@ public sealed class ImageDocumentView : UserControl
         convert.Click += async (_, _) => await ConvertAsync();
         _prevButton.Click += async (_, _) => await NavigateSiblingAsync(-1);
         _nextButton.Click += async (_, _) => await NavigateSiblingAsync(1);
+        _slideshowButton.Click += (_, _) => ToggleSlideshow();
+        KeyDown += ImageDocumentView_KeyDown;
+        Loaded += async (_, _) =>
+        {
+            if (_viewState.IsSlideshowActive)
+            {
+                StartSlideshow(resume: true);
+            }
+
+            await Task.CompletedTask;
+        };
+        Unloaded += (_, _) => StopSlideshowTimerOnly();
 
         _cropOverlay.PointerPressed += CropOverlay_PointerPressed;
         _cropOverlay.PointerMoved += CropOverlay_PointerMoved;
@@ -182,7 +201,7 @@ public sealed class ImageDocumentView : UserControl
             Padding = new Thickness(8),
             Children =
             {
-                _prevButton, _nextButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
+                _prevButton, _nextButton, _slideshowButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
                 _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, save, exportPng, exportJpeg, convert, _status,
             },
         };
@@ -322,6 +341,115 @@ public sealed class ImageDocumentView : UserControl
         }
 
         await _openSibling(target);
+    }
+
+    private void ToggleSlideshow()
+    {
+        if (_viewState.IsSlideshowActive)
+        {
+            StopSlideshow();
+            _status.Text = "Slideshow stopped.";
+            return;
+        }
+
+        if (_siblings.Count < 2 || _openSibling is null)
+        {
+            _status.Text = "Slideshow needs at least two images in the folder.";
+            return;
+        }
+
+        StartSlideshow(resume: false);
+    }
+
+    private void StartSlideshow(bool resume)
+    {
+        if (_siblings.Count < 2 || _openSibling is null)
+        {
+            _viewState.IsSlideshowActive = false;
+            RefreshSlideshowChrome();
+            return;
+        }
+
+        _viewState.IsSlideshowActive = true;
+        StopSlideshowTimerOnly();
+        _slideshowTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        _slideshowTimer.Tick += async (_, _) => await AdvanceSlideshowAsync();
+        _slideshowTimer.Start();
+        RefreshSlideshowChrome();
+        if (!resume)
+        {
+            _status.Text = "Slideshow on — advances every 3s (Esc to stop).";
+        }
+    }
+
+    private void StopSlideshow()
+    {
+        _viewState.IsSlideshowActive = false;
+        StopSlideshowTimerOnly();
+        RefreshSlideshowChrome();
+    }
+
+    private void StopSlideshowTimerOnly()
+    {
+        if (_slideshowTimer is null)
+        {
+            return;
+        }
+
+        _slideshowTimer.Stop();
+        _slideshowTimer = null;
+    }
+
+    private void RefreshSlideshowChrome()
+    {
+        var active = _viewState.IsSlideshowActive;
+        _slideshowButton.Content = active ? "Stop show" : "Slideshow";
+        _slideshowButton.Background = active
+            ? new SolidColorBrush(Windows.UI.Color.FromArgb(60, 255, 140, 0))
+            : null;
+    }
+
+    private async Task AdvanceSlideshowAsync()
+    {
+        if (!_viewState.IsSlideshowActive || _openSibling is null || string.IsNullOrWhiteSpace(_document.Path))
+        {
+            return;
+        }
+
+        if (_siblings.Count == 0)
+        {
+            RefreshSiblingList();
+        }
+
+        if (_siblings.Count < 2)
+        {
+            StopSlideshow();
+            _status.Text = "Slideshow stopped — not enough images.";
+            return;
+        }
+
+        var index = ImageFolderNavigator.IndexOf(_siblings, _document.Path);
+        var nextIndex = index < 0 ? 0 : (index + 1) % _siblings.Count;
+        var target = _siblings[nextIndex];
+        if (string.Equals(
+                System.IO.Path.GetFullPath(target),
+                System.IO.Path.GetFullPath(_document.Path),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        await _openSibling(target);
+    }
+
+    private void ImageDocumentView_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Escape && _viewState.IsSlideshowActive)
+        {
+            StopSlideshow();
+            _status.Text = "Slideshow stopped.";
+            e.Handled = true;
+        }
     }
 
     private void ToggleFullscreen()

@@ -14,4 +14,9 @@ public sealed class DocumentViewState
     public SidebarMode SidebarMode { get; set; } = SidebarMode.Thumbnails;
 
     public bool IsSidebarVisible { get; set; } = true;
+
+    /// <summary>
+    /// Session-only: continues folder slideshow across sibling image opens (not persisted).
+    /// </summary>
+    public bool IsSlideshowActive { get; set; }
 }
