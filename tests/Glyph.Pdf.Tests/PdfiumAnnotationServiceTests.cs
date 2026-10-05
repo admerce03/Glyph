@@ -113,6 +113,58 @@ public class PdfiumAnnotationServiceTests
         quads[1].Bounds.Bottom.Should().BeApproximately(40, 0.01);
     }
 
+    [Fact]
+    public async Task Add_sticky_note_sets_contents_color_and_survives_save()
+    {
+        var path = CreateTextPdf("Sticky note host page");
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-note-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var created = await annots.AddStickyNoteAsync(
+                    document,
+                    pageIndex: 0,
+                    xPoints: 72,
+                    yPoints: 700,
+                    contents: "Hello from Glyph",
+                    color: PdfAnnotationColor.StickyNoteYellow);
+
+                created.IsStickyNote.Should().BeTrue();
+                created.Contents.Should().Be("Hello from Glyph");
+
+                await annots.SetContentsAsync(document, 0, created.AnnotIndex, "Edited note");
+                await annots.SetColorAsync(document, 0, created.AnnotIndex, new PdfAnnotationColor(80, 160, 255));
+                await annots.MoveAsync(document, 0, created.AnnotIndex, new PdfRect(100, 650, 120, 670));
+
+                var listed = await annots.ListAsync(document, 0);
+                var note = listed.Should().ContainSingle(a => a.IsStickyNote).Subject;
+                note.Contents.Should().Be("Edited note");
+                note.Bounds.Left.Should().BeApproximately(100, 0.5);
+
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var listed = await annots.ListAsync(reopened, 0);
+                listed.Should().Contain(a => a.IsStickyNote && a.Contents == "Edited note");
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
     private static string CreateTextPdf(string text)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-annot-" + Guid.NewGuid().ToString("N") + ".pdf");

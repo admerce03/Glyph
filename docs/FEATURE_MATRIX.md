@@ -271,18 +271,18 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F14-07 | Highlight workflow | Remove markup. | M4 | Implemented | Sidebar Delete + `RemoveAsync` |
 | F14-08 | Highlight workflow | Annotation sidebar showing all: | M4 | Implemented | Sidebar lists highlight/underline/strike |
 | F14-09 | Highlight workflow | Click annotation in sidebar to jump to it. | M4 | Implemented | Selection jumps to annotation page |
-| F15-01 | Notes | Add sticky note. | M4 | Not Started |  |
-| F15-02 | Notes | Enter note text. | M4 | Not Started |  |
-| F15-03 | Notes | Collapse note. | M4 | Not Started |  |
+| F15-01 | Notes | Add sticky note. | M4 | Tested | `AddStickyNoteAsync` + Note toolbar |
+| F15-02 | Notes | Enter note text. | M4 | Implemented | ContentDialog on add |
+| F15-03 | Notes | Collapse note. | M4 | Not Started | PDF Text annot is icon by default |
 | F15-04 | Notes | Expand note. | M4 | Not Started |  |
-| F15-05 | Notes | Move note icon. | M4 | Not Started |  |
-| F15-06 | Notes | Change note color. | M4 | Not Started |  |
-| F15-07 | Notes | Edit. | M4 | Not Started |  |
-| F15-08 | Notes | Delete. | M4 | Not Started |  |
+| F15-05 | Notes | Move note icon. | M4 | Tested | `MoveAsync` API; drag UI later |
+| F15-06 | Notes | Change note color. | M4 | Tested | `SetColorAsync` API; picker UI later |
+| F15-07 | Notes | Edit. | M4 | Tested | `SetContentsAsync` API; edit dialog later |
+| F15-08 | Notes | Delete. | M4 | Implemented | Sidebar Delete |
 | F15-09 | Notes | Show note author. | M4 | Not Started |  |
 | F15-10 | Notes | Configurable annotation author name. | M4 | Not Started |  |
 | F15-11 | Notes | Optional date/time metadata. | M4 | Not Started |  |
-| F15-12 | Notes | Show all notes in sidebar. | M4 | Not Started |  |
+| F15-12 | Notes | Show all notes in sidebar. | M4 | Implemented | Annotations list includes notes |
 | F15-13 | Notes | Print notes optionally. | M4 | Not Started |  |
 | F16-01 | Text boxes and callouts | Add text box anywhere. | M4 | Not Started |  |
 | F16-02 | Text boxes and callouts | Type arbitrary text over PDF. | M4 | Not Started |  |
