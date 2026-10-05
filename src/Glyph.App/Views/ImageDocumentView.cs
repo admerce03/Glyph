@@ -11,11 +11,6 @@ using Glyph.Ocr.Abstractions;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Text;
 using Microsoft.Extensions.DependencyInjection;
-using Windows.ApplicationModel.DataTransfer;
-using Windows.Storage;
-using Windows.Storage.Pickers;
-using Windows.System;
-using WinRT.Interop;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -23,6 +18,11 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.Storage;
+using Windows.Storage.Pickers;
+using Windows.System;
+using WinRT.Interop;
 
 namespace Glyph.App.Views;
 
