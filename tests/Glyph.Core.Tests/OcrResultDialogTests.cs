@@ -17,4 +17,19 @@ public class OcrResultDialogTests
         OcrResultDialog.TextCopied.Should().Contain("copied");
         OcrResultDialog.PageSectionHeader(1, "hi").Should().Contain("Page 2");
     }
+
+    [Fact]
+    public void Progress_export_and_engine_status()
+    {
+        OcrResultDialog.Cancelling.Should().Contain("Cancelling");
+        OcrResultDialog.EngineUnavailable.Should().Contain("unavailable");
+        OcrResultDialog.NoPagesSelected.Should().Contain("No pages");
+        OcrResultDialog.OverlaysCleared.Should().Contain("cleared");
+        OcrResultDialog.SearchableExportNeedsOcr.Should().Contain("before exporting");
+        OcrResultDialog.BuildingSearchablePdf.Should().Contain("Building");
+        OcrResultDialog.SearchablePdfCancelled.Should().Contain("cancelled");
+        OcrResultDialog.SearchablePdfFailed("x").Should().Contain("failed: x");
+        OcrResultDialog.SavedSearchablePdf(2, "a.pdf").Should().Contain("a.pdf");
+        OcrResultDialog.SavedSearchablePdf(2, "a.pdf").Should().Contain("2 page");
+    }
 }

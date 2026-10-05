@@ -8,6 +8,14 @@ public static class OcrResultDialog
     public const string CopyButton = "Copy text";
     public const string TextCopied = "OCR text copied.";
     public const string Cancelled = "OCR cancelled.";
+    public const string Cancelling = "Cancelling OCR…";
+    public const string EngineUnavailable = "OCR engine unavailable.";
+    public const string NoPagesSelected = "No pages selected for OCR.";
+    public const string OverlaysCleared = "OCR overlays cleared.";
+    public const string SearchableExportNeedsOcr = "Run OCR before exporting a searchable PDF.";
+    public const string BuildingSearchablePdf = "Building searchable OCR PDF…";
+    public const string SearchablePdfCancelled = "OCR→PDF cancelled.";
+    public const string SearchablePdfFailedPrefix = "OCR→PDF failed: ";
 
     public static string Title(int pageCount) =>
         pageCount == 1 ? "OCR result" : "OCR results";
@@ -27,6 +35,12 @@ public static class OcrResultDialog
                 : $"OCR {pageCount} pages — {totalLines} line(s). Click words to select.");
 
     public static string Failed(string message) => "OCR failed: " + message;
+
+    public static string SearchablePdfFailed(string message) =>
+        SearchablePdfFailedPrefix + message;
+
+    public static string SavedSearchablePdf(int pageCount, string fileName) =>
+        $"Saved searchable OCR PDF ({pageCount} page(s)): {fileName}";
 
     public static string PageSectionHeader(int pageIndex0Based, string body) =>
         string.IsNullOrWhiteSpace(body)

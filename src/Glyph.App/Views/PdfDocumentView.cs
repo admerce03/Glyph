@@ -3345,7 +3345,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _ocrCts.Cancel();
-        _status.Text = "Cancelling OCR…";
+        _status.Text = OcrResultDialog.Cancelling;
     }
 
     private void BeginOcrJob()
@@ -3387,7 +3387,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (_ocr is null)
         {
-            _status.Text = "OCR engine unavailable.";
+            _status.Text = OcrResultDialog.EngineUnavailable;
             return;
         }
 
@@ -3423,13 +3423,13 @@ public sealed class PdfDocumentView : UserControl
     {
         if (_ocr is null)
         {
-            _status.Text = "OCR engine unavailable.";
+            _status.Text = OcrResultDialog.EngineUnavailable;
             return;
         }
 
         if (pages.Count == 0)
         {
-            _status.Text = "No pages selected for OCR.";
+            _status.Text = OcrResultDialog.NoPagesSelected;
             return;
         }
 
@@ -3676,13 +3676,13 @@ public sealed class PdfDocumentView : UserControl
     {
         if (_ocrPageData.Count == 0)
         {
-            _status.Text = "Run OCR before exporting a searchable PDF.";
+            _status.Text = OcrResultDialog.SearchableExportNeedsOcr;
             return;
         }
 
         try
         {
-            _status.Text = "Building searchable OCR PDF…";
+            _status.Text = OcrResultDialog.BuildingSearchablePdf;
             var pages = new List<(byte[] ImageBytes, bool IsJpeg, int PixelWidth, int PixelHeight, IEnumerable<SearchablePdfWord> Words)>();
             foreach (var pageIndex in _ocrPageData.Keys.OrderBy(i => i))
             {
@@ -3716,16 +3716,16 @@ public sealed class PdfDocumentView : UserControl
             var file = await picker.PickSaveFileAsync();
             if (file is null)
             {
-                _status.Text = "OCR→PDF cancelled.";
+                _status.Text = OcrResultDialog.SearchablePdfCancelled;
                 return;
             }
 
             await FileIO.WriteBytesAsync(file, pdfBytes);
-            _status.Text = $"Saved searchable OCR PDF ({pages.Count} page(s)): {file.Name}";
+            _status.Text = OcrResultDialog.SavedSearchablePdf(pages.Count, file.Name);
         }
         catch (Exception ex)
         {
-            _status.Text = "OCR→PDF failed: " + ex.Message;
+            _status.Text = OcrResultDialog.SearchablePdfFailed(ex.Message);
         }
     }
 
@@ -3806,7 +3806,7 @@ public sealed class PdfDocumentView : UserControl
         _clearOcrOverlayButton.Visibility = Visibility.Collapsed;
         _ocrSavePdfButton.Visibility = _ocrPageData.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         _ocrEntitiesButton.Visibility = _ocrPageData.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        _status.Text = "OCR overlays cleared.";
+        _status.Text = OcrResultDialog.OverlaysCleared;
     }
 
     private async Task ShowOcrEntitiesAsync()
