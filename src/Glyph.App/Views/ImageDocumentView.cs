@@ -39,6 +39,11 @@ public sealed class ImageDocumentView : UserControl
     private readonly Button _copyOcrButton;
     private readonly Button _ocrEntitiesButton;
     private readonly Button _clearOcrButton;
+    private readonly TextBox _ocrSearchBox;
+    private readonly Button _ocrFindButton;
+    private readonly Button _ocrFindNextButton;
+    private IReadOnlyList<int> _ocrSearchHits = [];
+    private int _ocrSearchHitIndex = -1;
     private IReadOnlyList<string> _siblings = Array.Empty<string>();
     private double _zoom = 1.0;
     private bool _loaded;
@@ -137,6 +142,14 @@ public sealed class ImageDocumentView : UserControl
         _copyOcrButton = new Button { Content = "Copy OCR", Visibility = Visibility.Collapsed };
         _ocrEntitiesButton = new Button { Content = "Entities", Visibility = Visibility.Collapsed };
         _clearOcrButton = new Button { Content = "Clear OCR", Visibility = Visibility.Collapsed };
+        _ocrSearchBox = new TextBox
+        {
+            PlaceholderText = "Find in OCR",
+            Width = 120,
+            Visibility = Visibility.Collapsed,
+        };
+        _ocrFindButton = new Button { Content = "Find OCR", Visibility = Visibility.Collapsed };
+        _ocrFindNextButton = new Button { Content = "Next OCR", Visibility = Visibility.Collapsed };
         var rotate180 = new Button { Content = "180°" };
         var orient = new Button { Content = "Orient" };
         var fullscreen = new Button { Content = "Fullscreen" };
@@ -156,6 +169,9 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(_copyOcrButton, "Copy selected OCR words (or all recognized text)");
         ToolTipService.SetToolTip(_ocrEntitiesButton, "Review detected URLs, emails, phones, dates, and times");
         ToolTipService.SetToolTip(_clearOcrButton, "Hide OCR word overlays");
+        ToolTipService.SetToolTip(_ocrSearchBox, "Search recognized OCR text");
+        ToolTipService.SetToolTip(_ocrFindButton, "Highlight OCR words matching the query");
+        ToolTipService.SetToolTip(_ocrFindNextButton, "Jump to next OCR search hit");
         ToolTipService.SetToolTip(rotate180, "Rotate 180°");
         ToolTipService.SetToolTip(orient, "Apply EXIF orientation into pixels");
         ToolTipService.SetToolTip(fullscreen, "Toggle window fullscreen");
@@ -187,6 +203,16 @@ public sealed class ImageDocumentView : UserControl
         _copyOcrButton.Click += (_, _) => CopySelectedOcrText();
         _ocrEntitiesButton.Click += async (_, _) => await ShowOcrEntitiesAsync();
         _clearOcrButton.Click += (_, _) => ClearOcrOverlay();
+        _ocrFindButton.Click += (_, _) => RunOcrSearch();
+        _ocrFindNextButton.Click += (_, _) => FocusNextOcrSearchHit();
+        _ocrSearchBox.KeyDown += (s, e) =>
+        {
+            if (e.Key == Windows.System.VirtualKey.Enter)
+            {
+                RunOcrSearch();
+                e.Handled = true;
+            }
+        };
         save.Click += async (_, _) => await SaveAsync();
         exportPng.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Png, ".png");
         exportJpeg.Click += async (_, _) => await ExportJpegAsync();
@@ -207,7 +233,7 @@ public sealed class ImageDocumentView : UserControl
             Children =
             {
                 _prevButton, _nextButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
-                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, _copyOcrButton, _ocrEntitiesButton, _clearOcrButton, save, exportPng, exportJpeg, convert, _status,
+                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, _copyOcrButton, _ocrEntitiesButton, _ocrSearchBox, _ocrFindButton, _ocrFindNextButton, _clearOcrButton, save, exportPng, exportJpeg, convert, _status,
             },
         };
 
@@ -1000,6 +1026,9 @@ public sealed class ImageDocumentView : UserControl
             _ocrOverlay.IsHitTestVisible = false;
             _copyOcrButton.Visibility = Visibility.Collapsed;
             _ocrEntitiesButton.Visibility = Visibility.Collapsed;
+            _ocrSearchBox.Visibility = Visibility.Collapsed;
+            _ocrFindButton.Visibility = Visibility.Collapsed;
+            _ocrFindNextButton.Visibility = Visibility.Collapsed;
             _clearOcrButton.Visibility = Visibility.Collapsed;
             return;
         }
@@ -1045,7 +1074,80 @@ public sealed class ImageDocumentView : UserControl
         _ocrOverlay.IsHitTestVisible = hasWords && !_cropMode;
         _copyOcrButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
         _ocrEntitiesButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
+        _ocrSearchBox.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
+        _ocrFindButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
+        _ocrFindNextButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
         _clearOcrButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void RunOcrSearch()
+    {
+        if (_ocrResult is null || _ocrVisuals.Count == 0)
+        {
+            _status.Text = "Run OCR before searching.";
+            return;
+        }
+
+        var query = _ocrSearchBox.Text ?? string.Empty;
+        _ocrSearchHits = OcrTextSearch.FindWordIndexes(OcrTextSearch.FlattenWords(_ocrResult), query);
+        _ocrSearchHitIndex = _ocrSearchHits.Count > 0 ? 0 : -1;
+
+        _selectedOcrIndices.Clear();
+        for (var i = 0; i < _ocrVisuals.Count; i++)
+        {
+            ApplyOcrSelectionChrome(i, selected: false);
+        }
+
+        foreach (var hit in _ocrSearchHits)
+        {
+            _selectedOcrIndices.Add(hit);
+            ApplyOcrSelectionChrome(hit, selected: true);
+        }
+
+        if (_ocrSearchHits.Count == 0)
+        {
+            _status.Text = "No OCR matches.";
+            return;
+        }
+
+        FocusOcrSearchHit(_ocrSearchHitIndex);
+        _status.Text = $"OCR find: {_ocrSearchHits.Count} match(es).";
+    }
+
+    private void FocusNextOcrSearchHit()
+    {
+        if (_ocrSearchHits.Count == 0)
+        {
+            RunOcrSearch();
+            return;
+        }
+
+        _ocrSearchHitIndex = (_ocrSearchHitIndex + 1) % _ocrSearchHits.Count;
+        FocusOcrSearchHit(_ocrSearchHitIndex);
+    }
+
+    private void FocusOcrSearchHit(int hitListIndex)
+    {
+        if (hitListIndex < 0 || hitListIndex >= _ocrSearchHits.Count)
+        {
+            return;
+        }
+
+        var wordIndex = _ocrSearchHits[hitListIndex];
+        if (wordIndex < 0 || wordIndex >= _ocrVisuals.Count)
+        {
+            return;
+        }
+
+        var rect = _ocrVisuals[wordIndex].Visual;
+        var left = Canvas.GetLeft(rect);
+        var top = Canvas.GetTop(rect);
+        _scrollViewer.ChangeView(
+            Math.Max(0, left - 40),
+            Math.Max(0, top - 40),
+            null,
+            disableAnimation: false);
+        _status.Text = $"OCR match {hitListIndex + 1}/{_ocrSearchHits.Count}: {_ocrVisuals[wordIndex].Word.Text}";
     }
 
     private void OcrWord_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -1254,6 +1356,8 @@ public sealed class ImageDocumentView : UserControl
         _ocrSourceWidth = 0;
         _ocrSourceHeight = 0;
         _selectedOcrIndices.Clear();
+        _ocrSearchHits = [];
+        _ocrSearchHitIndex = -1;
         RebuildOcrOverlay();
         _status.Text = "OCR overlay cleared.";
     }

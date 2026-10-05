@@ -153,7 +153,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F08-02 | OCR / Live Text equivalent | Select detected text directly over the image. | M6 | Implemented | Image + PDF OCR word-box overlay; click/Ctrl+click select + Copy OCR |
 | F08-03 | OCR / Live Text equivalent | Copy text. | M6 | Implemented | OCR result dialog Copy text |
 | F08-04 | OCR / Live Text equivalent | Copy all recognized text. | M6 | Implemented | Same as copy full result text |
-| F08-05 | OCR / Live Text equivalent | Search recognized text. | M6 | Implemented | Find merges session OCR cache; OCR word overlays after page OCR |
+| F08-05 | OCR / Live Text equivalent | Search recognized text. | M6 | Implemented | Find merges session OCR cache; image Find OCR / Next OCR word boxes |
 | F08-06 | OCR / Live Text equivalent | OCR current page. | M6 | Implemented | PdfDocumentView OCR uses selected-or-current pages |
 | F08-07 | OCR / Live Text equivalent | OCR selected pages. | M6 | Implemented | Multi-select thumbnails → OCR concatenates page sections |
 | F08-08 | OCR / Live Text equivalent | OCR entire PDF. | M6 | Implemented | OCR chooser Secondary = entire document page range |
