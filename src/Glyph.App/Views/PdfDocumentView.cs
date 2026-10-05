@@ -5053,15 +5053,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var fills = new (string Name, PdfAnnotationColor? Color)[]
-        {
-            ("None (clear)", null),
-            ("White", new PdfAnnotationColor(255, 255, 255)),
-            ("Yellow", new PdfAnnotationColor(255, 250, 180)),
-            ("Light blue", new PdfAnnotationColor(200, 230, 255)),
-            ("Light green", new PdfAnnotationColor(210, 245, 210)),
-            ("Translucent yellow", new PdfAnnotationColor(255, 230, 80, 70)),
-        };
+        var fills = PdfAnnotationColorPresets.FillChoices.ToArray();
         var list = new ListView
         {
             Height = 220,
@@ -5071,7 +5063,7 @@ public sealed class PdfDocumentView : UserControl
         };
         var dialog = new ContentDialog
         {
-            Title = $"Fill — {PdfAnnotationListLabel.Format(item)}",
+            Title = PdfAnnotationColorPresets.FormatFillTitle(PdfAnnotationListLabel.Format(item)),
             Content = list,
             PrimaryButtonText = DialogButtons.Apply,
             CloseButtonText = DialogButtons.Cancel,
@@ -5157,14 +5149,7 @@ public sealed class PdfDocumentView : UserControl
         else
         {
             // Simple presets for non-highlight annots.
-            var presets = new (string Name, PdfAnnotationColor Color)[]
-            {
-                ("Dodger blue", new PdfAnnotationColor(30, 144, 255)),
-                ("Red", new PdfAnnotationColor(220, 50, 50)),
-                ("Green", new PdfAnnotationColor(40, 160, 60)),
-                ("Orange", new PdfAnnotationColor(255, 140, 0)),
-                ("Purple", new PdfAnnotationColor(140, 60, 200)),
-            };
+            var presets = PdfAnnotationColorPresets.StrokePresets.ToArray();
             var list = new ListView
             {
                 Height = 220,
