@@ -372,7 +372,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 ### Scope (`FEATURES.md` §52–56, §57–60 remaining, distribution)
 
 - Startup and large-doc performance pass — background Find index (F57-05/F58-06) shipped
-- Accessibility (UIA, keyboard, high contrast, text scaling) — toolbar icon Names started (F56-01/04/08)
+- Accessibility (UIA, keyboard, high contrast, text scaling) — chrome + Help Automation Names + toolbar Names (F56-01/04/08)
 - Shortcut customization — Preferences overrides for shell + PDF/image shortcuts (F52-23)
 - Toolbar customization polish — hide + ↑↓ reorder on PDF + image (`ToolbarCommandOrder` / `ToolbarOrderPolicy` / `ToolbarCommandApplicator`); Preferences saves re-apply to open tabs
 - Installer / MSIX / file associations finalize — test-sign + sideload helper; Explorer verify pending
