@@ -361,12 +361,14 @@ public sealed class PdfDocumentView : UserControl
             Height = 120,
         };
         _searchResults.SelectionChanged += SearchResults_SelectionChanged;
+        _searchResults.RightTapped += SearchResults_RightTapped;
         _annotationList = new ListView
         {
             SelectionMode = ListViewSelectionMode.Extended,
             Height = 140,
         };
         _annotationList.SelectionChanged += AnnotationList_SelectionChanged;
+        _annotationList.RightTapped += AnnotationList_RightTapped;
 
         var sidePanel = new Grid
         {
@@ -408,6 +410,7 @@ public sealed class PdfDocumentView : UserControl
                 await GoToPageAsync(item.PageIndex, recordHistory: true);
             }
         };
+        _bookmarkList.RightTapped += BookmarkList_RightTapped;
         var bookmarkHeader = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -1069,6 +1072,7 @@ public sealed class PdfDocumentView : UserControl
                 AllowDrop = true,
             };
             border.PointerPressed += Thumbnail_PointerPressed;
+            border.RightTapped += Thumbnail_RightTapped;
             border.DragStarting += Thumbnail_DragStarting;
             border.DragOver += Thumbnail_DragOver;
             border.DragLeave += ThumbnailHost_DragLeave;
@@ -1095,6 +1099,153 @@ public sealed class PdfDocumentView : UserControl
         _pageSelection.ApplyClick(index, ctrlOrMeta: ctrl, shift: shift);
         RefreshThumbnailSelectionChrome();
         await GoToPageAsync(index, recordHistory: true);
+        e.Handled = true;
+    }
+
+    private void Thumbnail_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (sender is not Border { Tag: int index } target)
+        {
+            return;
+        }
+
+        if (!_pageSelection.Contains(index))
+        {
+            _pageSelection.SelectOnly(index);
+            RefreshThumbnailSelectionChrome();
+        }
+
+        var count = Math.Max(1, _pageSelection.Count);
+        var flyout = new MenuFlyout();
+
+        var rotateLeft = new MenuFlyoutItem { Text = count == 1 ? "Rotate left" : $"Rotate left ({count})" };
+        rotateLeft.Click += async (_, _) => await RotateSelectedAsync(-90);
+        var rotateRight = new MenuFlyoutItem { Text = count == 1 ? "Rotate right" : $"Rotate right ({count})" };
+        rotateRight.Click += async (_, _) => await RotateSelectedAsync(90);
+        var duplicate = new MenuFlyoutItem { Text = count == 1 ? "Duplicate" : $"Duplicate ({count})" };
+        duplicate.Click += async (_, _) => await DuplicateSelectedAsync();
+        var extract = new MenuFlyoutItem { Text = count == 1 ? "Extract…" : $"Extract ({count})…" };
+        extract.Click += async (_, _) => await ExtractSelectedAsync();
+        var copyPages = new MenuFlyoutItem { Text = count == 1 ? "Copy page" : $"Copy pages ({count})" };
+        copyPages.Click += async (_, _) => await CopySelectedPagesAsync();
+        var insertBlank = new MenuFlyoutItem { Text = "Insert blank after" };
+        insertBlank.Click += async (_, _) => await InsertBlankAfterSelectionAsync();
+        var delete = new MenuFlyoutItem { Text = count == 1 ? "Delete" : $"Delete ({count})" };
+        delete.Click += async (_, _) => await DeleteSelectedAsync();
+
+        flyout.Items.Add(rotateLeft);
+        flyout.Items.Add(rotateRight);
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(duplicate);
+        flyout.Items.Add(extract);
+        flyout.Items.Add(copyPages);
+        flyout.Items.Add(insertBlank);
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(delete);
+        flyout.ShowAt(target, e.GetPosition(target));
+        e.Handled = true;
+    }
+
+    private void AnnotationList_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (!TryGetSelectedAnnotation(out _))
+        {
+            _status.Text = "Select an annotation, then right-click for actions.";
+            return;
+        }
+
+        if (sender is not FrameworkElement target)
+        {
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+        var styleItem = new MenuFlyoutItem { Text = "Style…" };
+        styleItem.Click += async (_, _) => await SetSelectedAnnotationColorAsync();
+        var duplicateItem = new MenuFlyoutItem { Text = "Duplicate" };
+        duplicateItem.Click += async (_, _) => await DuplicateSelectedAnnotationAsync();
+        var editItem = new MenuFlyoutItem { Text = "Edit…" };
+        editItem.Click += async (_, _) => await EditSelectedAnnotationContentsAsync();
+        var copyItem = new MenuFlyoutItem { Text = "Copy" };
+        copyItem.Click += (_, _) => CopySelectedAnnotationToClipboard();
+        var deleteItem = new MenuFlyoutItem { Text = "Delete" };
+        deleteItem.Click += async (_, _) => await RemoveSelectedAnnotationAsync();
+        flyout.Items.Add(styleItem);
+        flyout.Items.Add(duplicateItem);
+        flyout.Items.Add(editItem);
+        flyout.Items.Add(copyItem);
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(deleteItem);
+        flyout.ShowAt(target, e.GetPosition(target));
+        e.Handled = true;
+    }
+
+    private void BookmarkList_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (_bookmarkList.SelectedItem is not BookmarkListItem)
+        {
+            _status.Text = "Select a bookmark, then right-click for actions.";
+            return;
+        }
+
+        if (sender is not FrameworkElement target)
+        {
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+        var goItem = new MenuFlyoutItem { Text = "Go to page" };
+        goItem.Click += async (_, _) =>
+        {
+            if (_bookmarkList.SelectedItem is BookmarkListItem item)
+            {
+                await GoToPageAsync(item.PageIndex, recordHistory: true);
+            }
+        };
+        var renameItem = new MenuFlyoutItem { Text = "Rename…" };
+        renameItem.Click += async (_, _) => await RenameSelectedBookmarkAsync();
+        var upItem = new MenuFlyoutItem { Text = "Move up" };
+        upItem.Click += (_, _) => MoveSelectedBookmark(-1);
+        var downItem = new MenuFlyoutItem { Text = "Move down" };
+        downItem.Click += (_, _) => MoveSelectedBookmark(1);
+        var deleteItem = new MenuFlyoutItem { Text = "Delete" };
+        deleteItem.Click += (_, _) => DeleteSelectedBookmark();
+        flyout.Items.Add(goItem);
+        flyout.Items.Add(renameItem);
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(upItem);
+        flyout.Items.Add(downItem);
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(deleteItem);
+        flyout.ShowAt(target, e.GetPosition(target));
+        e.Handled = true;
+    }
+
+    private void SearchResults_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (_hits.Count == 0)
+        {
+            _status.Text = "No search results.";
+            return;
+        }
+
+        if (sender is not FrameworkElement target)
+        {
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+        var goItem = new MenuFlyoutItem { Text = "Go to match" };
+        goItem.Click += async (_, _) =>
+        {
+            var index = _searchResults.SelectedIndex >= 0 ? _searchResults.SelectedIndex : _activeHitIndex;
+            await GoToHitAsync(index);
+        };
+        var clearItem = new MenuFlyoutItem { Text = "Clear search" };
+        clearItem.Click += async (_, _) => await ClearSearchAsync();
+        flyout.Items.Add(goItem);
+        flyout.Items.Add(clearItem);
+        flyout.ShowAt(target, e.GetPosition(target));
         e.Handled = true;
     }
 

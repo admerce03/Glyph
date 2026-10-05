@@ -70,13 +70,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-09 | Sidebar modes | Metadata/properties where useful | M2-M5 | Not Started |  |
 | F03-10 | Sidebar modes | Switch sidebar mode without opening another window. | M2-M5 | In Progress | Thumbs/TOC/search coexist in one panel; dedicated mode switcher later |
 | F03-11 | Sidebar modes | Resize thumbnail size. | M2-M5 | Implemented | Pages S/M/L buttons; `ThumbnailWidth` persisted |
-| F03-12 | Sidebar modes | Multi-select sidebar items. | M2-M5 | Not Started |  |
-| F03-13 | Sidebar modes | Shift-click range selection. | M2-M5 | Not Started |  |
-| F03-14 | Sidebar modes | Ctrl-click noncontiguous selection. | M2-M5 | Not Started |  |
-| F03-15 | Sidebar modes | Keyboard navigation. | M2-M5 | Not Started |  |
-| F03-16 | Sidebar modes | Drag selected items. | M2-M5 | Not Started |  |
-| F03-17 | Sidebar modes | Context menus. | M2-M5 | Not Started |  |
-| F03-18 | Sidebar modes | Sidebar selection controls the scope of many editing commands. | M2-M5 | Not Started |  |
+| F03-12 | Sidebar modes | Multi-select sidebar items. | M2-M5 | Implemented | Page thumbnails via `PageSelection`; annotations Extended ListView |
+| F03-13 | Sidebar modes | Shift-click range selection. | M2-M5 | Implemented | Thumbnail Shift+click / Shift+↑↓ via `PageSelection` |
+| F03-14 | Sidebar modes | Ctrl-click noncontiguous selection. | M2-M5 | Implemented | Thumbnail Ctrl+click; annotation Ctrl+click toggle |
+| F03-15 | Sidebar modes | Keyboard navigation. | M2-M5 | Implemented | ↑/↓ page selection; ListView keyboard for bookmarks/search/annots |
+| F03-16 | Sidebar modes | Drag selected items. | M2-M5 | Implemented | Thumbnail multi-select drag reorder / extract |
+| F03-17 | Sidebar modes | Context menus. | M2-M5 | Implemented | Thumbnail / annotations / bookmarks / search right-click menus |
+| F03-18 | Sidebar modes | Sidebar selection controls the scope of many editing commands. | M2-M5 | Implemented | Rotate/delete/dup/extract/crop/move use `_pageSelection` |
 | F04-01 | PDF viewing | Open standard PDF files quickly. | M2 | Tested | PDFium open+render wired in shell |
 | F04-02 | PDF viewing | Render vector content accurately. | M2 | Implemented | PDFium vector render path |
 | F04-03 | PDF viewing | Render embedded images. | M2 | Implemented | Via PDFium rasterization |
