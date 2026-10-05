@@ -619,7 +619,7 @@ public sealed class PdfDocumentView : UserControl
             }
             catch (Exception ex)
             {
-                _status.Text = "Edit properties failed: " + ex.Message;
+                _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.EditProperties, ex.Message);
             }
         };
         propertiesHeader.Children.Add(propertiesMore);
@@ -1835,7 +1835,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Drop failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Drop, ex.Message);
         }
     }
 
@@ -2540,7 +2540,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Copy pages failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.CopyPages, ex.Message);
         }
     }
 
@@ -4937,7 +4937,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Markup failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Markup, ex.Message);
         }
     }
 
@@ -5031,7 +5031,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Callout tip failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.CalloutTip, ex.Message);
         }
     }
 
@@ -5101,7 +5101,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Fill failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Fill, ex.Message);
         }
     }
 
@@ -5205,7 +5205,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Color failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Color, ex.Message);
         }
     }
 
@@ -5233,7 +5233,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Annotation list failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.AnnotationList, ex.Message);
         }
     }
 
@@ -5448,7 +5448,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Callout failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Callout, ex.Message);
         }
     }
 
@@ -5583,7 +5583,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Eraser failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Eraser, ex.Message);
         }
     }
 
@@ -5833,7 +5833,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Polygon failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Polygon, ex.Message);
         }
     }
 
@@ -6352,7 +6352,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Shape failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Shape, ex.Message);
         }
     }
 
@@ -6606,7 +6606,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = (_freeformMode ? "Freeform" : "Ink") + " failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.FormatFreeformOrInk(_freeformMode, ex.Message);
         }
     }
 
@@ -6711,7 +6711,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Cleanup failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Cleanup, ex.Message);
         }
     }
 
@@ -6749,7 +6749,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Undo annotation failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.UndoAnnotation, ex.Message);
         }
     }
 
@@ -6825,7 +6825,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Undo form fill failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.UndoFormFill, ex.Message);
         }
     }
 
@@ -6992,7 +6992,7 @@ public sealed class PdfDocumentView : UserControl
             }
             catch (Exception ex)
             {
-                _status.Text = "Reorder failed: " + ex.Message;
+                _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Reorder, ex.Message);
             }
         };
         down.Click += async (_, _) =>
@@ -7012,7 +7012,7 @@ public sealed class PdfDocumentView : UserControl
             }
             catch (Exception ex)
             {
-                _status.Text = "Reorder failed: " + ex.Message;
+                _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Reorder, ex.Message);
             }
         };
         del.Click += async (_, _) =>
@@ -7033,7 +7033,7 @@ public sealed class PdfDocumentView : UserControl
             }
             catch (Exception ex)
             {
-                _status.Text = "Delete failed: " + ex.Message;
+                _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Delete, ex.Message);
             }
         };
         saveDesc.Click += async (_, _) =>
@@ -7054,7 +7054,7 @@ public sealed class PdfDocumentView : UserControl
             }
             catch (Exception ex)
             {
-                _status.Text = "Description save failed: " + ex.Message;
+                _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.DescriptionSave, ex.Message);
             }
         };
 
@@ -7195,7 +7195,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Insert signature failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.InsertSignature, ex.Message);
         }
     }
 
@@ -7335,7 +7335,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Signature failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Signature, ex.Message);
         }
     }
 
@@ -7399,7 +7399,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Signature failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Signature, ex.Message);
         }
     }
 
@@ -7429,7 +7429,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Camera insert failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.CameraInsert, ex.Message);
         }
     }
 
@@ -7493,7 +7493,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Webcam signature failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.WebcamSignature, ex.Message);
         }
     }
 
@@ -8057,7 +8057,7 @@ public sealed class PdfDocumentView : UserControl
             }
             catch (Exception ex)
             {
-                _status.Text = "Button link failed: " + ex.Message;
+                _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.ButtonLink, ex.Message);
             }
 
             return false;
@@ -8108,7 +8108,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Could not open signature library: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.CouldNotOpenSignatureLibrary, ex.Message);
             return false;
         }
 
@@ -8185,7 +8185,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Form signature failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.FormSignature, ex.Message);
             return false;
         }
     }
@@ -8301,7 +8301,7 @@ public sealed class PdfDocumentView : UserControl
             }
             catch (Exception ex)
             {
-                _status.Text = "Form fill failed: " + ex.Message;
+                _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.FormFill, ex.Message);
                 return false;
             }
         }
@@ -8339,7 +8339,7 @@ public sealed class PdfDocumentView : UserControl
             }
             catch (Exception ex)
             {
-                _status.Text = "Form fill failed: " + ex.Message;
+                _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.FormFill, ex.Message);
                 return false;
             }
         }
@@ -8388,7 +8388,7 @@ public sealed class PdfDocumentView : UserControl
                 }
                 catch (Exception ex)
                 {
-                    _status.Text = "Form fill failed: " + ex.Message;
+                    _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.FormFill, ex.Message);
                     return false;
                 }
             }
@@ -8476,7 +8476,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Form fill failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.FormFill, ex.Message);
             return false;
         }
     }
@@ -8532,7 +8532,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Flatten failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Flatten, ex.Message);
         }
     }
 
@@ -9134,7 +9134,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Note failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Note, ex.Message);
         }
     }
 
@@ -9472,7 +9472,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Group failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Group, ex.Message);
         }
     }
 
@@ -9521,7 +9521,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Ungroup failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Ungroup, ex.Message);
         }
     }
 
@@ -9684,7 +9684,7 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             DrawAnnotSelection(_selectedAnnot);
-            _status.Text = "Move failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Move, ex.Message);
         }
     }
 
@@ -9738,7 +9738,7 @@ public sealed class PdfDocumentView : UserControl
             catch (Exception ex)
             {
                 DrawAnnotSelection(_selectedAnnot);
-                _status.Text = "Endpoint adjust failed: " + ex.Message;
+                _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.EndpointAdjust, ex.Message);
             }
 
             return;
@@ -9765,7 +9765,7 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             DrawAnnotSelection(_selectedAnnot);
-            _status.Text = "Resize failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Resize, ex.Message);
         }
     }
 
@@ -10136,7 +10136,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Could not list notes: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.CouldNotListNotes, ex.Message);
             return;
         }
 
@@ -10207,7 +10207,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Rotate failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Rotate, ex.Message);
         }
     }
 
@@ -10236,7 +10236,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Underline failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Underline, ex.Message);
         }
     }
 
@@ -10292,7 +10292,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Alignment failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Alignment, ex.Message);
         }
     }
 
@@ -10658,7 +10658,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Edit annotation failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.EditAnnotation, ex.Message);
         }
     }
 
@@ -10692,7 +10692,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Duplicate annotation failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.DuplicateAnnotation, ex.Message);
         }
     }
 
@@ -10855,7 +10855,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Width failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Width, ex.Message);
         }
     }
 
@@ -10922,7 +10922,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Opacity failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Opacity, ex.Message);
         }
     }
 
@@ -10960,7 +10960,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Delete annotation failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.DeleteAnnotation, ex.Message);
         }
     }
 
@@ -11078,7 +11078,7 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _infoUndoStack.Push(previous);
-            _status.Text = "Undo info edit failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.UndoInfoEdit, ex.Message);
         }
     }
 
@@ -11265,7 +11265,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Crop failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Crop, ex.Message);
         }
     }
 
@@ -11308,7 +11308,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Merge failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Merge, ex.Message);
         }
         finally
         {
@@ -11438,7 +11438,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Export failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Export, ex.Message);
         }
     }
 
@@ -11571,7 +11571,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Crop failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Crop, ex.Message);
         }
     }
 
@@ -12098,7 +12098,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Outline export failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.OutlineExport, ex.Message);
         }
     }
 
@@ -12406,7 +12406,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Print failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Print, ex.Message);
         }
     }
 
@@ -12617,7 +12617,7 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             HideJobProgress();
-            _status.Text = "Export failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Export, ex.Message);
         }
     }
 
@@ -12841,7 +12841,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Info failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Info, ex.Message);
             return;
         }
 
@@ -12982,7 +12982,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Save failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.Save, ex.Message);
         }
     }
 
@@ -13200,7 +13200,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Attachment save failed: " + ex.Message;
+            _status.Text = PdfOperationFailedStatus.Format(PdfOperationFailedStatus.AttachmentSave, ex.Message);
         }
     }
 }
