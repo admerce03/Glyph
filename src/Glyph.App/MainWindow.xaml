@@ -53,6 +53,14 @@
                 </MenuFlyoutItem>
             </MenuBarItem>
 
+            <MenuBarItem Title="Edit">
+                <MenuFlyoutItem x:Name="FindAllPdfsMenuItem" Text="Find in all open PDFs…" Click="FindAllPdfsMenuItem_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="F" Modifiers="Control,Shift" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+            </MenuBarItem>
+
             <MenuBarItem Title="View">
                 <MenuFlyoutItem x:Name="ToggleSidebarMenuItem" Text="Hide Sidebar" Click="ToggleSidebarMenuItem_Click" />
                 <MenuFlyoutSeparator />

@@ -262,6 +262,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Right-click selected text → Copy / Find selection / Search web / Copy region as image
 - Multi-line drag selects across lines in reading order; Alt/wide drag keeps column rect selection
 - Drag selected text out of the page (OLE/text drag) when a selection exists
+- **Find in all open PDFs** (Edit menu / Ctrl+Shift+F) aggregates PdfPig hits across tabs
 - Image-folder OCR / Live Text image overlays still on parallel entities/live-text stack
 ---
 
