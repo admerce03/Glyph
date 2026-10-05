@@ -11,4 +11,5 @@ public enum PdfShapeKind
     Arrow = 3,
     Freeform = 4,
     RoundedRectangle = 5,
+    HighlightRectangle = 6,
 }

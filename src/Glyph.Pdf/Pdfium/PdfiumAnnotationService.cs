@@ -429,10 +429,21 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
 
         var subtype = kind switch
         {
-            PdfShapeKind.Rectangle or PdfShapeKind.RoundedRectangle => PdfiumAnnotSubtypes.Square,
+            PdfShapeKind.Rectangle or PdfShapeKind.RoundedRectangle or PdfShapeKind.HighlightRectangle
+                => PdfiumAnnotSubtypes.Square,
             PdfShapeKind.Ellipse => PdfiumAnnotSubtypes.Circle,
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
+
+        // Highlight rectangles always get a translucent yellow-style fill when none provided.
+        if (kind == PdfShapeKind.HighlightRectangle && fillColor is null)
+        {
+            fillColor = new PdfAnnotationColor(
+                borderColor.R,
+                borderColor.G,
+                borderColor.B,
+                A: 70);
+        }
 
         return Task.Run(
             () =>
@@ -473,13 +484,18 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                                 throw new InvalidOperationException("FPDFAnnot_SetRect failed for shape.");
                             }
 
+                            // Highlight areas use a nearly transparent border so the fill dominates.
+                            var stroke = kind == PdfShapeKind.HighlightRectangle
+                                ? new PdfAnnotationColor(borderColor.R, borderColor.G, borderColor.B, A: 40)
+                                : borderColor;
+
                             if (fpdf_annot.FPDFAnnotSetColor(
                                     annot,
                                     FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_Color,
-                                    borderColor.R,
-                                    borderColor.G,
-                                    borderColor.B,
-                                    borderColor.A) == 0)
+                                    stroke.R,
+                                    stroke.G,
+                                    stroke.B,
+                                    stroke.A) == 0)
                             {
                                 throw new InvalidOperationException("FPDFAnnot_SetColor failed for shape border.");
                             }
@@ -499,19 +515,28 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                             }
 
                             var radius = 0f;
+                            string? contentsLabel = null;
                             if (kind == PdfShapeKind.RoundedRectangle)
                             {
                                 radius = (float)Math.Clamp(
                                     Math.Min(bounds.Width, bounds.Height) * 0.2,
                                     4.0,
                                     36.0);
-                                if (!PdfiumAnnotStrings.SetString(annot, "Contents", "RoundedRect"))
-                                {
-                                    throw new InvalidOperationException("Failed to label rounded rectangle.");
-                                }
+                                contentsLabel = "RoundedRect";
+                            }
+                            else if (kind == PdfShapeKind.HighlightRectangle)
+                            {
+                                contentsLabel = "HighlightRect";
                             }
 
-                            if (PdfiumNative.AnnotSetBorder(annot.__Instance, radius, radius, borderWidthPoints) == 0)
+                            if (contentsLabel is not null &&
+                                !PdfiumAnnotStrings.SetString(annot, "Contents", contentsLabel))
+                            {
+                                throw new InvalidOperationException($"Failed to label {kind} shape.");
+                            }
+
+                            var width = kind == PdfShapeKind.HighlightRectangle ? 0.5f : borderWidthPoints;
+                            if (PdfiumNative.AnnotSetBorder(annot.__Instance, radius, radius, width) == 0)
                             {
                                 throw new InvalidOperationException("FPDFAnnot_SetBorder failed for shape.");
                             }
@@ -529,7 +554,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                                 TextMarkupKind: null,
                                 bounds,
                                 borderColor,
-                                Contents: kind == PdfShapeKind.RoundedRectangle ? "RoundedRect" : null,
+                                Contents: contentsLabel,
                                 IsStickyNote: false,
                                 IsInk: false,
                                 ShapeKind: kind);
@@ -1129,16 +1154,22 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
 
                     markupKind = FromSubtype(subtype);
                     shapeKind = FromShapeSubtype(subtype);
-                    if (shapeKind == PdfShapeKind.Rectangle
-                        && (string.Equals(contents, "RoundedRect", StringComparison.Ordinal)
-                            || (PdfiumNative.AnnotGetBorder(
-                                    annot.__Instance,
-                                    out var hr,
-                                    out var vr,
-                                    out _) != 0
-                                && (hr > 0.5f || vr > 0.5f))))
+                    if (shapeKind == PdfShapeKind.Rectangle)
                     {
-                        shapeKind = PdfShapeKind.RoundedRectangle;
+                        if (string.Equals(contents, "HighlightRect", StringComparison.Ordinal))
+                        {
+                            shapeKind = PdfShapeKind.HighlightRectangle;
+                        }
+                        else if (string.Equals(contents, "RoundedRect", StringComparison.Ordinal)
+                                 || (PdfiumNative.AnnotGetBorder(
+                                         annot.__Instance,
+                                         out var hr,
+                                         out var vr,
+                                         out _) != 0
+                                     && (hr > 0.5f || vr > 0.5f)))
+                        {
+                            shapeKind = PdfShapeKind.RoundedRectangle;
+                        }
                     }
 
                     if (shapeKind is null && subtype == PdfiumAnnotSubtypes.Ink)
@@ -1518,7 +1549,11 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                     var shapeKind = FromShapeSubtype(subtype);
                     if (shapeKind == PdfShapeKind.Rectangle)
                     {
-                        if (string.Equals(contents, "RoundedRect", StringComparison.Ordinal))
+                        if (string.Equals(contents, "HighlightRect", StringComparison.Ordinal))
+                        {
+                            shapeKind = PdfShapeKind.HighlightRectangle;
+                        }
+                        else if (string.Equals(contents, "RoundedRect", StringComparison.Ordinal))
                         {
                             shapeKind = PdfShapeKind.RoundedRectangle;
                         }

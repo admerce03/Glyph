@@ -309,7 +309,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F17-06 | Shapes | polygon | M4 | Implemented | Freeform closed ink path |
 | F17-07 | Shapes | star | M4 | Not Started |  |
 | F17-08 | Shapes | speech bubble/callout | M4 | Not Started | Distinct from FreeText callout (F13-11); bubble shape TBD |
-| F17-09 | Shapes | translucent highlight rectangle | M4 | Not Started |  |
+| F17-09 | Shapes | translucent highlight rectangle | M4 | Tested | `AddShapeAsync(HighlightRectangle)` + Area toolbar; translucent fill |
 | F17-10 | Shapes | magnification/loupe annotation, optionally | M4 | Not Started |  |
 | F17-11 | Shapes | resize | M4 | Tested | Same as F13-20 selection handles → `MoveAsync` |
 | F17-12 | Shapes | rotate | M4 | Not Started |  |

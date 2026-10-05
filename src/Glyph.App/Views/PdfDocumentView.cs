@@ -128,6 +128,7 @@ public sealed class PdfDocumentView : UserControl
     private Button? _signButton;
     private Button? _rectButton;
     private Button? _roundRectButton;
+    private Button? _hiRectButton;
     private Button? _ellipseButton;
     private Button? _lineButton;
     private Button? _arrowButton;
@@ -435,6 +436,7 @@ public sealed class PdfDocumentView : UserControl
         var freeform = new Button { Content = "Freeform" };
         var rect = new Button { Content = "Rect" };
         var roundRect = new Button { Content = "Round" };
+        var hiRect = new Button { Content = "Area" };
         var ellipse = new Button { Content = "Ellipse" };
         var line = new Button { Content = "Line" };
         var arrow = new Button { Content = "Arrow" };
@@ -445,6 +447,7 @@ public sealed class PdfDocumentView : UserControl
         _formButton = formFill;
         _rectButton = rect;
         _roundRectButton = roundRect;
+        _hiRectButton = hiRect;
         _ellipseButton = ellipse;
         _lineButton = line;
         _arrowButton = arrow;
@@ -480,6 +483,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(freeform, "Draw a closed freeform shape (auto-closes path)");
         ToolTipService.SetToolTip(rect, "Draw a rectangle annotation");
         ToolTipService.SetToolTip(roundRect, "Draw a rounded rectangle annotation");
+        ToolTipService.SetToolTip(hiRect, "Draw a translucent highlight rectangle area");
         ToolTipService.SetToolTip(ellipse, "Draw an ellipse annotation");
         ToolTipService.SetToolTip(line, "Draw a line (stored as a 2-point ink stroke)");
         ToolTipService.SetToolTip(arrow, "Draw an arrow (ink shaft + arrowhead)");
@@ -542,6 +546,7 @@ public sealed class PdfDocumentView : UserControl
         freeform.Click += async (_, _) => await ToggleFreeformModeAsync();
         rect.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Rectangle);
         roundRect.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.RoundedRectangle);
+        hiRect.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.HighlightRectangle);
         ellipse.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Ellipse);
         line.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Line);
         arrow.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Arrow);
@@ -559,7 +564,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, sign, formFill, ink, freeform, rect, roundRect, ellipse, line, arrow,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, sign, formFill, ink, freeform, rect, roundRect, hiRect, ellipse, line, arrow,
                 _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -3668,6 +3673,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 PdfShapeKind.Rectangle => "Rect",
                 PdfShapeKind.RoundedRectangle => "Round",
+                PdfShapeKind.HighlightRectangle => "Area",
                 PdfShapeKind.Ellipse => "Ellipse",
                 PdfShapeKind.Line => "Line",
                 PdfShapeKind.Arrow => "Arrow",
@@ -3931,15 +3937,30 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var picked = await PickStrokeStyleAsync("Shape stroke");
-        if (picked is null)
+        if (kind == PdfShapeKind.HighlightRectangle)
         {
-            _status.Text = "Shape mode cancelled.";
-            return;
-        }
+            var hiColor = await PickHighlightColorAsync();
+            if (hiColor is null)
+            {
+                _status.Text = "Area highlight cancelled.";
+                return;
+            }
 
-        _drawStrokeColor = picked.Value.Color;
-        _drawStrokeWidth = picked.Value.WidthPoints;
+            _drawStrokeColor = hiColor.Value;
+            _drawStrokeWidth = 0.5f;
+        }
+        else
+        {
+            var picked = await PickStrokeStyleAsync("Shape stroke");
+            if (picked is null)
+            {
+                _status.Text = "Shape mode cancelled.";
+                return;
+            }
+
+            _drawStrokeColor = picked.Value.Color;
+            _drawStrokeWidth = picked.Value.WidthPoints;
+        }
 
         if (_cropMode)
         {
@@ -3953,6 +3974,7 @@ public sealed class PdfDocumentView : UserControl
         {
             PdfShapeKind.Rectangle => "Rectangle mode — drag on the page.",
             PdfShapeKind.RoundedRectangle => "Rounded rectangle mode — drag on the page.",
+            PdfShapeKind.HighlightRectangle => "Area highlight mode — drag a translucent rectangle.",
             PdfShapeKind.Ellipse => "Ellipse mode — drag on the page.",
             PdfShapeKind.Arrow => "Arrow mode — drag from tail to tip.",
             _ => "Line mode — drag on the page.",
@@ -4083,6 +4105,11 @@ public sealed class PdfDocumentView : UserControl
             _roundRectButton.Background = _shapeMode == PdfShapeKind.RoundedRectangle ? active : null;
         }
 
+        if (_hiRectButton is not null)
+        {
+            _hiRectButton.Background = _shapeMode == PdfShapeKind.HighlightRectangle ? active : null;
+        }
+
         if (_ellipseButton is not null)
         {
             _ellipseButton.Background = _shapeMode == PdfShapeKind.Ellipse ? active : null;
@@ -4142,8 +4169,9 @@ public sealed class PdfDocumentView : UserControl
             _drawStrokeColor.R,
             _drawStrokeColor.G,
             _drawStrokeColor.B));
+        var fillAlpha = (byte)(_shapeMode == PdfShapeKind.HighlightRectangle ? 70 : 40);
         var fill = new SolidColorBrush(Windows.UI.Color.FromArgb(
-            40,
+            fillAlpha,
             _drawStrokeColor.R,
             _drawStrokeColor.G,
             _drawStrokeColor.B));
@@ -4246,7 +4274,7 @@ public sealed class PdfDocumentView : UserControl
                 kind.Value,
                 bounds,
                 _drawStrokeColor,
-                fillColor: kind is PdfShapeKind.Line or PdfShapeKind.Arrow
+                fillColor: kind is PdfShapeKind.Line or PdfShapeKind.Arrow or PdfShapeKind.HighlightRectangle
                     ? null
                     : new PdfAnnotationColor(
                         _drawStrokeColor.R,
@@ -4263,6 +4291,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 PdfShapeKind.Rectangle => "Rectangle added.",
                 PdfShapeKind.RoundedRectangle => "Rounded rectangle added.",
+                PdfShapeKind.HighlightRectangle => "Area highlight added.",
                 PdfShapeKind.Ellipse => "Ellipse added.",
                 PdfShapeKind.Arrow => "Arrow added.",
                 _ => "Line added.",
