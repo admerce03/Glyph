@@ -307,6 +307,27 @@ public sealed partial class MainWindow : Window
         await _settingsStore.SaveAsync(settings);
     }
 
+    private void ToggleToolbarMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (DocumentTabs.SelectedItem is TabViewItem { Content: PdfDocumentView pdfView })
+        {
+            pdfView.ToggleToolbarVisibility();
+            ToggleToolbarMenuItem.Text = pdfView.IsToolbarVisible ? "Hide Toolbar" : "Show Toolbar";
+            return;
+        }
+
+        if (DocumentTabs.SelectedItem is TabViewItem { Content: ImageDocumentView imageView })
+        {
+            imageView.ToggleToolbarVisibility();
+            ToggleToolbarMenuItem.Text = imageView.IsToolbarVisible ? "Hide Toolbar" : "Show Toolbar";
+            return;
+        }
+
+        StatusText.Text = "Open a document to toggle the toolbar.";
+    }
+
+    private void FullscreenMenuItem_Click(object sender, RoutedEventArgs e) => ToggleFullscreen();
+
     private async void ThemeSystemItem_Click(object sender, RoutedEventArgs e) => await SetThemeAsync(ThemePreference.System);
 
     private async void ThemeLightItem_Click(object sender, RoutedEventArgs e) => await SetThemeAsync(ThemePreference.Light);

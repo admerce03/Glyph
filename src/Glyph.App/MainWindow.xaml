@@ -96,6 +96,12 @@
 
             <MenuBarItem Title="View">
                 <MenuFlyoutItem x:Name="ToggleSidebarMenuItem" Text="Hide Sidebar" Click="ToggleSidebarMenuItem_Click" />
+                <MenuFlyoutItem x:Name="ToggleToolbarMenuItem" Text="Hide Toolbar" Click="ToggleToolbarMenuItem_Click" />
+                <MenuFlyoutItem x:Name="FullscreenMenuItem" Text="Full Screen" Click="FullscreenMenuItem_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="F11" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
                 <MenuFlyoutSeparator />
                 <MenuFlyoutSubItem Text="Theme">
                     <RadioMenuFlyoutItem x:Name="ThemeSystemItem" Text="System" GroupName="Theme" Click="ThemeSystemItem_Click" />

@@ -86,6 +86,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly TreeView _outlineTree;
     private readonly ListView _bookmarkList;
     private readonly ListView _searchResults;
+    private StackPanel? _toolbar;
     private readonly ListView _annotationList;
     private readonly TextBox _searchBox;
     private readonly TextBox _gotoBox;
@@ -590,6 +591,7 @@ public sealed class PdfDocumentView : UserControl
         var star = new Button { Content = "Star" };
         var bubble = new Button { Content = "Bubble" };
         var loupe = new Button { Content = "Loupe" };
+        var fullscreen = new Button { Content = "Fullscreen" };
         _signButton = sign;
         _inkButton = ink;
         _freeformButton = freeform;
@@ -648,6 +650,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(star, "Draw a 5-point star outline");
         ToolTipService.SetToolTip(bubble, "Draw a speech-bubble outline");
         ToolTipService.SetToolTip(loupe, "Draw a loupe magnification marker (select to see zoomed crop)");
+        ToolTipService.SetToolTip(fullscreen, "Toggle window fullscreen (F11)");
         ToolTipService.SetToolTip(undoEdit, "Undo last stroke (if any) or page edit (Ctrl+Z)");
         ToolTipService.SetToolTip(redoEdit, "Redo page edit (Ctrl+Y)");
         ToolTipService.SetToolTip(first, "Go to first page");
@@ -668,7 +671,7 @@ public sealed class PdfDocumentView : UserControl
             rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract,
             merge, split, crop, highlight, underline, strikeout, stickyNote, textBox, callout, flatten,
             redact, info, optimize, export, print, camera, sign, formFill, ink, freeform, eraser, rect,
-            roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, undoEdit, redoEdit,
+            roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, fullscreen, undoEdit, redoEdit,
             _layoutBox, _gotoBox,
             _caseSensitiveBox, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton,
             _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch,
@@ -743,6 +746,7 @@ public sealed class PdfDocumentView : UserControl
         star.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Star);
         bubble.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.SpeechBubble);
         loupe.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Loupe);
+        fullscreen.Click += (_, _) => ToggleFullscreen();
         undoEdit.Click += async (_, _) =>
         {
             if (_strokeUndoStack.Count > 0)
@@ -756,7 +760,7 @@ public sealed class PdfDocumentView : UserControl
         };
         redoEdit.Click += async (_, _) => await RedoPageEditAsync();
 
-        var toolbar = new StackPanel
+        _toolbar = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             Spacing = 6,
@@ -767,7 +771,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, print, camera, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, print, camera, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, fullscreen,
                 _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -792,7 +796,7 @@ public sealed class PdfDocumentView : UserControl
                 new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
             },
         };
-        root.Children.Add(toolbar);
+        root.Children.Add(_toolbar);
         Grid.SetRow(body, 1);
         root.Children.Add(body);
         Content = root;
@@ -1631,6 +1635,13 @@ public sealed class PdfDocumentView : UserControl
         if (e.Key == VirtualKey.F3)
         {
             await GoToHitAsync(_activeHitIndex + (shiftDown ? -1 : 1));
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == VirtualKey.F11)
+        {
+            ToggleFullscreen();
             e.Handled = true;
             return;
         }
@@ -11270,6 +11281,33 @@ public sealed class PdfDocumentView : UserControl
 
     /// <summary>File → Properties entry point (F48).</summary>
     public Task ShowPropertiesAsync() => ShowDocumentInfoAsync();
+
+    public void ToggleFullscreen()
+    {
+        if (App.CurrentApp.MainWindowInstance is MainWindow window)
+        {
+            window.ToggleFullscreen();
+            _status.Text = "Fullscreen toggled.";
+            return;
+        }
+
+        _status.Text = "Fullscreen unavailable.";
+    }
+
+    public void ToggleToolbarVisibility()
+    {
+        if (_toolbar is null)
+        {
+            return;
+        }
+
+        _toolbar.Visibility = _toolbar.Visibility == Visibility.Visible
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        _status.Text = _toolbar.Visibility == Visibility.Visible ? "Toolbar shown." : "Toolbar hidden.";
+    }
+
+    public bool IsToolbarVisible => _toolbar?.Visibility != Visibility.Collapsed;
 
     /// <summary>File → Save / Save As (F01-16/17).</summary>
     public async Task SaveDocumentAsync(bool saveAs)

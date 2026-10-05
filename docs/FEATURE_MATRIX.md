@@ -39,11 +39,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | In Progress | MenuBar File/View/Window |
 | F02-03 | Main window and interface | Customizable toolbar. | M1/M9 | Not Started |  |
 | F02-04 | Main window and interface | Optional compact toolbar. | M1/M9 | Not Started |  |
-| F02-05 | Main window and interface | Hide/show toolbar. | M1/M9 | Not Started |  |
+| F02-05 | Main window and interface | Hide/show toolbar. | M1/M9 | Implemented | View → Hide/Show Toolbar |
 | F02-06 | Main window and interface | Hide/show sidebar. | M1/M9 | In Progress | Sidebar hide/show persisted |
 | F02-07 | Main window and interface | Resizable sidebar. | M1/M9 | Not Started |  |
 | F02-08 | Main window and interface | Resizable document area. | M1/M9 | Not Started |  |
-| F02-09 | Main window and interface | Full-screen mode. | M1/M9 | Not Started |  |
+| F02-09 | Main window and interface | Full-screen mode. | M1/M9 | Implemented | View → Full Screen / F11 / toolbar |
 | F02-10 | Main window and interface | Tabbed documents. | M1/M9 | In Progress | TabView + Ctrl+Tab navigation |
 | F02-11 | Main window and interface | Tear tab into separate window. | M1/M9 | Not Started |  |
 | F02-12 | Main window and interface | Move tabs between windows. | M1/M9 | Not Started |  |

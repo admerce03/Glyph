@@ -28,6 +28,7 @@ public sealed class ImageDocumentView : UserControl
     private readonly DocumentViewState _viewState;
     private readonly Func<string, Task>? _openSibling;
     private readonly ScrollViewer _scrollViewer;
+    private StackPanel? _toolbar;
     private readonly Grid _imageSurface;
     private readonly Image _image;
     private readonly Canvas _cropOverlay;
@@ -438,6 +439,7 @@ public sealed class ImageDocumentView : UserControl
                 resize, adjust, bgRemove, stamp, meta, ocrButton, copyImage, pasteImage, save, exportPng, exportJpeg, convert, printImage, _status,
             },
         };
+        _toolbar = toolbar;
 
         var body = new Grid
         {
@@ -1424,11 +1426,27 @@ public sealed class ImageDocumentView : UserControl
         if (App.CurrentApp.MainWindowInstance is MainWindow window)
         {
             window.ToggleFullscreen();
+            _status.Text = "Fullscreen toggled.";
             return;
         }
 
         _status.Text = "Fullscreen unavailable.";
     }
+
+    public void ToggleToolbarVisibility()
+    {
+        if (_toolbar is null)
+        {
+            return;
+        }
+
+        _toolbar.Visibility = _toolbar.Visibility == Visibility.Visible
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        _status.Text = _toolbar.Visibility == Visibility.Visible ? "Toolbar shown." : "Toolbar hidden.";
+    }
+
+    public bool IsToolbarVisible => _toolbar?.Visibility != Visibility.Collapsed;
 
     private async Task RefreshAsync()
     {
