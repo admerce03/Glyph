@@ -75,6 +75,11 @@ public sealed class PdfDocumentView : UserControl
     private int _activeHitIndex = -1;
     private IReadOnlyList<PdfAnnotationInfo> _annotationItems = [];
     private bool _suppressAnnotationNav;
+    private bool _inkMode;
+    private bool _inkDrawing;
+    private int _inkPageIndex = -1;
+    private readonly List<PdfPagePoint> _inkPoints = [];
+    private Microsoft.UI.Xaml.Shapes.Polyline? _inkPreview;
     private bool _dragSelecting;
     private Windows.Foundation.Point _dragStart;
     private int _dragPageIndex = -1;
@@ -282,6 +287,7 @@ public sealed class PdfDocumentView : UserControl
         var underline = new Button { Content = "Underline" };
         var strikeout = new Button { Content = "Strike" };
         var stickyNote = new Button { Content = "Note" };
+        var ink = new Button { Content = "Ink" };
         var undoEdit = new Button { Content = "Undo" };
         var redoEdit = new Button { Content = "Redo" };
         ToolTipService.SetToolTip(rotateLeft, "Rotate selected pages left");
@@ -299,6 +305,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(underline, "Underline selected text");
         ToolTipService.SetToolTip(strikeout, "Strike through selected text");
         ToolTipService.SetToolTip(stickyNote, "Add a sticky note on the current page");
+        ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
         ToolTipService.SetToolTip(undoEdit, "Undo last page edit (Ctrl+Z)");
         ToolTipService.SetToolTip(redoEdit, "Redo page edit (Ctrl+Y)");
 
@@ -345,6 +352,7 @@ public sealed class PdfDocumentView : UserControl
         underline.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.Underline);
         strikeout.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.StrikeOut);
         stickyNote.Click += async (_, _) => await AddStickyNoteAsync();
+        ink.Click += (_, _) => ToggleInkMode(ink);
         undoEdit.Click += async (_, _) => await UndoPageEditAsync();
         redoEdit.Click += async (_, _) => await RedoPageEditAsync();
 
@@ -359,7 +367,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote,
+                highlight, underline, strikeout, stickyNote, ink,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -1261,6 +1269,13 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (_inkMode)
+        {
+            BeginInkStroke(border, pageIndex, e);
+            e.Handled = true;
+            return;
+        }
+
         _dragSelecting = true;
         _dragPageIndex = pageIndex;
         _dragStart = e.GetCurrentPoint(border).Position;
@@ -1276,6 +1291,17 @@ public sealed class PdfDocumentView : UserControl
                 _cropDragHandle is not null)
             {
                 UpdateCropPointerDrag(cropBorder, e);
+                e.Handled = true;
+            }
+
+            return;
+        }
+
+        if (_inkMode && _inkDrawing)
+        {
+            if (sender is Border { Tag: int inkPage } inkBorder && inkPage == _inkPageIndex)
+            {
+                ContinueInkStroke(inkBorder, e);
                 e.Handled = true;
             }
 
@@ -1332,6 +1358,13 @@ public sealed class PdfDocumentView : UserControl
                 RedrawCropOverlay();
             }
 
+            e.Handled = true;
+            return;
+        }
+
+        if (_inkMode && _inkDrawing && pageIndex == _inkPageIndex)
+        {
+            await EndInkStrokeAsync(border, e);
             e.Handled = true;
             return;
         }
@@ -1947,7 +1980,7 @@ public sealed class PdfDocumentView : UserControl
         {
             var all = await _annotations.ListAsync(_document);
             _annotationItems = all
-                .Where(a => a.TextMarkupKind is not null || a.IsStickyNote)
+                .Where(a => a.TextMarkupKind is not null || a.IsStickyNote || a.IsInk)
                 .OrderBy(a => a.PageIndex)
                 .ThenBy(a => a.AnnotIndex)
                 .ToList();
@@ -1974,6 +2007,11 @@ public sealed class PdfDocumentView : UserControl
             return $"Note · p.{info.PageIndex + 1}: {preview}";
         }
 
+        if (info.IsInk)
+        {
+            return $"Ink · p.{info.PageIndex + 1}";
+        }
+
         var kind = info.TextMarkupKind switch
         {
             PdfTextMarkupKind.Highlight => "Highlight",
@@ -1982,6 +2020,123 @@ public sealed class PdfDocumentView : UserControl
             _ => "Markup",
         };
         return $"{kind} · p.{info.PageIndex + 1}";
+    }
+
+    private void ToggleInkMode(Button inkButton)
+    {
+        _inkMode = !_inkMode;
+        if (!_inkMode)
+        {
+            CancelInkStroke();
+            _status.Text = "Ink mode off.";
+            inkButton.Background = null;
+            return;
+        }
+
+        if (_cropMode)
+        {
+            CancelCropMode();
+        }
+
+        inkButton.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(60, 255, 140, 0));
+        _status.Text = "Ink mode on — draw on the page.";
+    }
+
+    private void BeginInkStroke(Border border, int pageIndex, PointerRoutedEventArgs e)
+    {
+        CancelInkStroke();
+        _inkDrawing = true;
+        _inkPageIndex = pageIndex;
+        _inkPoints.Clear();
+        border.CapturePointer(e.Pointer);
+        AppendInkPoint(border, pageIndex, e.GetCurrentPoint(border).Position);
+    }
+
+    private void ContinueInkStroke(Border border, PointerRoutedEventArgs e)
+    {
+        if (_inkPageIndex < 0)
+        {
+            return;
+        }
+
+        AppendInkPoint(border, _inkPageIndex, e.GetCurrentPoint(border).Position);
+    }
+
+    private void AppendInkPoint(Border border, int pageIndex, Windows.Foundation.Point uiPoint)
+    {
+        var page = _document.GetPage(pageIndex);
+        var pdfX = uiPoint.X / _scale;
+        var pdfY = page.HeightPoints - (uiPoint.Y / _scale);
+        _inkPoints.Add(new PdfPagePoint(pdfX, pdfY));
+
+        if (!_pageOverlays.TryGetValue(pageIndex, out var overlay))
+        {
+            return;
+        }
+
+        if (_inkPreview is null)
+        {
+            _inkPreview = new Microsoft.UI.Xaml.Shapes.Polyline
+            {
+                Stroke = new SolidColorBrush(Colors.OrangeRed),
+                StrokeThickness = 2,
+                Fill = null,
+            };
+            overlay.Children.Add(_inkPreview);
+        }
+
+        _inkPreview.Points.Add(uiPoint);
+    }
+
+    private async Task EndInkStrokeAsync(Border border, PointerRoutedEventArgs e)
+    {
+        try { border.ReleasePointerCapture(e.Pointer); } catch { /* ignore */ }
+        ContinueInkStroke(border, e);
+
+        var points = _inkPoints.ToList();
+        var pageIndex = _inkPageIndex;
+        CancelInkStroke();
+
+        if (points.Count < 2 || pageIndex < 0)
+        {
+            _status.Text = "Ink stroke too short.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Saving ink…";
+            await _annotations.AddInkAsync(
+                _document,
+                pageIndex,
+                points,
+                new PdfAnnotationColor(220, 60, 40));
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = "Ink stroke added.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Ink failed: " + ex.Message;
+        }
+    }
+
+    private void CancelInkStroke()
+    {
+        if (_inkPreview is not null &&
+            _inkPageIndex >= 0 &&
+            _pageOverlays.TryGetValue(_inkPageIndex, out var overlay))
+        {
+            overlay.Children.Remove(_inkPreview);
+        }
+
+        _inkPreview = null;
+        _inkDrawing = false;
+        _inkPageIndex = -1;
+        _inkPoints.Clear();
     }
 
     private async Task AddStickyNoteAsync()

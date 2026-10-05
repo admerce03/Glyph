@@ -221,6 +221,128 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             cancellationToken);
     }
 
+    public Task<PdfAnnotationInfo> AddInkAsync(
+        IPdfDocument document,
+        int pageIndex,
+        IReadOnlyList<PdfPagePoint> strokePoints,
+        PdfAnnotationColor color,
+        float borderWidthPoints = 2f,
+        CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        ArgumentOutOfRangeException.ThrowIfNegative(pageIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(pageIndex, pdfium.PageCount);
+        ArgumentNullException.ThrowIfNull(strokePoints);
+        if (strokePoints.Count < 2)
+        {
+            throw new ArgumentException("Ink stroke requires at least two points.", nameof(strokePoints));
+        }
+
+        if (borderWidthPoints <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(borderWidthPoints));
+        }
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
+                    if (page is null)
+                    {
+                        throw new InvalidOperationException($"Failed to load page {pageIndex} for ink.");
+                    }
+
+                    try
+                    {
+                        if (fpdf_annot.FPDFAnnotIsSupportedSubtype(PdfiumAnnotSubtypes.Ink) == 0)
+                        {
+                            throw new NotSupportedException("PDFium does not support ink annotations.");
+                        }
+
+                        var annot = fpdf_annot.FPDFPageCreateAnnot(page, PdfiumAnnotSubtypes.Ink);
+                        if (annot is null)
+                        {
+                            throw new InvalidOperationException("FPDFPage_CreateAnnot failed for ink.");
+                        }
+
+                        try
+                        {
+                            var minX = strokePoints.Min(p => p.X);
+                            var minY = strokePoints.Min(p => p.Y);
+                            var maxX = strokePoints.Max(p => p.X);
+                            var maxY = strokePoints.Max(p => p.Y);
+                            var pad = borderWidthPoints;
+                            var bounds = new PdfRect(minX - pad, minY - pad, maxX + pad, maxY + pad);
+                            using var rect = new FS_RECTF_();
+                            rect.Left = (float)bounds.Left;
+                            rect.Bottom = (float)bounds.Bottom;
+                            rect.Right = (float)bounds.Right;
+                            rect.Top = (float)bounds.Top;
+                            if (fpdf_annot.FPDFAnnotSetRect(annot, rect) == 0)
+                            {
+                                throw new InvalidOperationException("FPDFAnnot_SetRect failed for ink.");
+                            }
+
+                            if (fpdf_annot.FPDFAnnotSetColor(
+                                    annot,
+                                    FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_Color,
+                                    color.R,
+                                    color.G,
+                                    color.B,
+                                    color.A) == 0)
+                            {
+                                throw new InvalidOperationException("FPDFAnnot_SetColor failed for ink.");
+                            }
+
+                            if (PdfiumNative.AnnotSetBorder(annot.__Instance, 0, 0, borderWidthPoints) == 0)
+                            {
+                                throw new InvalidOperationException("FPDFAnnot_SetBorder failed for ink.");
+                            }
+
+                            var points = strokePoints
+                                .Select(p => new PdfiumNative.FsPointF { X = (float)p.X, Y = (float)p.Y })
+                                .ToArray();
+                            if (PdfiumNative.AnnotAddInkStroke(annot.__Instance, points, (ulong)points.Length) < 0)
+                            {
+                                throw new InvalidOperationException("FPDFAnnot_AddInkStroke failed.");
+                            }
+
+                            var index = fpdf_annot.FPDFPageGetAnnotIndex(page, annot);
+                            if (index < 0)
+                            {
+                                throw new InvalidOperationException("Created ink annotation has no page index.");
+                            }
+
+                            pdfium.NotifyAnnotationsChanged();
+                            return new PdfAnnotationInfo(
+                                pageIndex,
+                                index,
+                                TextMarkupKind: null,
+                                bounds,
+                                color,
+                                Contents: null,
+                                IsStickyNote: false,
+                                IsInk: true);
+                        }
+                        finally
+                        {
+                            fpdf_annot.FPDFPageCloseAnnot(annot);
+                        }
+                    }
+                    finally
+                    {
+                        fpdfview.FPDF_ClosePage(page);
+                    }
+                }
+            },
+            cancellationToken);
+    }
+
     public Task SetContentsAsync(
         IPdfDocument document,
         int pageIndex,
@@ -424,7 +546,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
 
                     var contents = PdfiumAnnotStrings.GetString(annot, "Contents");
                     var isSticky = subtype == PdfiumAnnotSubtypes.Text;
-                    results.Add(new PdfAnnotationInfo(pageIndex, i, kind, bounds, color, contents, isSticky));
+                    var isInk = subtype == PdfiumAnnotSubtypes.Ink;
+                    results.Add(new PdfAnnotationInfo(pageIndex, i, kind, bounds, color, contents, isSticky, isInk));
                 }
                 finally
                 {

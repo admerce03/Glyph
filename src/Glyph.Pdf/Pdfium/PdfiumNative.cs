@@ -70,4 +70,19 @@ internal static partial class PdfiumNative
         public float Right;
         public float Bottom;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct FsPointF
+    {
+        public float X;
+        public float Y;
+    }
+
+    [LibraryImport(LibraryName, EntryPoint = "FPDFAnnot_AddInkStroke")]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    public static partial int AnnotAddInkStroke(IntPtr annot, [In] FsPointF[] points, ulong pointCount);
+
+    [LibraryImport(LibraryName, EntryPoint = "FPDFAnnot_SetBorder")]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    public static partial int AnnotSetBorder(IntPtr annot, float horizontalRadius, float verticalRadius, float borderWidth);
 }

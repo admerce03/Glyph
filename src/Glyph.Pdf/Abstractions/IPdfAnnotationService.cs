@@ -22,6 +22,14 @@ public interface IPdfAnnotationService
         PdfAnnotationColor color,
         CancellationToken cancellationToken = default);
 
+    Task<PdfAnnotationInfo> AddInkAsync(
+        IPdfDocument document,
+        int pageIndex,
+        IReadOnlyList<PdfPagePoint> strokePoints,
+        PdfAnnotationColor color,
+        float borderWidthPoints = 2f,
+        CancellationToken cancellationToken = default);
+
     Task SetContentsAsync(
         IPdfDocument document,
         int pageIndex,

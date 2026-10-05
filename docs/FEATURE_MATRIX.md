@@ -227,7 +227,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-01 | PDF annotations | Highlight | M4 | Tested | `AddTextMarkupAsync(Highlight)` + toolbar |
 | F13-02 | PDF annotations | Underline | M4 | Tested | `AddTextMarkupAsync(Underline)` + toolbar |
 | F13-03 | PDF annotations | Strikethrough | M4 | Tested | `AddTextMarkupAsync(StrikeOut)` + toolbar |
-| F13-04 | PDF annotations | Freehand ink | M4 | Not Started |  |
+| F13-04 | PDF annotations | Freehand ink | M4 | Tested | `AddInkAsync` + Ink draw mode |
 | F13-05 | PDF annotations | Lines | M4 | Not Started |  |
 | F13-06 | PDF annotations | Arrows | M4 | Not Started |  |
 | F13-07 | PDF annotations | Rectangles | M4 | Not Started |  |

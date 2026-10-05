@@ -191,6 +191,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Viewer: select text → Highlight / Underline / Strike toolbar actions.
 - Annotation sidebar lists text markup; click jumps to page; Delete removes selected markup.
 - Sticky notes: `AddStickyNoteAsync` + Note toolbar dialog; Contents/color/move APIs; notes appear in sidebar.
+- Freehand ink: `AddInkAsync` + Ink draw mode on page surface; listed in annotation sidebar.
 
 ---
 
