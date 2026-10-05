@@ -173,13 +173,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F08-22 | OCR / Live Text equivalent | Create calendar event through appropriate Windows/system mechanism where feasible. | M6 | Implemented | Entities → temp `.ics` via `OcrCalendarInvite` |
 | F08-23 | OCR / Live Text equivalent | Search web. | M6 | Implemented | Entities dialog → Bing |
 | F08-24 | OCR / Live Text equivalent | Copy recognized value. | M6 | Implemented | Entities → Copy value |
-| F09-01 | PDF bookmarks | Add bookmark at current page/location. | M2/M4 | Implemented | Sidebar Bookmarks + |
-| F09-02 | PDF bookmarks | Rename bookmark. | M2/M4 | Implemented | Sidebar Rename |
-| F09-03 | PDF bookmarks | Delete bookmark. | M2/M4 | Implemented | Sidebar Del |
-| F09-04 | PDF bookmarks | List bookmarks in sidebar. | M2/M4 | Implemented | Bookmarks list under Contents |
-| F09-05 | PDF bookmarks | Reorder bookmarks where feasible. | M2/M4 | Implemented | ↑/↓ buttons |
-| F09-06 | PDF bookmarks | Click to navigate. | M2/M4 | Implemented | ItemClick → GoToPage |
-| F09-07 | PDF bookmarks | Preserve bookmarks when saving. | M2/M4 | Implemented | Persisted in view-state.json per path |
+| F09-01 | PDF bookmarks | Add bookmark at current page/location. | M2/M4 | Tested | Sidebar Bookmarks +; view-state bookmark round-trip unit test |
+| F09-02 | PDF bookmarks | Rename bookmark. | M2/M4 | Tested | Sidebar Rename; persisted Title in view-state store |
+| F09-03 | PDF bookmarks | Delete bookmark. | M2/M4 | Tested | Sidebar Del; view-state list mutation + save |
+| F09-04 | PDF bookmarks | List bookmarks in sidebar. | M2/M4 | Tested | Bookmarks list; `Save_and_load_round_trips_user_bookmarks` |
+| F09-05 | PDF bookmarks | Reorder bookmarks where feasible. | M2/M4 | Tested | ↑/↓ buttons; order preserved in view-state JSON |
+| F09-06 | PDF bookmarks | Click to navigate. | M2/M4 | Tested | ItemClick → GoToPage via `PageIndex` |
+| F09-07 | PDF bookmarks | Preserve bookmarks when saving. | M2/M4 | Tested | Persisted in view-state.json per path (unit test) |
 | F09-08 | PDF bookmarks | Export them as standard PDF bookmarks where compatible. | M2/M4 | Tested | Bookmarks → PDF writes flat `/Outlines` via incremental patch (`PdfOutlinePatcher`) |
 | F10-01 | PDF page manipulation | Select page thumbnails. | M3 | Implemented | Click thumbnails; chrome shows selection |
 | F10-02 | PDF page manipulation | Multi-select pages. | M3 | Tested | Ctrl+click / Ctrl+A via `PageSelection` |
@@ -746,26 +746,26 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F53-01 | Precision touchpad behavior | two-finger scroll | M1/M2 | Implemented | Native ScrollViewer pan on PDF + image views |
 | F53-02 | Precision touchpad behavior | pinch zoom on supported precision touchpads | M1/M2 | Implemented | Ctrl+wheel + Manipulation Scale on PDF + image |
 | F53-03 | Precision touchpad behavior | standard Windows touchpad gestures where they map naturally to application navigation | M1/M2 | Implemented | Scroll/pinch map to pan/zoom; no touchscreen/pen gestures |
-| F54-01 | Toolbar customization | sidebar | M1/M9 | Implemented | Toolbar Sidebar toggle + Preferences visibility |
-| F54-02 | Toolbar customization | previous | M1/M9 | Implemented | Prefs toggle; PDF Prev button |
-| F54-03 | Toolbar customization | next | M1/M9 | Implemented | Prefs toggle; PDF Next button |
-| F54-04 | Toolbar customization | page number | M1/M9 | Implemented | Prefs toggle; goto box |
-| F54-05 | Toolbar customization | zoom | M1/M9 | Implemented | Prefs toggle; ± zoom |
-| F54-06 | Toolbar customization | fit page | M1/M9 | Implemented | Prefs toggle |
-| F54-07 | Toolbar customization | fit width | M1/M9 | Implemented | Prefs toggle |
-| F54-08 | Toolbar customization | search | M1/M9 | Implemented | Prefs toggle; find UI cluster |
-| F54-09 | Toolbar customization | markup | M1/M9 | Implemented | Prefs toggle; ink/shapes cluster |
-| F54-10 | Toolbar customization | highlight | M1/M9 | Implemented | Prefs toggle; highlight/underline/strike |
-| F54-11 | Toolbar customization | rotate | M1/M9 | Implemented | Prefs toggle |
-| F54-12 | Toolbar customization | crop | M1/M9 | Implemented | Prefs toggle |
-| F54-13 | Toolbar customization | signature | M1/M9 | Implemented | Prefs toggle; Sign |
-| F54-14 | Toolbar customization | print | M1/M9 | Implemented | Prefs toggle |
-| F54-15 | Toolbar customization | inspector | M1/M9 | Implemented | Prefs toggle; Info |
-| F54-16 | Toolbar customization | share | M1/M9 | Implemented | Prefs toggle; Share toolbar → Windows Share |
-| F54-17 | Toolbar customization | OCR | M1/M9 | Implemented | Prefs toggle; OCR cluster |
-| F54-18 | Toolbar customization | default toolbar | M1/M9 | Implemented | Empty `ToolbarHiddenCommands` = all visible |
-| F54-19 | Toolbar customization | reset toolbar | M1/M9 | Implemented | Preferences → Reset toolbar to default |
-| F54-20 | Toolbar customization | compact icon mode | M1/M9 | Implemented | Preferences → Compact document toolbars |
+| F54-01 | Toolbar customization | sidebar | M1/M9 | Tested | Catalog id + `ToolbarHiddenCommands` prefs filter unit tests |
+| F54-02 | Toolbar customization | previous | M1/M9 | Tested | Catalog id + prefs hide list |
+| F54-03 | Toolbar customization | next | M1/M9 | Tested | Catalog id + prefs hide list |
+| F54-04 | Toolbar customization | page number | M1/M9 | Tested | Catalog id + prefs hide list |
+| F54-05 | Toolbar customization | zoom | M1/M9 | Tested | Catalog id + prefs hide list |
+| F54-06 | Toolbar customization | fit page | M1/M9 | Tested | Catalog id + prefs hide list |
+| F54-07 | Toolbar customization | fit width | M1/M9 | Tested | Catalog id + prefs hide list |
+| F54-08 | Toolbar customization | search | M1/M9 | Tested | Catalog id + prefs hide list |
+| F54-09 | Toolbar customization | markup | M1/M9 | Tested | Catalog id + prefs hide list |
+| F54-10 | Toolbar customization | highlight | M1/M9 | Tested | Catalog id + prefs hide list |
+| F54-11 | Toolbar customization | rotate | M1/M9 | Tested | Catalog id + prefs hide list |
+| F54-12 | Toolbar customization | crop | M1/M9 | Tested | Catalog id + prefs hide list |
+| F54-13 | Toolbar customization | signature | M1/M9 | Tested | Catalog id + prefs hide list |
+| F54-14 | Toolbar customization | print | M1/M9 | Tested | Catalog id + prefs hide list |
+| F54-15 | Toolbar customization | inspector | M1/M9 | Tested | Catalog id + prefs hide list |
+| F54-16 | Toolbar customization | share | M1/M9 | Tested | Catalog id + prefs hide list |
+| F54-17 | Toolbar customization | OCR | M1/M9 | Tested | Catalog id + prefs hide list |
+| F54-18 | Toolbar customization | default toolbar | M1/M9 | Tested | Empty `ToolbarHiddenCommands` = all visible (unit test) |
+| F54-19 | Toolbar customization | reset toolbar | M1/M9 | Tested | Clear hidden list round-trip unit test |
+| F54-20 | Toolbar customization | compact icon mode | M1/M9 | Tested | `CompactToolbar` prefs round-trip unit test |
 | F55-01 | Preferences | theme | M1/M9 | Tested | Theme setting persisted; `JsonSettingsStoreTests` round-trip |
 | F55-02 | Preferences | restore previous session | M1/M9 | Tested | Preferences toggle; `JsonSettingsStore` + `JsonSessionStore` unit tests |
 | F55-03 | Preferences | recent file count | M1/M9 | Tested | Preferences NumberBox; settings round-trip unit test |

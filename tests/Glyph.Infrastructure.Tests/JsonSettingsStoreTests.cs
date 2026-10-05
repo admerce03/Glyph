@@ -180,4 +180,64 @@ public class JsonSettingsStoreTests
             }
         }
     }
+
+    [Fact]
+    public async Task Save_and_load_round_trips_toolbar_hidden_commands()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-toolbar-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings
+            {
+                CompactToolbar = true,
+                ToolbarHiddenCommands =
+                [
+                    ToolbarCommands.Share,
+                    ToolbarCommands.Ocr,
+                    "UNKNOWN-COMMAND",
+                    "  Print  ",
+                ],
+            });
+
+            var settings = await new JsonSettingsStore(path).LoadAsync();
+            settings.CompactToolbar.Should().BeTrue();
+            settings.ToolbarHiddenCommands.Should().BeEquivalentTo(
+                [ToolbarCommands.Share, ToolbarCommands.Ocr, ToolbarCommands.Print]);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Save_empty_toolbar_hidden_means_default_all_visible()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-toolbar-reset-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings
+            {
+                ToolbarHiddenCommands = [ToolbarCommands.Zoom],
+            });
+            (await new JsonSettingsStore(path).LoadAsync()).ToolbarHiddenCommands.Should().ContainSingle()
+                .Which.Should().Be(ToolbarCommands.Zoom);
+
+            // Reset toolbar to default = clear hidden list (F54-19).
+            await store.SaveAsync(new AppSettings { ToolbarHiddenCommands = [] });
+            (await new JsonSettingsStore(path).LoadAsync()).ToolbarHiddenCommands.Should().BeEmpty();
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
 }
