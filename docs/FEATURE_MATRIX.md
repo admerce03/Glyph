@@ -223,7 +223,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F12-07 | PDF crop | Apply to all pages. | M3 | Tested | Dialog checkbox → `PageSelection.ResolveTargets` |
 | F12-08 | PDF crop | Undo crop. | M3 | Tested | `PdfPageEditHistory` restores page size after `CropPagesAsync` (unit) |
 | F12-09 | PDF crop | Preserve underlying PDF content if using non-destructive CropBox changes. | M3 | Tested | Sets CropBox only |
-| F12-10 | PDF crop | Optional permanent crop/export function. | M3 | Tested | `PermanentCropPagesAsync` + Export cropped… |
+| F12-10 | PDF crop | Optional permanent crop/export function. | M3 | Tested | `PermanentCropPagesAsync` + Export cropped…; undo restores MediaBox |
 | F13-01 | PDF annotations | Highlight | M4 | Tested | `AddTextMarkupAsync(Highlight)` + toolbar |
 | F13-02 | PDF annotations | Underline | M4 | Tested | `AddTextMarkupAsync(Underline)` + toolbar |
 | F13-03 | PDF annotations | Strikethrough | M4 | Tested | `AddTextMarkupAsync(StrikeOut)` + toolbar |
