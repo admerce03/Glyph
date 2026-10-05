@@ -44,9 +44,6 @@ namespace Glyph.App.Views;
 /// </summary>
 public sealed class PdfDocumentView : UserControl
 {
-    private const double DefaultThumbnailWidth = 108;
-    private const double MinThumbnailWidth = 72;
-    private const double MaxThumbnailWidth = 180;
     private const int OcrMaxEdgePixels = 2048;
 
     private readonly IPdfDocument _document;
@@ -125,7 +122,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly Dictionary<int, Image> _thumbnailImages = new();
     private readonly Dictionary<int, Border> _thumbnailBorders = new();
     private readonly SemaphoreSlim _renderGate = new(1, 1);
-    private double _thumbnailWidth = DefaultThumbnailWidth;
+    private double _thumbnailWidth = ThumbnailWidthConstraints.Default;
     private double _scale = 1.25;
     private PageLayoutMode _layoutMode = PageLayoutMode.Continuous;
     private int _renderGeneration;
@@ -306,7 +303,7 @@ public sealed class PdfDocumentView : UserControl
         ApplyAnnotationDefaults(settings);
         if (settings is not null)
         {
-            _thumbnailWidth = Math.Clamp(settings.ThumbnailWidth, MinThumbnailWidth, MaxThumbnailWidth);
+            _thumbnailWidth = ThumbnailWidthConstraints.Clamp(settings.ThumbnailWidth);
         }
 
         var defaultZoom = settings?.DefaultZoom > 0 ? settings.DefaultZoom : 1.25;
@@ -10489,8 +10486,8 @@ public sealed class PdfDocumentView : UserControl
 
     private UIElement BuildPagesHeader()
     {
-        var small = new Button { Content = "S", Width = 28, Padding = new Thickness(0), Tag = 72.0 };
-        var medium = new Button { Content = "M", Width = 28, Padding = new Thickness(0), Tag = 108.0 };
+        var small = new Button { Content = "S", Width = 28, Padding = new Thickness(0), Tag = ThumbnailWidthConstraints.Min };
+        var medium = new Button { Content = "M", Width = 28, Padding = new Thickness(0), Tag = ThumbnailWidthConstraints.Default };
         var large = new Button { Content = "L", Width = 28, Padding = new Thickness(0), Tag = 156.0 };
         ToolTipService.SetToolTip(small, "Small page thumbnails");
         ToolTipService.SetToolTip(medium, "Medium page thumbnails");
@@ -10560,7 +10557,7 @@ public sealed class PdfDocumentView : UserControl
 
     private async Task SetThumbnailWidthAsync(double width)
     {
-        var clamped = Math.Clamp(width, MinThumbnailWidth, MaxThumbnailWidth);
+        var clamped = ThumbnailWidthConstraints.Clamp(width);
         if (Math.Abs(clamped - _thumbnailWidth) < 0.5)
         {
             return;

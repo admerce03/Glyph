@@ -2080,12 +2080,12 @@ public sealed partial class MainWindow : Window
             return true;
         }
 
-        if (!skipDirtyPrompt && (session.IsDirty || TabHasUnsavedEdits(id)))
+        if (DocumentClosePolicy.RequiresDirtyPrompt(session.IsDirty, TabHasUnsavedEdits(id), skipDirtyPrompt))
         {
             var dialog = new ContentDialog
             {
                 Title = "Unsaved changes",
-                Content = $"“{session.DisplayName}” has unsaved changes. Close anyway?",
+                Content = DocumentClosePolicy.UnsavedClosePrompt(session.DisplayName),
                 PrimaryButtonText = "Close",
                 CloseButtonText = "Cancel",
                 DefaultButton = ContentDialogButton.Close,

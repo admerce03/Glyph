@@ -29,7 +29,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-19 | Application and file handling | File → Rename. | M1/M9 | Implemented | File → Rename… same-folder rename |
 | F01-20 | Application and file handling | File → Move. | M1/M9 | Implemented | File → Move… FolderPicker + File.Move |
 | F01-21 | Application and file handling | File → Properties. | M1/M9 | Implemented | File → Properties / Ctrl+I → PDF Info or image Meta |
-| F01-22 | Application and file handling | Close: | M1/M9 | Implemented | Close Tab / Close All |
+| F01-22 | Application and file handling | Close: | M1/M9 | Tested | Close Tab / Close All; `DocumentClosePolicy` dirty-prompt unit tests |
 | F01-23 | Application and file handling | Unsaved-change prompt where appropriate. | M1/M9 | Tested | Close tab dirty / HasUnsavedEdits; `MarkDirty`/`MarkClean` unit tests |
 | F01-24 | Application and file handling | Optional autosave. | M1/M9 | Tested | Preferences → Auto-save to original; `AutoSaveToOriginal` prefs round-trip |
 | F01-25 | Application and file handling | Crash-recovery copy. | M1/M9 | Tested | `FileCrashRecoveryStore` SaveSnapshot/List/Discard unit tests |
@@ -59,7 +59,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-22 | Main window and interface | Precision touchpad gesture support where useful. | M1/M9 | Implemented | Two-finger ScrollViewer scroll + Ctrl+wheel / Manipulation Scale pinch (PDF + image) |
 | F02-23 | Main window and interface | Keyboard-first operation. | M1/M9 | Implemented | Menu accelerators + document Ctrl shortcuts |
 | F02-24 | Main window and interface | Accessibility through Windows UI Automation. | M1/M9 | Implemented | AutomationProperties.Name on chrome and tools |
-| F03-01 | Sidebar modes | Page thumbnails | M2-M5 | Implemented | Thumbnail strip in PDF viewer sidebar |
+| F03-01 | Sidebar modes | Page thumbnails | M2-M5 | Tested | Thumbnail strip; `ThumbnailWidthConstraints` clamp unit tests |
 | F03-02 | Sidebar modes | Table of contents | M2-M5 | Implemented | Outline TreeView when bookmarks present |
 | F03-03 | Sidebar modes | Search results | M2-M5 | Implemented | Find hits list under Search header |
 | F03-04 | Sidebar modes | Bookmarks | M2-M5 | Tested | PDF sidebar Bookmarks list; view-state bookmark round-trip |
@@ -89,7 +89,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-10 | PDF viewing | Single-page mode. | M2 | Tested | Layout combo → SinglePage; `PageLayoutCombo` unit tests |
 | F04-11 | PDF viewing | Two-page/facing-page mode. | M2 | Tested | Even/odd spreads; `PageLayoutCombo` + calculator |
 | F04-12 | PDF viewing | Optional cover-page behavior for facing pages. | M2 | Tested | `TwoPageWithCover` layout + calculator tests |
-| F04-13 | PDF viewing | Page thumbnails. | M2 | Implemented | Bitmap thumbnails at low scale |
+| F04-13 | PDF viewing | Page thumbnails. | M2 | Tested | Bitmap thumbnails; `ThumbnailWidthConstraints` (72–180 DIP) |
 | F04-14 | PDF viewing | Page number navigation. | M2 | Tested | Status + goto box + thumbs; `PageGotoParser` unit tests |
 | F04-15 | PDF viewing | Go to page. | M2 | Tested | Goto box (# + Enter); `PageGotoParser.TryParseZeroBased` |
 | F04-16 | PDF viewing | Previous page. | M2 | Tested | Prev / Page Up; `PageLayoutCalculator.PreviousPageIndex` unit tests |
