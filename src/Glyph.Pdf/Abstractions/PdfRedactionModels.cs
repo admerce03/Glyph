@@ -38,3 +38,17 @@ public sealed record PdfRedactionApplyResult(
     int AnnotationsRemoved = 0,
     int AttachmentsRemoved = 0,
     bool MetadataCleared = false);
+
+/// <summary>User-facing copy for redaction confirm/apply (F21-07).</summary>
+public static class PdfRedactionUiCopy
+{
+    public const string ApplyDialogTitle = "Apply redactions permanently?";
+
+    public static string FormatApplyBody(int pendingCount) =>
+        $"Apply {pendingCount} redaction mark(s)? Underlying text and covered image content will be removed. This cannot be undone.";
+
+    public static string FormatPendingStatus(int pendingCount) =>
+        pendingCount <= 0
+            ? "No pending redactions."
+            : $"{pendingCount} pending mark(s). Apply permanently removes underlying text/images — this cannot be undone.";
+}

@@ -8773,7 +8773,7 @@ public sealed class PdfDocumentView : UserControl
             Title = "Redaction",
             Content = pending.Count == 0
                 ? "Mark areas to remove permanently. Drag rectangles in draw mode, or mark the current selection/region."
-                : $"{pending.Count} pending mark(s). Apply permanently removes underlying text/images — this cannot be undone.",
+                : PdfRedactionUiCopy.FormatPendingStatus(pending.Count),
             XamlRoot = window.Content.XamlRoot,
         };
 
@@ -9145,7 +9145,7 @@ public sealed class PdfDocumentView : UserControl
         var pending = _redaction.GetPending(_document);
         if (pending.Count == 0)
         {
-            _status.Text = "No pending redactions.";
+            _status.Text = PdfRedactionUiCopy.FormatPendingStatus(0);
             return;
         }
 
@@ -9179,7 +9179,7 @@ public sealed class PdfDocumentView : UserControl
                     TextWrapping = TextWrapping.Wrap,
                     MaxWidth = 420,
                     Text =
-                        $"Apply {pending.Count} redaction mark(s)? Underlying text and covered image content will be removed. This cannot be undone.",
+                        PdfRedactionUiCopy.FormatApplyBody(pending.Count),
                 },
                 removeAnnotations,
                 removeAttachments,
@@ -9189,7 +9189,7 @@ public sealed class PdfDocumentView : UserControl
 
         var dialog = new ContentDialog
         {
-            Title = "Apply redactions permanently?",
+            Title = PdfRedactionUiCopy.ApplyDialogTitle,
             Content = panel,
             PrimaryButtonText = "Apply",
             SecondaryButtonText = "Clear marks",

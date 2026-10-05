@@ -369,7 +369,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F21-04 | Redaction | Remove pending redaction. | M7 | Tested | `RemovePending` / `UndoLastPending` unit tests |
 | F21-05 | Redaction | Apply redactions permanently. | M7 | Tested | `ApplyAsync` unit tests (text/image/annot sanitize) |
 | F21-06 | Redaction | Remove underlying text/image data, not merely cover it visually. | M7 | Tested | Black page object + remove intersecting text/images; search empty after apply |
-| F21-07 | Redaction | Warn before permanent application. | M7 | Implemented | ContentDialog confirm before `ApplyAsync` |
+| F21-07 | Redaction | Warn before permanent application. | M7 | Tested | `PdfRedactionUiCopy` confirm title/body + ContentDialog |
 | F21-08 | Redaction | Sanitize associated hidden content where practical. | M7 | Tested | Apply removes intersecting annotations via `RemoveIntersectingAnnotations` |
 | F21-09 | Redaction | Option to remove: | M7 | Tested | Apply dialog checkboxes: intersecting annotations, embedded attachments, Info metadata (Info patcher). Layers N/A (no OCG API). |
 | F21-10 | Redaction | Search and redact matching text, later/advanced. | M7 | Tested | Unit: mark each search hit then apply; UI: Redact → Mark find matches |
