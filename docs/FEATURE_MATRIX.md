@@ -259,8 +259,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-33 | PDF annotations | change line style | M4 | Not Started |  |
 | F13-34 | PDF annotations | change arrowheads | M4 | Not Started |  |
 | F13-35 | PDF annotations | change font | M4 | Not Started |  |
-| F13-36 | PDF annotations | change font size | M4 | Not Started |  |
-| F13-37 | PDF annotations | change text color | M4 | Not Started |  |
+| F13-36 | PDF annotations | change font size | M4 | Implemented | TextBox/Callout dialog NumberBox → `fontSizePoints` |
+| F13-37 | PDF annotations | change text color | M4 | Implemented | TextBox/Callout dialog StrokePresets → `textColor` / DA |
 | F13-38 | PDF annotations | change text alignment | M4 | Not Started |  |
 | F14-01 | Highlight workflow | Select text and apply highlight. | M4 | Implemented | Selection quads → Highlight toolbar |
 | F14-02 | Highlight workflow | Persistent highlight mode: | M4 | Implemented | Highlight toggles mode; Esc exits; color remembered |
@@ -290,11 +290,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F16-04 | Text boxes and callouts | Resize it. | M4 | Tested | `MoveAsync` with new bounds |
 | F16-05 | Text boxes and callouts | Rotate where appropriate. | M4 | Not Started |  |
 | F16-06 | Text boxes and callouts | Font family. | M4 | Implemented | Helvetica via DA |
-| F16-07 | Text boxes and callouts | Font size. | M4 | Tested | `fontSizePoints` parameter |
+| F16-07 | Text boxes and callouts | Font size. | M4 | Implemented | `fontSizePoints` + TextBox/Callout dialog NumberBox |
 | F16-08 | Text boxes and callouts | Bold. | M4 | Not Started |  |
 | F16-09 | Text boxes and callouts | Italic. | M4 | Not Started |  |
 | F16-10 | Text boxes and callouts | Underline. | M4 | Not Started |  |
-| F16-11 | Text boxes and callouts | Text color. | M4 | Tested | DA RGB from `textColor` |
+| F16-11 | Text boxes and callouts | Text color. | M4 | Implemented | DA RGB from `textColor` + TextBox/Callout picker |
 | F16-12 | Text boxes and callouts | Background/fill color. | M4 | Implemented | `fillColor` → InteriorColor; TextBox dialog picker |
 | F16-13 | Text boxes and callouts | Border. | M4 | Tested | Border color + width on create |
 | F16-14 | Text boxes and callouts | Opacity. | M4 | Implemented | Sidebar Opacity → `SetOpacityAsync` |
