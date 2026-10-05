@@ -19,5 +19,11 @@ public sealed class AppSettings
     /// <summary>Sidebar width in DIPs when visible (F02-07).</summary>
     public double SidebarWidth { get; set; } = 220;
 
+    /// <summary>When true, each successful Save keeps a local version snapshot (F51).</summary>
+    public bool VersionSnapshotsEnabled { get; set; }
+
+    /// <summary>Max snapshots retained per document path.</summary>
+    public int VersionSnapshotCapacity { get; set; } = 5;
+
     public bool SidebarVisible { get; set; } = true;
 }

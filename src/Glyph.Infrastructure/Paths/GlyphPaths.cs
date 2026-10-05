@@ -20,6 +20,8 @@ public static class GlyphPaths
 
     public static string RecoveryDirectory => System.IO.Path.Combine(LocalAppDataRoot, "recovery");
 
+    public static string SnapshotsDirectory => System.IO.Path.Combine(LocalAppDataRoot, "snapshots");
+
     public static string SignaturesDirectory => System.IO.Path.Combine(LocalAppDataRoot, "signatures");
 
     public static string FormValueHistoryFile => System.IO.Path.Combine(LocalAppDataRoot, "form-values.json");

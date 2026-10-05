@@ -101,6 +101,15 @@ public sealed class JsonSettingsStore : ISettingsStore
         {
             settings.SidebarWidth = 480;
         }
+
+        if (settings.VersionSnapshotCapacity < 1)
+        {
+            settings.VersionSnapshotCapacity = 1;
+        }
+        else if (settings.VersionSnapshotCapacity > 50)
+        {
+            settings.VersionSnapshotCapacity = 50;
+        }
     }
 
     private static AppSettings Clone(AppSettings settings) => new()
@@ -111,6 +120,8 @@ public sealed class JsonSettingsStore : ISettingsStore
         AutoSaveToOriginal = settings.AutoSaveToOriginal,
         CrashRecoveryIntervalSeconds = settings.CrashRecoveryIntervalSeconds,
         SidebarWidth = settings.SidebarWidth,
+        VersionSnapshotsEnabled = settings.VersionSnapshotsEnabled,
+        VersionSnapshotCapacity = settings.VersionSnapshotCapacity,
         SidebarVisible = settings.SidebarVisible,
     };
 }

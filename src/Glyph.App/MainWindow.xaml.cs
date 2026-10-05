@@ -52,6 +52,7 @@ public sealed partial class MainWindow : Window
     private readonly IDocumentViewStateStore _viewStateStore;
     private readonly ISessionStore _sessionStore;
     private readonly ICrashRecoveryStore _recoveryStore;
+    private readonly IVersionSnapshotStore _snapshotStore;
     private readonly ISettingsStore _settingsStore;
     private readonly IPdfDocumentFactory _pdfFactory;
     private readonly IPdfRenderer _pdfRenderer;
@@ -82,6 +83,7 @@ public sealed partial class MainWindow : Window
         IDocumentViewStateStore viewStateStore,
         ISessionStore sessionStore,
         ICrashRecoveryStore recoveryStore,
+        IVersionSnapshotStore snapshotStore,
         ISettingsStore settingsStore,
         IPdfDocumentFactory pdfFactory,
         IPdfRenderer pdfRenderer,
@@ -110,6 +112,7 @@ public sealed partial class MainWindow : Window
         _viewStateStore = viewStateStore;
         _sessionStore = sessionStore;
         _recoveryStore = recoveryStore;
+        _snapshotStore = snapshotStore;
         _settingsStore = settingsStore;
         _pdfFactory = pdfFactory;
         _pdfRenderer = pdfRenderer;
@@ -208,6 +211,8 @@ public sealed partial class MainWindow : Window
     private async void ShowInExplorerMenuItem_Click(object sender, RoutedEventArgs e) => await ShowActiveInExplorerAsync();
 
     private async void PropertiesMenuItem_Click(object sender, RoutedEventArgs e) => await ShowActivePropertiesAsync();
+
+    private async void VersionSnapshotsMenuItem_Click(object sender, RoutedEventArgs e) => await ShowVersionSnapshotsAsync();
 
     private void CopyPathMenuItem_Click(object sender, RoutedEventArgs e) => CopyActivePath();
 
@@ -1042,7 +1047,28 @@ public sealed partial class MainWindow : Window
             _ = DiscardRecoveryAsync(path);
         }
 
+        if (_settingsStore.Current.VersionSnapshotsEnabled)
+        {
+            _ = CaptureVersionSnapshotAsync(path);
+        }
+
         _ = PersistSessionAsync();
+    }
+
+    private async Task CaptureVersionSnapshotAsync(string path)
+    {
+        try
+        {
+            var entry = await _snapshotStore.CaptureAsync(path);
+            if (entry is not null)
+            {
+                _logger.LogInformation("Version snapshot saved for {Path} → {Snapshot}", path, entry.SnapshotPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Version snapshot failed for {Path}", path);
+        }
     }
 
     private async Task DuplicateActiveDocumentAsync()
@@ -2337,11 +2363,25 @@ public sealed partial class MainWindow : Window
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
             Width = 280,
         };
+        var snapshotsBox = new CheckBox
+        {
+            Content = "Keep local version snapshots on Save",
+            IsChecked = settings.VersionSnapshotsEnabled,
+        };
+        var snapshotCapBox = new NumberBox
+        {
+            Header = "Snapshots kept per file",
+            Value = settings.VersionSnapshotCapacity,
+            Minimum = 1,
+            Maximum = 50,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
+            Width = 280,
+        };
 
         var panel = new StackPanel
         {
             Spacing = 12,
-            Children = { restoreBox, autoSaveBox, intervalBox, recentBox },
+            Children = { restoreBox, autoSaveBox, intervalBox, recentBox, snapshotsBox, snapshotCapBox },
         };
         var dialog = new ContentDialog
         {
@@ -2361,9 +2401,170 @@ public sealed partial class MainWindow : Window
         settings.AutoSaveToOriginal = autoSaveBox.IsChecked == true;
         settings.CrashRecoveryIntervalSeconds = (int)Math.Clamp(intervalBox.Value, 0, 3600);
         settings.RecentFileCapacity = (int)Math.Clamp(recentBox.Value, 1, 100);
+        settings.VersionSnapshotsEnabled = snapshotsBox.IsChecked == true;
+        settings.VersionSnapshotCapacity = (int)Math.Clamp(snapshotCapBox.Value, 1, 50);
         await _settingsStore.SaveAsync(settings);
         ConfigureRecoveryTimer();
         await PersistSessionAsync();
         StatusText.Text = "Preferences saved.";
+    }
+
+    private async Task ShowVersionSnapshotsAsync()
+    {
+        var active = _workspace.ActiveDocument;
+        if (active is null || string.IsNullOrWhiteSpace(active.Path) || !File.Exists(active.Path))
+        {
+            StatusText.Text = "Open a saved document to manage version snapshots.";
+            return;
+        }
+
+        var path = active.Path!;
+        var entries = (await _snapshotStore.ListAsync(path)).ToList();
+        if (entries.Count == 0)
+        {
+            StatusText.Text = _settingsStore.Current.VersionSnapshotsEnabled
+                ? "No version snapshots yet — they are created on Save."
+                : "No snapshots. Enable “Keep local version snapshots on Save” in Preferences.";
+            return;
+        }
+
+        var list = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            Width = 460,
+            MaxHeight = 280,
+            ItemsSource = entries
+                .Select(e => $"{e.SavedAtUtc.ToLocalTime():g} · {FormatBytes(e.ByteLength)}")
+                .ToList(),
+        };
+        list.SelectedIndex = 0;
+
+        string? action = null;
+        var openCopy = new Button { Content = "Open as copy", Margin = new Thickness(0, 0, 8, 0) };
+        var restore = new Button { Content = "Restore", Margin = new Thickness(0, 0, 8, 0) };
+        var delete = new Button { Content = "Delete" };
+        var buttons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Margin = new Thickness(0, 12, 0, 0),
+            Children = { openCopy, restore, delete },
+        };
+        var panel = new StackPanel { Children = { list, buttons } };
+        var dialog = new ContentDialog
+        {
+            Title = "Version snapshots — " + active.DisplayName,
+            Content = panel,
+            CloseButtonText = "Close",
+            XamlRoot = RootGrid.XamlRoot,
+        };
+        openCopy.Click += (_, _) =>
+        {
+            action = "copy";
+            dialog.Hide();
+        };
+        restore.Click += (_, _) =>
+        {
+            action = "restore";
+            dialog.Hide();
+        };
+        delete.Click += (_, _) =>
+        {
+            action = "delete";
+            dialog.Hide();
+        };
+
+        await dialog.ShowAsync();
+        if (action is null || list.SelectedIndex < 0 || list.SelectedIndex >= entries.Count)
+        {
+            return;
+        }
+
+        var chosen = entries[list.SelectedIndex];
+        if (!File.Exists(chosen.SnapshotPath))
+        {
+            StatusText.Text = "Snapshot file is missing.";
+            return;
+        }
+
+        if (action == "copy")
+        {
+            var dir = System.IO.Path.GetDirectoryName(path) ?? System.IO.Path.GetTempPath();
+            var name = System.IO.Path.GetFileNameWithoutExtension(path);
+            var ext = System.IO.Path.GetExtension(path);
+            var stamp = chosen.SavedAtUtc.ToLocalTime().ToString("yyyyMMdd-HHmmss");
+            var copyPath = System.IO.Path.Combine(dir, $"{name} (snapshot {stamp}){ext}");
+            var n = 2;
+            while (File.Exists(copyPath))
+            {
+                copyPath = System.IO.Path.Combine(dir, $"{name} (snapshot {stamp}) {n}{ext}");
+                n++;
+            }
+
+            File.Copy(chosen.SnapshotPath, copyPath);
+            await OpenPathAsync(copyPath);
+            StatusText.Text = "Opened snapshot copy: " + System.IO.Path.GetFileName(copyPath);
+            return;
+        }
+
+        if (action == "delete")
+        {
+            await _snapshotStore.DeleteAsync(chosen.Id, path);
+            StatusText.Text = "Deleted snapshot from " + chosen.SavedAtUtc.ToLocalTime().ToString("g");
+            return;
+        }
+
+        if (action == "restore")
+        {
+            var confirm = new ContentDialog
+            {
+                Title = "Restore snapshot?",
+                Content = "Replace the current file on disk with this snapshot? A new snapshot of the current file will be kept first when snapshots are enabled.",
+                PrimaryButtonText = "Restore",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = RootGrid.XamlRoot,
+            };
+            if (await confirm.ShowAsync() != ContentDialogResult.Primary)
+            {
+                return;
+            }
+
+            if (_settingsStore.Current.VersionSnapshotsEnabled)
+            {
+                await CaptureVersionSnapshotAsync(path);
+            }
+
+            if (active.IsDirty || TabHasUnsavedEdits(active.Id))
+            {
+                if (!await CloseDocumentAsync(active.Id, skipDirtyPrompt: true))
+                {
+                    return;
+                }
+            }
+            else
+            {
+                await CloseDocumentAsync(active.Id, skipDirtyPrompt: true);
+            }
+
+            File.Copy(chosen.SnapshotPath, path, overwrite: true);
+            await OpenPathAsync(path);
+            StatusText.Text = "Restored snapshot from " + chosen.SavedAtUtc.ToLocalTime().ToString("g");
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024)
+        {
+            return bytes + " B";
+        }
+
+        if (bytes < 1024 * 1024)
+        {
+            return $"{bytes / 1024.0:0.#} KB";
+        }
+
+        return $"{bytes / (1024.0 * 1024.0):0.##} MB";
     }
 }

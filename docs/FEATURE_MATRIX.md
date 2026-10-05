@@ -716,11 +716,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F50-05 | Autosave and recovery | reopen recovered document after crash. | M1/M9 | Implemented | Startup recovery prompt opens snapshots |
 | F50-06 | Autosave and recovery | never silently discard recovery data. | M1/M9 | Implemented | Recover / Keep / Discard prompt |
 | F50-07 | Autosave and recovery | remove recovery copy after successful save/close. | M1/M9 | Implemented | Discard on save and clean close |
-| F51-01 | Optional version snapshots | optional automatic local snapshots. | M9 | Not Started |  |
-| F51-02 | Optional version snapshots | show: | M9 | Not Started |  |
-| F51-03 | Optional version snapshots | restore snapshot. | M9 | Not Started |  |
-| F51-04 | Optional version snapshots | open snapshot as copy. | M9 | Not Started |  |
-| F51-05 | Optional version snapshots | delete snapshots. | M9 | Not Started |  |
+| F51-01 | Optional version snapshots | optional automatic local snapshots. | M9 | Implemented | Opt-in on Save via Preferences |
+| F51-02 | Optional version snapshots | show: | M9 | Implemented | File → Version Snapshots lists time + size |
+| F51-03 | Optional version snapshots | restore snapshot. | M9 | Implemented | Restore replaces file after confirm |
+| F51-04 | Optional version snapshots | open snapshot as copy. | M9 | Implemented | Opens sibling copy of snapshot |
+| F51-05 | Optional version snapshots | delete snapshots. | M9 | Implemented | Delete from Version Snapshots dialog |
 | F52-01 | Keyboard shortcuts | Ctrl+O — Open | M1/M9 | Implemented | File menu accelerator |
 | F52-02 | Keyboard shortcuts | Ctrl+S — Save | M1/M9 | Implemented | File menu + image view key handler |
 | F52-03 | Keyboard shortcuts | Ctrl+Shift+S — Save As | M1/M9 | Implemented | File menu accelerator |

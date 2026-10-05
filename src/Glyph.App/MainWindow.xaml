@@ -59,6 +59,7 @@
                         <KeyboardAccelerator Key="I" Modifiers="Control" />
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="VersionSnapshotsMenuItem" Text="Version Snapshots…" Click="VersionSnapshotsMenuItem_Click" />
                 <MenuFlyoutItem x:Name="CopyPathMenuItem" Text="Copy File Path" Click="CopyPathMenuItem_Click" />
                 <MenuFlyoutItem x:Name="CopyFileMenuItem" Text="Copy File" Click="CopyFileMenuItem_Click" />
                 <MenuFlyoutItem x:Name="OpenWithMenuItem" Text="Open With Default App" Click="OpenWithMenuItem_Click" />

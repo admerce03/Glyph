@@ -46,6 +46,13 @@ internal static class AppServices
         services.AddSingleton<ISessionStore>(_ => new JsonSessionStore(GlyphPaths.SessionFile));
         services.AddSingleton<ICrashRecoveryStore>(_ =>
             new FileCrashRecoveryStore(GlyphPaths.RecoveryDirectory));
+        services.AddSingleton<IVersionSnapshotStore>(sp =>
+        {
+            var settings = sp.GetRequiredService<ISettingsStore>().Current;
+            return new FileVersionSnapshotStore(
+                GlyphPaths.SnapshotsDirectory,
+                settings.VersionSnapshotCapacity);
+        });
         services.AddSingleton<ISignatureLibrary>(_ => new FileSignatureLibrary(GlyphPaths.SignaturesDirectory));
         services.AddSingleton<IFormValueHistory>(_ => new JsonFormValueHistory(GlyphPaths.FormValueHistoryFile));
         services.AddSingleton<IFormAutofillProfileStore>(_ =>
