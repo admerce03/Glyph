@@ -368,6 +368,49 @@ public class PdfiumPageEditorTests
     }
 
     [Fact]
+    public async Task Merge_documents_at_zero_prepends()
+    {
+        var destPath = CreateMultiPagePdf(pageCount: 2);
+        var srcPath = CreateMultiPagePdf(pageCount: 1);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var editor = new PdfiumPageEditor();
+            await using var dest = await factory.OpenAsync(destPath);
+            await using var src = await factory.OpenAsync(srcPath);
+
+            await editor.MergeDocumentsAsync(dest, [src], insertIndex: 0);
+            dest.PageCount.Should().Be(3);
+        }
+        finally
+        {
+            File.Delete(destPath);
+            File.Delete(srcPath);
+        }
+    }
+
+    [Fact]
+    public async Task Reorder_applies_PageReorder_MoveSelection_permutation()
+    {
+        var path = CreateMultiPagePdf(pageCount: 4);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var editor = new PdfiumPageEditor();
+            await using var document = await factory.OpenAsync(path);
+
+            var order = Glyph.Core.Documents.PageReorder.MoveSelection(4, [1, 2], insertBeforeIndex: 0);
+            order.Should().Equal(1, 2, 0, 3);
+            await editor.ReorderPagesAsync(document, order);
+            document.PageCount.Should().Be(4);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Split_document_returns_contiguous_parts()
     {
         var path = CreateMultiPagePdf(pageCount: 5);

@@ -20,7 +20,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M0 | Architecture and engineering foundation | **Tested** | — |
 | M1 | Application shell and basic file opening | **Implemented** (CI green; interactive screenshot pending) | M0 |
 | M2 | Core PDF viewer | **Implemented** (+ post-core Zoom ▭ / Glass / Present) | M1 |
-| M3 | Core PDF page manipulation | **Implemented** (CI green; §11 cross-doc DnD screen recording pending) | M2 |
+| M3 | Core PDF page manipulation | **Tested** (matrix F10–F12; §11 DnD screen recording + CI merge pending) | M2 |
 | M4 | PDF markup and editing | **Implemented** (matrix-complete; Quadding `/Q` via dict patch) | M2 (forms/security touch M7) |
 | M5 | Image viewer/editor | **Implemented** (matrix-complete; HDR/HEIF deferred) | M1 (shares shell/DnD with M3) |
 | M6 | OCR and scanned-document capabilities | **In Progress** (PRs #62–#66 stacked; Actions billing blocks CI/merge) | M2, M5 |
@@ -161,7 +161,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Explorer PDF → thumbnail insert, cross-tab/window page DnD (`PageDragPayload` / `PdfPageDragRegistry`), drag-out extract via deferred StorageItems, Ctrl+C/V via `PdfPageClipboard`.
 - Non-destructive CropBox crop (`CropPagesAsync` / `SetCropBoxAsync` + numeric dialog / visual handles + optional permanent export).
 - Multi-window shell (`File → New Window`) with per-window `WorkspaceState`.
-- Remaining M3 polish: §11 cross-document DnD screen recording (same class of proof debt as M1 interactive screenshot).
+- Remaining M3 polish: §11 cross-document DnD screen recording (same class of proof debt as M1 interactive screenshot). Matrix F10–F12 / F11 DnD rows are unit-Tested; Windows CI merge of local +N stack still blocked on Actions billing.
 
 ---
 
@@ -304,6 +304,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - M3 insert prepend/append + text reading-order helpers unit-tested (F10-09/11/12, F07-03)
 - Page paste/drag-out/registry helpers moved to Core/Pdf with tests (F10-24, F11-07/09)
 - Cross-window page drop same-doc semantics via `PageDragSemantics` (F11-08)
+- Merge prepend + undo-after-insert + PageReorder→ReorderPagesAsync edge tests
 
 ---
 
@@ -381,7 +382,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | PDF text interaction | §7 | M2, M6 | Implemented |
 | OCR / Live Text | §8 | M6 | In Progress (PR stack #62–#66; billing blocks merge) |
 | User bookmarks | §9 | M2/M4 | Implemented (app-local + export to PDF `/Outlines`) |
-| PDF page manipulation | §10–12 | M3 | Implemented |
+| PDF page manipulation | §10–12 | M3 | Tested (selection/reorder/insert/merge/split/crop/DnD/clipboard unit-covered; §11 screen recording pending) |
 | PDF annotations/markup | §13–19 | M4 | Implemented |
 | PDF forms | §20 | M4 | Implemented |
 | Redaction | §21 | M7 | Tested (mark/preview/apply + sanitize + confirm copy; password-write separate) |
@@ -403,7 +404,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Implemented (update check → ADR-012) |
 | Accessibility | §56 | M9 | Implemented |
 | Performance/large docs | §57–58 | M2+, M9 | Implemented (bg index / GPU deferred) |
-| Multi-doc workflows | §59–60 | M1, M3 | Implemented (tabs/windows/page+image DnD/clipboard/context) |
+| Multi-doc workflows | §59–60 | M1, M3 | Tested (tabs/windows/page+image DnD/clipboard/registry; interactive DnD demo pending) |
 | Non-destructive editing | §61 | M3–M5 | Implemented (CropBox + in-memory image edits until Save) |
 | Output formats | §62 | M5, M7 | Implemented (HEIF deferred) |
 | Explicit exclusions | §63 | — | Documented (out of scope) |
