@@ -599,10 +599,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F39-02 | Color management | Honor embedded profile while displaying. | M8 | Tested | GetPixelsAsync transforms ICC → sRGB for display (toggle in Meta) |
 | F39-03 | Color management | Assign ICC profile. | M8 | Tested | Meta → Assign sRGB; `AssignColorProfileAsync` |
 | F39-04 | Color management | Convert between profiles. | M8 | Tested | Meta → Convert → sRGB; `ConvertColorProfileAsync` (sRGB/Adobe RGB) |
-| F39-05 | Color management | Use monitor profile. | M8 | Deferred | Needs WinUI/monitor ICC plumbing; sRGB display is interim |
+| F39-05 | Color management | Use monitor profile. | M8 | Deferred | Needs WinUI/monitor ICC plumbing; `ImageColorManagementDeferred.MonitorProfileReason` |
 | F39-06 | Color management | Soft-proof through another ICC profile. | M8 | Tested | Meta → Soft-proof Adobe RGB; `ImageColorManagedDisplayPolicy` |
 | F39-07 | Color management | Toggle soft proof. | M8 | Tested | Meta soft-proof checkbox; `ImageColorManagedDisplayPolicy` |
-| F39-08 | Color management | Gamut-warning option, advanced. | M8 | Deferred | Needs gamut visualization overlay |
+| F39-08 | Color management | Gamut-warning option, advanced. | M8 | Deferred | Needs gamut overlay; `ImageColorManagementDeferred.GamutWarningReason` |
 | F39-09 | Color management | Rendering intent selection: | M8 | Tested | Meta Intent combo; `ImageRenderingIntentUi` unit tests |
 | F40-01 | Clipboard integration | PDF text → text | M1/M5 | Tested | Copy / Ctrl+C; `PdfTextInteractionUi.CopiedCharacters` |
 | F40-02 | Clipboard integration | PDF region → bitmap | M1/M5 | Tested | `CopyRegionAsBitmapAsync`; `PdfRegionCopyPolicy` |
