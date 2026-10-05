@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.App.Printing;
 using Glyph.Core.Documents;
+using Glyph.Core.IO;
 using Glyph.Core.Signatures;
 using Glyph.Imaging.Abstractions;
 using Glyph.Infrastructure.Settings;
@@ -4406,12 +4407,7 @@ public sealed class ImageDocumentView : UserControl
                 // ignore
             }
 
-            static string Bytes(long? size) =>
-                size is null ? "—" : size.Value < 1024
-                    ? $"{size.Value} B"
-                    : size.Value < 1024 * 1024
-                        ? $"{size.Value / 1024.0:0.#} KB"
-                        : $"{size.Value / (1024.0 * 1024.0):0.##} MB";
+            static string Bytes(long? size) => ByteSizeFormat.FormatOptional(size);
 
             var summary = new TextBlock
             {

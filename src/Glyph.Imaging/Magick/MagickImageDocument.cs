@@ -1,5 +1,6 @@
 using Glyph.Imaging.Abstractions;
 using ImageMagick;
+using Glyph.Core.IO;
 
 namespace Glyph.Imaging.Magick;
 
@@ -321,7 +322,7 @@ public sealed class MagickImageDocument : IImageDocument
 
         if (fileSize is long bytes)
         {
-            entries.Add(new("File", "File size", FormatBytes(bytes)));
+            entries.Add(new("File", "File size", ByteSizeFormat.Format(bytes)));
         }
 
         if (dpiX is not null || dpiY is not null)
@@ -597,21 +598,6 @@ public sealed class MagickImageDocument : IImageDocument
         }
 
         return decimalDegrees;
-    }
-
-    private static string FormatBytes(long bytes)
-    {
-        if (bytes < 1024)
-        {
-            return bytes + " B";
-        }
-
-        if (bytes < 1024 * 1024)
-        {
-            return (bytes / 1024.0).ToString("0.#") + " KB";
-        }
-
-        return (bytes / (1024.0 * 1024.0)).ToString("0.##") + " MB";
     }
 
     private static string? Truncate(string? value)

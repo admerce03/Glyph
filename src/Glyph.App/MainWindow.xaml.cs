@@ -2912,7 +2912,7 @@ public sealed partial class MainWindow : Window
             Width = 460,
             MaxHeight = 280,
             ItemsSource = entries
-                .Select(e => $"{e.SavedAtUtc.ToLocalTime():g} · {FormatBytes(e.ByteLength)}")
+                .Select(e => $"{e.SavedAtUtc.ToLocalTime():g} · {ByteSizeFormat.Format(e.ByteLength)}")
                 .ToList(),
         };
         list.SelectedIndex = 0;
@@ -3029,20 +3029,5 @@ public sealed partial class MainWindow : Window
             await OpenPathAsync(path);
             StatusText.Text = "Restored snapshot from " + chosen.SavedAtUtc.ToLocalTime().ToString("g");
         }
-    }
-
-    private static string FormatBytes(long bytes)
-    {
-        if (bytes < 1024)
-        {
-            return bytes + " B";
-        }
-
-        if (bytes < 1024 * 1024)
-        {
-            return $"{bytes / 1024.0:0.#} KB";
-        }
-
-        return $"{bytes / (1024.0 * 1024.0):0.##} MB";
     }
 }

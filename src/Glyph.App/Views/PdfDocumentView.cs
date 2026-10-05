@@ -2,6 +2,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.App.Capture;
 using Glyph.App.Printing;
 using Glyph.Core.Documents;
+using Glyph.Core.IO;
 using Glyph.Core.Signatures;
 using Glyph.Imaging.Abstractions;
 using Glyph.Infrastructure.Forms;
@@ -12778,7 +12779,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 var estimate = _optimize.Estimate(_document, BuildOptions());
                 estimateText.Text =
-                    $"Current: {FormatBytes(estimate.CurrentBytes)} · Estimated: {FormatBytes(estimate.EstimatedBytes)} · "
+                    $"Current: {ByteSizeFormat.Format(estimate.CurrentBytes)} · Estimated: {ByteSizeFormat.Format(estimate.EstimatedBytes)} · "
                     + $"{estimate.ImagesEligibleForDownsample} image(s) above DPI threshold · "
                     + $"{estimate.AttachmentCount} embedded file(s).";
             }
@@ -12846,7 +12847,7 @@ public sealed class PdfDocumentView : UserControl
             _status.Text =
                 $"Optimized: {result.ImagesDownsampled} image(s) downsampled, "
                 + $"{result.AttachmentsRemoved} attachment(s) removed; "
-                + $"{FormatBytes(result.BytesBefore)} → {FormatBytes(result.BytesAfter)}. Save to keep.";
+                + $"{ByteSizeFormat.Format(result.BytesBefore)} → {ByteSizeFormat.Format(result.BytesAfter)}. Save to keep.";
         }
         catch (Exception ex)
         {
@@ -12856,13 +12857,6 @@ public sealed class PdfDocumentView : UserControl
         {
             HideJobProgress();
         }
-
-        static string FormatBytes(long size) =>
-            size < 1024
-                ? $"{size} B"
-                : size < 1024 * 1024
-                    ? $"{size / 1024.0:0.#} KB"
-                    : $"{size / (1024.0 * 1024.0):0.##} MB";
     }
 
     private async Task ShowDocumentInfoAsync()
@@ -12894,12 +12888,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         static string Val(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
-        static string Bytes(long? size) =>
-            size is null ? "—" : size.Value < 1024
-                ? $"{size.Value} B"
-                : size.Value < 1024 * 1024
-                    ? $"{size.Value / 1024.0:0.#} KB"
-                    : $"{size.Value / (1024.0 * 1024.0):0.##} MB";
+        static string Bytes(long? size) => ByteSizeFormat.FormatOptional(size);
 
         var perms = info.Permissions;
         var permissionLines = perms.FormatLines();
@@ -13132,12 +13121,7 @@ public sealed class PdfDocumentView : UserControl
         {
             var info = _documentInfo.GetInfo(_document);
             static string Val(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
-            static string Bytes(long? size) =>
-                size is null ? "—" : size.Value < 1024
-                    ? $"{size.Value} B"
-                    : size.Value < 1024 * 1024
-                        ? $"{size.Value / 1024.0:0.#} KB"
-                        : $"{size.Value / (1024.0 * 1024.0):0.##} MB";
+            static string Bytes(long? size) => ByteSizeFormat.FormatOptional(size);
 
             var pageSize = info.PageWidthPoints is null || info.PageHeightPoints is null
                 ? "—"
@@ -13171,12 +13155,7 @@ public sealed class PdfDocumentView : UserControl
         try
         {
             _attachmentItems = _documentInfo.ListAttachments(_document);
-            static string Bytes(long? size) =>
-                size is null ? "?" : size.Value < 1024
-                    ? $"{size.Value} B"
-                    : size.Value < 1024 * 1024
-                        ? $"{size.Value / 1024.0:0.#} KB"
-                        : $"{size.Value / (1024.0 * 1024.0):0.##} MB";
+            static string Bytes(long? size) => ByteSizeFormat.FormatOptional(size, "?");
 
             _attachmentList.ItemsSource = _attachmentItems.Count == 0
                 ? new[] { "(none)" }

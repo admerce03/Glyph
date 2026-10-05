@@ -145,7 +145,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F07-07 | PDF text interaction | Copy. | M2/M6 | Implemented | Clipboard text package |
 | F07-08 | PDF text interaction | Search selected text. | M2/M6 | Implemented | Find sel toolbar uses current text selection as query |
 | F07-09 | PDF text interaction | OCR fallback on scanned PDFs. | M2/M6 | Implemented | Find on image-only PDF offers OCR current page then re-searches |
-| F07-10 | PDF text interaction | Preserve reasonable reading order during copy. | M2/M6 | Implemented | `PdfTextSelection` top-to-bottom / left-to-right with newlines |
+| F07-10 | PDF text interaction | Preserve reasonable reading order during copy. | M2/M6 | Tested | `PdfTextSelection` top-to-bottom/LTR; `PdfTextSelectionReadingOrderTests` |
 | F07-11 | PDF text interaction | Rectangular selection for copying a region as an image. | M2/M6 | Implemented | Drag region + right-click Copy region as image |
 | F07-12 | PDF text interaction | Copy selected PDF region to clipboard as bitmap. | M2/M6 | Implemented | Renders page crop to PNG bitmap on clipboard |
 | F07-13 | PDF text interaction | Drag selected text where supported. | M2/M6 | Implemented | Page CanDrag exports selected text via DragStarting |
@@ -203,7 +203,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F10-20 | PDF page manipulation | Batch rotation. | M3 | Tested | Multi-select rotate uses same editor path |
 | F10-21 | PDF page manipulation | Crop selected page. | M3 | Tested | `CropPagesAsync` / Crop toolbar dialog |
 | F10-22 | PDF page manipulation | Apply same crop to multiple pages. | M3 | Tested | Multi-select + SetCropBox / apply-all |
-| F10-23 | PDF page manipulation | Change page order. | M3 | Implemented | `ReorderPagesAsync` + Move ↑/↓ |
+| F10-23 | PDF page manipulation | Change page order. | M3 | Tested | `ReorderPagesAsync` + Move ↑/↓; `PageReorder` unit tests |
 | F10-24 | PDF page manipulation | Copy/paste pages between documents. | M3 | Implemented | DnD + Ctrl+C/V via `PdfPageClipboard` |
 | F11-01 | Preview-style PDF drag-and-drop workflows | one page | M3 | Tested | Thumbnail CanDrag + `PageDragPayload` format/parse unit tests |
 | F11-02 | Preview-style PDF drag-and-drop workflows | multiple contiguous pages | M3 | Tested | Multi-select drag; payload preserves sorted indexes |
@@ -221,7 +221,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F12-05 | PDF crop | Apply to current page. | M3 | Tested | `PageSelection.SelectedOrFallback` when none selected |
 | F12-06 | PDF crop | Apply to selected pages. | M3 | Tested | Multi-select crop |
 | F12-07 | PDF crop | Apply to all pages. | M3 | Tested | Dialog checkbox → `PageSelection.ResolveTargets` |
-| F12-08 | PDF crop | Undo crop. | M3 | Implemented | Via `PdfPageEditHistory` snapshots |
+| F12-08 | PDF crop | Undo crop. | M3 | Tested | Via `PdfPageEditHistory` snapshots (same path as F49-07) |
 | F12-09 | PDF crop | Preserve underlying PDF content if using non-destructive CropBox changes. | M3 | Tested | Sets CropBox only |
 | F12-10 | PDF crop | Optional permanent crop/export function. | M3 | Tested | `PermanentCropPagesAsync` + Export cropped… |
 | F13-01 | PDF annotations | Highlight | M4 | Tested | `AddTextMarkupAsync(Highlight)` + toolbar |
@@ -804,21 +804,21 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F56-11 | Accessibility | Zoom without breaking UI layout. | M9 | Implemented | Document zoom scales page bitmaps; chrome uses layout panels |
 | F57-01 | Performance behavior | very fast startup | M2+/M9 | Implemented | Cold-start Stopwatch to first window; status + Debug/ILogger ms |
 | F57-02 | Performance behavior | fast first-page PDF display | M2+/M9 | Implemented | Visible-page render before off-screen thumbs |
-| F57-03 | Performance behavior | render visible pages before off-screen pages | M2+/M9 | Implemented | Visible-page biased render + LRU cache |
+| F57-03 | Performance behavior | render visible pages before off-screen pages | M2+/M9 | Tested | Visible-page biased render + LRU cache (`ContinuousPageWindow` + `PageRenderCache`) |
 | F57-04 | Performance behavior | asynchronous thumbnail generation | M2+/M9 | Implemented | Async render; near-current pages first; Yield between thumbs |
 | F57-05 | Performance behavior | background text indexing | M2+/M9 | Deferred | Search is on-demand; full-doc index not required yet |
 | F57-06 | Performance behavior | lazy OCR | M2+/M9 | Implemented | OCR runs only on explicit toolbar/dialog request |
 | F57-07 | Performance behavior | GPU acceleration where appropriate | M2+/M9 | Deferred | Win2D/Composition GPU path not adopted yet |
 | F57-08 | Performance behavior | smooth scrolling | M2+/M9 | Implemented | Continuous: page sync + throttled render while flinging; settle render on idle |
 | F57-09 | Performance behavior | large-document virtualization | M2+/M9 | Implemented | On-demand visible-page render; distant Image.Source cleared |
-| F57-10 | Performance behavior | low memory usage | M2+/M9 | Implemented | Bounded `PageRenderCache` (capacity 32) |
+| F57-10 | Performance behavior | low memory usage | M2+/M9 | Tested | Bounded `PageRenderCache` (capacity 32); same coverage as F58-05 |
 | F57-11 | Performance behavior | unload distant PDF pages | M2+/M9 | Implemented | Clear distant page Image.Source; LRU evicts bitmaps |
 | F57-12 | Performance behavior | cancel long-running operations | M2+/M9 | Implemented | PDF OCR Cancel OCR + `CancellationToken`; PDF search cancel |
 | F57-13 | Performance behavior | progress indicator for: | M2+/M9 | Implemented | Toolbar `ProgressBar` for OCR/export/optimize; batch image dialog ProgressBar (F36) |
-| F58-01 | Large-document handling | PDFs with thousands of pages. | M2+/M9 | Implemented | Page virtualization via on-demand render + cache |
+| F58-01 | Large-document handling | PDFs with thousands of pages. | M2+/M9 | Tested | Page virtualization via `ContinuousPageWindow` + on-demand render/cache |
 | F58-02 | Large-document handling | Very large raster images. | M2+/M9 | Implemented | Display decode capped (max edge 8192); full pixels retained in Magick doc |
 | F58-03 | Large-document handling | Progressive rendering. | M2+/M9 | Implemented | Image viewer: low-res preview then refine for large rasters |
-| F58-04 | Large-document handling | Avoid loading entire PDF rasterized into memory. | M2+/M9 | Implemented | Visible-window render only + LRU page cache |
+| F58-04 | Large-document handling | Avoid loading entire PDF rasterized into memory. | M2+/M9 | Tested | Visible-window render only + LRU `PageRenderCache` |
 | F58-05 | Large-document handling | Efficient page cache. | M2+/M9 | Tested | `PageRenderCache` LRU (capacity 32) |
 | F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Deferred | Search is on-demand; full-doc index not required yet (same as F57-05) |
 | F58-07 | Large-document handling | Partial OCR. | M2+/M9 | Implemented | OCR selected/current pages only (F08-06/07); not whole-doc by default |
@@ -830,7 +830,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F59-05 | Multi-document workflow | drag images between compatible contexts | M1/M3 | Implemented | Image surface drag exposes file via deferred StorageItems; window drop opens |
 | F59-06 | Multi-document workflow | copy/paste between documents | M1/M3 | Implemented | Ctrl+C/V pages via `PdfPageClipboard` |
 | F59-07 | Multi-document workflow | side-by-side windows using Windows Snap | M1/M3 | Implemented | Multi-window shell; Snap is OS-native |
-| F59-08 | Multi-document workflow | maintain independent undo history for each document | M1/M3 | Implemented | Per-view `PdfPageEditHistory` |
+| F59-08 | Multi-document workflow | maintain independent undo history for each document | M1/M3 | Tested | Per-view `PdfPageEditHistory`; history unit tests |
 | F59-09 | Multi-document workflow | retain per-document page/zoom position | M1/M3 | Implemented | Per-document `PdfViewState` persistence |
 | F60-01 | Context-sensitive commands | Copy | M1/M3 | Implemented | Page right-click + Edit → Copy for selected text |
 | F60-02 | Context-sensitive commands | Highlight | M1/M3 | Implemented | Page right-click Highlight on text selection |
