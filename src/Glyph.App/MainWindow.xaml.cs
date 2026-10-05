@@ -562,6 +562,24 @@ public sealed partial class MainWindow : Window
             };
             var duplex = new CheckBox { Content = "Duplex (feeder)" };
             var autoCrop = new CheckBox { Content = "Auto crop", IsChecked = true };
+            var paperBox = new ComboBox
+            {
+                Header = "Paper size",
+                Width = 320,
+                ItemsSource = new[]
+                {
+                    "Device default",
+                    "Letter (8.5×11)",
+                    "Legal (8.5×14)",
+                    "A4",
+                    "A5",
+                    "A3",
+                    "Tabloid (11×17)",
+                    "Statement (5.5×8.5)",
+                    "Auto-detect (feeder)",
+                },
+                SelectedIndex = 0,
+            };
             var pagesBox = new NumberBox
             {
                 Header = "Max pages (feeder)",
@@ -610,7 +628,7 @@ public sealed partial class MainWindow : Window
                         Spacing = 8,
                         Children =
                         {
-                            deviceBox, sourceBox, colorBox, dpiBox, duplex, autoCrop, pagesBox, destBox, brightness, contrast,
+                            deviceBox, sourceBox, colorBox, dpiBox, paperBox, duplex, autoCrop, pagesBox, destBox, brightness, contrast,
                         },
                     },
                     MaxHeight = 480,
@@ -652,6 +670,19 @@ public sealed partial class MainWindow : Window
                 DateTime.Now.ToString("yyyyMMdd-HHmmss"),
                 CreationCollisionOption.GenerateUniqueName);
 
+            var (pageSize, autoDetectPaper) = paperBox.SelectedIndex switch
+            {
+                1 => (Windows.Graphics.Printing.PrintMediaSize.NorthAmericaLetter, false),
+                2 => (Windows.Graphics.Printing.PrintMediaSize.NorthAmericaLegal, false),
+                3 => (Windows.Graphics.Printing.PrintMediaSize.IsoA4, false),
+                4 => (Windows.Graphics.Printing.PrintMediaSize.IsoA5, false),
+                5 => (Windows.Graphics.Printing.PrintMediaSize.IsoA3, false),
+                6 => (Windows.Graphics.Printing.PrintMediaSize.NorthAmericaTabloid, false),
+                7 => (Windows.Graphics.Printing.PrintMediaSize.NorthAmericaStatement, false),
+                8 => (Windows.Graphics.Printing.PrintMediaSize.Default, true),
+                _ => (Windows.Graphics.Printing.PrintMediaSize.Default, false),
+            };
+
             StatusText.Text = $"Scanning with {device.Name}…";
             var files = await ScannerCaptureHelper.ScanToFolderAsync(
                 device.Id,
@@ -664,7 +695,9 @@ public sealed partial class MainWindow : Window
                     AutoCrop: autoCrop.IsChecked == true,
                     Brightness: (int)brightness.Value == 0 ? null : (int)brightness.Value,
                     Contrast: (int)contrast.Value == 0 ? null : (int)contrast.Value,
-                    MaxPages: (uint)Math.Clamp(pagesBox.Value, 1, 50)));
+                    MaxPages: (uint)Math.Clamp(pagesBox.Value, 1, 50),
+                    PageSize: pageSize,
+                    AutoDetectPageSize: autoDetectPaper));
 
             if (files.Count == 0)
             {

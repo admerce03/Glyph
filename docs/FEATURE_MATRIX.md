@@ -623,7 +623,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F42-06 | Scanner support | Grayscale. | M8 | Implemented | ColorMode Grayscale |
 | F42-07 | Scanner support | Black and white. | M8 | Implemented | ColorMode Monochrome |
 | F42-08 | Scanner support | Resolution/DPI. | M8 | Implemented | DesiredResolution 150–600 |
-| F42-09 | Scanner support | Paper size. | M8 | Deferred | Feeder PageSize available; UI uses device default |
+| F42-09 | Scanner support | Paper size. | M8 | Implemented | Scan dialog paper size + feeder `PageSize` / flatbed region |
 | F42-10 | Scanner support | Auto crop. | M8 | Implemented | AutoCroppingMode SingleRegion toggle |
 | F42-11 | Scanner support | Auto straighten. | M8 | Deferred | No WinRT straighten API; post-process TBD |
 | F42-12 | Scanner support | Brightness/contrast where hardware supports it. | M8 | Implemented | Scan dialog brightness/contrast sliders |
@@ -652,7 +652,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F44-14 | Printing | actual size | M8 | Implemented | Print scale → Actual size |
 | F44-15 | Printing | fit to printable area | M8 | Implemented | Default Fit scale |
 | F44-16 | Printing | fill page | M8 | Implemented | Print scale → Fill page |
-| F44-17 | Printing | pages per sheet | M8 | Deferred | N-up layout not yet; 1 page/sheet |
+| F44-17 | Printing | pages per sheet | M8 | Implemented | Print dialog 1 / 2 / 4-up layout |
 | F44-18 | Printing | auto rotate | M8 | Implemented | Print dialog Auto-rotate |
 | F44-19 | Printing | center | M8 | Implemented | Print dialog Center on page |
 | F44-20 | Printing | print annotations | M8 | Implemented | PDFium render includes annotations |
@@ -791,14 +791,14 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-23 | Preferences | clear recent files | M1/M9 | Not Started |  |
 | F55-24 | Preferences | clear saved signatures | M1/M9 | Not Started |  |
 | F55-25 | Preferences | strip metadata defaults | M1/M9 | Not Started |  |
-| F56-01 | Accessibility | Windows UI Automation. | M9 | Not Started |  |
+| F56-01 | Accessibility | Windows UI Automation. | M9 | Implemented | WinUI Automation tree; toolbar `AutomationProperties.Name` |
 | F56-02 | Accessibility | Keyboard-accessible controls. | M9 | Not Started |  |
 | F56-03 | Accessibility | Visible focus indicators. | M9 | Not Started |  |
-| F56-04 | Accessibility | Screen-reader labels. | M9 | Not Started |  |
+| F56-04 | Accessibility | Screen-reader labels. | M9 | Implemented | Toolbar/search/annot controls mirror ToolTips as Name |
 | F56-05 | Accessibility | High-contrast mode. | M9 | Not Started |  |
 | F56-06 | Accessibility | Windows text scaling. | M9 | Not Started |  |
 | F56-07 | Accessibility | Logical tab order. | M9 | Not Started |  |
-| F56-08 | Accessibility | Descriptive names for toolbar icons. | M9 | Not Started |  |
+| F56-08 | Accessibility | Descriptive names for toolbar icons. | M9 | Implemented | PDF/image toolbars set AutomationProperties.Name |
 | F56-09 | Accessibility | Custom description/alt text for images where PDF/image format supports it. | M9 | Not Started |  |
 | F56-10 | Accessibility | Signature descriptions. | M9 | Not Started |  |
 | F56-11 | Accessibility | Zoom without breaking UI layout. | M9 | Not Started |  |

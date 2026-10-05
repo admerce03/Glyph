@@ -12,6 +12,7 @@ using Glyph.Pdf.Rendering;
 using Glyph.Pdf.Text;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
@@ -587,6 +588,31 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(loupe, "Draw a loupe magnification marker (select to see zoomed crop)");
         ToolTipService.SetToolTip(undoEdit, "Undo last stroke (if any) or page edit (Ctrl+Z)");
         ToolTipService.SetToolTip(redoEdit, "Redo page edit (Ctrl+Y)");
+        ToolTipService.SetToolTip(first, "Go to first page");
+        ToolTipService.SetToolTip(prev, "Previous page");
+        ToolTipService.SetToolTip(next, "Next page");
+        ToolTipService.SetToolTip(last, "Go to last page");
+        ToolTipService.SetToolTip(back, "Navigate back in page history");
+        ToolTipService.SetToolTip(forward, "Navigate forward in page history");
+        ToolTipService.SetToolTip(zoomOut, "Zoom out");
+        ToolTipService.SetToolTip(zoomIn, "Zoom in");
+        ToolTipService.SetToolTip(fitWidth, "Fit page width");
+        ToolTipService.SetToolTip(fitPage, "Fit page");
+        ToolTipService.SetToolTip(actual, "Zoom to 100%");
+        ToolTipService.SetToolTip(_layoutBox, "Page layout mode");
+        ToolTipService.SetToolTip(_gotoBox, "Go to page number");
+        ApplyToolbarAccessibleNames(
+            first, prev, next, last, back, forward, zoomOut, zoomIn, fitWidth, fitPage, actual, copy,
+            rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract,
+            merge, split, crop, highlight, underline, strikeout, stickyNote, textBox, callout, flatten,
+            redact, info, optimize, export, print, camera, sign, formFill, ink, freeform, eraser, rect,
+            roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, undoEdit, redoEdit,
+            _layoutBox, _gotoBox,
+            _caseSensitiveBox, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton,
+            _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch,
+            removeAnnot, duplicateAnnot, copyAnnot, cutAnnot, pasteAnnot, editAnnot, authorAnnot,
+            expandNote, collapseNote, exportNotes, underlineAnnot, colorAnnot, fillAnnot, tipAnnot,
+            groupAnnot, ungroupAnnot, opacityAnnot, widthAnnot, rotateAnnot);
 
         first.Click += async (_, _) => await GoToPageAsync(0, recordHistory: true);
         last.Click += async (_, _) => await GoToPageAsync(_document.PageCount - 1, recordHistory: true);
@@ -10328,6 +10354,13 @@ public sealed class PdfDocumentView : UserControl
                 ItemsSource = new[] { "Fit to printable area", "Fill page", "Actual size" },
                 SelectedIndex = 0,
             };
+            var nUpBox = new ComboBox
+            {
+                Header = "Pages per sheet",
+                Width = 220,
+                ItemsSource = new[] { "1", "2", "4" },
+                SelectedIndex = 0,
+            };
             var grayscale = new CheckBox { Content = "Grayscale" };
             var center = new CheckBox { Content = "Center on page", IsChecked = true };
             var autoRotate = new CheckBox { Content = "Auto-rotate", IsChecked = true };
@@ -10355,6 +10388,7 @@ public sealed class PdfDocumentView : UserControl
                         scopeBox,
                         rangeBox,
                         scaleBox,
+                        nUpBox,
                         grayscale,
                         center,
                         autoRotate,
@@ -10391,6 +10425,12 @@ public sealed class PdfDocumentView : UserControl
                 1 => DocumentPrintScaleMode.Fill,
                 2 => DocumentPrintScaleMode.ActualSize,
                 _ => DocumentPrintScaleMode.Fit,
+            };
+            var pagesPerSheet = nUpBox.SelectedIndex switch
+            {
+                1 => 2,
+                2 => 4,
+                _ => 1,
             };
 
             _status.Text = $"Preparing {indexes.Count} page(s) for print…";
@@ -10432,13 +10472,26 @@ public sealed class PdfDocumentView : UserControl
                 jobName: System.IO.Path.GetFileName(_document.Path) ?? "Glyph PDF",
                 scaleMode: scaleMode,
                 center: center.IsChecked == true,
-                autoRotate: autoRotate.IsChecked == true);
+                autoRotate: autoRotate.IsChecked == true,
+                pagesPerSheet: pagesPerSheet);
             await helper.PrintAsync(bitmaps);
-            _status.Text = $"Print UI shown · {bitmaps.Count} page(s).";
+            _status.Text = $"Print UI shown · {bitmaps.Count} page(s)"
+                + (pagesPerSheet > 1 ? $" · {pagesPerSheet}-up." : ".");
         }
         catch (Exception ex)
         {
             _status.Text = "Print failed: " + ex.Message;
+        }
+    }
+
+    private static void ApplyToolbarAccessibleNames(params DependencyObject[] elements)
+    {
+        foreach (var element in elements)
+        {
+            if (ToolTipService.GetToolTip(element) is string tip && tip.Length > 0)
+            {
+                AutomationProperties.SetName(element, tip);
+            }
         }
     }
 

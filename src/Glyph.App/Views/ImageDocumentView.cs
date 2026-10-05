@@ -5,6 +5,7 @@ using Glyph.Core.Signatures;
 using Glyph.Imaging.Abstractions;
 using Glyph.Ocr.Abstractions;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
@@ -314,6 +315,25 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(_animExtractButton, "Save current frame as PNG");
         ToolTipService.SetToolTip(_animLoopBox, "Loop animation playback");
         ToolTipService.SetToolTip(_undoButton, "Undo last crop/resize/rotate/adjust (Ctrl+Z)");
+        ToolTipService.SetToolTip(zoomOut, "Zoom out");
+        ToolTipService.SetToolTip(zoomIn, "Zoom in");
+        ToolTipService.SetToolTip(fit, "Fit image in view");
+        ToolTipService.SetToolTip(actual, "Zoom to 100%");
+        ToolTipService.SetToolTip(rotateLeft, "Rotate left 90°");
+        ToolTipService.SetToolTip(rotateRight, "Rotate right 90°");
+        ToolTipService.SetToolTip(flipH, "Flip horizontal");
+        ToolTipService.SetToolTip(flipV, "Flip vertical");
+        ToolTipService.SetToolTip(save, "Save image");
+        ApplyToolbarAccessibleNames(
+            zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, flipH, flipV, crop,
+            _interactiveCropButton, _applyCropButton, _cancelCropButton, _cropAspectBox,
+            _selectButton, _selectionKindBox, _selectAllButton, _invertSelButton, _deselectButton,
+            _copySelButton, _cutSelButton, _pasteSelButton, _deleteSelButton, _cropSelButton,
+            _drawButton, _flattenMarkupButton, resize, adjust, bgRemove, stamp, meta, ocrButton,
+            rotate180, orient, batchOrient, fullscreen, save, exportPng, exportJpeg, convert,
+            printImage, copyImage, pasteImage, _prevButton, _nextButton, _slideshowButton,
+            _animPlayButton, _animPrevButton, _animNextButton, _animRestartButton, _animExtractButton,
+            _animLoopBox, _undoButton);
 
         zoomOut.Click += async (_, _) => await SetZoomAsync(_zoom / 1.25);
         zoomIn.Click += async (_, _) => await SetZoomAsync(_zoom * 1.25);
@@ -3667,6 +3687,17 @@ public sealed class ImageDocumentView : UserControl
         }
     }
 
+    private static void ApplyToolbarAccessibleNames(params DependencyObject[] elements)
+    {
+        foreach (var element in elements)
+        {
+            if (ToolTipService.GetToolTip(element) is string tip && tip.Length > 0)
+            {
+                AutomationProperties.SetName(element, tip);
+            }
+        }
+    }
+
     private async Task PrintImageAsync()
     {
         try
@@ -3676,6 +3707,13 @@ public sealed class ImageDocumentView : UserControl
                 Header = "Scale",
                 Width = 240,
                 ItemsSource = new[] { "Fit to printable area", "Fill page", "Actual size" },
+                SelectedIndex = 0,
+            };
+            var nUpBox = new ComboBox
+            {
+                Header = "Pages per sheet",
+                Width = 240,
+                ItemsSource = new[] { "1", "2", "4" },
                 SelectedIndex = 0,
             };
             var grayscale = new CheckBox { Content = "Grayscale" };
@@ -3701,6 +3739,7 @@ public sealed class ImageDocumentView : UserControl
                             Opacity = 0.8,
                         },
                         scaleBox,
+                        nUpBox,
                         grayscale,
                         center,
                         includeSiblings,
@@ -3722,6 +3761,12 @@ public sealed class ImageDocumentView : UserControl
                 1 => DocumentPrintScaleMode.Fill,
                 2 => DocumentPrintScaleMode.ActualSize,
                 _ => DocumentPrintScaleMode.Fit,
+            };
+            var pagesPerSheet = nUpBox.SelectedIndex switch
+            {
+                1 => 2,
+                2 => 4,
+                _ => 1,
             };
 
             var bitmaps = new List<WriteableBitmap>();
@@ -3780,9 +3825,11 @@ public sealed class ImageDocumentView : UserControl
                 jobName: System.IO.Path.GetFileName(_document.Path) ?? "Glyph image",
                 scaleMode: scaleMode,
                 center: center.IsChecked == true,
-                autoRotate: true);
+                autoRotate: true,
+                pagesPerSheet: pagesPerSheet);
             await helper.PrintAsync(bitmaps);
-            _status.Text = $"Print UI shown · {bitmaps.Count} image(s).";
+            _status.Text = $"Print UI shown · {bitmaps.Count} image(s)"
+                + (pagesPerSheet > 1 ? $" · {pagesPerSheet}-up." : ".");
         }
         catch (Exception ex)
         {

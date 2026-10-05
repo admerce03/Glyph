@@ -1,5 +1,7 @@
 using Windows.Devices.Enumeration;
 using Windows.Devices.Scanners;
+using Windows.Foundation;
+using Windows.Graphics.Printing;
 using Windows.Storage;
 
 namespace Glyph.App.Scanning;
@@ -14,7 +16,9 @@ public sealed record ScannerOptions(
     bool AutoCrop = false,
     int? Brightness = null,
     int? Contrast = null,
-    uint MaxPages = 1);
+    uint MaxPages = 1,
+    PrintMediaSize PageSize = PrintMediaSize.Default,
+    bool AutoDetectPageSize = false);
 
 /// <summary>
 /// Windows.Devices.Scanners wrapper for discovery and scan-to-folder (F42).
@@ -49,6 +53,50 @@ public static class ScannerCaptureHelper
 
         var result = await scanner.ScanFilesToFolderAsync(source, folder);
         return result.ScannedFiles?.ToList() ?? [];
+    }
+
+    /// <summary>Common paper sizes in inches (width × height, portrait).</summary>
+    public static bool TryGetPaperSizeInches(PrintMediaSize size, out double widthInches, out double heightInches)
+    {
+        switch (size)
+        {
+            case PrintMediaSize.NorthAmericaLetter:
+                widthInches = 8.5;
+                heightInches = 11;
+                return true;
+            case PrintMediaSize.NorthAmericaLegal:
+                widthInches = 8.5;
+                heightInches = 14;
+                return true;
+            case PrintMediaSize.NorthAmericaTabloid:
+                widthInches = 11;
+                heightInches = 17;
+                return true;
+            case PrintMediaSize.NorthAmericaStatement:
+                widthInches = 5.5;
+                heightInches = 8.5;
+                return true;
+            case PrintMediaSize.IsoA3:
+                widthInches = 11.69;
+                heightInches = 16.54;
+                return true;
+            case PrintMediaSize.IsoA4:
+                widthInches = 8.27;
+                heightInches = 11.69;
+                return true;
+            case PrintMediaSize.IsoA5:
+                widthInches = 5.83;
+                heightInches = 8.27;
+                return true;
+            case PrintMediaSize.IsoB5:
+                widthInches = 6.93;
+                heightInches = 9.84;
+                return true;
+            default:
+                widthInches = 0;
+                heightInches = 0;
+                return false;
+        }
     }
 
     private static ImageScannerScanSource ResolveSource(ImageScanner scanner, ImageScannerScanSource requested)
@@ -149,6 +197,8 @@ public static class ScannerCaptureHelper
             }
         }
 
+        ApplyPaperSize(scanner, source, config, options);
+
         if (source == ImageScannerScanSource.Feeder)
         {
             var feeder = scanner.FeederConfiguration;
@@ -172,6 +222,87 @@ public static class ScannerCaptureHelper
             {
                 // ignore
             }
+        }
+    }
+
+    private static void ApplyPaperSize(
+        ImageScanner scanner,
+        ImageScannerScanSource source,
+        IImageScannerSourceConfiguration config,
+        ScannerOptions options)
+    {
+        if (source == ImageScannerScanSource.Feeder)
+        {
+            var feeder = scanner.FeederConfiguration;
+            try
+            {
+                if (options.AutoDetectPageSize && feeder.CanAutoDetectPageSize)
+                {
+                    feeder.AutoDetectPageSize = true;
+                    return;
+                }
+
+                if (options.AutoDetectPageSize == false && feeder.CanAutoDetectPageSize)
+                {
+                    feeder.AutoDetectPageSize = false;
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+
+            if (options.PageSize == PrintMediaSize.Default)
+            {
+                return;
+            }
+
+            try
+            {
+                if (feeder.IsPageSizeSupported(options.PageSize, PrintOrientation.Default)
+                    || feeder.IsPageSizeSupported(options.PageSize, PrintOrientation.Portrait))
+                {
+                    feeder.PageSize = options.PageSize;
+                    try
+                    {
+                        feeder.PageOrientation = PrintOrientation.Portrait;
+                    }
+                    catch
+                    {
+                        // Orientation may be fixed.
+                    }
+
+                    return;
+                }
+            }
+            catch
+            {
+                // PageSize unsupported — fall through to region.
+            }
+        }
+
+        // Flatbed (and feeder fallback): set SelectedScanRegion from known paper inches.
+        // Region is ignored when AutoCroppingMode is not Disabled.
+        if (options.AutoCrop
+            || options.PageSize == PrintMediaSize.Default
+            || !TryGetPaperSizeInches(options.PageSize, out var width, out var height))
+        {
+            return;
+        }
+
+        try
+        {
+            var max = config.MaxScanArea;
+            var w = Math.Min(width, max.Width);
+            var h = Math.Min(height, max.Height);
+            if (w > 0 && h > 0)
+            {
+                config.SelectedScanRegion = new Rect(0, 0, w, h);
+            }
+        }
+        catch
+        {
+            // Region unsupported.
         }
     }
 }

@@ -322,9 +322,9 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Color management: detect ICC (`HasIccProfile`), assign/convert via Magick `SetProfile` / `TransformColorSpace`; Meta dialog Assign sRGB / Convert → sRGB; display honors ICC→sRGB (F39-02) with soft-proof Adobe RGB + rendering intent (F39-06/07/09); monitor profile / gamut warning deferred.
 - Animated GIF/WebP: decoder coalesces multi-frame images; Play/Pause/Restart/prev/next frame, Loop, frame label, Save frame → PNG (F27-01–10).
 - Background/subject: BG dialog corner flood-fill + fuzz, optional trim; extract to clipboard or PNG; Smart lasso covers F29-01/02 (F29-05 ML deferred).
-- Printing: PDF/image Print… + Ctrl+P via WinUI `PrintManager`/`PrintDocument` (scope/range/scale/grayscale/center/auto-rotate; annotations in render; optional notes page). System UI covers printer/copies/collate/duplex/paper (F44). N-up deferred.
+- Printing: PDF/image Print… + Ctrl+P via WinUI `PrintManager`/`PrintDocument` (scope/range/scale/grayscale/center/auto-rotate; annotations in render; optional notes page; 1/2/4-up pages-per-sheet). System UI covers printer/copies/collate/duplex/paper (F44).
 - Webcam import: File → Capture from Camera… opens PNG tab; PDF Camera stamps capture onto current page (F43). Signature webcam path unchanged.
-- Scanner: File → Scan… discovers WinRT ImageScanner devices; flatbed/ADF, color/gray/B&W, DPI, duplex, auto-crop, brightness/contrast; destinations images / new PDF / insert into open PDF (F42). Paper-size UI and multi-photo region deferred.
+- Scanner: File → Scan… discovers WinRT ImageScanner devices; flatbed/ADF, color/gray/B&W, DPI, duplex, auto-crop, brightness/contrast, paper size (Letter/Legal/A4/… + feeder auto-detect); destinations images / new PDF / insert into open PDF (F42). Multi-photo flatbed region deferred.
 - Share/Explorer: File → Share / Show in File Explorer / Copy path|file / Open With / Send Email (F46–F47).
 - Webcam signature capture already shipped in M4; HDR display (F26-24) still deferred.
 
@@ -335,7 +335,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 ### Scope (`FEATURES.md` §52–56, §57–60 remaining, distribution)
 
 - Startup and large-doc performance pass
-- Accessibility (UIA, keyboard, high contrast, text scaling)
+- Accessibility (UIA, keyboard, high contrast, text scaling) — toolbar icon Names started (F56-01/04/08)
 - Shortcut customization
 - Toolbar customization polish
 - Installer / MSIX / file associations finalize
@@ -379,12 +379,12 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Image metadata/GPS | §37–38 | M5, M8 | In Progress (EXIF/GPS inspector + strip) |
 | Color management | §39 | M8 | In Progress (display ICC→sRGB + soft-proof; monitor ICC deferred) |
 | Clipboard/screenshots | §40–41 | M1, M5 | Not Started |
-| Scanner/webcam | §42–43 | M8 | In Progress (webcam + scanner WinRT; hardware validation TBD) |
-| Printing | §44 | M8 | In Progress (system Print UI; N-up deferred) |
+| Scanner/webcam | §42–43 | M8 | In Progress (webcam + scanner WinRT + paper size; hardware validation TBD) |
+| Printing | §44 | M8 | Implemented (system Print UI + 1/2/4-up) |
 | Export/share/integration | §45–48 | M5–M9 | In Progress (PDF page export formats/DPI/quality/metadata/ICC/alpha) |
 | Undo/autosave/snapshots | §49–51 | M1–M4, M9 | Not Started |
 | Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Not Started |
-| Accessibility | §56 | M9 | Not Started |
+| Accessibility | §56 | M9 | In Progress (toolbar UIA names) |
 | Performance/large docs | §57–58 | M2+, M9 | In Progress |
 | Multi-doc workflows | §59–60 | M1, M3 | In Progress (tabs/windows/page DnD/clipboard/undo; tab tear-off + §60 context cmds open) |
 | Non-destructive editing | §61 | M3–M5 | In Progress (CropBox crops; annotations/markup later) |
