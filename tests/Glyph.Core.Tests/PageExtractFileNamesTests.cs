@@ -10,7 +10,8 @@ public class PageExtractFileNamesTests
     public void TempPdfPath_uses_glyph_pages_prefix()
     {
         var id = Guid.Parse("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        PageExtractFileNames.TempPdfPath("/tmp", id)
-            .Should().Be("/tmp/Glyph-pages-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.pdf");
+        var dir = Path.Combine("tmp");
+        PageExtractFileNames.TempPdfPath(dir, id)
+            .Should().Be(Path.Combine(dir, "Glyph-pages-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.pdf"));
     }
 }

@@ -8,14 +8,16 @@ public class DocumentFileNamePolicyTests
     [Fact]
     public void SuggestDuplicatePath_appends_copy_and_increments()
     {
+        var dir = Path.Combine("tmp");
+        var source = Path.Combine(dir, "doc.pdf");
         var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            @"/tmp/doc.pdf",
-            @"/tmp/doc copy.pdf",
+            source,
+            Path.Combine(dir, "doc copy.pdf"),
         };
 
-        DocumentFileNamePolicy.SuggestDuplicatePath(@"/tmp/doc.pdf", existing.Contains)
-            .Should().Be(@"/tmp/doc copy 2.pdf");
+        DocumentFileNamePolicy.SuggestDuplicatePath(source, existing.Contains)
+            .Should().Be(Path.Combine(dir, "doc copy 2.pdf"));
     }
 
     [Theory]
@@ -32,21 +34,23 @@ public class DocumentFileNamePolicyTests
     [Fact]
     public void EvaluateRename_covers_outcomes()
     {
+        var dir = Path.Combine("tmp");
+        var current = Path.Combine(dir, "a.pdf");
         var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            @"/tmp/a.pdf",
-            @"/tmp/taken.pdf",
+            current,
+            Path.Combine(dir, "taken.pdf"),
         };
 
-        DocumentFileNamePolicy.EvaluateRename(@"/tmp/a.pdf", "a.pdf", existing.Contains)
+        DocumentFileNamePolicy.EvaluateRename(current, "a.pdf", existing.Contains)
             .Status.Should().Be(RenamePathStatus.Unchanged);
-        DocumentFileNamePolicy.EvaluateRename(@"/tmp/a.pdf", "bad/x.pdf", existing.Contains)
+        DocumentFileNamePolicy.EvaluateRename(current, "bad/x.pdf", existing.Contains)
             .Status.Should().Be(RenamePathStatus.Invalid);
-        DocumentFileNamePolicy.EvaluateRename(@"/tmp/a.pdf", "taken.pdf", existing.Contains)
+        DocumentFileNamePolicy.EvaluateRename(current, "taken.pdf", existing.Contains)
             .Status.Should().Be(RenamePathStatus.Conflict);
 
-        var ok = DocumentFileNamePolicy.EvaluateRename(@"/tmp/a.pdf", "b.pdf", existing.Contains);
+        var ok = DocumentFileNamePolicy.EvaluateRename(current, "b.pdf", existing.Contains);
         ok.Status.Should().Be(RenamePathStatus.Ok);
-        ok.DestinationPath.Should().Be(@"/tmp/b.pdf");
+        ok.DestinationPath.Should().Be(Path.Combine(dir, "b.pdf"));
     }
 }
