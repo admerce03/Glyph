@@ -110,6 +110,28 @@ public class MagickImageProcessorTests
     }
 
     [Fact]
+    public async Task Paste_rect_composites_extracted_pixels()
+    {
+        var path = CreateSolidPng(40, 30);
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            await using var document = await decoder.OpenAsync(path);
+
+            var extracted = await processor.ExtractRectAsync(document, new ImageRect(0, 0, 8, 8));
+            await processor.ClearRectAsync(document, new ImageRect(20, 10, 8, 8), transparent: true);
+            await processor.PasteRectAsync(document, extracted, 20, 10);
+            document.PixelWidth.Should().Be(40);
+            document.PixelHeight.Should().Be(30);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Extract_and_clear_rect_round_trip()
     {
         var path = CreateSolidPng(40, 30);
@@ -198,7 +220,12 @@ public class MagickImageProcessorTests
 
             await processor.AdjustAsync(
                 document,
-                new ImageAdjustments(AutoLevels: true, Sharpness: 40, Sepia: true));
+                new ImageAdjustments(
+                    AutoLevels: true,
+                    Sharpness: 40,
+                    Sepia: true,
+                    Temperature: 25,
+                    Tint: -15));
             document.PixelWidth.Should().Be(48);
             document.PixelHeight.Should().Be(32);
         }

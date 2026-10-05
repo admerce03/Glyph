@@ -45,6 +45,16 @@ public interface IImageProcessor
         IImageDocument document,
         ImageRect pixels,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Composites a BGRA32 buffer onto the document at <paramref name="destination"/> (top-left).
+    /// </summary>
+    Task PasteRectAsync(
+        IImageDocument document,
+        ImagePixelBuffer source,
+        int destinationX,
+        int destinationY,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -73,4 +83,6 @@ public sealed record ImageAdjustments(
     double Saturation = 0,
     bool AutoLevels = false,
     double Sharpness = 0,
-    bool Sepia = false);
+    bool Sepia = false,
+    double Temperature = 0,
+    double Tint = 0);

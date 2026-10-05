@@ -137,6 +137,22 @@ public sealed class MagickImageProcessor : IImageProcessor
                     magick.Native.Modulate(new Percentage(100), new Percentage(100 + adjustments.Saturation), new Percentage(100));
                 }
 
+                // Temperature: warm (+) boosts red/reduces blue; Tint: green (−) / magenta (+).
+                if (Math.Abs(adjustments.Temperature) > 0.0001 || Math.Abs(adjustments.Tint) > 0.0001)
+                {
+                    var temp = Math.Clamp(adjustments.Temperature, -100, 100) / 100.0;
+                    var tint = Math.Clamp(adjustments.Tint, -100, 100) / 100.0;
+                    var rGain = 1.0 + (0.18 * temp);
+                    var gGain = 1.0 + (0.12 * tint);
+                    var bGain = 1.0 - (0.18 * temp);
+                    magick.Native.ColorMatrix(new MagickColorMatrix(
+                        rGain, 0, 0, 0, 0,
+                        0, gGain, 0, 0, 0,
+                        0, 0, bGain, 0, 0,
+                        0, 0, 0, 1, 0,
+                        0, 0, 0, 0, 1));
+                }
+
                 if (adjustments.Sharpness > 0.0001)
                 {
                     // Radius/sigma scaled from a 0–100 UI slider.
@@ -255,6 +271,34 @@ public sealed class MagickImageProcessor : IImageProcessor
                 clone.ColorType = ColorType.TrueColorAlpha;
                 var bgra = clone.ToByteArray(MagickFormat.Bgra);
                 return new ImagePixelBuffer(checked((int)clone.Width), checked((int)clone.Height), bgra);
+            },
+            cancellationToken);
+    }
+
+    public Task PasteRectAsync(
+        IImageDocument document,
+        ImagePixelBuffer source,
+        int destinationX,
+        int destinationY,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (source.Width <= 0 || source.Height <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(source));
+        }
+
+        var magick = RequireMagick(document);
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var settings = new PixelReadSettings((uint)source.Width, (uint)source.Height, StorageType.Char, "BGRA");
+                using var overlay = new MagickImage();
+                overlay.ReadPixels(source.BgraPixels, settings);
+                var x = Math.Clamp(destinationX, 0, Math.Max(0, (int)magick.Native.Width - 1));
+                var y = Math.Clamp(destinationY, 0, Math.Max(0, (int)magick.Native.Height - 1));
+                magick.Native.Composite(overlay, x, y, CompositeOperator.Over);
             },
             cancellationToken);
     }

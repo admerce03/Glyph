@@ -467,8 +467,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F28-07 | Image selection tools | Deselect. | M5 | Implemented | Deselect / Esc |
 | F28-08 | Image selection tools | Move selected pixels. | M5 | Not Started |  |
 | F28-09 | Image selection tools | Copy. | M5 | Implemented | Copy sel / Ctrl+C → clipboard PNG via `ExtractRectAsync` |
-| F28-10 | Image selection tools | Cut. | M5 | Not Started |  |
-| F28-11 | Image selection tools | Paste. | M5 | Not Started |  |
+| F28-10 | Image selection tools | Cut. | M5 | Implemented | Cut sel / Ctrl+X → copy + `ClearRectAsync` |
+| F28-11 | Image selection tools | Paste. | M5 | Tested | Paste / Ctrl+V → `PasteRectAsync` at selection origin |
 | F28-12 | Image selection tools | Delete selection. | M5 | Tested | Del sel → `ClearRectAsync` transparent |
 | F28-13 | Image selection tools | Crop to selection. | M5 | Implemented | Crop sel → `CropAsync` |
 | F29-01 | Smart object/background selection | Smart Lasso. | M8 | Not Started |  |
@@ -517,8 +517,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F33-04 | Image color adjustments | Highlights | M5 | Not Started |  |
 | F33-05 | Image color adjustments | Shadows | M5 | Not Started |  |
 | F33-06 | Image color adjustments | Saturation | M5 | Tested | Adjust dialog → AdjustAsync Saturation |
-| F33-07 | Image color adjustments | Temperature | M5 | Not Started |  |
-| F33-08 | Image color adjustments | Tint | M5 | Not Started |  |
+| F33-07 | Image color adjustments | Temperature | M5 | Tested | Adjust dialog Temperature → ColorMatrix RGB gain |
+| F33-08 | Image color adjustments | Tint | M5 | Tested | Adjust dialog Tint → ColorMatrix green/magenta |
 | F33-09 | Image color adjustments | Sharpness | M5 | Tested | Adjust dialog Sharpness → Magick `Sharpen` |
 | F33-10 | Image color adjustments | Sepia | M5 | Tested | Adjust dialog Sepia → Magick `SepiaTone` |
 | F33-11 | Image color adjustments | Black point / levels | M5 | Not Started |  |

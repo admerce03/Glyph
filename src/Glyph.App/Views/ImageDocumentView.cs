@@ -42,6 +42,8 @@ public sealed class ImageDocumentView : UserControl
     private readonly Button _selectAllButton;
     private readonly Button _deselectButton;
     private readonly Button _copySelButton;
+    private readonly Button _cutSelButton;
+    private readonly Button _pasteSelButton;
     private readonly Button _deleteSelButton;
     private readonly Button _cropSelButton;
     private IReadOnlyList<string> _siblings = Array.Empty<string>();
@@ -58,6 +60,7 @@ public sealed class ImageDocumentView : UserControl
     private bool _navDragging;
     private Windows.Foundation.Point _navStart;
     private ImageRect? _pixelSelection;
+    private ImagePixelBuffer? _selectionClipboard;
     private int _displayWidth;
     private int _displayHeight;
 
@@ -148,12 +151,16 @@ public sealed class ImageDocumentView : UserControl
         _selectAllButton = new Button { Content = "All", Visibility = Visibility.Collapsed };
         _deselectButton = new Button { Content = "Deselect", Visibility = Visibility.Collapsed };
         _copySelButton = new Button { Content = "Copy sel", Visibility = Visibility.Collapsed };
+        _cutSelButton = new Button { Content = "Cut sel", Visibility = Visibility.Collapsed };
+        _pasteSelButton = new Button { Content = "Paste", Visibility = Visibility.Collapsed };
         _deleteSelButton = new Button { Content = "Del sel", Visibility = Visibility.Collapsed };
         _cropSelButton = new Button { Content = "Crop sel", Visibility = Visibility.Collapsed };
         ToolTipService.SetToolTip(_selectButton, "Rectangular selection (drag on image)");
         ToolTipService.SetToolTip(_selectAllButton, "Select entire image");
         ToolTipService.SetToolTip(_deselectButton, "Clear selection");
         ToolTipService.SetToolTip(_copySelButton, "Copy selection to clipboard as PNG");
+        ToolTipService.SetToolTip(_cutSelButton, "Cut selection (copy + clear)");
+        ToolTipService.SetToolTip(_pasteSelButton, "Paste at selection top-left (or 0,0)");
         ToolTipService.SetToolTip(_deleteSelButton, "Clear selection to transparent");
         ToolTipService.SetToolTip(_cropSelButton, "Crop image to selection");
         var resize = new Button { Content = "Resize" };
@@ -210,6 +217,8 @@ public sealed class ImageDocumentView : UserControl
         _selectAllButton.Click += (_, _) => SelectAllPixels();
         _deselectButton.Click += (_, _) => ClearPixelSelection();
         _copySelButton.Click += async (_, _) => await CopySelectionAsync();
+        _cutSelButton.Click += async (_, _) => await CutSelectionAsync();
+        _pasteSelButton.Click += async (_, _) => await PasteSelectionAsync();
         _deleteSelButton.Click += async (_, _) => await DeleteSelectionAsync();
         _cropSelButton.Click += async (_, _) => await CropToSelectionAsync();
         resize.Click += async (_, _) => await ResizeAsync();
@@ -245,7 +254,7 @@ public sealed class ImageDocumentView : UserControl
             {
                 _prevButton, _nextButton, _slideshowButton, _undoButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
                 _cropBox, crop, _interactiveCropButton, _cropAspectBox, _applyCropButton, _cancelCropButton,
-                _selectButton, _selectAllButton, _deselectButton, _copySelButton, _deleteSelButton, _cropSelButton,
+                _selectButton, _selectAllButton, _deselectButton, _copySelButton, _cutSelButton, _pasteSelButton, _deleteSelButton, _cropSelButton,
                 resize, adjust, meta, ocrButton, save, exportPng, exportJpeg, convert, _status,
             },
         };
@@ -573,6 +582,20 @@ public sealed class ImageDocumentView : UserControl
             return;
         }
 
+        if (ctrl && e.Key == Windows.System.VirtualKey.X && _pixelSelection is not null)
+        {
+            _ = CutSelectionAsync();
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrl && e.Key == Windows.System.VirtualKey.V)
+        {
+            _ = PasteSelectionAsync();
+            e.Handled = true;
+            return;
+        }
+
         if (ctrl && e.Key == Windows.System.VirtualKey.A && _selectionMode)
         {
             SelectAllPixels();
@@ -591,6 +614,7 @@ public sealed class ImageDocumentView : UserControl
         try
         {
             var buffer = await _processor.ExtractRectAsync(_document, sel);
+            _selectionClipboard = buffer;
             var temp = System.IO.Path.Combine(
                 System.IO.Path.GetTempPath(),
                 "glyph-sel-" + Guid.NewGuid().ToString("N") + ".png");
@@ -617,6 +641,41 @@ public sealed class ImageDocumentView : UserControl
         {
             _status.Text = "Copy selection failed: " + ex.Message;
         }
+    }
+
+    private async Task CutSelectionAsync()
+    {
+        if (_pixelSelection is not { } sel || sel.Width < 1 || sel.Height < 1)
+        {
+            _status.Text = "Make a selection first.";
+            return;
+        }
+
+        await CopySelectionAsync();
+        if (_selectionClipboard is null)
+        {
+            return;
+        }
+
+        await MutateAsync(
+            () => _processor.ClearRectAsync(_document, sel, transparent: true),
+            $"Cut selection {sel.Width}×{sel.Height}.");
+    }
+
+    private async Task PasteSelectionAsync()
+    {
+        if (_selectionClipboard is null)
+        {
+            _status.Text = "Clipboard is empty — copy or cut a selection first.";
+            return;
+        }
+
+        var destX = _pixelSelection?.X ?? 0;
+        var destY = _pixelSelection?.Y ?? 0;
+        var clip = _selectionClipboard;
+        await MutateAsync(
+            () => _processor.PasteRectAsync(_document, clip, destX, destY),
+            $"Pasted {clip.Width}×{clip.Height} at ({destX},{destY}).");
     }
 
     private async Task DeleteSelectionAsync()
@@ -841,6 +900,8 @@ public sealed class ImageDocumentView : UserControl
         _selectAllButton.Visibility = Visibility.Visible;
         _deselectButton.Visibility = Visibility.Visible;
         _copySelButton.Visibility = Visibility.Visible;
+        _cutSelButton.Visibility = Visibility.Visible;
+        _pasteSelButton.Visibility = Visibility.Visible;
         _deleteSelButton.Visibility = Visibility.Visible;
         _cropSelButton.Visibility = Visibility.Visible;
         _cropRect.Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 30, 144, 255));
@@ -863,6 +924,8 @@ public sealed class ImageDocumentView : UserControl
         _selectAllButton.Visibility = Visibility.Collapsed;
         _deselectButton.Visibility = Visibility.Collapsed;
         _copySelButton.Visibility = Visibility.Collapsed;
+        _cutSelButton.Visibility = Visibility.Collapsed;
+        _pasteSelButton.Visibility = Visibility.Collapsed;
         _deleteSelButton.Visibility = Visibility.Collapsed;
         _cropSelButton.Visibility = Visibility.Collapsed;
         if (!keepSelection)
@@ -1286,6 +1349,8 @@ public sealed class ImageDocumentView : UserControl
         var brightness = MakeSlider("Brightness (−100…100)", -100, 100, 0);
         var contrast = MakeSlider("Contrast (−100…100)", -100, 100, 0);
         var saturation = MakeSlider("Saturation (−100…100)", -100, 100, 0);
+        var temperature = MakeSlider("Temperature (−100 cold…100 warm)", -100, 100, 0);
+        var tint = MakeSlider("Tint (−100 green…100 magenta)", -100, 100, 0);
         var sharpness = MakeSlider("Sharpness (0…100)", 0, 100, 0);
         var autoLevels = new CheckBox { Content = "Auto Levels", IsChecked = false };
         var sepia = new CheckBox { Content = "Sepia", IsChecked = false };
@@ -1295,6 +1360,8 @@ public sealed class ImageDocumentView : UserControl
             brightness.Value = 0;
             contrast.Value = 0;
             saturation.Value = 0;
+            temperature.Value = 0;
+            tint.Value = 0;
             sharpness.Value = 0;
             autoLevels.IsChecked = false;
             sepia.IsChecked = false;
@@ -1315,6 +1382,8 @@ public sealed class ImageDocumentView : UserControl
                 brightness,
                 contrast,
                 saturation,
+                temperature,
+                tint,
                 sharpness,
                 sepia,
                 reset,
@@ -1343,6 +1412,8 @@ public sealed class ImageDocumentView : UserControl
             && Math.Abs(brightness.Value) < 0.0001
             && Math.Abs(contrast.Value) < 0.0001
             && Math.Abs(saturation.Value) < 0.0001
+            && Math.Abs(temperature.Value) < 0.0001
+            && Math.Abs(tint.Value) < 0.0001
             && Math.Abs(sharpness.Value) < 0.0001)
         {
             _status.Text = "No adjustments to apply.";
@@ -1355,7 +1426,9 @@ public sealed class ImageDocumentView : UserControl
             Saturation: saturation.Value,
             AutoLevels: useAuto,
             Sharpness: sharpness.Value,
-            Sepia: useSepia);
+            Sepia: useSepia,
+            Temperature: temperature.Value,
+            Tint: tint.Value);
         await MutateAsync(
             () => _processor.AdjustAsync(_document, adjustments),
             "Color adjustments applied.");
