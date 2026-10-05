@@ -3900,22 +3900,18 @@ public sealed class PdfDocumentView : UserControl
             {
                 case OcrEntityKind.Url:
                 {
-                    var href = entity.Value.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                        ? entity.Value
-                        : "https://" + entity.Value;
-                    await Launcher.LaunchUriAsync(new Uri(href));
-                    _status.Text = "Opened URL.";
+                    await Launcher.LaunchUriAsync(new Uri(OcrEntityActionUris.NormalizeUrl(entity.Value)));
+                    _status.Text = OcrEntityActionUris.OpenedUrl;
                     break;
                 }
                 case OcrEntityKind.Email:
-                    await Launcher.LaunchUriAsync(new Uri("mailto:" + entity.Value));
-                    _status.Text = "Opened mail compose.";
+                    await Launcher.LaunchUriAsync(new Uri(OcrEntityActionUris.Mailto(entity.Value)));
+                    _status.Text = OcrEntityActionUris.OpenedMail;
                     break;
                 case OcrEntityKind.Address:
                 {
-                    var maps = "https://www.bing.com/maps?q=" + Uri.EscapeDataString(entity.Value);
-                    await Launcher.LaunchUriAsync(new Uri(maps));
-                    _status.Text = "Opened address in Maps.";
+                    await Launcher.LaunchUriAsync(new Uri(OcrEntityActionUris.BingMaps(entity.Value)));
+                    _status.Text = OcrEntityActionUris.OpenedMaps;
                     break;
                 }
                 case OcrEntityKind.Date:
@@ -3928,14 +3924,14 @@ public sealed class PdfDocumentView : UserControl
                     var package = new DataPackage();
                     package.SetText(entity.Value);
                     Clipboard.SetContent(package);
-                    _status.Text = $"Copied {entity.Kind}.";
+                    _status.Text = OcrEntityActionUris.CopiedKind(entity.Kind.ToString());
                     break;
                 }
             }
         }
         catch (Exception ex)
         {
-            _status.Text = "Entity action failed: " + ex.Message;
+            _status.Text = OcrEntityActionUris.ActionFailed(ex.Message);
         }
     }
 
@@ -3975,19 +3971,18 @@ public sealed class PdfDocumentView : UserControl
     {
         if (string.IsNullOrWhiteSpace(query))
         {
-            _status.Text = "Nothing to search.";
+            _status.Text = OcrEntityActionUris.NothingToSearch;
             return;
         }
 
         try
         {
-            var url = "https://www.bing.com/search?q=" + Uri.EscapeDataString(query.Trim());
-            await Launcher.LaunchUriAsync(new Uri(url));
-            _status.Text = "Opened web search.";
+            await Launcher.LaunchUriAsync(new Uri(OcrEntityActionUris.BingWebSearch(query)));
+            _status.Text = OcrEntityActionUris.OpenedWebSearch;
         }
         catch (Exception ex)
         {
-            _status.Text = "Search web failed: " + ex.Message;
+            _status.Text = OcrEntityActionUris.SearchFailed(ex.Message);
         }
     }
 

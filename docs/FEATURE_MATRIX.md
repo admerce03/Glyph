@@ -166,13 +166,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F08-15 | OCR / Live Text equivalent | physical addresses | M6 | Tested | `OcrEntityDetector` street + city/ST/ZIP; Ocr.Tests |
 | F08-16 | OCR / Live Text equivalent | dates | M6 | Tested | `OcrEntityDetector` date patterns; Ocr.Tests |
 | F08-17 | OCR / Live Text equivalent | times | M6 | Tested | `OcrEntityDetector` time patterns; Ocr.Tests |
-| F08-18 | OCR / Live Text equivalent | Open URL in default browser. | M6 | Implemented | Entities → Open / act |
-| F08-19 | OCR / Live Text equivalent | Create email in default mail application. | M6 | Implemented | Entities → mailto: |
-| F08-20 | OCR / Live Text equivalent | Copy phone number. | M6 | Implemented | Entities → Copy value |
-| F08-21 | OCR / Live Text equivalent | Open address in user's default mapping/web service. | M6 | Implemented | Entities → Bing Maps query |
+| F08-18 | OCR / Live Text equivalent | Open URL in default browser. | M6 | Tested | Entities → Open; `OcrEntityActionUris.NormalizeUrl` |
+| F08-19 | OCR / Live Text equivalent | Create email in default mail application. | M6 | Tested | Entities → mailto:; `OcrEntityActionUris.Mailto` |
+| F08-20 | OCR / Live Text equivalent | Copy phone number. | M6 | Tested | Entities → Copy value; `OcrEntityActionUris.CopiedKind` |
+| F08-21 | OCR / Live Text equivalent | Open address in user's default mapping/web service. | M6 | Tested | Entities → Bing Maps; `OcrEntityActionUris.BingMaps` |
 | F08-22 | OCR / Live Text equivalent | Create calendar event through appropriate Windows/system mechanism where feasible. | M6 | Tested | Entities → temp `.ics` via `OcrCalendarInvite`; Ocr.Tests |
-| F08-23 | OCR / Live Text equivalent | Search web. | M6 | Implemented | Entities dialog → Bing |
-| F08-24 | OCR / Live Text equivalent | Copy recognized value. | M6 | Implemented | Entities → Copy value |
+| F08-23 | OCR / Live Text equivalent | Search web. | M6 | Tested | Entities dialog → Bing; `OcrEntityActionUris.BingWebSearch` |
+| F08-24 | OCR / Live Text equivalent | Copy recognized value. | M6 | Tested | Entities → Copy value; `OcrEntityActionUris.CopiedKind` |
 | F09-01 | PDF bookmarks | Add bookmark at current page/location. | M2/M4 | Tested | Sidebar Bookmarks +; view-state bookmark round-trip unit test |
 | F09-02 | PDF bookmarks | Rename bookmark. | M2/M4 | Tested | Sidebar Rename; persisted Title in view-state store |
 | F09-03 | PDF bookmarks | Delete bookmark. | M2/M4 | Tested | Sidebar Del; view-state list mutation + save |
