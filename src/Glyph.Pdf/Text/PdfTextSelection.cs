@@ -94,6 +94,12 @@ public static class PdfTextSelection
         return sb.ToString();
     }
 
+    /// <summary>
+    /// Column/region selection when Alt is held, or the drag is wide and short.
+    /// </summary>
+    public static bool PreferColumnMode(bool altHeld, double rectWidth, double rectHeight) =>
+        altHeld || (rectWidth > Math.Max(40, rectHeight * 1.75) && rectHeight > 18);
+
     public static int NearestCharIndex(IReadOnlyList<PdfTextChar> chars, double x, double y)
     {
         var best = 0;

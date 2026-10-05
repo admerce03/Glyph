@@ -1878,9 +1878,8 @@ public sealed class PdfDocumentView : UserControl
         }
 
         border.BorderBrush = new SolidColorBrush(Colors.Orange);
-        border.BorderThickness = insertAfter
-            ? new Thickness(2, 2, 2, 5)
-            : new Thickness(2, 5, 2, 2);
+        var t = PageDropPlacement.HighlightThickness(insertAfter);
+        border.BorderThickness = new Thickness(t.Left, t.Top, t.Right, t.Bottom);
     }
 
     private void ClearDropHighlight()
@@ -3127,8 +3126,10 @@ public sealed class PdfDocumentView : UserControl
             var rectW = selection.Width;
             var rectH = selection.Height;
             // Alt or a wide short-tall drag prefers column/region geometry; otherwise stream across lines.
-            var columnMode = e.KeyModifiers.HasFlag(VirtualKeyModifiers.Menu)
-                || (rectW > Math.Max(40, rectH * 1.75) && rectH > 18);
+            var columnMode = PdfTextSelection.PreferColumnMode(
+                e.KeyModifiers.HasFlag(VirtualKeyModifiers.Menu),
+                rectW,
+                rectH);
 
             if (columnMode)
             {

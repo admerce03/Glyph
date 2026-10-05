@@ -28,4 +28,11 @@ public static class PageDropPlacement
     /// </summary>
     public static bool PreferCopyOnly(bool controlHeld, bool storageItemsWithoutText) =>
         controlHeld || storageItemsWithoutText;
+
+    /// <summary>
+    /// Border thickness for the orange insert indicator (left, top, right, bottom).
+    /// Emphasizes the edge where pages will land.
+    /// </summary>
+    public static (double Left, double Top, double Right, double Bottom) HighlightThickness(bool insertAfter) =>
+        insertAfter ? (2, 2, 2, 5) : (2, 5, 2, 2);
 }

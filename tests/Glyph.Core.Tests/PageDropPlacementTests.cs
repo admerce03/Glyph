@@ -41,4 +41,11 @@ public class PageDropPlacementTests
     {
         PageDropPlacement.PreferCopyOnly(ctrl, storageOnly).Should().Be(expected);
     }
+
+    [Fact]
+    public void HighlightThickness_emphasizes_insert_edge()
+    {
+        PageDropPlacement.HighlightThickness(insertAfter: true).Should().Be((2, 2, 2, 5));
+        PageDropPlacement.HighlightThickness(insertAfter: false).Should().Be((2, 5, 2, 2));
+    }
 }

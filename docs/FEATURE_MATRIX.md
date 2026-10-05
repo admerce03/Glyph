@@ -139,7 +139,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F07-01 | PDF text interaction | Text selection. | M2/M6 | Tested | Click word-ish via `PdfTextSelection.TryExpandWordAt` + unit tests |
 | F07-02 | PDF text interaction | Copy text. | M2/M6 | Implemented | Copy button / Ctrl+C |
 | F07-03 | PDF text interaction | Select across lines. | M2/M6 | Implemented | Drag stream selection across lines; Alt/wide drag = column rect |
-| F07-04 | PDF text interaction | Select columns where practical. | M2/M6 | Implemented | Alt-drag or wide region uses rectangular column selection |
+| F07-04 | PDF text interaction | Select columns where practical. | M2/M6 | Tested | Alt-drag or wide region; `PdfTextSelection.PreferColumnMode` unit tests |
 | F07-05 | PDF text interaction | Select all text on page/document. | M2/M6 | Implemented | Ctrl+A page text (2nd expands to document); Ctrl+Shift+A pages; context menu |
 | F07-06 | PDF text interaction | Right-click selected text. | M2/M6 | Implemented | Context menu: Copy / Find selection / Search web / Copy region as image |
 | F07-07 | PDF text interaction | Copy. | M2/M6 | Implemented | Clipboard text package |
@@ -209,7 +209,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F11-02 | Preview-style PDF drag-and-drop workflows | multiple contiguous pages | M3 | Tested | Multi-select drag; payload preserves sorted indexes |
 | F11-03 | Preview-style PDF drag-and-drop workflows | multiple noncontiguous pages | M3 | Tested | Noncontiguous selection preserved in `PageDragPayload` |
 | F11-04 | Preview-style PDF drag-and-drop workflows | insertion before/after any page | M3 | Tested | Drop Y half via `PageDropPlacement.IsInsertAfter` unit tests |
-| F11-05 | Preview-style PDF drag-and-drop workflows | visible insertion indicator | M3 | Implemented | Orange before/after border highlight |
+| F11-05 | Preview-style PDF drag-and-drop workflows | visible insertion indicator | M3 | Tested | Orange before/after border; `PageDropPlacement.HighlightThickness` unit tests |
 | F11-06 | Preview-style PDF drag-and-drop workflows | insert entire PDF at drop location. | M3 | Tested | Explorer `.pdf` StorageItems → insert; `PageDropPlacement.PreferCopyOnly`/`Caption` |
 | F11-07 | Preview-style PDF drag-and-drop workflows | create a new PDF containing those selected pages. | M3 | Implemented | Deferred StorageItems extract on drag-out |
 | F11-08 | Preview-style PDF drag-and-drop workflows | different windows | M3 | Implemented | File → New Window; per-window workspace + shared page drag registry |
@@ -331,9 +331,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F18-07 | Freehand drawing | Select/move completed strokes. | M4 | Implemented | Ink annots use selection tool + `MoveAsync` |
 | F18-08 | Freehand drawing | Delete stroke. | M4 | Implemented | Sidebar Delete / `RemoveAsync` on ink annot |
 | F18-09 | Freehand drawing | recognize rough: | M4 | Tested | `PdfStrokeShapeRecognizer` line/rect/ellipse/triangle |
-| F18-10 | Freehand drawing | offer cleaned-up shape or original stroke. | M4 | Implemented | Dialog after ink/freeform when shape recognized |
+| F18-10 | Freehand drawing | offer cleaned-up shape or original stroke. | M4 | Tested | Dialog after ink/freeform; `PdfStrokeShapeRecognizer` unit tests |
 | F19-01 | PDF signatures | mouse | M4 | Tested | Draw mode → BGRA raster → library + stamp |
-| F19-02 | PDF signatures | webcam photographing a signature on paper | M4 | Implemented | Sign → Webcam (`MediaCapture` preview + capture); `SignaturePaperKeying` keys near-white paper; stamp + library |
+| F19-02 | PDF signatures | webcam photographing a signature on paper | M4 | Tested | Sign → Webcam; `SignaturePaperKeying` unit tests; stamp + library |
 | F19-03 | PDF signatures | imported transparent signature image | M4 | Tested | Import PNG/JPEG → BGRA stamp |
 | F19-04 | PDF signatures | save signature | M4 | Tested | `FileSignatureLibrary.SaveAsync` |
 | F19-05 | PDF signatures | name signature | M4 | Tested | Named on save; list/contents labels via `SignatureDisplayText` |
@@ -341,7 +341,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F19-07 | PDF signatures | reorder signatures | M4 | Tested | Library dialog ↑/↓ → `ReorderAsync`; Infra.Tests `Reorder_persists_new_order` |
 | F19-08 | PDF signatures | local storage | M4 | Tested | `%LocalAppData%\Glyph\signatures` |
 | F19-09 | PDF signatures | optional application-specific cloud sync later | M4 | Deferred | Explicitly later |
-| F19-10 | PDF signatures | insert | M4 | Implemented | Sign toolbar |
+| F19-10 | PDF signatures | insert | M4 | Tested | Sign toolbar → `AddStampAsync`; PdfiumAnnotationServiceTests stamp round-trip |
 | F19-11 | PDF signatures | resize | M4 | Tested | Bounds on insert / `MoveAsync` |
 | F19-12 | PDF signatures | move | M4 | Tested | `MoveAsync` |
 | F19-13 | PDF signatures | rotate where appropriate | M4 | Tested | Stamp rotate via BGRA 90° + bounds swap (`RotateAsync`) |

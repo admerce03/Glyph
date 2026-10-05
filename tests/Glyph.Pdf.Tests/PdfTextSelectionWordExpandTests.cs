@@ -72,4 +72,14 @@ public class PdfTextSelectionWordExpandTests
         start.Should().Be(0);
         end.Should().Be(0);
     }
+
+    [Theory]
+    [InlineData(true, 10, 10, true)]
+    [InlineData(false, 100, 20, true)]  // wide short
+    [InlineData(false, 30, 20, false)] // not wide enough
+    [InlineData(false, 100, 10, false)] // height too small
+    public void PreferColumnMode_alt_or_aspect(bool alt, double w, double h, bool expected)
+    {
+        PdfTextSelection.PreferColumnMode(alt, w, h).Should().Be(expected);
+    }
 }
