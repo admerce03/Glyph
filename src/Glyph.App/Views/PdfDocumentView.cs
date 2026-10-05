@@ -7272,7 +7272,7 @@ public sealed class PdfDocumentView : UserControl
         {
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 420,
-            Text = "Choose a preset, then Estimate or Apply. Image downsample uses PDFium bitmaps (JPEG quality rewrite deferred).",
+            Text = "Choose a preset, then Estimate or Apply. Images above the DPI threshold are downsampled (JPEG rewrite pending PDFiumCore FILEACCESS fix).",
         };
 
         PdfOptimizePreset SelectedPreset() => presetBox.SelectedIndex switch

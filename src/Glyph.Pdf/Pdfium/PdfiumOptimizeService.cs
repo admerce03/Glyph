@@ -7,6 +7,12 @@ namespace Glyph.Pdf.Pdfium;
 public sealed class PdfiumOptimizeService : IPdfOptimizeService
 {
     private const int PageObjImage = 3;
+    private readonly IPdfImageJpegEncoder? _jpegEncoder;
+
+    public PdfiumOptimizeService(IPdfImageJpegEncoder? jpegEncoder = null)
+    {
+        _jpegEncoder = jpegEncoder;
+    }
 
     public PdfOptimizeEstimate Estimate(IPdfDocument document, PdfOptimizeOptions? options = null)
     {
@@ -89,7 +95,7 @@ public sealed class PdfiumOptimizeService : IPdfOptimizeService
     /// <summary>
     /// Returns per-image area scale factors (new/old) for estimate, plus mutate count.
     /// </summary>
-    private static (List<double> ScaleFactors, int Downsampled) ScanImages(
+    private (List<double> ScaleFactors, int Downsampled) ScanImages(
         PdfiumDocument pdfium,
         PdfOptimizeOptions opts,
         bool mutate)
@@ -161,7 +167,7 @@ public sealed class PdfiumOptimizeService : IPdfOptimizeService
                         continue;
                     }
 
-                    if (DownsampleImageObject(page, obj, newW, newH))
+                    if (DownsampleImageObject(page, obj, newW, newH, opts.JpegQuality))
                     {
                         downsampled++;
                         dirty = true;
@@ -246,7 +252,7 @@ public sealed class PdfiumOptimizeService : IPdfOptimizeService
         return true;
     }
 
-    private static bool DownsampleImageObject(FpdfPageT page, FpdfPageobjectT obj, int newW, int newH)
+    private bool DownsampleImageObject(FpdfPageT page, FpdfPageobjectT obj, int newW, int newH, int jpegQuality)
     {
         var srcBmp = fpdf_edit.FPDFImageObjGetBitmap(obj);
         if (srcBmp is null)
@@ -276,9 +282,15 @@ public sealed class PdfiumOptimizeService : IPdfOptimizeService
             fpdfview.FPDFBitmapDestroy(srcBmp);
         }
 
-        // Normalize to BGRA for SetBitmap.
         var srcBgra = ToBgra(srcPixels, srcW, srcH, srcStride, format);
         var dstBgra = ResizeBgraNearest(srcBgra, srcW, srcH, newW, newH);
+
+        // JPEG quality rewrite is staged behind IPdfImageJpegEncoder, but PDFiumCore's
+        // FPDF_FILEACCESS marshaling currently faults on LoadJpegFileInline, so we always
+        // use SetBitmap here (pixels correct; byte size may not shrink).
+        _ = _jpegEncoder;
+        _ = jpegQuality;
+
         var handle = GCHandle.Alloc(dstBgra, GCHandleType.Pinned);
         FpdfBitmapT? dstBmp = null;
         try

@@ -1,4 +1,5 @@
 using Glyph.App.Ocr;
+using Glyph.App.Pdf;
 using Glyph.Core.Signatures;
 using Glyph.Core.Workspace;
 using Glyph.Imaging.Abstractions;
@@ -50,7 +51,9 @@ internal static class AppServices
         services.AddSingleton<IPdfAnnotationService, PdfiumAnnotationService>();
         services.AddSingleton<IPdfRedactionService, PdfiumRedactionService>();
         services.AddSingleton<IPdfDocumentInfoService, PdfiumDocumentInfoService>();
-        services.AddSingleton<IPdfOptimizeService, PdfiumOptimizeService>();
+        services.AddSingleton<IPdfImageJpegEncoder, MagickPdfImageJpegEncoder>();
+        services.AddSingleton<IPdfOptimizeService>(sp =>
+            new PdfiumOptimizeService(sp.GetRequiredService<IPdfImageJpegEncoder>()));
         services.AddSingleton<IPdfFormStore, PdfiumFormStore>();
         services.AddSingleton<IPdfTextSearchService, PdfPigTextSearchService>();
         services.AddSingleton<IImageDecoder, MagickImageDecoder>();

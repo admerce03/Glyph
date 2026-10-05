@@ -36,8 +36,7 @@ public class PdfiumOptimizeServiceTests
 
             var result = await optimize.OptimizeAsync(document, opts);
             result.ImagesDownsampled.Should().BeGreaterThan(0);
-            // SetBitmap may not shrink byte size vs compact JPEG until a JPEG rewrite lands;
-            // assert the DPI work happened by checking eligibility drops to zero.
+            // SetBitmap path may not shrink bytes vs compact sources; assert DPI work via eligibility.
             var again = optimize.Estimate(document, opts);
             again.ImagesEligibleForDownsample.Should().Be(0);
             result.BytesBefore.Should().BeGreaterThan(0);
