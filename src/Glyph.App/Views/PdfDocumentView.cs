@@ -12488,7 +12488,7 @@ public sealed class PdfDocumentView : UserControl
             var indexes = scopeBox.SelectedIndex switch
             {
                 1 => SelectedOrCurrentPages(),
-                2 => ParsePageRange(rangeBox.Text, _document.PageCount),
+                2 => PageRangeParser.Parse(rangeBox.Text, _document.PageCount).ToList(),
                 3 => Enumerable.Range(0, _document.PageCount).ToList(),
                 _ => [CurrentPageIndex],
             };
@@ -12571,49 +12571,6 @@ public sealed class PdfDocumentView : UserControl
                 AutomationProperties.SetName(element, tip);
             }
         }
-    }
-
-    private static List<int> ParsePageRange(string? text, int pageCount)
-    {
-        var result = new SortedSet<int>();
-        if (string.IsNullOrWhiteSpace(text) || pageCount <= 0)
-        {
-            return [];
-        }
-
-        foreach (var part in text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            if (part.Contains('-', StringComparison.Ordinal))
-            {
-                var bounds = part.Split('-', 2, StringSplitOptions.TrimEntries);
-                if (bounds.Length == 2
-                    && int.TryParse(bounds[0], out var start)
-                    && int.TryParse(bounds[1], out var end))
-                {
-                    if (start > end)
-                    {
-                        (start, end) = (end, start);
-                    }
-
-                    for (var p = start; p <= end; p++)
-                    {
-                        if (p >= 1 && p <= pageCount)
-                        {
-                            result.Add(p - 1);
-                        }
-                    }
-                }
-
-                continue;
-            }
-
-            if (int.TryParse(part, out var one) && one >= 1 && one <= pageCount)
-            {
-                result.Add(one - 1);
-            }
-        }
-
-        return result.ToList();
     }
 
     private async Task<WriteableBitmap?> RenderNotesPrintPageAsync()

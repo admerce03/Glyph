@@ -638,7 +638,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F43-04 | Webcam/camera import | insert into document | M8 | Implemented | PDF Camera stamps capture; File opens as image tab |
 | F44-01 | Printing | print current page | M8 | Implemented | Print → Current page; Ctrl+P |
 | F44-02 | Printing | print selected pages | M8 | Implemented | Print → Selected pages |
-| F44-03 | Printing | print page range | M8 | Implemented | Print → Page range (e.g. 1-3,5) |
+| F44-03 | Printing | print page range | M8 | Tested | `PageRangeParser` (e.g. 1-3,5) + Core.Tests |
 | F44-04 | Printing | print all pages | M8 | Implemented | Print → All pages |
 | F44-05 | Printing | print selected images | M8 | Implemented | Image Print; optional folder siblings |
 | F44-06 | Printing | copies | M8 | Implemented | System print UI (PrintTask options) |
