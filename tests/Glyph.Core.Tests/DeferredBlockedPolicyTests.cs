@@ -12,6 +12,7 @@ public class PackagingDeferredPolicyTests
     {
         PackagingDeferredPolicy.MsixScaffoldShipped.Should().BeTrue();
         PackagingDeferredPolicy.MsixPackageCiProduced.Should().BeTrue();
+        PackagingDeferredPolicy.MsixPackageCiArm64Produced.Should().BeTrue();
         PackagingDeferredPolicy.MsixPackageCiTestSigned.Should().BeTrue();
         PackagingDeferredPolicy.MsixSideloadHelperShipped.Should().BeTrue();
         PackagingDeferredPolicy.MsixSideloadAssociationProbeShipped.Should().BeTrue();
@@ -38,6 +39,8 @@ public class PackagingDeferredPolicyTests
         yaml.Should().Contain("-Force");
         yaml.Should().Contain("-ProbeUserDefaults");
         yaml.Should().Contain("AllowDevelopmentWithoutDevLicense");
+        yaml.Should().Contain("win-arm64");
+        yaml.Should().Contain("glyph-msix-layout-arm64");
     }
 
     [Fact]
