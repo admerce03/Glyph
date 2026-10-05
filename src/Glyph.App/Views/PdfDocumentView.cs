@@ -1537,6 +1537,41 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (ctrlDown && e.Key == VirtualKey.F)
+        {
+            _searchBox.Focus(FocusState.Programmatic);
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrlDown && (e.Key == VirtualKey.Add || e.Key == (VirtualKey)187 /* OEM plus */))
+        {
+            await SetScaleAsync(PdfZoomCalculator.ZoomIn(_scale));
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrlDown && (e.Key == VirtualKey.Subtract || e.Key == (VirtualKey)189 /* OEM minus */))
+        {
+            await SetScaleAsync(PdfZoomCalculator.ZoomOut(_scale));
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrlDown && e.Key == VirtualKey.Number0)
+        {
+            await FitPageAsync();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == VirtualKey.F3)
+        {
+            await GoToHitAsync(_activeHitIndex + (shiftDown ? -1 : 1));
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key is VirtualKey.Delete or VirtualKey.Back)
         {
             if (TryGetSelectedAnnotation(out _))
@@ -11040,6 +11075,45 @@ public sealed class PdfDocumentView : UserControl
 
     /// <summary>File → Properties entry point (F48).</summary>
     public Task ShowPropertiesAsync() => ShowDocumentInfoAsync();
+
+    /// <summary>File → Save / Save As (F01-16/17).</summary>
+    public async Task SaveDocumentAsync(bool saveAs)
+    {
+        try
+        {
+            var path = _document.Path;
+            if (saveAs || string.IsNullOrWhiteSpace(path))
+            {
+                var window = _ownerWindow
+                    ?? App.CurrentApp.MainWindowInstance
+                    ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+                var picker = new FileSavePicker();
+                var hwnd = WindowNative.GetWindowHandle(window);
+                InitializeWithWindow.Initialize(picker, hwnd);
+                picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+                picker.FileTypeChoices.Add("PDF", [".pdf"]);
+                picker.SuggestedFileName = string.IsNullOrWhiteSpace(path)
+                    ? "document.pdf"
+                    : System.IO.Path.GetFileName(path);
+                var file = await picker.PickSaveFileAsync();
+                if (file is null)
+                {
+                    _status.Text = "Save cancelled.";
+                    return;
+                }
+
+                path = file.Path;
+            }
+
+            await _pageEditor.SaveAsync(_document, path!);
+            _status.Text = "Saved " + System.IO.Path.GetFileName(path);
+            App.CurrentApp.MainWindowInstance?.NotifyActiveDocumentSaved(path!);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Save failed: " + ex.Message;
+        }
+    }
 
     private async Task EditDocumentInfoAsync(PdfDocumentInfo current)
     {

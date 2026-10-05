@@ -157,6 +157,10 @@ public sealed partial class MainWindow : Window
 
     private async void ScanMenuItem_Click(object sender, RoutedEventArgs e) => await ScanDocumentAsync();
 
+    private async void SaveMenuItem_Click(object sender, RoutedEventArgs e) => await SaveActiveDocumentAsync(saveAs: false);
+
+    private async void SaveAsMenuItem_Click(object sender, RoutedEventArgs e) => await SaveActiveDocumentAsync(saveAs: true);
+
     private void ShareMenuItem_Click(object sender, RoutedEventArgs e) => ShareActiveDocument();
 
     private async void ShowInExplorerMenuItem_Click(object sender, RoutedEventArgs e) => await ShowActiveInExplorerAsync();
@@ -854,6 +858,45 @@ public sealed partial class MainWindow : Window
         }
 
         StatusText.Text = "Open a document to view properties.";
+    }
+
+    private async Task SaveActiveDocumentAsync(bool saveAs)
+    {
+        if (DocumentTabs.SelectedItem is TabViewItem { Content: PdfDocumentView pdfView })
+        {
+            await pdfView.SaveDocumentAsync(saveAs);
+            return;
+        }
+
+        if (DocumentTabs.SelectedItem is TabViewItem { Content: ImageDocumentView imageView })
+        {
+            await imageView.SaveDocumentAsync(saveAs);
+            return;
+        }
+
+        StatusText.Text = "Open a document to save.";
+    }
+
+    /// <summary>Mark the active document session clean after a successful Save / Save As.</summary>
+    public void NotifyActiveDocumentSaved(string path)
+    {
+        var active = _workspace.ActiveDocument;
+        if (active is null)
+        {
+            return;
+        }
+
+        active.Path = path;
+        active.DisplayName = System.IO.Path.GetFileName(path);
+        active.MarkClean();
+        if (DocumentTabs.SelectedItem is TabViewItem tab)
+        {
+            tab.Header = active.DisplayName;
+        }
+
+        StatusText.Text = "Saved " + active.DisplayName;
+        _ = _recentFiles.AddAsync(path);
+        RefreshRecentList();
     }
 
     private void CopyActivePath()

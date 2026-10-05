@@ -1007,6 +1007,43 @@ public sealed class ImageDocumentView : UserControl
             return;
         }
 
+        if (ctrl && e.Key == Windows.System.VirtualKey.S)
+        {
+            var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift)
+                .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+            _ = SaveDocumentAsync(saveAs: shift);
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Windows.System.VirtualKey.F11)
+        {
+            ToggleFullscreen();
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrl && (e.Key == Windows.System.VirtualKey.Add || e.Key == (Windows.System.VirtualKey)187))
+        {
+            _ = SetZoomAsync(_zoom * 1.25);
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrl && (e.Key == Windows.System.VirtualKey.Subtract || e.Key == (Windows.System.VirtualKey)189))
+        {
+            _ = SetZoomAsync(_zoom / 1.25);
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrl && e.Key == Windows.System.VirtualKey.Number0)
+        {
+            _ = FitAsync();
+            e.Handled = true;
+            return;
+        }
+
         if (ctrl && e.Key == Windows.System.VirtualKey.X && _pixelSelection is not null)
         {
             _ = CutSelectionAsync();
@@ -4221,6 +4258,84 @@ public sealed class ImageDocumentView : UserControl
 
     /// <summary>File → Properties entry point (F48).</summary>
     public Task ShowPropertiesAsync() => ShowMetadataAsync();
+
+    /// <summary>File → Save / Save As (F01-16/17).</summary>
+    public async Task SaveDocumentAsync(bool saveAs)
+    {
+        try
+        {
+            if (!await EnsureMarkupFlattenedAsync())
+            {
+                return;
+            }
+
+            if (!saveAs && !string.IsNullOrWhiteSpace(_document.Path))
+            {
+                await _encoder.SaveAsync(_document, _document.Path);
+                _status.Text = "Saved " + System.IO.Path.GetFileName(_document.Path);
+                App.CurrentApp.MainWindowInstance?.NotifyActiveDocumentSaved(_document.Path!);
+                return;
+            }
+
+            var (format, extension) = GuessSaveFormat(_document.FormatName);
+            var window = App.CurrentApp.MainWindowInstance
+                ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+            var picker = new Windows.Storage.Pickers.FileSavePicker();
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary;
+            picker.FileTypeChoices.Add(format.ToString(), [extension]);
+            picker.SuggestedFileName = string.IsNullOrWhiteSpace(_document.Path)
+                ? "image" + extension
+                : System.IO.Path.GetFileName(_document.Path);
+            var file = await picker.PickSaveFileAsync();
+            if (file is null)
+            {
+                _status.Text = "Save cancelled.";
+                return;
+            }
+
+            await _encoder.SaveAsAsync(_document, file.Path, format);
+            _status.Text = "Saved " + file.Name;
+            App.CurrentApp.MainWindowInstance?.NotifyActiveDocumentSaved(file.Path);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Save failed: " + ex.Message;
+        }
+    }
+
+    private static (ImageEncodeFormat Format, string Extension) GuessSaveFormat(string formatName)
+    {
+        var name = formatName ?? string.Empty;
+        if (name.Contains("Jpeg", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("Jpg", StringComparison.OrdinalIgnoreCase))
+        {
+            return (ImageEncodeFormat.Jpeg, ".jpg");
+        }
+
+        if (name.Contains("WebP", StringComparison.OrdinalIgnoreCase))
+        {
+            return (ImageEncodeFormat.WebP, ".webp");
+        }
+
+        if (name.Contains("Tif", StringComparison.OrdinalIgnoreCase))
+        {
+            return (ImageEncodeFormat.Tiff, ".tiff");
+        }
+
+        if (name.Contains("Bmp", StringComparison.OrdinalIgnoreCase))
+        {
+            return (ImageEncodeFormat.Bmp, ".bmp");
+        }
+
+        if (name.Contains("Gif", StringComparison.OrdinalIgnoreCase))
+        {
+            return (ImageEncodeFormat.Gif, ".gif");
+        }
+
+        return (ImageEncodeFormat.Png, ".png");
+    }
 
     private async Task EditDescriptiveMetadataAsync(ImageMetadataInfo current)
     {

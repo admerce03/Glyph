@@ -34,6 +34,17 @@
                 <MenuFlyoutItem x:Name="CaptureCameraMenuItem" Text="Capture from Camera…" Click="CaptureCameraMenuItem_Click" />
                 <MenuFlyoutItem x:Name="ScanMenuItem" Text="Scan…" Click="ScanMenuItem_Click" />
                 <MenuFlyoutSeparator />
+                <MenuFlyoutItem x:Name="SaveMenuItem" Text="Save" Click="SaveMenuItem_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="S" Modifiers="Control" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="SaveAsMenuItem" Text="Save As…" Click="SaveAsMenuItem_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="S" Modifiers="Control,Shift" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutSeparator />
                 <MenuFlyoutItem x:Name="ShareMenuItem" Text="Share…" Click="ShareMenuItem_Click" />
                 <MenuFlyoutItem x:Name="ShowInExplorerMenuItem" Text="Show in File Explorer" Click="ShowInExplorerMenuItem_Click" />
                 <MenuFlyoutItem x:Name="PropertiesMenuItem" Text="Properties" Click="PropertiesMenuItem_Click">

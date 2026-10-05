@@ -23,8 +23,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-13 | Application and file handling | Warn when attempting to overwrite a read-only file. | M1/M9 | Not Started |  |
 | F01-14 | Application and file handling | File → New from Clipboard. | M1/M9 | In Progress | Menu + Ctrl+Shift+N; clipboard bitmap → temp PNG dirty tab |
 | F01-15 | Application and file handling | File → Duplicate. | M1/M9 | Not Started |  |
-| F01-16 | Application and file handling | File → Save. | M1/M9 | Not Started |  |
-| F01-17 | Application and file handling | File → Save As. | M1/M9 | Not Started |  |
+| F01-16 | Application and file handling | File → Save. | M1/M9 | Implemented | File → Save / Ctrl+S (PDF + image) |
+| F01-17 | Application and file handling | File → Save As. | M1/M9 | Implemented | File → Save As / Ctrl+Shift+S |
 | F01-18 | Application and file handling | File → Export. | M1/M9 | Not Started |  |
 | F01-19 | Application and file handling | File → Rename. | M1/M9 | Not Started |  |
 | F01-20 | Application and file handling | File → Move. | M1/M9 | Not Started |  |
@@ -722,27 +722,27 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F51-04 | Optional version snapshots | open snapshot as copy. | M9 | Not Started |  |
 | F51-05 | Optional version snapshots | delete snapshots. | M9 | Not Started |  |
 | F52-01 | Keyboard shortcuts | Ctrl+O — Open | M1/M9 | Implemented | File menu accelerator |
-| F52-02 | Keyboard shortcuts | Ctrl+S — Save | M1/M9 | Not Started |  |
-| F52-03 | Keyboard shortcuts | Ctrl+Shift+S — Save As | M1/M9 | Not Started |  |
+| F52-02 | Keyboard shortcuts | Ctrl+S — Save | M1/M9 | Implemented | File menu + image view key handler |
+| F52-03 | Keyboard shortcuts | Ctrl+Shift+S — Save As | M1/M9 | Implemented | File menu accelerator |
 | F52-04 | Keyboard shortcuts | Ctrl+P — Print | M1/M9 | Implemented | PDF + image views (Print dialog) |
 | F52-05 | Keyboard shortcuts | Ctrl+W — Close tab/document | M1/M9 | Implemented | File → Close Tab accelerator |
 | F52-06 | Keyboard shortcuts | Ctrl+Tab — Next tab | M1/M9 | Implemented | Window → Next Tab |
 | F52-07 | Keyboard shortcuts | Ctrl+Shift+Tab — Previous tab | M1/M9 | Implemented | Window → Previous Tab |
-| F52-08 | Keyboard shortcuts | Ctrl+F — Find | M1/M9 | Not Started |  |
-| F52-09 | Keyboard shortcuts | F3 / Shift+F3 — Next/previous result | M1/M9 | Not Started |  |
-| F52-10 | Keyboard shortcuts | Ctrl+C — Copy | M1/M9 | Not Started |  |
-| F52-11 | Keyboard shortcuts | Ctrl+X — Cut | M1/M9 | Not Started |  |
-| F52-12 | Keyboard shortcuts | Ctrl+V — Paste | M1/M9 | Not Started |  |
-| F52-13 | Keyboard shortcuts | Ctrl+A — Select all | M1/M9 | Not Started |  |
-| F52-14 | Keyboard shortcuts | Ctrl+Z — Undo | M1/M9 | Not Started |  |
-| F52-15 | Keyboard shortcuts | Ctrl+Y — Redo | M1/M9 | Not Started |  |
-| F52-16 | Keyboard shortcuts | Ctrl++ — Zoom in | M1/M9 | Not Started |  |
-| F52-17 | Keyboard shortcuts | Ctrl+- — Zoom out | M1/M9 | Not Started |  |
-| F52-18 | Keyboard shortcuts | Ctrl+0 — Fit/actual-size behavior depending on design | M1/M9 | Not Started |  |
-| F52-19 | Keyboard shortcuts | F11 — Full screen | M1/M9 | Not Started |  |
-| F52-20 | Keyboard shortcuts | Delete — Delete selected annotation/page when appropriate | M1/M9 | Not Started |  |
-| F52-21 | Keyboard shortcuts | arrow keys — navigation | M1/M9 | Not Started |  |
-| F52-22 | Keyboard shortcuts | Page Up/Page Down — page navigation | M1/M9 | Not Started |  |
+| F52-08 | Keyboard shortcuts | Ctrl+F — Find | M1/M9 | Implemented | PDF view focuses search box |
+| F52-09 | Keyboard shortcuts | F3 / Shift+F3 — Next/previous result | M1/M9 | Implemented | PDF view hit navigation |
+| F52-10 | Keyboard shortcuts | Ctrl+C — Copy | M1/M9 | Implemented | PDF text/annot/pages; image pixels |
+| F52-11 | Keyboard shortcuts | Ctrl+X — Cut | M1/M9 | Implemented | Annotation / selection cut |
+| F52-12 | Keyboard shortcuts | Ctrl+V — Paste | M1/M9 | Implemented | Annotation/pages/image paste |
+| F52-13 | Keyboard shortcuts | Ctrl+A — Select all | M1/M9 | Implemented | PDF pages / image selection |
+| F52-14 | Keyboard shortcuts | Ctrl+Z — Undo | M1/M9 | Implemented | PDF + image undo |
+| F52-15 | Keyboard shortcuts | Ctrl+Y — Redo | M1/M9 | Implemented | PDF page edit redo |
+| F52-16 | Keyboard shortcuts | Ctrl++ — Zoom in | M1/M9 | Implemented | PDF + image views |
+| F52-17 | Keyboard shortcuts | Ctrl+- — Zoom out | M1/M9 | Implemented | PDF + image views |
+| F52-18 | Keyboard shortcuts | Ctrl+0 — Fit/actual-size behavior depending on design | M1/M9 | Implemented | Fit page / Fit image |
+| F52-19 | Keyboard shortcuts | F11 — Full screen | M1/M9 | Implemented | Image view fullscreen toggle |
+| F52-20 | Keyboard shortcuts | Delete — Delete selected annotation/page when appropriate | M1/M9 | Implemented | PDF Delete key |
+| F52-21 | Keyboard shortcuts | arrow keys — navigation | M1/M9 | Implemented | PDF page selection; image selection nudge |
+| F52-22 | Keyboard shortcuts | Page Up/Page Down — page navigation | M1/M9 | Implemented | PDF view |
 | F53-01 | Precision touchpad behavior | two-finger scroll | M1/M2 | Not Started |  |
 | F53-02 | Precision touchpad behavior | pinch zoom on supported precision touchpads | M1/M2 | Not Started |  |
 | F53-03 | Precision touchpad behavior | standard Windows touchpad gestures where they map naturally to application navigation | M1/M2 | Not Started |  |
