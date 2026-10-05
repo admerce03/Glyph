@@ -373,12 +373,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F21-08 | Redaction | Sanitize associated hidden content where practical. | M7 | Not Started |  |
 | F21-09 | Redaction | Option to remove: | M7 | Not Started |  |
 | F21-10 | Redaction | Search and redact matching text, later/advanced. | M7 | Not Started |  |
-| F22-01 | PDF annotation flattening | highlights | M4 | Not Started |  |
-| F22-02 | PDF annotation flattening | notes as configured | M4 | Not Started |  |
-| F22-03 | PDF annotation flattening | shapes | M4 | Not Started |  |
-| F22-04 | PDF annotation flattening | signatures | M4 | Not Started |  |
-| F22-05 | PDF annotation flattening | text boxes | M4 | Not Started |  |
-| F22-06 | PDF annotation flattening | drawings | M4 | Not Started |  |
+| F22-01 | PDF annotation flattening | highlights | M4 | Tested | `FlattenAsync` via `FPDFPage_Flatten` |
+| F22-02 | PDF annotation flattening | notes as configured | M4 | Tested | Same flatten path |
+| F22-03 | PDF annotation flattening | shapes | M4 | Tested | Same flatten path |
+| F22-04 | PDF annotation flattening | signatures | M4 | Not Started | Needs signature annots first |
+| F22-05 | PDF annotation flattening | text boxes | M4 | Tested | Same flatten path |
+| F22-06 | PDF annotation flattening | drawings | M4 | Tested | Ink strokes included in flatten |
 | F23-01 | PDF security | Open encrypted PDFs. | M7 | Not Started |  |
 | F23-02 | PDF security | Create password-protected PDFs. | M7 | Not Started |  |
 | F23-03 | PDF security | Set document-open password. | M7 | Not Started |  |

@@ -774,6 +774,77 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             cancellationToken);
     }
 
+    public Task<PdfFlattenResult> FlattenAsync(
+        IPdfDocument document,
+        IReadOnlyList<int>? pageIndexes = null,
+        bool forPrint = false,
+        CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        var indexes = pageIndexes is null
+            ? Enumerable.Range(0, pdfium.PageCount).ToList()
+            : pageIndexes.Distinct().OrderBy(i => i).ToList();
+
+        foreach (var index in indexes)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(index);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, pdfium.PageCount);
+        }
+
+        var flag = forPrint ? PdfiumFlattenFlags.FlatPrint : PdfiumFlattenFlags.FlatNormalDisplay;
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    var processed = 0;
+                    var changed = 0;
+                    var failed = 0;
+
+                    foreach (var pageIndex in indexes)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
+                        if (page is null)
+                        {
+                            failed++;
+                            continue;
+                        }
+
+                        try
+                        {
+                            processed++;
+                            var result = fpdf_flatten.FPDFPageFlatten(page, flag);
+                            if (result == PdfiumFlattenFlags.FlattenFail)
+                            {
+                                failed++;
+                            }
+                            else if (result == PdfiumFlattenFlags.FlattenSuccess)
+                            {
+                                changed++;
+                            }
+                        }
+                        finally
+                        {
+                            fpdfview.FPDF_ClosePage(page);
+                        }
+                    }
+
+                    if (changed > 0 || failed > 0)
+                    {
+                        pdfium.NotifyAnnotationsChanged();
+                    }
+
+                    return new PdfFlattenResult(processed, changed, failed);
+                }
+            },
+            cancellationToken);
+    }
+
     private static void CollectPageAnnotations(PdfiumDocument pdfium, int pageIndex, List<PdfAnnotationInfo> results)
     {
         var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
