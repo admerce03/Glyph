@@ -143,6 +143,8 @@ public sealed class PdfDocumentView : UserControl
     private readonly Stack<PdfAnnotationInfo> _strokeUndoStack = new();
     /// <summary>Previous form field values for F49-11 Ctrl+Z undo.</summary>
     private readonly Stack<(int PageIndex, int AnnotIndex, PdfFormFieldKind Kind, string PreviousValue)> _formUndoStack = new();
+    /// <summary>Previous Info dictionary fields for F49-10 Ctrl+Z undo after Edit document info.</summary>
+    private readonly Stack<PdfDocumentInfoUpdate> _infoUndoStack = new();
     private PdfAnnotationColor _drawStrokeColor = PdfAnnotationColor.InkRed;
     private float _drawStrokeWidth = 2f;
     private PdfInkLineStyle _drawInkLineStyle = PdfInkLineStyle.Solid;
@@ -9163,7 +9165,7 @@ public sealed class PdfDocumentView : UserControl
         };
         var removeMetadata = new CheckBox
         {
-            Content = "Clear Info metadata (title/author/subject/keywords)",
+            Content = "Clear Info metadata (title/author/subject/keywords/creator/producer)",
             IsChecked = true,
         };
 
@@ -11256,7 +11258,39 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (_infoUndoStack.Count > 0)
+        {
+            await UndoLastInfoEditAsync();
+            return;
+        }
+
         await UndoPageEditAsync();
+    }
+
+    private async Task UndoLastInfoEditAsync()
+    {
+        if (_infoUndoStack.Count == 0)
+        {
+            return;
+        }
+
+        var previous = _infoUndoStack.Pop();
+        try
+        {
+            _documentInfo.SetInfo(_document, previous);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            RefreshPropertiesSidebar();
+            NotifyEdited();
+            _status.Text = "Undid document info edit.";
+        }
+        catch (Exception ex)
+        {
+            _infoUndoStack.Push(previous);
+            _status.Text = "Undo info edit failed: " + ex.Message;
+        }
     }
 
     private async Task UndoPageEditAsync()
@@ -13298,6 +13332,14 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
+            _infoUndoStack.Push(
+                new PdfDocumentInfoUpdate(
+                    Title: current.Title ?? string.Empty,
+                    Author: current.Author ?? string.Empty,
+                    Subject: current.Subject ?? string.Empty,
+                    Keywords: current.Keywords ?? string.Empty,
+                    Creator: current.Creator ?? string.Empty,
+                    Producer: current.Producer ?? string.Empty));
             _documentInfo.SetInfo(
                 _document,
                 new PdfDocumentInfoUpdate(
@@ -13317,6 +13359,11 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
+            if (_infoUndoStack.Count > 0)
+            {
+                _infoUndoStack.Pop();
+            }
+
             _status.Text = "Info edit failed: " + ex.Message;
         }
     }

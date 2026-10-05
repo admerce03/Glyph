@@ -279,7 +279,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - True redaction (content removal) — mark/preview/apply, find-matches, annotation sanitize
 - Password open + Info encryption/permissions display; write-protect deferred pending ADR-015
 - Optimization presets + custom controls + page image export
-- Metadata view/edit (version, page size, fonts, title/author/subject/keywords)
+- Metadata view/edit (version, page size, fonts, title/author/subject/keywords/creator/producer)
 
 ### Completion criteria
 
@@ -291,12 +291,13 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 ### Progress notes
 
 - Redact mark/preview/apply removes intersecting text/images/annotations + attachment name-tree entries + Info metadata
-- Info dialog: encryption/permissions, version, page size, fonts, attachment count; Edit writes Title/Author/Subject/Keywords
+- Info dialog: encryption/permissions, version, page size, fonts, attachment count; Edit writes Title/Author/Subject/Keywords/Creator/Producer (Ctrl+Z undoes)
 - Optimize presets + Custom (DPI + JPEG quality NumberBox) + estimate; F24-08 JPEG via zeroed FILEACCESS + LoadJpegFileInline; font subset/linearize deferred (ADR-016)
 - Page Export → PNG/JPEG/WebP/TIFF/BMP/GIF/AVIF/JP2 with DPI/quality, Title/Author metadata, sRGB ICC (F45-07), alpha where codec allows
 - FreeText Align / `/Q` quadding via post-save dict patch (F13-38 / F16-15)
+- Bookmarks → PDF `/Outlines` export (F09-08)
 - Password-protect write blocked on ADR-015 (Needs approval)
-- Local polish (auth/billing-blocked, unpushed on `cursor/m7-redaction-50da`): Zoom ▭ / Glass / Present, select-all text, sidebar modes, image surface DnD, cold-start metrics
+- Local polish parked while Actions billing empty-step CI; `cursor/m7-redaction-50da` may be ahead of origin
 
 ---
 
@@ -381,7 +382,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Flattening | §22 | M4 | Tested (`FlattenAsync` / FPDFPage_Flatten) |
 | PDF security | §23 | M7 | In Progress (open + info/permissions; write-protect blocked on ADR-015) |
 | Optimization | §24 | M7 | Implemented (presets + downsample + JPEG quality + estimate + page export/ICC; font subset/linearize → ADR-016) |
-| PDF metadata | §25 | M7 | Implemented (read + edit title/author/subject/keywords) |
+| PDF metadata | §25 | M7 | Implemented (read + edit title/author/subject/keywords/creator/producer) |
 | Image viewing/editing | §26–35 | M5 | Implemented (HDR/HEIF deferred) |
 | Batch images | §36 | M8 | Implemented (ops + progress/cancel) |
 | Animated images | §27 | M8 | Implemented (play/pause/frame nav/extract) |
