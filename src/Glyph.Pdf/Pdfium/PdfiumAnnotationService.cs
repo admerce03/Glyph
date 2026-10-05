@@ -629,7 +629,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             cancellationToken);
     }
 
-    public Task<PdfAnnotationInfo> AddTextBoxAsync(
+    public async Task<PdfAnnotationInfo> AddTextBoxAsync(
         IPdfDocument document,
         int pageIndex,
         PdfRect bounds,
@@ -639,6 +639,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         PdfAnnotationColor? fillColor = null,
         float fontSizePoints = 12f,
         string fontResourceName = "Helv",
+        bool underline = false,
         CancellationToken cancellationToken = default)
     {
         var pdfium = RequirePdfium(document);
@@ -660,7 +661,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             : fontResourceName.Trim().TrimStart('/');
         borderColor ??= new PdfAnnotationColor(40, 40, 40);
 
-        return Task.Run(
+        var created = await Task.Run(
             () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -774,7 +775,19 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                     }
                 }
             },
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
+
+        if (!underline)
+        {
+            return created;
+        }
+
+        return await SetUnderlineAsync(
+            document,
+            pageIndex,
+            created.AnnotIndex,
+            underline: true,
+            cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<PdfAnnotationInfo> AddCalloutAsync(
@@ -789,6 +802,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         float fontSizePoints = 12f,
         string fontResourceName = "Helv",
         float pointerWidthPoints = 1.5f,
+        bool underline = false,
         CancellationToken cancellationToken = default)
     {
         borderColor ??= new PdfAnnotationColor(40, 40, 40);
@@ -818,6 +832,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             fillColor,
             fontSizePoints,
             fontResourceName,
+            underline,
             cancellationToken);
 
         // Mark as callout via Subj so list/reload can recognize it.
@@ -864,6 +879,106 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         }
 
         return int.TryParse(contents.AsSpan("CalloutPointer:".Length), out ownerIndex);
+    }
+
+    private const string GlyphUnderlineKey = "GlyphUnderline";
+    private const string GlyphTextUnderlinePrefix = "GlyphTextUnderline:";
+
+    private static string FormatTextUnderlineContents(int ownerAnnotIndex) =>
+        GlyphTextUnderlinePrefix + ownerAnnotIndex.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    private static bool IsTextUnderlineContents(string? contents) =>
+        !string.IsNullOrEmpty(contents)
+        && (contents.Equals("GlyphTextUnderline", StringComparison.Ordinal)
+            || contents.StartsWith(GlyphTextUnderlinePrefix, StringComparison.Ordinal));
+
+    private static bool TryParseTextUnderlineOwner(string? contents, out int ownerIndex)
+    {
+        ownerIndex = -1;
+        if (string.IsNullOrEmpty(contents)
+            || !contents.StartsWith(GlyphTextUnderlinePrefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return int.TryParse(contents.AsSpan(GlyphTextUnderlinePrefix.Length), out ownerIndex);
+    }
+
+    public async Task<PdfAnnotationInfo> SetUnderlineAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        bool underline,
+        CancellationToken cancellationToken = default)
+    {
+        var listed = await ListAsync(document, pageIndex, cancellationToken).ConfigureAwait(false);
+        var box = listed.FirstOrDefault(a => a.AnnotIndex == annotIndex && a.IsTextBox)
+            ?? throw new InvalidOperationException("Target annotation is not a FreeText text box.");
+
+        // Remove existing underline ink companions for this FreeText.
+        var companions = listed
+            .Where(a => a.IsInk && IsTextUnderlineContents(a.Contents))
+            .Where(a =>
+            {
+                var owned = TryParseTextUnderlineOwner(a.Contents, out var owner)
+                    && owner == annotIndex;
+                return owned || a.Contents == "GlyphTextUnderline";
+            })
+            .OrderByDescending(a => a.AnnotIndex)
+            .ToList();
+
+        foreach (var companion in companions)
+        {
+            var companionIndex = companion.AnnotIndex;
+            await RemoveAsync(document, pageIndex, companionIndex, cancellationToken).ConfigureAwait(false);
+            if (companionIndex < annotIndex)
+            {
+                annotIndex--;
+            }
+        }
+
+        await MutateAnnotAsync(
+            document,
+            pageIndex,
+            annotIndex,
+            cancellationToken,
+            annot =>
+            {
+                if (!PdfiumAnnotStrings.SetString(annot, GlyphUnderlineKey, underline ? "1" : string.Empty))
+                {
+                    throw new InvalidOperationException("Failed to set GlyphUnderline.");
+                }
+            }).ConfigureAwait(false);
+
+        if (underline)
+        {
+            listed = await ListAsync(document, pageIndex, cancellationToken).ConfigureAwait(false);
+            box = listed.FirstOrDefault(a => a.AnnotIndex == annotIndex && a.IsTextBox)
+                ?? throw new InvalidOperationException("FreeText missing after underline update.");
+
+            var y = box.Bounds.Bottom + Math.Min(4, Math.Max(1, box.Bounds.Height * 0.12));
+            var inset = Math.Min(4, box.Bounds.Width * 0.05);
+            var left = box.Bounds.Left + inset;
+            var right = box.Bounds.Right - inset;
+            if (right - left < 2)
+            {
+                left = box.Bounds.Left;
+                right = box.Bounds.Right;
+            }
+
+            var color = box.Color ?? new PdfAnnotationColor(40, 40, 40);
+            await AddLabeledInkAsync(
+                document,
+                pageIndex,
+                [[new PdfPagePoint(left, y), new PdfPagePoint(right, y)]],
+                color,
+                borderWidthPoints: 1f,
+                contents: FormatTextUnderlineContents(annotIndex),
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        listed = await ListAsync(document, pageIndex, cancellationToken).ConfigureAwait(false);
+        return listed.First(a => a.AnnotIndex == annotIndex && a.IsTextBox);
     }
 
     public Task<PdfAnnotationInfo> AddStampAsync(
@@ -1940,6 +2055,12 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                         groupId = null;
                     }
 
+                    var isUnderlined = isTextBox
+                        && string.Equals(
+                            PdfiumAnnotStrings.GetString(annot, GlyphUnderlineKey),
+                            "1",
+                            StringComparison.Ordinal);
+
                     results.Add(new PdfAnnotationInfo(
                         pageIndex,
                         i,
@@ -1954,7 +2075,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                         isStamp,
                         isCallout,
                         author,
-                        groupId));
+                        groupId,
+                        isUnderlined));
                 }
                 finally
                 {

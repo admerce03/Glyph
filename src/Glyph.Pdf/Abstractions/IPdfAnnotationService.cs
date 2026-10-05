@@ -75,6 +75,7 @@ public interface IPdfAnnotationService
         PdfAnnotationColor? fillColor = null,
         float fontSizePoints = 12f,
         string fontResourceName = "Helv",
+        bool underline = false,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -92,6 +93,7 @@ public interface IPdfAnnotationService
         float fontSizePoints = 12f,
         string fontResourceName = "Helv",
         float pointerWidthPoints = 1.5f,
+        bool underline = false,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -111,6 +113,17 @@ public interface IPdfAnnotationService
         int pageIndex,
         int annotIndex,
         string contents,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Toggle underline for a FreeText text box/callout. Persists <c>GlyphUnderline</c> and
+    /// draws a companion ink underline stroke (hidden from the annotation sidebar).
+    /// </summary>
+    Task<PdfAnnotationInfo> SetUnderlineAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        bool underline,
         CancellationToken cancellationToken = default);
 
     Task SetColorAsync(

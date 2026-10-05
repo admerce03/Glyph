@@ -325,6 +325,61 @@ public class PdfiumAnnotationServiceTests
     }
 
     [Fact]
+    public async Task Text_box_underline_persists_and_can_toggle_off()
+    {
+        var path = CreateTextPdf("Underline host page");
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-ul-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var created = await annots.AddTextBoxAsync(
+                    document,
+                    0,
+                    new PdfRect(72, 640, 280, 720),
+                    "Underlined",
+                    new PdfAnnotationColor(20, 20, 20),
+                    underline: true);
+                created.IsUnderlined.Should().BeTrue();
+
+                var listed = await annots.ListAsync(document, 0);
+                listed.Should().Contain(a => a.IsTextBox && a.IsUnderlined && a.Contents == "Underlined");
+                listed.Should().Contain(a =>
+                    a.IsInk && a.Contents != null && a.Contents.StartsWith("GlyphTextUnderline:", StringComparison.Ordinal));
+
+                var cleared = await annots.SetUnderlineAsync(document, 0, created.AnnotIndex, underline: false);
+                cleared.IsUnderlined.Should().BeFalse();
+                listed = await annots.ListAsync(document, 0);
+                listed.Should().NotContain(a =>
+                    a.IsInk && a.Contents != null && a.Contents.StartsWith("GlyphTextUnderline:", StringComparison.Ordinal));
+
+                await annots.SetUnderlineAsync(document, 0, cleared.AnnotIndex, underline: true);
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var listed = await annots.ListAsync(reopened, 0);
+                listed.Should().Contain(a => a.IsTextBox && a.IsUnderlined && a.Contents == "Underlined");
+                listed.Should().Contain(a =>
+                    a.IsInk && a.Contents != null && a.Contents.StartsWith("GlyphTextUnderline:", StringComparison.Ordinal));
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Add_freeform_survives_save()
     {
         var path = CreateTextPdf("Freeform host page");

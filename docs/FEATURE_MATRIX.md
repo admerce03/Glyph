@@ -293,7 +293,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F16-07 | Text boxes and callouts | Font size. | M4 | Implemented | `fontSizePoints` + TextBox/Callout dialog NumberBox |
 | F16-08 | Text boxes and callouts | Bold. | M4 | Implemented | Dialog Bold → HeBo/TiBo/CoBo in DA |
 | F16-09 | Text boxes and callouts | Italic. | M4 | Implemented | Dialog Italic → HeOb/TiIt/CoOb in DA |
-| F16-10 | Text boxes and callouts | Underline. | M4 | Not Started |  |
+| F16-10 | Text boxes and callouts | Underline. | M4 | Tested | `SetUnderlineAsync` + `GlyphUnderline` + companion ink stroke; TextBox/Callout checkbox |
 | F16-11 | Text boxes and callouts | Text color. | M4 | Implemented | DA RGB from `textColor` + TextBox/Callout picker |
 | F16-12 | Text boxes and callouts | Background/fill color. | M4 | Implemented | `fillColor` → InteriorColor; TextBox dialog picker |
 | F16-13 | Text boxes and callouts | Border. | M4 | Tested | Border color + width on create |

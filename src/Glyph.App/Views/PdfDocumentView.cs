@@ -413,6 +413,10 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(exportNotes, "Save sticky notes as a printable text file");
         exportNotes.Click += async (_, _) => await ExportNotesAsync();
         annotHeaderRow.Children.Add(exportNotes);
+        var underlineAnnot = new Button { Content = "Underline", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(underlineAnnot, "Toggle underline on selected text box or callout");
+        underlineAnnot.Click += async (_, _) => await ToggleSelectedTextUnderlineAsync();
+        annotHeaderRow.Children.Add(underlineAnnot);
         var colorAnnot = new Button { Content = "Color", Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(colorAnnot, "Change selected annotation color");
         colorAnnot.Click += async (_, _) => await SetSelectedAnnotationColorAsync();
@@ -3908,7 +3912,9 @@ public sealed class PdfDocumentView : UserControl
                 .Where(a =>
                     (a.TextMarkupKind is not null || a.IsStickyNote || a.IsInk || a.ShapeKind is not null || a.IsTextBox || a.IsStamp)
                     && !(a.IsInk && (a.Contents == "CalloutPointer"
-                        || (a.Contents?.StartsWith("CalloutPointer:", StringComparison.Ordinal) == true))))
+                        || (a.Contents?.StartsWith("CalloutPointer:", StringComparison.Ordinal) == true)
+                        || a.Contents == "GlyphTextUnderline"
+                        || (a.Contents?.StartsWith("GlyphTextUnderline:", StringComparison.Ordinal) == true))))
                 .OrderBy(a => a.PageIndex)
                 .ThenBy(a => a.AnnotIndex)
                 .ToList();
@@ -3933,7 +3939,8 @@ public sealed class PdfDocumentView : UserControl
             var preview = string.IsNullOrWhiteSpace(info.Contents)
                 ? "(empty)"
                 : TrimForStatus(info.Contents);
-            return $"{group}Callout · p.{info.PageIndex + 1}: {preview}";
+            var ul = info.IsUnderlined ? " · U" : string.Empty;
+            return $"{group}Callout{ul} · p.{info.PageIndex + 1}: {preview}";
         }
 
         if (info.IsStickyNote)
@@ -3950,7 +3957,8 @@ public sealed class PdfDocumentView : UserControl
             var preview = string.IsNullOrWhiteSpace(info.Contents)
                 ? "(empty)"
                 : TrimForStatus(info.Contents);
-            return $"{group}Text · p.{info.PageIndex + 1}: {preview}";
+            var ul = info.IsUnderlined ? " · U" : string.Empty;
+            return $"{group}Text{ul} · p.{info.PageIndex + 1}: {preview}";
         }
 
         if (info.IsStamp)
@@ -4088,6 +4096,7 @@ public sealed class PdfDocumentView : UserControl
         };
         var boldCheck = new CheckBox { Content = "Bold", IsChecked = false };
         var italicCheck = new CheckBox { Content = "Italic", IsChecked = false };
+        var underlineCheck = new CheckBox { Content = "Underline", IsChecked = false };
         var textColorList = new ListView
         {
             Height = 100,
@@ -4107,7 +4116,7 @@ public sealed class PdfDocumentView : UserControl
                 {
                     Orientation = Orientation.Horizontal,
                     Spacing = 12,
-                    Children = { boldCheck, italicCheck },
+                    Children = { boldCheck, italicCheck, underlineCheck },
                 },
                 new TextBlock { Text = "Text color", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                 textColorList,
@@ -4150,7 +4159,8 @@ public sealed class PdfDocumentView : UserControl
                 fillColor: new PdfAnnotationColor(255, 255, 230),
                 fontSizePoints: fontSize,
                 fontResourceName: fontResource,
-                pointerWidthPoints: _drawStrokeWidth);
+                pointerWidthPoints: _drawStrokeWidth,
+                underline: underlineCheck.IsChecked == true);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
@@ -7314,6 +7324,7 @@ public sealed class PdfDocumentView : UserControl
         };
         var boldCheck = new CheckBox { Content = "Bold", IsChecked = false };
         var italicCheck = new CheckBox { Content = "Italic", IsChecked = false };
+        var underlineCheck = new CheckBox { Content = "Underline", IsChecked = false };
         var textColorList = new ListView
         {
             Height = 100,
@@ -7347,7 +7358,7 @@ public sealed class PdfDocumentView : UserControl
                 {
                     Orientation = Orientation.Horizontal,
                     Spacing = 12,
-                    Children = { boldCheck, italicCheck },
+                    Children = { boldCheck, italicCheck, underlineCheck },
                 },
                 new TextBlock { Text = "Text color", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                 textColorList,
@@ -7411,7 +7422,8 @@ public sealed class PdfDocumentView : UserControl
                 borderColor: border,
                 fillColor: fill,
                 fontSizePoints: fontSize,
-                fontResourceName: fontResource);
+                fontResourceName: fontResource,
+                underline: underlineCheck.IsChecked == true);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
@@ -8148,6 +8160,35 @@ public sealed class PdfDocumentView : UserControl
         var text = PdfNotesExport.Format(annotations, documentTitle: title);
         await Windows.Storage.FileIO.WriteTextAsync(file, text);
         _status.Text = $"Exported {noteCount} note{(noteCount == 1 ? string.Empty : "s")} to {file.Name}.";
+    }
+
+    private async Task ToggleSelectedTextUnderlineAsync()
+    {
+        if (!TryGetSelectedAnnotation(out var item) || !item.IsTextBox)
+        {
+            _status.Text = "Select a text box or callout to underline.";
+            return;
+        }
+
+        try
+        {
+            var updated = await _annotations.SetUnderlineAsync(
+                _document,
+                item.PageIndex,
+                item.AnnotIndex,
+                underline: !item.IsUnderlined);
+            _selectedAnnot = updated;
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = updated.IsUnderlined ? "Underline on." : "Underline off.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Underline failed: " + ex.Message;
+        }
     }
 
     private void ExpandStickyNote(PdfAnnotationInfo note)

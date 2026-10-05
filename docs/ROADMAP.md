@@ -195,8 +195,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Shapes: `AddShapeAsync` for rectangle/ellipse (Square/Circle), line, arrow, star, and speech bubble (ink strokes; arrow adds head wings; star is a closed 5-point path; bubble is body+pointer outline); Rect/Ellipse/Line/Arrow/Star/Bubble draw modes with border/fill color and width picker.
 - Freeform: `AddFreeformAsync` closed ink path; Freeform draw mode.
 - Polygon: `AddPolygonAsync` click-to-place vertices (Enter / near-first closes); Polygon toolbar mode.
-- Text boxes: `AddTextBoxAsync` FreeText with Contents + DA + optional fill/border; TextBox toolbar dialog (font family/size/bold/italic, text/fill/border color); listed in sidebar.
-- Callouts: `AddCalloutAsync` FreeText (`Subj=Callout`) + ink pointer; Callout draw mode (drag tip → box) with font + text color dialog.
+- Text boxes: `AddTextBoxAsync` FreeText with Contents + DA + optional fill/border; TextBox toolbar dialog (font family/size/bold/italic/underline, text/fill/border color); listed in sidebar.
+- Callouts: `AddCalloutAsync` FreeText (`Subj=Callout`) + ink pointer; Callout draw mode (drag tip → box) with font + text color dialog; underline via `SetUnderlineAsync`.
 - Flatten: `FlattenAsync` via `FPDFPage_Flatten` + Flatten toolbar (confirm dialog); editable annots removed after bake.
 - Signatures: `AddStampAsync` (BGRA stamp image) + local `FileSignatureLibrary`; Sign toolbar Draw (mouse stroke → PNG/library/stamp) or Import image; library dialog lists saved signatures with ↑/↓ reorder + Insert/Delete; `DuplicateAsync` clones stamp pixels with offset.
 - AcroForm: `IPdfFormStore` / `PdfiumFormStore` lists widgets, sets text/combo/list `/V`, toggles checkboxes (`/V`+`/AS`), selects radios (mutual exclusion by field name), exposes choice `/Opt` via PdfPig, tab-adjacent focus; Form toolbar Overlay mode (clickable field boxes) or list dialog; recent text values via `IFormValueHistory` (`form-values.json`); AutoFill profile (name/address/email/phone) via `IFormAutofillProfileStore`; text fill sets `/DA` to `0 Tf` (automatic font sizing) via `PdfFormDefaultAppearance`; Pdf.Tests sample AcroForm.

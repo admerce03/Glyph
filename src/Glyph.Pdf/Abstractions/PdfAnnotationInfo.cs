@@ -17,4 +17,5 @@ public sealed record PdfAnnotationInfo(
     bool IsStamp = false,
     bool IsCallout = false,
     string? Author = null,
-    string? GroupId = null);
+    string? GroupId = null,
+    bool IsUnderlined = false);
