@@ -99,6 +99,40 @@ public class PdfiumOptimizeServiceTests
     }
 
     [Fact]
+    public async Task Estimate_lower_jpeg_quality_predicts_smaller_output()
+    {
+        var path = CreateBlankPdf();
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var optimize = new PdfiumOptimizeService(new MagickTestJpegEncoder());
+            await using var document = await factory.OpenAsync(path);
+            var pdfium = (PdfiumDocument)document;
+
+            PdfiumLibrary.EnsureInitialized();
+            lock (PdfiumSync.Gate)
+            {
+                InsertPatternedImage(pdfium, pageIndex: 0, pixelSize: 800, displayPoints: 72);
+            }
+
+            var high = optimize.Estimate(
+                document,
+                PdfOptimizeOptions.FromPreset(PdfOptimizePreset.Balanced) with { JpegQuality = 90 });
+            var low = optimize.Estimate(
+                document,
+                PdfOptimizeOptions.FromPreset(PdfOptimizePreset.Balanced) with { JpegQuality = 30 });
+            high.ImagesEligibleForDownsample.Should().BeGreaterThan(0);
+            low.ImagesEligibleForDownsample.Should().Be(high.ImagesEligibleForDownsample);
+            low.EstimatedBytes.Should().BeLessThan(high.EstimatedBytes);
+            low.EstimatedBytes.Should().BeLessThanOrEqualTo(low.CurrentBytes);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Estimate_and_optimize_downsample_high_dpi_image()
     {
         var path = CreateBlankPdf();

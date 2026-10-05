@@ -27,15 +27,31 @@ public sealed class PdfiumOptimizeService : IPdfOptimizeService
             var current = PdfiumDocumentSaver.SaveToBytes(pdfium.Handle, SaveNoIncremental).LongLength;
             var (eligible, _) = ScanImages(pdfium, opts, mutate: false);
             var attachments = Math.Max(0, fpdf_attachment.FPDFDocGetAttachmentCount(pdfium.Handle));
-            // Rough estimate: each downsampled image shrinks ~proportionally to pixel area;
-            // attachment unlink rarely shrinks bytes until a later rewrite, so leave as-is.
+            // Heuristic: each eligible image contributes a share of the file; after downsample the
+            // remaining fraction tracks pixel area (ratio) scaled by JPEG quality (lower → smaller).
             var estimated = current;
-            foreach (var ratio in eligible)
+            if (eligible.Count > 0)
             {
-                estimated -= (long)(current * 0.02 * (1.0 - ratio)); // soft heuristic only
+                var jpegFactor = Math.Clamp(opts.JpegQuality, 1, 100) / 100.0;
+                // DCTDecode payloads are typically far smaller than raw bitmaps stored pre-optimize.
+                var jpegWeight = 0.25 + (0.75 * jpegFactor);
+                var perImageShare = current / (double)(eligible.Count + 2);
+                foreach (var ratio in eligible)
+                {
+                    var areaRemaining = Math.Clamp(ratio, 0.0, 1.0);
+                    var remaining = Math.Clamp(areaRemaining * jpegWeight, 0.0, 1.0);
+                    estimated -= (long)(perImageShare * (1.0 - remaining));
+                }
             }
 
-            estimated = Math.Max(estimated, current / 4);
+            if (opts.RemoveEmbeddedAttachments && attachments > 0)
+            {
+                // Soft credit — actual shrink depends on attachment payload size.
+                estimated -= Math.Min(estimated / 20, attachments * 2048L);
+            }
+
+            estimated = Math.Max(estimated, Math.Max(current / 5, 256));
+            estimated = Math.Min(estimated, current);
             return new PdfOptimizeEstimate(current, estimated, eligible.Count, attachments);
         }
     }
