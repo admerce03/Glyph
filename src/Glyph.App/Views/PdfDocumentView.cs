@@ -173,6 +173,8 @@ public sealed class PdfDocumentView : UserControl
     private Microsoft.UI.Xaml.Shapes.Rectangle? _annotSelectionRect;
     private readonly List<FrameworkElement> _annotSelectionVisuals = [];
     private readonly List<FrameworkElement> _annotResizeHandleVisuals = [];
+    private readonly HashSet<(int PageIndex, int AnnotIndex)> _expandedStickyNotes = [];
+    private readonly List<FrameworkElement> _stickyNotePopupVisuals = [];
     /// <summary>In-app annotation clipboard (page/annot index). Cut removes the source on paste.</summary>
     private (int PageIndex, int AnnotIndex)? _annotClipboard;
     private bool _annotClipboardIsCut;
@@ -399,6 +401,14 @@ public sealed class PdfDocumentView : UserControl
         annotHeaderRow.Children.Add(cutAnnot);
         annotHeaderRow.Children.Add(pasteAnnot);
         annotHeaderRow.Children.Add(authorAnnot);
+        var expandNote = new Button { Content = "Expand", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(expandNote, "Expand selected sticky note (show popup on page)");
+        expandNote.Click += (_, _) => ExpandSelectedStickyNote();
+        annotHeaderRow.Children.Add(expandNote);
+        var collapseNote = new Button { Content = "Collapse", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(collapseNote, "Collapse expanded sticky note popup");
+        collapseNote.Click += (_, _) => CollapseSelectedStickyNote();
+        annotHeaderRow.Children.Add(collapseNote);
         var colorAnnot = new Button { Content = "Color", Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(colorAnnot, "Change selected annotation color");
         colorAnnot.Click += async (_, _) => await SetSelectedAnnotationColorAsync();
@@ -7350,6 +7360,11 @@ public sealed class PdfDocumentView : UserControl
         if (_selectedAnnot is not null)
         {
             DrawAnnotSelection(_selectedAnnot);
+            if (_selectedAnnot.IsStickyNote)
+            {
+                ExpandStickyNote(_selectedAnnot);
+            }
+
             _status.Text = _selectedAnnots.Count <= 1
                 ? $"Selected {FormatAnnotationLabel(_selectedAnnot)}."
                 : $"Selected {_selectedAnnots.Count} annotations (Ctrl+click to toggle).";
@@ -7397,6 +7412,11 @@ public sealed class PdfDocumentView : UserControl
         border.CapturePointer(e.Pointer);
         SyncSidebarSelectionMulti();
         DrawAnnotSelection(hit);
+        if (hit.IsStickyNote)
+        {
+            ExpandStickyNote(hit);
+        }
+
         _status.Text = _selectedAnnots.Count > 1
             ? $"Selected {_selectedAnnots.Count} annotations. Drag to move together."
             : $"Selected {FormatAnnotationLabel(hit)}. Drag to move; handles resize.";
@@ -7805,6 +7825,135 @@ public sealed class PdfDocumentView : UserControl
         _annotSelectionVisuals.Clear();
         _annotSelectionRect = null;
         _annotResizeHandleVisuals.Clear();
+    }
+
+    private void ExpandSelectedStickyNote()
+    {
+        if (!TryGetSelectedAnnotation(out var item) || !item.IsStickyNote)
+        {
+            _status.Text = "Select a sticky note to expand.";
+            return;
+        }
+
+        ExpandStickyNote(item);
+        _status.Text = $"Expanded {FormatAnnotationLabel(item)}.";
+    }
+
+    private void CollapseSelectedStickyNote()
+    {
+        if (!TryGetSelectedAnnotation(out var item) || !item.IsStickyNote)
+        {
+            // Collapse all if nothing specific selected.
+            if (_expandedStickyNotes.Count == 0)
+            {
+                _status.Text = "No expanded sticky notes.";
+                return;
+            }
+
+            _expandedStickyNotes.Clear();
+            RedrawStickyNotePopups();
+            _status.Text = "Collapsed all sticky notes.";
+            return;
+        }
+
+        var key = (item.PageIndex, item.AnnotIndex);
+        if (!_expandedStickyNotes.Remove(key))
+        {
+            _status.Text = "Note is already collapsed.";
+            return;
+        }
+
+        RedrawStickyNotePopups();
+        _status.Text = $"Collapsed {FormatAnnotationLabel(item)}.";
+    }
+
+    private void ExpandStickyNote(PdfAnnotationInfo note)
+    {
+        if (!note.IsStickyNote)
+        {
+            return;
+        }
+
+        _expandedStickyNotes.Add((note.PageIndex, note.AnnotIndex));
+        RedrawStickyNotePopups();
+    }
+
+    private void RedrawStickyNotePopups()
+    {
+        foreach (var visual in _stickyNotePopupVisuals)
+        {
+            foreach (var overlay in _pageOverlays.Values)
+            {
+                overlay.Children.Remove(visual);
+            }
+        }
+
+        _stickyNotePopupVisuals.Clear();
+        if (_expandedStickyNotes.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var key in _expandedStickyNotes.ToList())
+        {
+            var note = _annotationItems.FirstOrDefault(a =>
+                a.IsStickyNote && a.PageIndex == key.PageIndex && a.AnnotIndex == key.AnnotIndex);
+            if (note is null)
+            {
+                _expandedStickyNotes.Remove(key);
+                continue;
+            }
+
+            if (!_pageOverlays.TryGetValue(note.PageIndex, out var overlay))
+            {
+                continue;
+            }
+
+            var page = _document.GetPage(note.PageIndex);
+            var left = note.Bounds.Right * _scale + 8;
+            var top = (page.HeightPoints - note.Bounds.Top) * _scale;
+            var author = string.IsNullOrWhiteSpace(note.Author) ? null : note.Author;
+            var body = string.IsNullOrWhiteSpace(note.Contents) ? "(empty note)" : note.Contents!;
+            var fill = note.Color is { } c
+                ? Windows.UI.Color.FromArgb(230, c.R, c.G, c.B)
+                : Windows.UI.Color.FromArgb(230, 255, 240, 150);
+
+            var panel = new Border
+            {
+                Width = Math.Clamp(180 * _scale / 1.25, 140, 280),
+                Background = new SolidColorBrush(fill),
+                BorderBrush = new SolidColorBrush(Colors.DimGray),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(8),
+                CornerRadius = new CornerRadius(4),
+                IsHitTestVisible = false,
+                Child = new StackPanel
+                {
+                    Spacing = 4,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = author ?? "Note",
+                            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                            FontSize = 12,
+                            TextWrapping = TextWrapping.Wrap,
+                        },
+                        new TextBlock
+                        {
+                            Text = body,
+                            FontSize = 12,
+                            TextWrapping = TextWrapping.Wrap,
+                            MaxHeight = 160,
+                        },
+                    },
+                },
+            };
+            Canvas.SetLeft(panel, left);
+            Canvas.SetTop(panel, top);
+            overlay.Children.Add(panel);
+            _stickyNotePopupVisuals.Add(panel);
+        }
     }
 
     private async Task ConfigureAnnotationAuthorAsync()
