@@ -3266,7 +3266,12 @@ public sealed class PdfDocumentView : UserControl
                 var end = Math.Min(chars.Count - 1, found + _searchQuery.Length - 1);
                 for (var i = found; i <= end && i < chars.Count; i++)
                 {
-                    AddHighlightRect(overlay, page.HeightPoints, chars[i].Bounds, Windows.UI.Color.FromArgb(90, 255, 215, 0));
+                    AddHighlightRect(overlay, page.HeightPoints, chars[i].Bounds,
+                        Windows.UI.Color.FromArgb(
+                            PdfSearchHighlightStyle.Alpha,
+                            PdfSearchHighlightStyle.Red,
+                            PdfSearchHighlightStyle.Green,
+                            PdfSearchHighlightStyle.Blue));
                 }
 
                 searchFrom = found + Math.Max(1, _searchQuery.Length);
@@ -4201,7 +4206,7 @@ public sealed class PdfDocumentView : UserControl
     private async Task ClearSearchAsync()
     {
         _searchBox.Text = string.Empty;
-        ClearSearchResults("Search cleared.");
+        ClearSearchResults(PdfSearchHighlightStyle.ClearedStatus);
         foreach (var overlay in _pageOverlays.Values)
         {
             overlay.Children.Clear();

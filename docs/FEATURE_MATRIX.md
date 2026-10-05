@@ -57,7 +57,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-20 | Main window and interface | Per-monitor DPI awareness. | M1/M9 | Tested | Same `DpiAwarenessDeclaration` / app.manifest PerMonitorV2 check |
 | F02-21 | Main window and interface | Mouse support. | M1/M9 | Implemented | Pointer input throughout document and chrome UI |
 | F02-22 | Main window and interface | Precision touchpad gesture support where useful. | M1/M9 | Tested | Ctrl+wheel + Manipulation Scale; `PdfZoomCalculator`/`ImageZoomCalculator` ApplyWheelZoom/ApplyManipulationScale unit tests |
-| F02-23 | Main window and interface | Keyboard-first operation. | M1/M9 | Implemented | Menu accelerators + document Ctrl shortcuts |
+| F02-23 | Main window and interface | Keyboard-first operation. | M1/M9 | Tested | Menu accelerators + document Ctrl shortcuts; `ShellKeyboardShortcuts` catalog unit tests |
 | F02-24 | Main window and interface | Accessibility through Windows UI Automation. | M1/M9 | Implemented | AutomationProperties.Name on chrome and tools |
 | F03-01 | Sidebar modes | Page thumbnails | M2-M5 | Tested | Thumbnail strip; `ThumbnailWidthConstraints` clamp unit tests |
 | F03-02 | Sidebar modes | Table of contents | M2-M5 | Implemented | Outline TreeView when bookmarks present |
@@ -127,13 +127,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F06-06 | PDF search | Search all occurrences. | M2/M6 | Tested | Collects every hit per page |
 | F06-07 | PDF search | Search current PDF. | M2/M6 | Tested | Current document path |
 | F06-08 | PDF search | Search all open PDFs. | M2/M6 | Tested | Edit → Find in all open PDFs; `FindAllOpenPdfsStatus` unit tests |
-| F06-09 | PDF search | Highlight matches on pages. | M2/M6 | Implemented | Gold overlays from PDFium char boxes |
+| F06-09 | PDF search | Highlight matches on pages. | M2/M6 | Tested | Gold overlays; `PdfSearchHighlightStyle` ARGB unit tests |
 | F06-10 | PDF search | Results sidebar. | M2/M6 | Tested | Results list; `PdfSearchSnippet` pads match context with ellipsis |
 | F06-11 | PDF search | Show contextual snippets around matches. | M2/M6 | Tested | Snippet around match |
 | F06-12 | PDF search | Sort results by: | M2/M6 | Implemented | Page order (document scan order); relevance sort deferred |
 | F06-13 | PDF search | Next match. | M2/M6 | Tested | Toolbar next; `PdfSearchHitNav.WrapIndex` unit tests |
 | F06-14 | PDF search | Previous match. | M2/M6 | Tested | Toolbar previous; same wrap helper |
-| F06-15 | PDF search | Clear search. | M2/M6 | Implemented | Clear button + Escape; cancels in-flight search and overlays |
+| F06-15 | PDF search | Clear search. | M2/M6 | Tested | Clear + Escape; `PdfSearchHighlightStyle.ClearedStatus` unit tests |
 | F06-16 | PDF search | Click result to jump to it. | M2/M6 | Tested | Selection jumps to hit page index |
 | F06-17 | PDF search | Search OCR text where OCR has been generated. | M2/M6 | Tested | `PdfPageTextSearch.Find` + `Merge` unit tests; session OCR cache |
 | F07-01 | PDF text interaction | Text selection. | M2/M6 | Tested | Click word-ish via `PdfTextSelection.TryExpandWordAt` + unit tests |
