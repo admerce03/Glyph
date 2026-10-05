@@ -8,8 +8,10 @@
   Passes -p:GlyphPackage=MSIX + GenerateAppxPackageOnBuild so WinUI single-project
   MSIX tooling emits a .msix (see Microsoft Learn: single-project MSIX).
 
-  Unsigned packages are fine for local sideload with developer mode / test certs.
-  Production signing and Store submission remain a separate distribution step.
+  With -TestSign (CI default), creates an ephemeral self-signed code-signing cert
+  (CN=Glyph, matching Package.appxmanifest Publisher), signs the package, and
+  exports a .cer beside the .msix for Trusted People install before sideload.
+  Production / Store signing remains a separate distribution step.
 #>
 [CmdletBinding()]
 param(
@@ -20,13 +22,19 @@ param(
     [string]$Runtime = 'win-x64',
 
     # Relative to repo root, or an absolute path. Default: artifacts/msix
-    [string]$Output = 'artifacts/msix'
+    [string]$Output = 'artifacts/msix',
+
+    # Ephemeral self-signed cert for Developer Mode sideload (CI).
+    [switch]$TestSign
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $project = Join-Path $repoRoot 'src' 'Glyph.App' 'Glyph.App.csproj'
 $platform = if ($Runtime -eq 'win-arm64') { 'ARM64' } else { 'x64' }
+
+# Must match Identity/@Publisher in Package.appxmanifest
+$publisher = 'CN=Glyph'
 
 if ([System.IO.Path]::IsPathRooted($Output)) {
     $outDir = $Output
@@ -37,34 +45,96 @@ else {
 
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
-Write-Host "Building Glyph MSIX ($Configuration / $Runtime / $platform) → $outDir"
+$cert = $null
+$signingArgs = @(
+    '-p:AppxPackageSigningEnabled=false'
+)
 
-# Single-project MSIX uses GenerateAppxPackageOnBuild (not plain dotnet publish -o).
-# https://learn.microsoft.com/windows/apps/windows-app-sdk/single-project-msix
-dotnet build $project `
-    -c $Configuration `
-    -r $Runtime `
-    -p:Platform=$platform `
-    -p:GlyphPackage=MSIX `
-    -p:WindowsAppSDKSelfContained=true `
-    -p:GenerateAppxPackageOnBuild=true `
-    -p:AppxPackageSigningEnabled=false `
-    -p:AppxBundle=Never `
-    -p:AppxPackageDir="$outDir\\"
+try {
+    if ($TestSign) {
+        if (-not $IsWindows -and $env:OS -ne 'Windows_NT') {
+            throw '-TestSign requires Windows (New-SelfSignedCertificate).'
+        }
 
-if ($LASTEXITCODE -ne 0) {
-    throw "dotnet build (MSIX) failed with exit code $LASTEXITCODE"
-}
+        Write-Host "Creating ephemeral test-signing certificate ($publisher)…"
+        $cert = New-SelfSignedCertificate `
+            -Type Custom `
+            -Subject $publisher `
+            -KeyUsage DigitalSignature `
+            -FriendlyName 'Glyph CI Ephemeral Test Sign' `
+            -CertStoreLocation 'Cert:\CurrentUser\My' `
+            -TextExtension @(
+                '2.5.29.37={text}1.3.6.1.5.5.7.3.3',
+                '2.5.29.19={text}'
+            )
 
-$msix = @(Get-ChildItem -Path $outDir -Filter *.msix -Recurse -ErrorAction SilentlyContinue)
-$manifest = @(Get-ChildItem -Path $outDir -Filter AppxManifest.xml -Recurse -ErrorAction SilentlyContinue)
-Write-Host "MSIX build completed under $outDir"
-if ($msix.Count -gt 0) {
-    Write-Host ("Found MSIX: " + (($msix | ForEach-Object FullName) -join ', '))
+        $cerPath = Join-Path $outDir 'Glyph.CI.TestSign.cer'
+        Export-Certificate -Cert $cert -FilePath $cerPath | Out-Null
+        Write-Host "Exported trust cert: $cerPath (install to Trusted People before sideload)"
+
+        $signingArgs = @(
+            '-p:AppxPackageSigningEnabled=true',
+            "-p:PackageCertificateThumbprint=$($cert.Thumbprint)"
+        )
+        Write-Host "Signing with thumbprint $($cert.Thumbprint)"
+    }
+
+    Write-Host "Building Glyph MSIX ($Configuration / $Runtime / $platform) → $outDir"
+
+    # Single-project MSIX uses GenerateAppxPackageOnBuild (not plain dotnet publish -o).
+    # https://learn.microsoft.com/windows/apps/windows-app-sdk/single-project-msix
+    $buildArgs = @(
+        $project,
+        '-c', $Configuration,
+        '-r', $Runtime,
+        "-p:Platform=$platform",
+        '-p:GlyphPackage=MSIX',
+        '-p:WindowsAppSDKSelfContained=true',
+        '-p:GenerateAppxPackageOnBuild=true',
+        '-p:AppxBundle=Never',
+        "-p:AppxPackageDir=$outDir\\"
+    ) + $signingArgs
+
+    & dotnet build @buildArgs
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "dotnet build (MSIX) failed with exit code $LASTEXITCODE"
+    }
+
+    $msix = @(Get-ChildItem -Path $outDir -Filter *.msix -Recurse -ErrorAction SilentlyContinue)
+    $manifest = @(Get-ChildItem -Path $outDir -Filter AppxManifest.xml -Recurse -ErrorAction SilentlyContinue)
+    Write-Host "MSIX build completed under $outDir"
+    if ($msix.Count -gt 0) {
+        Write-Host ("Found MSIX: " + (($msix | ForEach-Object FullName) -join ', '))
+        if ($TestSign) {
+            foreach ($pkg in $msix) {
+                $sig = Get-AuthenticodeSignature -FilePath $pkg.FullName
+                if ($null -eq $sig.SignerCertificate) {
+                    throw "Test-signed MSIX has no signer certificate: $($pkg.FullName)"
+                }
+                if ($sig.SignerCertificate.Thumbprint -ne $cert.Thumbprint) {
+                    throw "MSIX signer thumbprint mismatch for $($pkg.FullName)"
+                }
+                Write-Host ("Signature OK: $($pkg.Name) status=$($sig.Status) thumbprint=$($sig.SignerCertificate.Thumbprint)")
+            }
+        }
+    }
+    elseif ($manifest.Count -gt 0) {
+        Write-Host ("Found AppxManifest layout: " + (($manifest | ForEach-Object FullName) -join ', '))
+        if ($TestSign) {
+            throw 'TestSign requested but only loose AppxManifest layout was produced (no .msix).'
+        }
+    }
+    else {
+        throw "No .msix or AppxManifest.xml under $outDir — single-project MSIX packaging did not emit a package."
+    }
 }
-elseif ($manifest.Count -gt 0) {
-    Write-Host ("Found AppxManifest layout: " + (($manifest | ForEach-Object FullName) -join ', '))
-}
-else {
-    throw "No .msix or AppxManifest.xml under $outDir — single-project MSIX packaging did not emit a package."
+finally {
+    if ($null -ne $cert) {
+        $storePath = "Cert:\CurrentUser\My\$($cert.Thumbprint)"
+        if (Test-Path $storePath) {
+            Remove-Item $storePath -Force -ErrorAction SilentlyContinue
+            Write-Host "Removed ephemeral cert from CurrentUser\My"
+        }
+    }
 }

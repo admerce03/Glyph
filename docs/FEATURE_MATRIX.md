@@ -13,8 +13,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-03 | Application and file handling | Open multiple files: | M1/M9 | Tested | Tabs by default; `OpenFilesInSeparateWindows` prefs round-trip |
 | F01-04 | Application and file handling | Reopen recently used files. | M1/M9 | Tested | JsonRecentFilesStore covered by unit tests |
 | F01-05 | Application and file handling | Restore previously open tabs/windows after restart, optionally. | M1/M9 | Tested | `JsonSessionStore` save/load/clear unit tests + Preferences toggle |
-| F01-06 | Application and file handling | Native Windows file associations. | M1/M9 | Deferred | ADR-012; unsigned `.msix` on CI (`MsixPackageCiProduced`); sideload verify pending |
-| F01-07 | Application and file handling | Configurable default associations for supported formats. | M1/M9 | Deferred | ADR-012; unsigned `.msix` on CI; associations unverified until sideload |
+| F01-06 | Application and file handling | Native Windows file associations. | M1/M9 | Deferred | ADR-012; test-signed `.msix` on CI (`MsixPackageCiTestSigned`); sideload verify pending |
+| F01-07 | Application and file handling | Configurable default associations for supported formats. | M1/M9 | Deferred | ADR-012; test-signed `.msix` on CI; associations unverified until sideload |
 | F01-08 | Application and file handling | Drag files from Explorer into an existing application window. | M1/M9 | Tested | Explorer → window drop; `ExplorerFileDropPolicy` + `FilterSupportedPaths` unit tests |
 | F01-09 | Application and file handling | Drag files from the application into Explorer where meaningful. | M1/M9 | Tested | Thumbnail drag deferred StorageItems + `PageExtractFileNames` unit tests |
 | F01-10 | Application and file handling | Open files from: | M1/M9 | Tested | Local/UNC/OneDrive/removable via `PathUtilities.NormalizeOpenPath` unit tests |

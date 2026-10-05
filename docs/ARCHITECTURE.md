@@ -24,7 +24,7 @@ Non-goals for the platform layer:
 | Runtime | .NET 10 | `net10.0` for libraries; `net10.0-windows10.0.19041.0` for the app |
 | UI | WinUI 3 (WinUI) | Delivered via Windows App SDK |
 | Windows App SDK | **2.5.1** (`Microsoft.WindowsAppSDK`) | Current stable umbrella package; revisit component packages later for publish-size optimization |
-| Packaging | Unpackaged desktop first; optional MSIX | `WindowsPackageType=None` default; `-p:GlyphPackage=MSIX` + `Package.appxmanifest` / `scripts/publish-msix.ps1` |
+| Packaging | Unpackaged desktop first; optional MSIX | `WindowsPackageType=None` default; `-p:GlyphPackage=MSIX` + `Package.appxmanifest` / `scripts/publish-msix.ps1` (`-TestSign` on CI) |
 | Architectures | x64 and ARM64 | No x86 target |
 | DPI | Per-Monitor V2 | Declared in `app.manifest` |
 | DI / logging | `Microsoft.Extensions.*` | Lightweight host composition inside the app |
