@@ -161,6 +161,12 @@ public sealed partial class MainWindow : Window
 
     private async void SaveAsMenuItem_Click(object sender, RoutedEventArgs e) => await SaveActiveDocumentAsync(saveAs: true);
 
+    private async void DuplicateMenuItem_Click(object sender, RoutedEventArgs e) => await DuplicateActiveDocumentAsync();
+
+    private async void RenameMenuItem_Click(object sender, RoutedEventArgs e) => await RenameActiveDocumentAsync();
+
+    private async void MoveMenuItem_Click(object sender, RoutedEventArgs e) => await MoveActiveDocumentAsync();
+
     private void ShareMenuItem_Click(object sender, RoutedEventArgs e) => ShareActiveDocument();
 
     private async void ShowInExplorerMenuItem_Click(object sender, RoutedEventArgs e) => await ShowActiveInExplorerAsync();
@@ -862,6 +868,35 @@ public sealed partial class MainWindow : Window
 
     private async Task SaveActiveDocumentAsync(bool saveAs)
     {
+        var active = _workspace.ActiveDocument;
+        if (active is null)
+        {
+            StatusText.Text = "Open a document to save.";
+            return;
+        }
+
+        if (!saveAs
+            && !string.IsNullOrWhiteSpace(active.Path)
+            && (active.IsReadOnly || IsPathReadOnly(active.Path)))
+        {
+            var warn = new ContentDialog
+            {
+                Title = "Read-only file",
+                Content = "This file is read-only. Use Save As… to write a writable copy, or remove the read-only attribute in Explorer.",
+                PrimaryButtonText = "Save As…",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = Content.XamlRoot,
+            };
+            if (await warn.ShowAsync() != ContentDialogResult.Primary)
+            {
+                StatusText.Text = "Save cancelled — file is read-only.";
+                return;
+            }
+
+            saveAs = true;
+        }
+
         if (DocumentTabs.SelectedItem is TabViewItem { Content: PdfDocumentView pdfView })
         {
             await pdfView.SaveDocumentAsync(saveAs);
@@ -888,15 +923,266 @@ public sealed partial class MainWindow : Window
 
         active.Path = path;
         active.DisplayName = System.IO.Path.GetFileName(path);
+        active.IsReadOnly = IsPathReadOnly(path);
         active.MarkClean();
         if (DocumentTabs.SelectedItem is TabViewItem tab)
         {
-            tab.Header = active.DisplayName;
+            tab.Header = active.DisplayName + (active.IsReadOnly ? " (read-only)" : string.Empty);
         }
 
-        StatusText.Text = "Saved " + active.DisplayName;
+        StatusText.Text = "Saved " + active.DisplayName
+            + (active.IsReadOnly ? " · read-only" : string.Empty);
         _ = _recentFiles.AddAsync(path);
         RefreshRecentList();
+    }
+
+    private async Task DuplicateActiveDocumentAsync()
+    {
+        var active = _workspace.ActiveDocument;
+        if (active is null || string.IsNullOrWhiteSpace(active.Path) || !File.Exists(active.Path))
+        {
+            StatusText.Text = "Save the document first to duplicate it.";
+            return;
+        }
+
+        try
+        {
+            if (active.IsDirty)
+            {
+                var prompt = new ContentDialog
+                {
+                    Title = "Unsaved changes",
+                    Content = "Duplicate copies the file on disk. Save first?",
+                    PrimaryButtonText = "Save & duplicate",
+                    SecondaryButtonText = "Duplicate without saving",
+                    CloseButtonText = "Cancel",
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = Content.XamlRoot,
+                };
+                var result = await prompt.ShowAsync();
+                if (result == ContentDialogResult.None)
+                {
+                    return;
+                }
+
+                if (result == ContentDialogResult.Primary)
+                {
+                    await SaveActiveDocumentAsync(saveAs: false);
+                }
+            }
+
+            var source = active.Path!;
+            var dir = System.IO.Path.GetDirectoryName(source) ?? ".";
+            var name = System.IO.Path.GetFileNameWithoutExtension(source);
+            var ext = System.IO.Path.GetExtension(source);
+            var candidate = System.IO.Path.Combine(dir, name + " copy" + ext);
+            var n = 2;
+            while (File.Exists(candidate))
+            {
+                candidate = System.IO.Path.Combine(dir, $"{name} copy {n}{ext}");
+                n++;
+            }
+
+            File.Copy(source, candidate);
+            await OpenPathAsync(candidate);
+            StatusText.Text = "Duplicated as " + System.IO.Path.GetFileName(candidate);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Duplicate failed: " + ex.Message;
+        }
+    }
+
+    private async Task RenameActiveDocumentAsync()
+    {
+        var active = _workspace.ActiveDocument;
+        if (active is null || string.IsNullOrWhiteSpace(active.Path) || !File.Exists(active.Path))
+        {
+            StatusText.Text = "Save the document first to rename it.";
+            return;
+        }
+
+        try
+        {
+            var currentName = System.IO.Path.GetFileName(active.Path);
+            var box = new TextBox
+            {
+                Header = "New file name",
+                Text = currentName,
+                Width = 320,
+            };
+            var dialog = new ContentDialog
+            {
+                Title = "Rename",
+                Content = box,
+                PrimaryButtonText = "Rename",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = Content.XamlRoot,
+            };
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            {
+                return;
+            }
+
+            var newName = (box.Text ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(newName)
+                || newName.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) >= 0
+                || newName.Contains('/')
+                || newName.Contains('\\'))
+            {
+                StatusText.Text = "Invalid file name.";
+                return;
+            }
+
+            if (string.Equals(newName, currentName, StringComparison.OrdinalIgnoreCase))
+            {
+                StatusText.Text = "Name unchanged.";
+                return;
+            }
+
+            var dir = System.IO.Path.GetDirectoryName(active.Path!) ?? ".";
+            var dest = System.IO.Path.Combine(dir, newName);
+            if (File.Exists(dest))
+            {
+                StatusText.Text = "A file with that name already exists.";
+                return;
+            }
+
+            if (active.IsDirty)
+            {
+                await SaveActiveDocumentAsync(saveAs: false);
+            }
+
+            File.Move(active.Path!, dest);
+            RetargetActiveDocument(dest);
+            StatusText.Text = "Renamed to " + newName;
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Rename failed: " + ex.Message;
+        }
+    }
+
+    private async Task MoveActiveDocumentAsync()
+    {
+        var active = _workspace.ActiveDocument;
+        if (active is null || string.IsNullOrWhiteSpace(active.Path) || !File.Exists(active.Path))
+        {
+            StatusText.Text = "Save the document first to move it.";
+            return;
+        }
+
+        try
+        {
+            var picker = new FolderPicker();
+            InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+            picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+            picker.FileTypeFilter.Add("*");
+            var folder = await picker.PickSingleFolderAsync();
+            if (folder is null)
+            {
+                StatusText.Text = "Move cancelled.";
+                return;
+            }
+
+            var fileName = System.IO.Path.GetFileName(active.Path);
+            var dest = System.IO.Path.Combine(folder.Path, fileName);
+            if (string.Equals(
+                    System.IO.Path.GetFullPath(System.IO.Path.GetDirectoryName(active.Path!) ?? string.Empty),
+                    System.IO.Path.GetFullPath(folder.Path),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                StatusText.Text = "Already in that folder.";
+                return;
+            }
+
+            if (File.Exists(dest))
+            {
+                var overwrite = new ContentDialog
+                {
+                    Title = "Replace existing file?",
+                    Content = $"“{fileName}” already exists in the destination folder.",
+                    PrimaryButtonText = "Replace",
+                    CloseButtonText = "Cancel",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = Content.XamlRoot,
+                };
+                if (await overwrite.ShowAsync() != ContentDialogResult.Primary)
+                {
+                    return;
+                }
+
+                if (IsPathReadOnly(dest))
+                {
+                    StatusText.Text = "Destination file is read-only.";
+                    return;
+                }
+            }
+
+            if (active.IsDirty)
+            {
+                await SaveActiveDocumentAsync(saveAs: false);
+            }
+
+            File.Move(active.Path!, dest, overwrite: true);
+            RetargetActiveDocument(dest);
+            StatusText.Text = "Moved to " + folder.Path;
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Move failed: " + ex.Message;
+        }
+    }
+
+    private void RetargetActiveDocument(string newPath)
+    {
+        var active = _workspace.ActiveDocument;
+        if (active is null)
+        {
+            return;
+        }
+
+        active.Path = newPath;
+        active.DisplayName = System.IO.Path.GetFileName(newPath);
+        active.IsReadOnly = IsPathReadOnly(newPath);
+        if (_openEngines.TryGetValue(active.Id, out var engine))
+        {
+            switch (engine)
+            {
+                case IPdfDocument pdf:
+                    pdf.Path = newPath;
+                    break;
+                case IImageDocument image:
+                    image.Path = newPath;
+                    break;
+            }
+        }
+
+        if (DocumentTabs.SelectedItem is TabViewItem tab)
+        {
+            tab.Header = active.DisplayName + (active.IsReadOnly ? " (read-only)" : string.Empty);
+        }
+
+        _ = _recentFiles.AddAsync(newPath);
+        RefreshRecentList();
+    }
+
+    private static bool IsPathReadOnly(string path)
+    {
+        try
+        {
+            if (!File.Exists(path))
+            {
+                return false;
+            }
+
+            return File.GetAttributes(path).HasFlag(FileAttributes.ReadOnly);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private void CopyActivePath()
@@ -1023,6 +1309,7 @@ public sealed partial class MainWindow : Window
             var displayName = System.IO.Path.GetFileName(path);
             var existing = _workspace.FindByPath(path);
             var session = _workspace.Open(kind, displayName, path);
+            session.IsReadOnly = IsPathReadOnly(path);
 
             if (existing is null)
             {
@@ -1035,7 +1322,7 @@ public sealed partial class MainWindow : Window
 
                 var tab = new TabViewItem
                 {
-                    Header = displayName,
+                    Header = displayName + (session.IsReadOnly ? " (read-only)" : string.Empty),
                     Tag = session.Id,
                     IsClosable = true,
                     Content = content,
@@ -1048,7 +1335,7 @@ public sealed partial class MainWindow : Window
             RefreshRecentList();
             UpdateEmptyState();
 
-            StatusText.Text = existing is null
+            var openedLabel = existing is null
                 ? kind switch
                 {
                     DocumentKind.Pdf => $"Opened PDF: {displayName}",
@@ -1056,6 +1343,7 @@ public sealed partial class MainWindow : Window
                     _ => $"Opened {displayName}",
                 }
                 : $"Activated {displayName}";
+            StatusText.Text = session.IsReadOnly ? openedLabel + " · read-only" : openedLabel;
 
             _logger.LogInformation("Opened {Kind} document {Path}", kind, path);
         }

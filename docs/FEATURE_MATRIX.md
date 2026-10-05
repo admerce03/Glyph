@@ -19,18 +19,18 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-09 | Application and file handling | Drag files from the application into Explorer where meaningful. | M1/M9 | In Progress | Thumbnail drag exposes extracted PDF via deferred StorageItems |
 | F01-10 | Application and file handling | Open files from: | M1/M9 | Not Started |  |
 | F01-11 | Application and file handling | Normal Windows long-path and Unicode filename support. | M1/M9 | Not Started |  |
-| F01-12 | Application and file handling | Read-only file detection. | M1/M9 | Not Started |  |
-| F01-13 | Application and file handling | Warn when attempting to overwrite a read-only file. | M1/M9 | Not Started |  |
+| F01-12 | Application and file handling | Read-only file detection. | M1/M9 | Implemented | Sets session.IsReadOnly; tab header + status |
+| F01-13 | Application and file handling | Warn when attempting to overwrite a read-only file. | M1/M9 | Implemented | Save prompts Save As when target is read-only |
 | F01-14 | Application and file handling | File → New from Clipboard. | M1/M9 | In Progress | Menu + Ctrl+Shift+N; clipboard bitmap → temp PNG dirty tab |
-| F01-15 | Application and file handling | File → Duplicate. | M1/M9 | Not Started |  |
+| F01-15 | Application and file handling | File → Duplicate. | M1/M9 | Implemented | File → Duplicate / Ctrl+Shift+D copies on disk and opens |
 | F01-16 | Application and file handling | File → Save. | M1/M9 | Implemented | File → Save / Ctrl+S (PDF + image) |
 | F01-17 | Application and file handling | File → Save As. | M1/M9 | Implemented | File → Save As / Ctrl+Shift+S |
-| F01-18 | Application and file handling | File → Export. | M1/M9 | Not Started |  |
-| F01-19 | Application and file handling | File → Rename. | M1/M9 | Not Started |  |
-| F01-20 | Application and file handling | File → Move. | M1/M9 | Not Started |  |
+| F01-18 | Application and file handling | File → Export. | M1/M9 | Implemented | PDF Export toolbar; image Convert/Export |
+| F01-19 | Application and file handling | File → Rename. | M1/M9 | Implemented | File → Rename… same-folder rename |
+| F01-20 | Application and file handling | File → Move. | M1/M9 | Implemented | File → Move… FolderPicker + File.Move |
 | F01-21 | Application and file handling | File → Properties. | M1/M9 | Implemented | File → Properties / Ctrl+I → PDF Info or image Meta |
-| F01-22 | Application and file handling | Close: | M1/M9 | Not Started |  |
-| F01-23 | Application and file handling | Unsaved-change prompt where appropriate. | M1/M9 | Not Started |  |
+| F01-22 | Application and file handling | Close: | M1/M9 | Implemented | Close Tab / Close All |
+| F01-23 | Application and file handling | Unsaved-change prompt where appropriate. | M1/M9 | Implemented | Close tab dirty prompt |
 | F01-24 | Application and file handling | Optional autosave. | M1/M9 | Not Started |  |
 | F01-25 | Application and file handling | Crash-recovery copy. | M1/M9 | Not Started |  |
 | F01-26 | Application and file handling | Undo/redo history. | M1/M9 | In Progress | Page-edit snapshot undo via `PdfPageEditHistory`; app-wide stack later |

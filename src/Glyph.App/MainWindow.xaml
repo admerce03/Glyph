@@ -44,6 +44,13 @@
                         <KeyboardAccelerator Key="S" Modifiers="Control,Shift" />
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="DuplicateMenuItem" Text="Duplicate" Click="DuplicateMenuItem_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="D" Modifiers="Control,Shift" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="RenameMenuItem" Text="Rename…" Click="RenameMenuItem_Click" />
+                <MenuFlyoutItem x:Name="MoveMenuItem" Text="Move…" Click="MoveMenuItem_Click" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem x:Name="ShareMenuItem" Text="Share…" Click="ShareMenuItem_Click" />
                 <MenuFlyoutItem x:Name="ShowInExplorerMenuItem" Text="Show in File Explorer" Click="ShowInExplorerMenuItem_Click" />
