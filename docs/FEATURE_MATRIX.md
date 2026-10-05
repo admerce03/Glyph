@@ -295,7 +295,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F16-09 | Text boxes and callouts | Italic. | M4 | Not Started |  |
 | F16-10 | Text boxes and callouts | Underline. | M4 | Not Started |  |
 | F16-11 | Text boxes and callouts | Text color. | M4 | Tested | DA RGB from `textColor` |
-| F16-12 | Text boxes and callouts | Background/fill color. | M4 | Not Started |  |
+| F16-12 | Text boxes and callouts | Background/fill color. | M4 | Implemented | `fillColor` → InteriorColor; TextBox dialog picker |
 | F16-13 | Text boxes and callouts | Border. | M4 | Tested | Border color + width on create |
 | F16-14 | Text boxes and callouts | Opacity. | M4 | Not Started |  |
 | F16-15 | Text boxes and callouts | Alignment. | M4 | Not Started |  |

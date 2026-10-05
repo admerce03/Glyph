@@ -261,7 +261,9 @@ public class PdfiumAnnotationServiceTests
                     0,
                     new PdfRect(72, 640, 280, 720),
                     "Hello text box",
-                    new PdfAnnotationColor(20, 20, 20));
+                    new PdfAnnotationColor(20, 20, 20),
+                    borderColor: new PdfAnnotationColor(40, 40, 40),
+                    fillColor: new PdfAnnotationColor(255, 250, 180));
                 created.IsTextBox.Should().BeTrue();
                 created.Contents.Should().Be("Hello text box");
 

@@ -496,6 +496,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         string contents,
         PdfAnnotationColor textColor,
         PdfAnnotationColor? borderColor = null,
+        PdfAnnotationColor? fillColor = null,
         float fontSizePoints = 12f,
         CancellationToken cancellationToken = default)
     {
@@ -563,6 +564,20 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                                     borderColor.Value.A) == 0)
                             {
                                 throw new InvalidOperationException("FPDFAnnot_SetColor failed for text box border.");
+                            }
+
+                            if (fillColor is { } fill)
+                            {
+                                if (fpdf_annot.FPDFAnnotSetColor(
+                                        annot,
+                                        FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_InteriorColor,
+                                        fill.R,
+                                        fill.G,
+                                        fill.B,
+                                        fill.A) == 0)
+                                {
+                                    throw new InvalidOperationException("FPDFAnnot_SetColor failed for text box fill.");
+                                }
                             }
 
                             if (PdfiumNative.AnnotSetBorder(annot.__Instance, 0, 0, 1f) == 0)
