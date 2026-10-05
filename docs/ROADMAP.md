@@ -290,14 +290,14 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Progress notes
 
-- Redact mark/preview/apply removes intersecting text/images/annotations + attachment name-tree entries + Info metadata
-- Info dialog: encryption/permissions, version, page size, fonts, attachment count; Edit writes Title/Author/Subject/Keywords/Creator/Producer (Ctrl+Z undoes)
-- Optimize presets + Custom (DPI + JPEG quality NumberBox) + estimate; F24-08 JPEG via zeroed FILEACCESS + LoadJpegFileInline; font subset/linearize deferred (ADR-016)
+- Redact mark/preview/apply removes intersecting text/images/annotations + attachment name-tree entries + Info metadata (F21 mark/apply/search-hit paths unit-tested)
+- Info dialog: encryption/permissions, version, page size, fonts, attachment count; Edit writes Title/Author/Subject/Keywords/Creator/Producer (Ctrl+Z undoes); `/ModDate` stamped on edit
+- Optimize presets + Custom (DPI + JPEG quality NumberBox) + estimate; HighQuality/Lossless/PreserveMonochrome covered by unit tests; F24-08 JPEG via zeroed FILEACCESS + LoadJpegFileInline; font subset/linearize deferred (ADR-016)
 - Page Export → PNG/JPEG/WebP/TIFF/BMP/GIF/AVIF/JP2 with DPI/quality, Title/Author metadata, sRGB ICC (F45-07), alpha where codec allows
 - FreeText Align / `/Q` quadding via post-save dict patch (F13-38 / F16-15)
 - Bookmarks → PDF `/Outlines` export (F09-08)
 - Password-protect write blocked on ADR-015 (Needs approval)
-- Local polish parked while Actions billing empty-step CI; `cursor/m7-redaction-50da` may be ahead of origin
+- Local polish (+5 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
 
 ---
 
