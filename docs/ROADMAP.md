@@ -263,6 +263,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - PDF **Live Text** word-box overlay after OCR (click/Ctrl+click select + **Copy OCR**)
 - **OCR→PDF** exports OCR'd pages as a searchable PDF (image + invisible text via `OcrSearchablePdfWriter`)
 - **Entities** dialog on PDF + image OCR text (URL/email/phone/address/date/time + maps/calendar/search web)
+- **Cancel OCR** + status progress for single-image and folder OCR (`CancellationToken`)
 - Right-click selected text → Copy / Find selection / Search web / Copy region as image
 - Multi-line drag selects across lines in reading order; Alt/wide drag keeps column rect selection
 - Drag selected text out of the page (OLE/text drag) when a selection exists

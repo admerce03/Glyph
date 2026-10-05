@@ -46,8 +46,10 @@ public sealed class ImageDocumentView : UserControl
     private readonly Button _ocrFindButton;
     private readonly Button _ocrFindNextButton;
     private readonly Button _ocrFolderButton;
+    private readonly Button _ocrCancelButton;
     private readonly Button _ocrSearchWebButton;
     private readonly Button _ocrSavePdfButton;
+    private CancellationTokenSource? _ocrCts;
     private IReadOnlyList<int> _ocrSearchHits = [];
     private int _ocrSearchHitIndex = -1;
     private IReadOnlyList<string> _siblings = Array.Empty<string>();
@@ -159,6 +161,7 @@ public sealed class ImageDocumentView : UserControl
         _ocrFindButton = new Button { Content = "Find OCR", Visibility = Visibility.Collapsed };
         _ocrFindNextButton = new Button { Content = "Next OCR", Visibility = Visibility.Collapsed };
         _ocrFolderButton = new Button { Content = "OCR folder" };
+        _ocrCancelButton = new Button { Content = "Cancel OCR", Visibility = Visibility.Collapsed };
         _ocrSearchWebButton = new Button { Content = "Search web", Visibility = Visibility.Collapsed };
         _ocrSavePdfButton = new Button { Content = "OCR→PDF", Visibility = Visibility.Collapsed };
         var rotate180 = new Button { Content = "180°" };
@@ -184,6 +187,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(_ocrFindButton, "Highlight OCR words matching the query");
         ToolTipService.SetToolTip(_ocrFindNextButton, "Jump to next OCR search hit");
         ToolTipService.SetToolTip(_ocrFolderButton, "Run offline OCR on images in this folder (up to 20)");
+        ToolTipService.SetToolTip(_ocrCancelButton, "Cancel the in-flight OCR job");
         ToolTipService.SetToolTip(_ocrSearchWebButton, "Search the web for selected OCR text");
         ToolTipService.SetToolTip(_ocrSavePdfButton, "Export a searchable PDF with this image and an invisible OCR text layer");
         ToolTipService.SetToolTip(rotate180, "Rotate 180°");
@@ -215,6 +219,7 @@ public sealed class ImageDocumentView : UserControl
         meta.Click += async (_, _) => await ShowMetadataAsync();
         ocrButton.Click += async (_, _) => await RunOcrAsync();
         _ocrFolderButton.Click += async (_, _) => await RunOcrFolderAsync();
+        _ocrCancelButton.Click += (_, _) => CancelOcr();
         _ocrSearchWebButton.Click += async (_, _) => await SearchWebSelectedOcrAsync();
         _ocrSavePdfButton.Click += async (_, _) => await SaveSearchablePdfAsync();
         _copyOcrButton.Click += (_, _) => CopySelectedOcrText();
@@ -250,7 +255,7 @@ public sealed class ImageDocumentView : UserControl
             Children =
             {
                 _prevButton, _nextButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
-                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, _ocrFolderButton, _copyOcrButton, _ocrSearchWebButton, _ocrSavePdfButton, _ocrEntitiesButton, _ocrSearchBox, _ocrFindButton, _ocrFindNextButton, _clearOcrButton, save, exportPng, exportJpeg, convert, _status,
+                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, _ocrFolderButton, _ocrCancelButton, _copyOcrButton, _ocrSearchWebButton, _ocrSavePdfButton, _ocrEntitiesButton, _ocrSearchBox, _ocrFindButton, _ocrFindNextButton, _clearOcrButton, save, exportPng, exportJpeg, convert, _status,
             },
         };
 
@@ -993,6 +998,32 @@ public sealed class ImageDocumentView : UserControl
         }
     }
 
+    private void CancelOcr()
+    {
+        if (_ocrCts is null)
+        {
+            return;
+        }
+
+        _ocrCts.Cancel();
+        _status.Text = "Cancelling OCR…";
+    }
+
+    private void BeginOcrJob()
+    {
+        _ocrCts?.Cancel();
+        _ocrCts?.Dispose();
+        _ocrCts = new CancellationTokenSource();
+        _ocrCancelButton.Visibility = Visibility.Visible;
+    }
+
+    private void EndOcrJob()
+    {
+        _ocrCancelButton.Visibility = Visibility.Collapsed;
+        _ocrCts?.Dispose();
+        _ocrCts = null;
+    }
+
     private async Task RunOcrAsync()
     {
         if (_ocr is null)
@@ -1001,12 +1032,16 @@ public sealed class ImageDocumentView : UserControl
             return;
         }
 
+        BeginOcrJob();
+        var token = _ocrCts!.Token;
         try
         {
-            _status.Text = "Running OCR…";
-            var buffer = await _document.GetPixelsAsync(maxEdge: 4096);
+            _status.Text = "Running OCR… (1/1)";
+            var buffer = await _document.GetPixelsAsync(maxEdge: 4096, token);
+            token.ThrowIfCancellationRequested();
             var result = await _ocr.RecognizeAsync(
-                new OcrRequest(buffer.Width, buffer.Height, buffer.BgraPixels));
+                new OcrRequest(buffer.Width, buffer.Height, buffer.BgraPixels),
+                token);
 
             _ocrResult = result;
             _ocrSourceWidth = buffer.Width;
@@ -1023,9 +1058,17 @@ public sealed class ImageDocumentView : UserControl
 
             _status.Text = $"OCR ready — click words to select ({wordCount} word(s)).";
         }
+        catch (OperationCanceledException)
+        {
+            _status.Text = "OCR cancelled.";
+        }
         catch (Exception ex)
         {
             _status.Text = "OCR failed: " + ex.Message;
+        }
+        finally
+        {
+            EndOcrJob();
         }
     }
 
@@ -1051,20 +1094,24 @@ public sealed class ImageDocumentView : UserControl
 
         const int maxImages = 20;
         var paths = _siblings.Take(maxImages).ToList();
+        BeginOcrJob();
+        var token = _ocrCts!.Token;
         try
         {
             var sections = new List<string>(paths.Count);
             var totalLines = 0;
             for (var i = 0; i < paths.Count; i++)
             {
+                token.ThrowIfCancellationRequested();
                 var path = paths[i];
                 var name = System.IO.Path.GetFileName(path);
                 _status.Text = $"OCR folder {i + 1}/{paths.Count}: {name}…";
 
-                await using var image = await _decoder.OpenAsync(path);
-                var buffer = await image.GetPixelsAsync(maxEdge: 2048);
+                await using var image = await _decoder.OpenAsync(path, token);
+                var buffer = await image.GetPixelsAsync(maxEdge: 2048, token);
                 var result = await _ocr.RecognizeAsync(
-                    new OcrRequest(buffer.Width, buffer.Height, buffer.BgraPixels));
+                    new OcrRequest(buffer.Width, buffer.Height, buffer.BgraPixels),
+                    token);
                 totalLines += result.Lines.Count;
                 var body = string.IsNullOrWhiteSpace(result.Text) ? "(no text recognized)" : result.Text.Trim();
                 sections.Add($"--- {name} ---\n{body}");
@@ -1119,9 +1166,17 @@ public sealed class ImageDocumentView : UserControl
                 ? $"Folder OCR — no text across {paths.Count} image(s)."
                 : $"Folder OCR — {paths.Count} image(s), {totalLines} line(s).";
         }
+        catch (OperationCanceledException)
+        {
+            _status.Text = "Folder OCR cancelled.";
+        }
         catch (Exception ex)
         {
             _status.Text = "Folder OCR failed: " + ex.Message;
+        }
+        finally
+        {
+            EndOcrJob();
         }
     }
 
