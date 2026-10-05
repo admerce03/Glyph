@@ -6762,7 +6762,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (!_formUndoStack.TryPop(out var entry))
         {
-            _status.Text = "No form change to undo.";
+            _status.Text = FormOverlayModePolicy.NoChangeToUndo;
             return;
         }
 
@@ -6821,7 +6821,7 @@ public sealed class PdfDocumentView : UserControl
                 DrawFormOverlays();
             }
 
-            _status.Text = "Undid form field change.";
+            _status.Text = FormOverlayModePolicy.UndidFieldChange;
         }
         catch (Exception ex)
         {
@@ -7538,7 +7538,7 @@ public sealed class PdfDocumentView : UserControl
         {
             ClearFormOverlayMode();
             RefreshToolButtonChrome();
-            _status.Text = "Form overlay off.";
+            _status.Text = FormOverlayModePolicy.Exited;
             return;
         }
 
@@ -7548,7 +7548,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (!await _forms.HasFormAsync(_document))
         {
-            _status.Text = "No AcroForm fields in this document.";
+            _status.Text = FormOverlayModePolicy.NoAcroFormFields;
             return;
         }
 
@@ -7887,7 +7887,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (_formOverlayFocusIndex < 0 || _formOverlayFocusIndex >= _formOverlayFields.Count)
         {
-            _status.Text = "No form field focused.";
+            _status.Text = FormOverlayModePolicy.NoFieldFocused;
             return;
         }
 
@@ -7921,14 +7921,14 @@ public sealed class PdfDocumentView : UserControl
 
         if (!await _forms.HasFormAsync(_document))
         {
-            _status.Text = "No AcroForm fields in this document.";
+            _status.Text = FormOverlayModePolicy.NoAcroFormFields;
             return;
         }
 
         var fields = await _forms.ListFieldsAsync(_document);
         if (fields.Count == 0)
         {
-            _status.Text = "AcroForm present but no widget fields found.";
+            _status.Text = FormOverlayModePolicy.NoFields;
             return;
         }
 
@@ -7958,7 +7958,7 @@ public sealed class PdfDocumentView : UserControl
             var result = await dialog.ShowAsync();
             if (result == ContentDialogResult.None)
             {
-                _status.Text = "Form editor closed.";
+                _status.Text = FormOverlayModePolicy.EditorClosed;
                 return;
             }
 
@@ -8243,7 +8243,7 @@ public sealed class PdfDocumentView : UserControl
         await RenderVisibleAsync();
         await RenderThumbnailsAsync();
         await RefreshAnnotationSidebarAsync();
-        _status.Text = $"Signed form field '{field.Name}' with '{entry.Name}'.";
+        _status.Text = FormOverlayModePolicy.FormatSignedField(field.Name, entry.Name);
     }
 
     /// <summary>
@@ -8500,13 +8500,13 @@ public sealed class PdfDocumentView : UserControl
         var result = await dialog.ShowAsync();
         if (result != ContentDialogResult.Primary)
         {
-            _status.Text = "Flatten cancelled.";
+            _status.Text = FormOverlayModePolicy.FlattenCancelled;
             return;
         }
 
         try
         {
-            _status.Text = "Flattening…";
+            _status.Text = FormOverlayModePolicy.Flattening;
             var outcome = await _annotations.FlattenAsync(_document);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
@@ -8521,7 +8521,7 @@ public sealed class PdfDocumentView : UserControl
             }
             else if (outcome.PagesChanged == 0)
             {
-                _status.Text = "Nothing to flatten.";
+                _status.Text = FormOverlayModePolicy.NothingToFlatten;
             }
             else
             {
@@ -9098,7 +9098,7 @@ public sealed class PdfDocumentView : UserControl
         var result = await dialog.ShowAsync();
         if (result != ContentDialogResult.Primary)
         {
-            _status.Text = "Note cancelled.";
+            _status.Text = StickyNoteExpandPolicy.NoteCancelled;
             return;
         }
 
@@ -9115,7 +9115,7 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
-            _status.Text = "Adding note…";
+            _status.Text = StickyNoteExpandPolicy.Adding;
             var created = await _annotations.AddStickyNoteAsync(
                 _document,
                 CurrentPageIndex,
@@ -9130,7 +9130,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = "Sticky note added.";
+            _status.Text = StickyNoteExpandPolicy.Added;
         }
         catch (Exception ex)
         {
@@ -10143,7 +10143,7 @@ public sealed class PdfDocumentView : UserControl
         var noteCount = annotations.Count(a => a.IsStickyNote);
         if (noteCount == 0)
         {
-            _status.Text = "No sticky notes to export.";
+            _status.Text = StickyNoteExpandPolicy.NoNotesToExport;
             return;
         }
 
@@ -10163,7 +10163,7 @@ public sealed class PdfDocumentView : UserControl
         var file = await picker.PickSaveFileAsync();
         if (file is null)
         {
-            _status.Text = "Export notes cancelled.";
+            _status.Text = StickyNoteExpandPolicy.ExportCancelled;
             return;
         }
 
@@ -10185,7 +10185,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (item.IsStickyNote || item.TextMarkupKind is not null)
         {
-            _status.Text = "Sticky notes and text markup cannot be rotated.";
+            _status.Text = StickyNoteExpandPolicy.CannotRotateMarkup;
             return;
         }
 
@@ -10598,13 +10598,13 @@ public sealed class PdfDocumentView : UserControl
     {
         if (!TryGetSelectedAnnotation(out var item))
         {
-            _status.Text = "Select a sticky note, text box, or callout to edit.";
+            _status.Text = StickyNoteExpandPolicy.SelectToEdit;
             return;
         }
 
         if (!item.IsStickyNote && !item.IsTextBox && !item.IsCallout)
         {
-            _status.Text = "Edit applies to sticky notes, text boxes, and callouts.";
+            _status.Text = StickyNoteExpandPolicy.EditAppliesToNotes;
             return;
         }
 
