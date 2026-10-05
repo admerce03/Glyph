@@ -83,6 +83,7 @@ public sealed class PdfDocumentView : UserControl
     private bool _suppressAnnotationNav;
     private bool _inkMode;
     private PdfAnnotationColor _drawStrokeColor = PdfAnnotationColor.InkRed;
+    private float _drawStrokeWidth = 2f;
     private bool _highlightMode;
     private PdfAnnotationColor _highlightModeColor = PdfAnnotationColor.YellowHighlight;
     private bool _formOverlayMode;
@@ -2505,14 +2506,15 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var picked = await PickStrokeColorAsync("Ink stroke color");
+        var picked = await PickStrokeStyleAsync("Ink stroke");
         if (picked is null)
         {
             _status.Text = "Ink mode cancelled.";
             return;
         }
 
-        _drawStrokeColor = picked.Value;
+        _drawStrokeColor = picked.Value.Color;
+        _drawStrokeWidth = picked.Value.WidthPoints;
         if (_cropMode)
         {
             CancelCropMode();
@@ -2546,14 +2548,15 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var picked = await PickStrokeColorAsync("Shape border color");
+        var picked = await PickStrokeStyleAsync("Shape stroke");
         if (picked is null)
         {
             _status.Text = "Shape mode cancelled.";
             return;
         }
 
-        _drawStrokeColor = picked.Value;
+        _drawStrokeColor = picked.Value.Color;
+        _drawStrokeWidth = picked.Value.WidthPoints;
 
         if (_cropMode)
         {
@@ -2572,25 +2575,48 @@ public sealed class PdfDocumentView : UserControl
         };
     }
 
-    private async Task<PdfAnnotationColor?> PickStrokeColorAsync(string title)
+    private async Task<(PdfAnnotationColor Color, float WidthPoints)?> PickStrokeStyleAsync(string title)
     {
         var window = _ownerWindow
             ?? App.CurrentApp.MainWindowInstance
-            ?? throw new InvalidOperationException("Main window unavailable for stroke color dialog.");
+            ?? throw new InvalidOperationException("Main window unavailable for stroke style dialog.");
 
-        var list = new ListView
+        float[] widths = [1f, 2f, 3f, 5f, 8f];
+        var colorList = new ListView
         {
-            Height = 240,
+            Height = 180,
             SelectionMode = ListViewSelectionMode.Single,
             ItemsSource = PdfAnnotationColor.StrokePresets.Select(p => p.Name).ToList(),
         };
-        var current = PdfAnnotationColor.StrokePresets.ToList()
+        var currentColor = PdfAnnotationColor.StrokePresets.ToList()
             .FindIndex(p => p.Color.Equals(_drawStrokeColor));
-        list.SelectedIndex = current >= 0 ? current : 0;
+        colorList.SelectedIndex = currentColor >= 0 ? currentColor : 0;
+
+        var widthList = new ListView
+        {
+            Height = 140,
+            SelectionMode = ListViewSelectionMode.Single,
+            ItemsSource = widths.Select(w => $"{w:0} pt").ToList(),
+        };
+        var currentWidth = Array.FindIndex(widths, w => Math.Abs(w - _drawStrokeWidth) < 0.01f);
+        widthList.SelectedIndex = currentWidth >= 0 ? currentWidth : 1;
+
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock { Text = "Color", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                colorList,
+                new TextBlock { Text = "Width", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                widthList,
+            },
+        };
+
         var dialog = new ContentDialog
         {
             Title = title,
-            Content = list,
+            Content = panel,
             PrimaryButtonText = "Use",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
@@ -2602,8 +2628,9 @@ public sealed class PdfDocumentView : UserControl
             return null;
         }
 
-        var index = Math.Clamp(list.SelectedIndex, 0, PdfAnnotationColor.StrokePresets.Count - 1);
-        return PdfAnnotationColor.StrokePresets[index].Color;
+        var colorIndex = Math.Clamp(colorList.SelectedIndex, 0, PdfAnnotationColor.StrokePresets.Count - 1);
+        var widthIndex = Math.Clamp(widthList.SelectedIndex, 0, widths.Length - 1);
+        return (PdfAnnotationColor.StrokePresets[colorIndex].Color, widths[widthIndex]);
     }
 
     private void ClearShapeMode()
@@ -2706,6 +2733,8 @@ public sealed class PdfDocumentView : UserControl
             _drawStrokeColor.G,
             _drawStrokeColor.B));
 
+        var strokeThickness = Math.Max(1, _drawStrokeWidth * _scale / 1.5);
+
         FrameworkElement preview = _shapeMode switch
         {
             PdfShapeKind.Ellipse => new Microsoft.UI.Xaml.Shapes.Ellipse
@@ -2713,20 +2742,21 @@ public sealed class PdfDocumentView : UserControl
                 Width = Math.Max(1, width),
                 Height = Math.Max(1, height),
                 Stroke = stroke,
-                StrokeThickness = 2,
+                StrokeThickness = strokeThickness,
                 Fill = fill,
             },
             PdfShapeKind.Line or PdfShapeKind.Arrow => CreateLineOrArrowPreview(
                 _shapeMode.Value,
                 _shapeStart,
                 current,
-                stroke),
+                stroke,
+                strokeThickness),
             _ => new Microsoft.UI.Xaml.Shapes.Rectangle
             {
                 Width = Math.Max(1, width),
                 Height = Math.Max(1, height),
                 Stroke = stroke,
-                StrokeThickness = 2,
+                StrokeThickness = strokeThickness,
                 Fill = fill,
             },
         };
@@ -2794,7 +2824,8 @@ public sealed class PdfDocumentView : UserControl
                         _drawStrokeColor.R,
                         _drawStrokeColor.G,
                         _drawStrokeColor.B,
-                        40));
+                        40),
+                borderWidthPoints: _drawStrokeWidth);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
@@ -2818,7 +2849,8 @@ public sealed class PdfDocumentView : UserControl
         PdfShapeKind kind,
         Windows.Foundation.Point start,
         Windows.Foundation.Point end,
-        SolidColorBrush stroke)
+        SolidColorBrush stroke,
+        double strokeThickness = 2)
     {
         if (kind == PdfShapeKind.Line)
         {
@@ -2829,7 +2861,7 @@ public sealed class PdfDocumentView : UserControl
                 X2 = end.X,
                 Y2 = end.Y,
                 Stroke = stroke,
-                StrokeThickness = 2,
+                StrokeThickness = strokeThickness,
             };
         }
 
@@ -2845,7 +2877,7 @@ public sealed class PdfDocumentView : UserControl
                 X2 = end.X,
                 Y2 = end.Y,
                 Stroke = stroke,
-                StrokeThickness = 2,
+                StrokeThickness = strokeThickness,
             };
         }
 
@@ -2875,7 +2907,7 @@ public sealed class PdfDocumentView : UserControl
                 wing2,
             ],
             Stroke = stroke,
-            StrokeThickness = 2,
+            StrokeThickness = strokeThickness,
             Fill = null,
         };
     }
@@ -2937,7 +2969,7 @@ public sealed class PdfDocumentView : UserControl
                         _drawStrokeColor.R,
                         _drawStrokeColor.G,
                         _drawStrokeColor.B)),
-                StrokeThickness = _signatureMode ? 2.5 : 2,
+                StrokeThickness = _signatureMode ? 2.5 : Math.Max(1, _drawStrokeWidth * _scale / 1.5),
                 Fill = null,
             };
             overlay.Children.Add(_inkPreview);
@@ -2968,7 +3000,8 @@ public sealed class PdfDocumentView : UserControl
                 _document,
                 pageIndex,
                 points,
-                _drawStrokeColor);
+                _drawStrokeColor,
+                borderWidthPoints: _drawStrokeWidth);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
