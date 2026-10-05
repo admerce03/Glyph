@@ -130,7 +130,6 @@ public sealed class PdfDocumentView : UserControl
     private PageLayoutMode _layoutMode = PageLayoutMode.Continuous;
     private int _renderGeneration;
     private long _lastIntermediateRenderTick;
-    private const int IntermediateRenderMinMs = 72;
     private bool _loaded;
     private bool _suppressThumbnailNav;
     private IReadOnlyList<PdfSearchHit> _hits = [];
@@ -4462,7 +4461,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _presentationTimer?.Stop();
-        _presentationTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(8) };
+        _presentationTimer = new DispatcherTimer { Interval = PresentationModeDefaults.AutoAdvanceInterval };
         _presentationTimer.Tick += async (_, _) =>
         {
             if (!_presentationMode || _document.PageCount == 0)
@@ -4479,7 +4478,7 @@ public sealed class PdfDocumentView : UserControl
             await GoToPageAsync(next, recordHistory: true);
         };
         _presentationTimer.Start();
-        _status.Text = "Presentation — ←/→ or Page keys; auto-advance 8s; Esc to exit.";
+        _status.Text = PresentationModeDefaults.StatusMessage;
     }
 
     private async Task ExitPresentationModeAsync()
@@ -11889,7 +11888,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var now = Environment.TickCount64;
-        if (now - _lastIntermediateRenderTick < IntermediateRenderMinMs)
+        if (!IntermediateScrollThrottle.ShouldRender(now, _lastIntermediateRenderTick))
         {
             return;
         }

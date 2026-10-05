@@ -297,7 +297,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - FreeText Align / `/Q` quadding via post-save dict patch (F13-38 / F16-15)
 - Bookmarks → PDF `/Outlines` export (F09-08)
 - Password-protect write blocked on ADR-015 (Needs approval)
-- Local polish (+66 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
+- Local polish (+69 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
+- Print N-up/scale/rotate/center extracted to `PrintSheetLayout`; scroll throttle + presentation defaults unit-tested
 
 ---
 
@@ -381,8 +382,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Redaction | §21 | M7 | Tested (mark/preview/apply + sanitize + confirm copy; password-write separate) |
 | Flattening | §22 | M4 | Tested (`FlattenAsync` / FPDFPage_Flatten) |
 | PDF security | §23 | M7 | In Progress (open + info/permissions/advisory Tested; write-protect blocked on ADR-015) |
-| Optimization | §24 | M7 | Implemented (presets + downsample + JPEG quality + estimate + page export/ICC; font subset/linearize → ADR-016) |
-| PDF metadata | §25 | M7 | Implemented (read + edit title/author/subject/keywords/creator/producer) |
+| Optimization | §24 | M7 | Tested (presets + downsample + JPEG quality + estimate + page export/ICC; font subset/linearize → ADR-016) |
+| PDF metadata | §25 | M7 | Tested (read + edit title/author/subject/keywords/creator/producer + ModDate) |
 | Image viewing/editing | §26–35 | M5 | Implemented (HDR/HEIF deferred) |
 | Batch images | §36 | M8 | Implemented (ops + progress/cancel) |
 | Animated images | §27 | M8 | Implemented (play/pause/frame nav/extract) |
@@ -391,7 +392,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Color management | §39 | M8 | Implemented (display ICC→sRGB + soft-proof; monitor ICC deferred) |
 | Clipboard/screenshots | §40–41 | M1, M5 | Implemented (region/annot/image clipboard + Snipping Tool Ctrl+V) |
 | Scanner/webcam | §42–43 | M8 | Implemented (webcam + scanner WinRT; hardware validation TBD) |
-| Printing | §44 | M8 | Implemented (system Print UI + 1/2/4-up) |
+| Printing | §44 | M8 | Tested (system Print UI + `PrintSheetLayout` 1/2/4-up / scale / rotate / center) |
 | Export/share/integration | §45–48 | M5–M9 | Implemented (PDF security export → ADR-015) |
 | Undo/autosave/snapshots | §49–51 | M1–M4, M9 | Implemented (per-doc stacks + F50/F51; unified app-wide later) |
 | Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Implemented (update check → ADR-012) |
