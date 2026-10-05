@@ -40,6 +40,16 @@ public interface IPdfAnnotationService
         float borderWidthPoints = 1.5f,
         CancellationToken cancellationToken = default);
 
+    Task<PdfAnnotationInfo> AddTextBoxAsync(
+        IPdfDocument document,
+        int pageIndex,
+        PdfRect bounds,
+        string contents,
+        PdfAnnotationColor textColor,
+        PdfAnnotationColor? borderColor = null,
+        float fontSizePoints = 12f,
+        CancellationToken cancellationToken = default);
+
     Task SetContentsAsync(
         IPdfDocument document,
         int pageIndex,

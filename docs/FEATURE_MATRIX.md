@@ -235,7 +235,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-09 | PDF annotations | Ellipses | M4 | Tested | `AddShapeAsync(Ellipse)` + Ellipse draw mode |
 | F13-10 | PDF annotations | Polygons | M4 | Not Started |  |
 | F13-11 | PDF annotations | Callouts | M4 | Not Started |  |
-| F13-12 | PDF annotations | Text boxes | M4 | Not Started |  |
+| F13-12 | PDF annotations | Text boxes | M4 | Tested | `AddTextBoxAsync` FreeText + TextBox toolbar |
 | F13-13 | PDF annotations | Sticky notes | M4 | Tested | Same as F15-01 `AddStickyNoteAsync` |
 | F13-14 | PDF annotations | Speech-bubble-like callouts | M4 | Not Started |  |
 | F13-15 | PDF annotations | Stamps, optionally | M4 | Not Started |  |
@@ -284,19 +284,19 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F15-11 | Notes | Optional date/time metadata. | M4 | Not Started |  |
 | F15-12 | Notes | Show all notes in sidebar. | M4 | Implemented | Annotations list includes notes |
 | F15-13 | Notes | Print notes optionally. | M4 | Not Started |  |
-| F16-01 | Text boxes and callouts | Add text box anywhere. | M4 | Not Started |  |
-| F16-02 | Text boxes and callouts | Type arbitrary text over PDF. | M4 | Not Started |  |
-| F16-03 | Text boxes and callouts | Move it. | M4 | Not Started |  |
-| F16-04 | Text boxes and callouts | Resize it. | M4 | Not Started |  |
+| F16-01 | Text boxes and callouts | Add text box anywhere. | M4 | Tested | `AddTextBoxAsync` + TextBox toolbar |
+| F16-02 | Text boxes and callouts | Type arbitrary text over PDF. | M4 | Implemented | Contents via dialog |
+| F16-03 | Text boxes and callouts | Move it. | M4 | Tested | `MoveAsync` API |
+| F16-04 | Text boxes and callouts | Resize it. | M4 | Tested | `MoveAsync` with new bounds |
 | F16-05 | Text boxes and callouts | Rotate where appropriate. | M4 | Not Started |  |
-| F16-06 | Text boxes and callouts | Font family. | M4 | Not Started |  |
-| F16-07 | Text boxes and callouts | Font size. | M4 | Not Started |  |
+| F16-06 | Text boxes and callouts | Font family. | M4 | Implemented | Helvetica via DA |
+| F16-07 | Text boxes and callouts | Font size. | M4 | Tested | `fontSizePoints` parameter |
 | F16-08 | Text boxes and callouts | Bold. | M4 | Not Started |  |
 | F16-09 | Text boxes and callouts | Italic. | M4 | Not Started |  |
 | F16-10 | Text boxes and callouts | Underline. | M4 | Not Started |  |
-| F16-11 | Text boxes and callouts | Text color. | M4 | Not Started |  |
+| F16-11 | Text boxes and callouts | Text color. | M4 | Tested | DA RGB from `textColor` |
 | F16-12 | Text boxes and callouts | Background/fill color. | M4 | Not Started |  |
-| F16-13 | Text boxes and callouts | Border. | M4 | Not Started |  |
+| F16-13 | Text boxes and callouts | Border. | M4 | Tested | Border color + width on create |
 | F16-14 | Text boxes and callouts | Opacity. | M4 | Not Started |  |
 | F16-15 | Text boxes and callouts | Alignment. | M4 | Not Started |  |
 | F16-16 | Text boxes and callouts | Callout pointer. | M4 | Not Started |  |

@@ -296,6 +296,7 @@ public sealed class PdfDocumentView : UserControl
         var underline = new Button { Content = "Underline" };
         var strikeout = new Button { Content = "Strike" };
         var stickyNote = new Button { Content = "Note" };
+        var textBox = new Button { Content = "TextBox" };
         var ink = new Button { Content = "Ink" };
         var rect = new Button { Content = "Rect" };
         var ellipse = new Button { Content = "Ellipse" };
@@ -321,6 +322,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(underline, "Underline selected text");
         ToolTipService.SetToolTip(strikeout, "Strike through selected text");
         ToolTipService.SetToolTip(stickyNote, "Add a sticky note on the current page");
+        ToolTipService.SetToolTip(textBox, "Add a FreeText text box on the current page");
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
         ToolTipService.SetToolTip(rect, "Draw a rectangle annotation");
         ToolTipService.SetToolTip(ellipse, "Draw an ellipse annotation");
@@ -371,6 +373,7 @@ public sealed class PdfDocumentView : UserControl
         underline.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.Underline);
         strikeout.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.StrikeOut);
         stickyNote.Click += async (_, _) => await AddStickyNoteAsync();
+        textBox.Click += async (_, _) => await AddTextBoxAsync();
         ink.Click += (_, _) => ToggleInkMode();
         rect.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Rectangle);
         ellipse.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Ellipse);
@@ -389,7 +392,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, ink, rect, ellipse, line,
+                highlight, underline, strikeout, stickyNote, textBox, ink, rect, ellipse, line,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -2027,7 +2030,7 @@ public sealed class PdfDocumentView : UserControl
         {
             var all = await _annotations.ListAsync(_document);
             _annotationItems = all
-                .Where(a => a.TextMarkupKind is not null || a.IsStickyNote || a.IsInk || a.ShapeKind is not null)
+                .Where(a => a.TextMarkupKind is not null || a.IsStickyNote || a.IsInk || a.ShapeKind is not null || a.IsTextBox)
                 .OrderBy(a => a.PageIndex)
                 .ThenBy(a => a.AnnotIndex)
                 .ToList();
@@ -2052,6 +2055,14 @@ public sealed class PdfDocumentView : UserControl
                 ? "(empty)"
                 : TrimForStatus(info.Contents);
             return $"Note · p.{info.PageIndex + 1}: {preview}";
+        }
+
+        if (info.IsTextBox)
+        {
+            var preview = string.IsNullOrWhiteSpace(info.Contents)
+                ? "(empty)"
+                : TrimForStatus(info.Contents);
+            return $"Text · p.{info.PageIndex + 1}: {preview}";
         }
 
         if (info.ShapeKind is { } shape)
@@ -2466,6 +2477,65 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Note failed: " + ex.Message;
+        }
+    }
+
+    private async Task AddTextBoxAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for text box dialog.");
+
+        var box = new TextBox
+        {
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            Height = 140,
+            PlaceholderText = "Text box contents",
+        };
+        var dialog = new ContentDialog
+        {
+            Title = "Text box",
+            Content = box,
+            PrimaryButtonText = "Add",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result != ContentDialogResult.Primary)
+        {
+            _status.Text = "Text box cancelled.";
+            return;
+        }
+
+        var page = _document.GetPage(CurrentPageIndex);
+        var width = Math.Min(240, page.WidthPoints * 0.45);
+        var height = 72;
+        var left = Math.Max(24, (page.WidthPoints - width) / 2);
+        var bottom = Math.Max(24, (page.HeightPoints - height) / 2);
+        var bounds = new PdfRect(left, bottom, left + width, bottom + height);
+
+        try
+        {
+            _status.Text = "Adding text box…";
+            await _annotations.AddTextBoxAsync(
+                _document,
+                CurrentPageIndex,
+                bounds,
+                box.Text ?? string.Empty,
+                new PdfAnnotationColor(20, 20, 20));
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = "Text box added.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Text box failed: " + ex.Message;
         }
     }
 

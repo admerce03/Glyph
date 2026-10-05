@@ -487,6 +487,135 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             cancellationToken);
     }
 
+    public Task<PdfAnnotationInfo> AddTextBoxAsync(
+        IPdfDocument document,
+        int pageIndex,
+        PdfRect bounds,
+        string contents,
+        PdfAnnotationColor textColor,
+        PdfAnnotationColor? borderColor = null,
+        float fontSizePoints = 12f,
+        CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        ArgumentOutOfRangeException.ThrowIfNegative(pageIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(pageIndex, pdfium.PageCount);
+        contents ??= string.Empty;
+        if (bounds.Width < 8 || bounds.Height < 8)
+        {
+            throw new ArgumentException("Text box bounds must be at least 8×8 points.", nameof(bounds));
+        }
+
+        if (fontSizePoints <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(fontSizePoints));
+        }
+
+        borderColor ??= new PdfAnnotationColor(40, 40, 40);
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
+                    if (page is null)
+                    {
+                        throw new InvalidOperationException($"Failed to load page {pageIndex} for text box.");
+                    }
+
+                    try
+                    {
+                        if (fpdf_annot.FPDFAnnotIsSupportedSubtype(PdfiumAnnotSubtypes.FreeText) == 0)
+                        {
+                            throw new NotSupportedException("PDFium does not support FreeText annotations.");
+                        }
+
+                        var annot = fpdf_annot.FPDFPageCreateAnnot(page, PdfiumAnnotSubtypes.FreeText);
+                        if (annot is null)
+                        {
+                            throw new InvalidOperationException("FPDFPage_CreateAnnot failed for text box.");
+                        }
+
+                        try
+                        {
+                            using var rect = new FS_RECTF_();
+                            rect.Left = (float)bounds.Left;
+                            rect.Bottom = (float)bounds.Bottom;
+                            rect.Right = (float)bounds.Right;
+                            rect.Top = (float)bounds.Top;
+                            if (fpdf_annot.FPDFAnnotSetRect(annot, rect) == 0)
+                            {
+                                throw new InvalidOperationException("FPDFAnnot_SetRect failed for text box.");
+                            }
+
+                            if (fpdf_annot.FPDFAnnotSetColor(
+                                    annot,
+                                    FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_Color,
+                                    borderColor.Value.R,
+                                    borderColor.Value.G,
+                                    borderColor.Value.B,
+                                    borderColor.Value.A) == 0)
+                            {
+                                throw new InvalidOperationException("FPDFAnnot_SetColor failed for text box border.");
+                            }
+
+                            if (PdfiumNative.AnnotSetBorder(annot.__Instance, 0, 0, 1f) == 0)
+                            {
+                                throw new InvalidOperationException("FPDFAnnot_SetBorder failed for text box.");
+                            }
+
+                            if (!PdfiumAnnotStrings.SetString(annot, "Contents", contents))
+                            {
+                                throw new InvalidOperationException("Failed to set text box Contents.");
+                            }
+
+                            // Default appearance: Helvetica at fontSize in RGB text color.
+                            var r = textColor.R / 255.0;
+                            var g = textColor.G / 255.0;
+                            var b = textColor.B / 255.0;
+                            var da = $"/Helv {fontSizePoints:0.##} Tf {r:0.###} {g:0.###} {b:0.###} rg";
+                            if (!PdfiumAnnotStrings.SetString(annot, "DA", da))
+                            {
+                                throw new InvalidOperationException("Failed to set text box DA.");
+                            }
+
+                            var index = fpdf_annot.FPDFPageGetAnnotIndex(page, annot);
+                            if (index < 0)
+                            {
+                                throw new InvalidOperationException("Created text box has no page index.");
+                            }
+
+                            pdfium.NotifyAnnotationsChanged();
+                            return new PdfAnnotationInfo(
+                                pageIndex,
+                                index,
+                                TextMarkupKind: null,
+                                bounds,
+                                textColor,
+                                contents,
+                                IsStickyNote: false,
+                                IsInk: false,
+                                ShapeKind: null,
+                                IsTextBox: true);
+                        }
+                        finally
+                        {
+                            fpdf_annot.FPDFPageCloseAnnot(annot);
+                        }
+                    }
+                    finally
+                    {
+                        fpdfview.FPDF_ClosePage(page);
+                    }
+                }
+            },
+            cancellationToken);
+    }
+
     public Task SetContentsAsync(
         IPdfDocument document,
         int pageIndex,
@@ -692,6 +821,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                     var isSticky = subtype == PdfiumAnnotSubtypes.Text;
                     var isInk = subtype == PdfiumAnnotSubtypes.Ink;
                     var shapeKind = FromShapeSubtype(subtype);
+                    var isTextBox = subtype == PdfiumAnnotSubtypes.FreeText;
                     results.Add(new PdfAnnotationInfo(
                         pageIndex,
                         i,
@@ -701,7 +831,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                         contents,
                         isSticky,
                         isInk,
-                        shapeKind));
+                        shapeKind,
+                        isTextBox));
                 }
                 finally
                 {
