@@ -1,0 +1,20 @@
+using FluentAssertions;
+using Glyph.Core.Documents;
+using Xunit;
+
+namespace Glyph.Core.Tests;
+
+public class AppShellStatusTests
+{
+    [Fact]
+    public void Shell_open_clipboard_and_file_op_labels()
+    {
+        AppShellStatus.FormatReady("Open").Should().Contain("drop files");
+        AppShellStatus.RecentFilesCleared.Should().Contain("cleared");
+        AppShellStatus.FormatCreatedClipboardImage("a.png").Should().Contain("a.png");
+        AppShellStatus.FormatRenamedTo("b.pdf").Should().Contain("b.pdf");
+        AppShellStatus.FormatRestoredTabs(3).Should().Contain("3");
+        AppShellStatus.PreferencesSaved.Should().Contain("Preferences");
+        AppShellStatus.FormatFailed(AppShellStatus.MoveFailedPrefix, "x").Should().Contain("Move failed: x");
+    }
+}

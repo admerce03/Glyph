@@ -162,7 +162,7 @@ public sealed partial class MainWindow : Window
         ApplySidebarVisibility(_settingsStore.Current.SidebarVisible);
         RefreshRecentList();
         UpdateEmptyState();
-        StatusText.Text = $"Ready — {OpenEntryPoints.Catalog[0]} or drop files here";
+        StatusText.Text = AppShellStatus.FormatReady(OpenEntryPoints.Catalog[0]);
         ConfigureRecoveryTimer();
 
         if (!_startupSessionHandled)
@@ -265,7 +265,7 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Move to monitor failed: " + ex.Message;
+            StatusText.Text = AppShellStatus.FormatFailed(AppShellStatus.MoveToMonitorFailedPrefix, ex.Message);
         }
     }
 
@@ -428,7 +428,7 @@ public sealed partial class MainWindow : Window
     {
         await _recentFiles.ClearAsync();
         RefreshRecentList();
-        StatusText.Text = "Recent files cleared.";
+        StatusText.Text = AppShellStatus.RecentFilesCleared;
     }
 
     private async void PasteMenuItem_Click(object sender, RoutedEventArgs e) => await HandlePasteAsync();
@@ -490,18 +490,18 @@ public sealed partial class MainWindow : Window
                     if (File.Exists(text))
                     {
                         await OpenPathAsync(text);
-                        StatusText.Text = "Opened path from clipboard.";
+                        StatusText.Text = AppShellStatus.OpenedPathFromClipboard;
                         return;
                     }
                 }
             }
 
-            StatusText.Text = "Clipboard has no image or openable file path.";
+            StatusText.Text = AppShellStatus.ClipboardNoImageOrPath;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Paste when empty failed");
-            StatusText.Text = "Paste failed.";
+            StatusText.Text = AppShellStatus.PasteFailed;
         }
     }
 
@@ -532,7 +532,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        StatusText.Text = "Open a document to toggle the toolbar.";
+        StatusText.Text = AppShellStatus.OpenDocumentToToggleToolbar;
     }
 
     private void FullscreenMenuItem_Click(object sender, RoutedEventArgs e) => ToggleFullscreen();
@@ -689,7 +689,7 @@ public sealed partial class MainWindow : Window
             var content = Clipboard.GetContent();
             if (!content.Contains(StandardDataFormats.Bitmap))
             {
-                StatusText.Text = "Clipboard does not contain an image.";
+                StatusText.Text = AppShellStatus.ClipboardNoImage;
                 return;
             }
 
@@ -715,7 +715,7 @@ public sealed partial class MainWindow : Window
                 if (content is null)
                 {
                     _workspace.Close(session.Id);
-                    StatusText.Text = "Could not open clipboard image.";
+                    StatusText.Text = AppShellStatus.CouldNotOpenClipboardImage;
                     return;
                 }
 
@@ -733,12 +733,12 @@ public sealed partial class MainWindow : Window
             SelectTabForActiveDocument();
             UpdateEmptyState();
             await PersistSessionAsync();
-            StatusText.Text = $"Created image from clipboard: {file.Name}";
+            StatusText.Text = AppShellStatus.FormatCreatedClipboardImage(file.Name);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "New from Clipboard failed");
-            StatusText.Text = "Could not create image from clipboard.";
+            StatusText.Text = AppShellStatus.CouldNotCreateClipboardImage;
         }
     }
 
@@ -1257,7 +1257,7 @@ public sealed partial class MainWindow : Window
         var active = _workspace.ActiveDocument;
         if (active is null || string.IsNullOrWhiteSpace(active.Path) || !File.Exists(active.Path))
         {
-            StatusText.Text = "Save the document first to duplicate it.";
+            StatusText.Text = AppShellStatus.SaveFirstToDuplicate;
             return;
         }
 
@@ -1292,11 +1292,11 @@ public sealed partial class MainWindow : Window
 
             File.Copy(source, candidate);
             await OpenPathAsync(candidate);
-            StatusText.Text = "Duplicated as " + System.IO.Path.GetFileName(candidate);
+            StatusText.Text = AppShellStatus.FormatDuplicatedAs(System.IO.Path.GetFileName(candidate));
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Duplicate failed: " + ex.Message;
+            StatusText.Text = AppShellStatus.FormatFailed(AppShellStatus.DuplicateFailedPrefix, ex.Message);
         }
     }
 
@@ -1305,7 +1305,7 @@ public sealed partial class MainWindow : Window
         var active = _workspace.ActiveDocument;
         if (active is null || string.IsNullOrWhiteSpace(active.Path) || !File.Exists(active.Path))
         {
-            StatusText.Text = "Save the document first to rename it.";
+            StatusText.Text = AppShellStatus.SaveFirstToRename;
             return;
         }
 
@@ -1336,19 +1336,19 @@ public sealed partial class MainWindow : Window
             var rename = DocumentFileNamePolicy.EvaluateRename(active.Path!, newName);
             if (rename.Status == RenamePathStatus.Invalid)
             {
-                StatusText.Text = "Invalid file name.";
+                StatusText.Text = AppShellStatus.InvalidFileName;
                 return;
             }
 
             if (rename.Status == RenamePathStatus.Unchanged)
             {
-                StatusText.Text = "Name unchanged.";
+                StatusText.Text = AppShellStatus.NameUnchanged;
                 return;
             }
 
             if (rename.Status == RenamePathStatus.Conflict)
             {
-                StatusText.Text = "A file with that name already exists.";
+                StatusText.Text = AppShellStatus.FileNameExists;
                 return;
             }
 
@@ -1360,11 +1360,11 @@ public sealed partial class MainWindow : Window
 
             File.Move(active.Path!, dest);
             RetargetActiveDocument(dest);
-            StatusText.Text = "Renamed to " + newName;
+            StatusText.Text = AppShellStatus.FormatRenamedTo(newName);
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Rename failed: " + ex.Message;
+            StatusText.Text = AppShellStatus.FormatFailed(AppShellStatus.RenameFailedPrefix, ex.Message);
         }
     }
 
@@ -1373,7 +1373,7 @@ public sealed partial class MainWindow : Window
         var active = _workspace.ActiveDocument;
         if (active is null || string.IsNullOrWhiteSpace(active.Path) || !File.Exists(active.Path))
         {
-            StatusText.Text = "Save the document first to move it.";
+            StatusText.Text = AppShellStatus.SaveFirstToMove;
             return;
         }
 
@@ -1386,7 +1386,7 @@ public sealed partial class MainWindow : Window
             var folder = await picker.PickSingleFolderAsync();
             if (folder is null)
             {
-                StatusText.Text = "Move cancelled.";
+                StatusText.Text = AppShellStatus.MoveCancelled;
                 return;
             }
 
@@ -1394,7 +1394,7 @@ public sealed partial class MainWindow : Window
             var dest = DocumentMovePolicy.DestinationPath(active.Path!, folder.Path);
             if (DocumentMovePolicy.IsSameFolder(active.Path!, folder.Path))
             {
-                StatusText.Text = "Already in that folder.";
+                StatusText.Text = AppShellStatus.AlreadyInFolder;
                 return;
             }
 
@@ -1422,7 +1422,7 @@ public sealed partial class MainWindow : Window
                 case MoveOverwriteDecision.Cancelled:
                     return;
                 case MoveOverwriteDecision.BlockedReadOnly:
-                    StatusText.Text = "Destination file is read-only.";
+                    StatusText.Text = AppShellStatus.DestinationReadOnly;
                     return;
             }
 
@@ -1433,11 +1433,11 @@ public sealed partial class MainWindow : Window
 
             File.Move(active.Path!, dest, overwrite: true);
             RetargetActiveDocument(dest);
-            StatusText.Text = "Moved to " + folder.Path;
+            StatusText.Text = AppShellStatus.FormatMovedTo(folder.Path);
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Move failed: " + ex.Message;
+            StatusText.Text = AppShellStatus.FormatFailed(AppShellStatus.MoveFailedPrefix, ex.Message);
         }
     }
 
@@ -1585,13 +1585,13 @@ public sealed partial class MainWindow : Window
             path = PathUtilities.NormalizeOpenPath(path);
             if (!PathUtilities.FileExists(path))
             {
-                StatusText.Text = "File not found.";
+                StatusText.Text = AppShellStatus.FileNotFound;
                 return;
             }
 
             if (!FileFormatDetector.IsSupported(path))
             {
-                StatusText.Text = "Unsupported file type.";
+                StatusText.Text = AppShellStatus.UnsupportedFileType;
                 return;
             }
 
@@ -1602,7 +1602,7 @@ public sealed partial class MainWindow : Window
             {
                 var window = App.CurrentApp.OpenNewWindow();
                 await window.OpenDocumentPathAsync(path);
-                StatusText.Text = "Opened in a new window: " + System.IO.Path.GetFileName(path);
+                StatusText.Text = AppShellStatus.FormatOpenedInNewWindow(System.IO.Path.GetFileName(path));
                 return;
             }
 
@@ -1653,7 +1653,7 @@ public sealed partial class MainWindow : Window
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to open {Path}", path);
-            StatusText.Text = "Failed to open file.";
+            StatusText.Text = AppShellStatus.FailedToOpenFile;
         }
     }
 
@@ -1666,7 +1666,7 @@ public sealed partial class MainWindow : Window
         {
             if (!File.Exists(path))
             {
-                StatusText.Text = "File not found.";
+                StatusText.Text = AppShellStatus.FileNotFound;
                 return;
             }
 
@@ -1716,7 +1716,7 @@ public sealed partial class MainWindow : Window
             var content = await CreateDocumentContentAsync(active);
             if (content is null)
             {
-                StatusText.Text = "Failed to open image.";
+                StatusText.Text = AppShellStatus.FailedToOpenImage;
                 return;
             }
 
@@ -1724,13 +1724,13 @@ public sealed partial class MainWindow : Window
             tab.Content = content;
             await _recentFiles.AddAsync(path);
             RefreshRecentList();
-            StatusText.Text = $"Opened image: {displayName}";
+            StatusText.Text = AppShellStatus.FormatOpenedImage(displayName);
             _logger.LogInformation("Navigated image tab to {Path}", path);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to navigate to image {Path}", path);
-            StatusText.Text = "Failed to open file.";
+            StatusText.Text = AppShellStatus.FailedToOpenFile;
         }
     }
 
@@ -2127,7 +2127,7 @@ public sealed partial class MainWindow : Window
         var settings = _settingsStore.Current;
         settings.Theme = preference;
         await _settingsStore.SaveAsync(settings);
-        StatusText.Text = $"Theme: {preference}";
+        StatusText.Text = AppShellStatus.FormatTheme(preference);
     }
 
     private void ApplySidebarVisibility(bool visible)
@@ -2282,7 +2282,7 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
-            StatusText.Text = $"Restoring {state.Paths.Count} tab(s)…";
+            StatusText.Text = AppShellStatus.FormatRestoringTabs(state.Paths.Count);
             string? activePath = null;
             if (state.ActiveIndex >= 0 && state.ActiveIndex < state.Paths.Count)
             {
@@ -2304,12 +2304,12 @@ public sealed partial class MainWindow : Window
                 }
             }
 
-            StatusText.Text = $"Restored {state.Paths.Count} tab(s) from previous session.";
+            StatusText.Text = AppShellStatus.FormatRestoredTabs(state.Paths.Count);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to restore previous session");
-            StatusText.Text = "Session restore failed.";
+            StatusText.Text = AppShellStatus.SessionRestoreFailed;
         }
     }
 
@@ -2738,7 +2738,7 @@ public sealed partial class MainWindow : Window
         {
             await _recentFiles.ClearAsync();
             RefreshRecentList();
-            StatusText.Text = "Recent files cleared.";
+            StatusText.Text = AppShellStatus.RecentFilesCleared;
         };
 
         var clearSignaturesButton = new Button
@@ -2764,7 +2764,7 @@ public sealed partial class MainWindow : Window
             }
 
             await _signatures.ClearAllAsync();
-            StatusText.Text = "Saved signatures cleared.";
+            StatusText.Text = AppShellStatus.SavedSignaturesCleared;
         };
 
         var privacyHeader = new TextBlock
@@ -2847,7 +2847,7 @@ public sealed partial class MainWindow : Window
         await _settingsStore.SaveAsync(settings);
         ConfigureRecoveryTimer();
         await PersistSessionAsync();
-        StatusText.Text = "Preferences saved.";
+        StatusText.Text = AppShellStatus.PreferencesSaved;
     }
 
     private async Task ShowVersionSnapshotsAsync()
@@ -2855,7 +2855,7 @@ public sealed partial class MainWindow : Window
         var active = _workspace.ActiveDocument;
         if (active is null || string.IsNullOrWhiteSpace(active.Path) || !File.Exists(active.Path))
         {
-            StatusText.Text = "Open a saved document to manage version snapshots.";
+            StatusText.Text = AppShellStatus.OpenSavedForSnapshots;
             return;
         }
 
@@ -2924,7 +2924,7 @@ public sealed partial class MainWindow : Window
         var chosen = entries[list.SelectedIndex];
         if (!File.Exists(chosen.SnapshotPath))
         {
-            StatusText.Text = "Snapshot file is missing.";
+            StatusText.Text = AppShellStatus.SnapshotMissing;
             return;
         }
 
@@ -2944,14 +2944,14 @@ public sealed partial class MainWindow : Window
 
             File.Copy(chosen.SnapshotPath, copyPath);
             await OpenPathAsync(copyPath);
-            StatusText.Text = "Opened snapshot copy: " + System.IO.Path.GetFileName(copyPath);
+            StatusText.Text = AppShellStatus.FormatOpenedSnapshotCopy(System.IO.Path.GetFileName(copyPath));
             return;
         }
 
         if (action == "delete")
         {
             await _snapshotStore.DeleteAsync(chosen.Id, path);
-            StatusText.Text = "Deleted snapshot from " + chosen.SavedAtUtc.ToLocalTime().ToString("g");
+            StatusText.Text = AppShellStatus.FormatDeletedSnapshot(chosen.SavedAtUtc.ToLocalTime().ToString("g"));
             return;
         }
 
@@ -2990,7 +2990,7 @@ public sealed partial class MainWindow : Window
 
             File.Copy(chosen.SnapshotPath, path, overwrite: true);
             await OpenPathAsync(path);
-            StatusText.Text = "Restored snapshot from " + chosen.SavedAtUtc.ToLocalTime().ToString("g");
+            StatusText.Text = AppShellStatus.FormatRestoredSnapshot(chosen.SavedAtUtc.ToLocalTime().ToString("g"));
         }
     }
 }
