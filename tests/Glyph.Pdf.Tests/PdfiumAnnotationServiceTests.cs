@@ -396,6 +396,40 @@ public class PdfiumAnnotationServiceTests
     }
 
     [Fact]
+    public async Task Set_text_quadding_updates_existing_box()
+    {
+        var path = CreateTextPdf("Quadding change host");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+
+            await using var document = await factory.OpenAsync(path);
+            var created = await annots.AddTextBoxAsync(
+                document,
+                0,
+                new PdfRect(72, 640, 280, 720),
+                "Align me",
+                new PdfAnnotationColor(20, 20, 20));
+            created.TextQuadding.Should().Be(PdfTextQuadding.Left);
+
+            var updated = await annots.SetTextQuaddingAsync(
+                document,
+                0,
+                created.AnnotIndex,
+                PdfTextQuadding.Right);
+            updated.TextQuadding.Should().Be(PdfTextQuadding.Right);
+
+            var listed = await annots.ListAsync(document, 0);
+            listed.Should().Contain(a => a.IsTextBox && a.Contents == "Align me" && a.TextQuadding == PdfTextQuadding.Right);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Text_box_underline_persists_and_can_toggle_off()
     {
         var path = CreateTextPdf("Underline host page");

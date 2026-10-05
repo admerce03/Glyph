@@ -537,6 +537,10 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(underlineAnnot, "Toggle underline on selected text box or callout");
         underlineAnnot.Click += async (_, _) => await ToggleSelectedTextUnderlineAsync();
         annotHeaderRow.Children.Add(underlineAnnot);
+        var alignAnnot = new Button { Content = "Align", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(alignAnnot, "Set text alignment (left/center/right) on selected text box or callout");
+        alignAnnot.Click += async (_, _) => await SetSelectedTextQuaddingAsync();
+        annotHeaderRow.Children.Add(alignAnnot);
         var colorAnnot = new Button { Content = "Color", Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(colorAnnot, "Change selected annotation color");
         colorAnnot.Click += async (_, _) => await SetSelectedAnnotationColorAsync();
@@ -1584,6 +1588,8 @@ public sealed class PdfDocumentView : UserControl
         var flyout = new MenuFlyout();
         var styleItem = new MenuFlyoutItem { Text = "Style…" };
         styleItem.Click += async (_, _) => await SetSelectedAnnotationColorAsync();
+        var alignItem = new MenuFlyoutItem { Text = "Align…" };
+        alignItem.Click += async (_, _) => await SetSelectedTextQuaddingAsync();
         var duplicateItem = new MenuFlyoutItem { Text = "Duplicate" };
         duplicateItem.Click += async (_, _) => await DuplicateSelectedAnnotationAsync();
         var editItem = new MenuFlyoutItem { Text = "Edit…" };
@@ -1593,6 +1599,11 @@ public sealed class PdfDocumentView : UserControl
         var deleteItem = new MenuFlyoutItem { Text = "Delete" };
         deleteItem.Click += async (_, _) => await RemoveSelectedAnnotationAsync();
         flyout.Items.Add(styleItem);
+        if (TryGetSelectedAnnotation(out var selected) && selected.IsTextBox)
+        {
+            flyout.Items.Add(alignItem);
+        }
+
         flyout.Items.Add(duplicateItem);
         flyout.Items.Add(editItem);
         flyout.Items.Add(copyItem);
@@ -10427,6 +10438,62 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Underline failed: " + ex.Message;
+        }
+    }
+
+    private async Task SetSelectedTextQuaddingAsync()
+    {
+        if (!TryGetSelectedAnnotation(out var item) || !item.IsTextBox)
+        {
+            _status.Text = "Select a text box or callout to set alignment.";
+            return;
+        }
+
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for alignment dialog.");
+
+        var alignBox = new ComboBox
+        {
+            Header = "Align",
+            ItemsSource = new[] { "Left", "Center", "Right" },
+            SelectedIndex = Math.Clamp((int)(item.TextQuadding ?? PdfTextQuadding.Left), 0, 2),
+            Width = 220,
+        };
+        var dialog = new ContentDialog
+        {
+            Title = "Text alignment",
+            Content = alignBox,
+            PrimaryButtonText = "Apply",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var quadding = (PdfTextQuadding)Math.Clamp(alignBox.SelectedIndex, 0, 2);
+        try
+        {
+            var updated = await _annotations.SetTextQuaddingAsync(
+                _document,
+                item.PageIndex,
+                item.AnnotIndex,
+                quadding);
+            _selectedAnnot = updated;
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            RestoreSelectionAfterRefresh(updated.PageIndex, updated.AnnotIndex, updated.Bounds);
+            _status.Text = $"Alignment set to {quadding}.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Alignment failed: " + ex.Message;
         }
     }
 

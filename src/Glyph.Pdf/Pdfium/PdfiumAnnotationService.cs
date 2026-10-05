@@ -777,7 +777,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                                 IsStickyNote: false,
                                 IsInk: false,
                                 ShapeKind: null,
-                                IsTextBox: true);
+                                IsTextBox: true,
+                                TextQuadding: PdfTextQuadding.Left);
                         }
                         finally
                         {
