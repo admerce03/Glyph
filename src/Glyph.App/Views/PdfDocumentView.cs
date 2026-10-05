@@ -409,6 +409,10 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(collapseNote, "Collapse expanded sticky note popup");
         collapseNote.Click += (_, _) => CollapseSelectedStickyNote();
         annotHeaderRow.Children.Add(collapseNote);
+        var exportNotes = new Button { Content = "Export notes", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(exportNotes, "Save sticky notes as a printable text file");
+        exportNotes.Click += async (_, _) => await ExportNotesAsync();
+        annotHeaderRow.Children.Add(exportNotes);
         var colorAnnot = new Button { Content = "Color", Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(colorAnnot, "Change selected annotation color");
         colorAnnot.Click += async (_, _) => await SetSelectedAnnotationColorAsync();
@@ -8096,6 +8100,54 @@ public sealed class PdfDocumentView : UserControl
 
         RedrawStickyNotePopups();
         _status.Text = $"Collapsed {FormatAnnotationLabel(item)}.";
+    }
+
+    private async Task ExportNotesAsync()
+    {
+        IReadOnlyList<PdfAnnotationInfo> annotations;
+        try
+        {
+            annotations = await _annotations.ListAsync(_document);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Could not list notes: " + ex.Message;
+            return;
+        }
+
+        var noteCount = annotations.Count(a => a.IsStickyNote);
+        if (noteCount == 0)
+        {
+            _status.Text = "No sticky notes to export.";
+            return;
+        }
+
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+        var baseName = _document.Path is null
+            ? "Glyph"
+            : System.IO.Path.GetFileNameWithoutExtension(_document.Path);
+        var picker = new Windows.Storage.Pickers.FileSavePicker();
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+        picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+        picker.SuggestedFileName = $"{baseName}-notes";
+        picker.FileTypeChoices.Add("Text", [".txt"]);
+
+        var file = await picker.PickSaveFileAsync();
+        if (file is null)
+        {
+            _status.Text = "Export notes cancelled.";
+            return;
+        }
+
+        var title = _document.Path is null
+            ? baseName
+            : System.IO.Path.GetFileName(_document.Path);
+        var text = PdfNotesExport.Format(annotations, documentTitle: title);
+        await Windows.Storage.FileIO.WriteTextAsync(file, text);
+        _status.Text = $"Exported {noteCount} note{(noteCount == 1 ? string.Empty : "s")} to {file.Name}.";
     }
 
     private void ExpandStickyNote(PdfAnnotationInfo note)

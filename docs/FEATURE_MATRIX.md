@@ -283,7 +283,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F15-10 | Notes | Configurable annotation author name. | M4 | Implemented | Author button + sticky-note dialog; written to `/T` |
 | F15-11 | Notes | Optional date/time metadata. | M4 | Implemented | Sticky notes set `/CreationDate` and `/M` on create |
 | F15-12 | Notes | Show all notes in sidebar. | M4 | Implemented | Annotations list includes notes |
-| F15-13 | Notes | Print notes optionally. | M4 | Not Started |  |
+| F15-13 | Notes | Print notes optionally. | M4 | Implemented | Annotations → Export notes → printable `.txt` via `PdfNotesExport` |
 | F16-01 | Text boxes and callouts | Add text box anywhere. | M4 | Tested | `AddTextBoxAsync` + TextBox toolbar |
 | F16-02 | Text boxes and callouts | Type arbitrary text over PDF. | M4 | Implemented | Contents via dialog |
 | F16-03 | Text boxes and callouts | Move it. | M4 | Tested | `MoveAsync` API |

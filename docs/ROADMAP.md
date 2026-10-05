@@ -190,7 +190,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - `IPdfAnnotationService` / `PdfiumAnnotationService`: create/list/remove text markup (Highlight / Underline / StrikeOut) with QuadPoints + color; round-trip save/reopen covered by Pdf.Tests.
 - Viewer: select text → Highlight (multi-color picker; persistent mode toggles so every selection highlights) / Underline / Strike toolbar actions; sidebar Color recolors selected markup.
 - Annotation sidebar lists text markup; click jumps to page; Delete removes selected markup.
-- Sticky notes: `AddStickyNoteAsync` + Note toolbar dialog (text + color presets); Contents/color/move APIs; Sidebar Edit → `SetContentsAsync`; notes appear in sidebar.
+- Sticky notes: `AddStickyNoteAsync` + Note toolbar dialog (text + color presets); Contents/color/move APIs; Sidebar Edit → `SetContentsAsync`; notes appear in sidebar; Expand/Collapse popup overlay; Export notes → printable text listing (`PdfNotesExport`).
 - Freehand ink: `AddInkAsync` + Ink draw mode on page surface (stroke color + width picker); listed in annotation sidebar; Ctrl+Z undoes last ink/freeform/polygon stroke; smart drawing (`PdfStrokeShapeRecognizer`) offers cleaned line/rect/ellipse/triangle after ink/freeform.
 - Shapes: `AddShapeAsync` for rectangle/ellipse (Square/Circle), line, arrow, star, and speech bubble (ink strokes; arrow adds head wings; star is a closed 5-point path; bubble is body+pointer outline); Rect/Ellipse/Line/Arrow/Star/Bubble draw modes with border/fill color and width picker.
 - Freeform: `AddFreeformAsync` closed ink path; Freeform draw mode.
