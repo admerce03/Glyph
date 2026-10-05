@@ -366,5 +366,5 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Performance/large docs | §57–58 | M2+, M9 | In Progress |
 | Multi-doc workflows | §59–60 | M1, M3 | In Progress (tabs/windows/page DnD/clipboard/undo; tab tear-off + §60 context cmds open) |
 | Non-destructive editing | §61 | M3–M5 | In Progress (CropBox crops; annotations/markup later) |
-| Output formats | §62 | M5, M7 | Not Started |
+| Output formats | §62 | M5, M7 | In Progress (PNG/JPEG/WebP/TIFF/BMP page + image export) |
 | Explicit exclusions | §63 | — | Documented (out of scope) |
