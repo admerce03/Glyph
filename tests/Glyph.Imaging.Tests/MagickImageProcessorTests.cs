@@ -132,6 +132,45 @@ public class MagickImageProcessorTests
     }
 
     [Fact]
+    public async Task Ellipse_extract_clears_corners_to_transparent()
+    {
+        var path = CreateSolidPng(40, 30);
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            await using var document = await decoder.OpenAsync(path);
+
+            var extracted = await processor.ExtractRectAsync(
+                document,
+                new ImageRect(0, 0, 20, 20),
+                ImageSelectionKind.Ellipse);
+            extracted.Width.Should().Be(20);
+            extracted.Height.Should().Be(20);
+            // Corner pixel of bounding box should be outside the ellipse → alpha 0.
+            extracted.BgraPixels[3].Should().Be(0);
+
+            await processor.ClearRectAsync(
+                document,
+                new ImageRect(0, 0, 20, 20),
+                transparent: true,
+                ImageSelectionKind.Ellipse);
+            await processor.MoveRectAsync(
+                document,
+                new ImageRect(10, 5, 12, 12),
+                24,
+                14,
+                ImageSelectionKind.Ellipse);
+            document.PixelWidth.Should().Be(40);
+            document.PixelHeight.Should().Be(30);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Move_rect_relocates_pixels_and_clears_source()
     {
         var path = CreateSolidPng(40, 30);

@@ -459,7 +459,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F27-09 | Animated images | extract frame | M8 | Not Started |  |
 | F27-10 | Animated images | save selected frame as image | M8 | Not Started |  |
 | F28-01 | Image selection tools | Rectangular selection. | M5 | Implemented | Select toolbar → drag rectangle overlay |
-| F28-02 | Image selection tools | Elliptical selection. | M5 | Not Started |  |
+| F28-02 | Image selection tools | Elliptical selection. | M5 | Tested | Select → Ellipse shape; extract/clear/move use oval mask |
 | F28-03 | Image selection tools | Freeform lasso. | M5 | Not Started |  |
 | F28-04 | Image selection tools | Smart lasso. | M5 | Not Started |  |
 | F28-05 | Image selection tools | Select all. | M5 | Implemented | Select → All / Ctrl+A |

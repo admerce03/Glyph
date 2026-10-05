@@ -228,6 +228,7 @@ public sealed class MagickImageProcessor : IImageProcessor
         IImageDocument document,
         ImageRect pixels,
         bool transparent = true,
+        ImageSelectionKind kind = ImageSelectionKind.Rectangle,
         CancellationToken cancellationToken = default)
     {
         var magick = RequireMagick(document);
@@ -240,7 +241,7 @@ public sealed class MagickImageProcessor : IImageProcessor
             () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                ClearRectCore(magick.Native, pixels, transparent);
+                ClearRegionCore(magick.Native, pixels, transparent, kind);
             },
             cancellationToken);
     }
@@ -248,6 +249,7 @@ public sealed class MagickImageProcessor : IImageProcessor
     public Task<ImagePixelBuffer> ExtractRectAsync(
         IImageDocument document,
         ImageRect pixels,
+        ImageSelectionKind kind = ImageSelectionKind.Rectangle,
         CancellationToken cancellationToken = default)
     {
         var magick = RequireMagick(document);
@@ -260,13 +262,7 @@ public sealed class MagickImageProcessor : IImageProcessor
             () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                using var clone = magick.Native.Clone();
-                clone.Crop(new MagickGeometry(pixels.X, pixels.Y, (uint)pixels.Width, (uint)pixels.Height));
-                clone.ResetPage();
-                clone.Depth = 8;
-                clone.ColorType = ColorType.TrueColorAlpha;
-                var bgra = clone.ToByteArray(MagickFormat.Bgra);
-                return new ImagePixelBuffer(checked((int)clone.Width), checked((int)clone.Height), bgra);
+                return ExtractRegionCore(magick.Native, pixels, kind);
             },
             cancellationToken);
     }
@@ -299,6 +295,7 @@ public sealed class MagickImageProcessor : IImageProcessor
         ImageRect source,
         int destinationX,
         int destinationY,
+        ImageSelectionKind kind = ImageSelectionKind.Rectangle,
         CancellationToken cancellationToken = default)
     {
         var magick = RequireMagick(document);
@@ -316,21 +313,34 @@ public sealed class MagickImageProcessor : IImageProcessor
                     return;
                 }
 
-                using var clone = magick.Native.Clone();
-                clone.Crop(new MagickGeometry(source.X, source.Y, (uint)source.Width, (uint)source.Height));
-                clone.ResetPage();
-                clone.Depth = 8;
-                clone.ColorType = ColorType.TrueColorAlpha;
-                var bgra = clone.ToByteArray(MagickFormat.Bgra);
-                var buffer = new ImagePixelBuffer(checked((int)clone.Width), checked((int)clone.Height), bgra);
-
-                ClearRectCore(magick.Native, source, transparent: true);
+                var buffer = ExtractRegionCore(magick.Native, source, kind);
+                ClearRegionCore(magick.Native, source, transparent: true, kind);
                 PasteRectCore(magick.Native, buffer, destinationX, destinationY);
             },
             cancellationToken);
     }
 
-    private static void ClearRectCore(MagickImage image, ImageRect pixels, bool transparent)
+    private static ImagePixelBuffer ExtractRegionCore(MagickImage image, ImageRect pixels, ImageSelectionKind kind)
+    {
+        using var clone = (MagickImage)image.Clone();
+        clone.Crop(new MagickGeometry(pixels.X, pixels.Y, (uint)pixels.Width, (uint)pixels.Height));
+        clone.ResetPage();
+        clone.Depth = 8;
+        clone.ColorType = ColorType.TrueColorAlpha;
+        if (kind == ImageSelectionKind.Ellipse)
+        {
+            ApplyEllipseAlphaMask(clone);
+        }
+
+        var bgra = clone.ToByteArray(MagickFormat.Bgra);
+        return new ImagePixelBuffer(checked((int)clone.Width), checked((int)clone.Height), bgra);
+    }
+
+    private static void ClearRegionCore(
+        MagickImage image,
+        ImageRect pixels,
+        bool transparent,
+        ImageSelectionKind kind)
     {
         var x = Math.Clamp(pixels.X, 0, Math.Max(0, (int)image.Width - 1));
         var y = Math.Clamp(pixels.Y, 0, Math.Max(0, (int)image.Height - 1));
@@ -342,10 +352,42 @@ public sealed class MagickImageProcessor : IImageProcessor
         }
 
         var fill = transparent ? MagickColors.Transparent : MagickColors.White;
+        var drawables = new Drawables().FillColor(fill).StrokeColor(fill);
+        if (kind == ImageSelectionKind.Ellipse)
+        {
+            var originX = (x + right - 1) / 2.0;
+            var originY = (y + bottom - 1) / 2.0;
+            var radiusX = Math.Max(0.5, (right - x) / 2.0);
+            var radiusY = Math.Max(0.5, (bottom - y) / 2.0);
+            drawables.Ellipse(originX, originY, radiusX, radiusY, 0, 360);
+        }
+        else
+        {
+            drawables.Rectangle(x, y, right - 1, bottom - 1);
+        }
+
+        drawables.Draw(image);
+    }
+
+    /// <summary>
+    /// Keeps pixels inside an inscribed ellipse; clears outside to transparent (local crop coords).
+    /// </summary>
+    private static void ApplyEllipseAlphaMask(MagickImage cropped)
+    {
+        cropped.Alpha(AlphaOption.Set);
+        var w = cropped.Width;
+        var h = cropped.Height;
+        using var mask = new MagickImage(MagickColors.Transparent, w, h);
+        mask.Alpha(AlphaOption.Set);
+        var originX = (w - 1) / 2.0;
+        var originY = (h - 1) / 2.0;
+        var radiusX = Math.Max(0.5, w / 2.0);
+        var radiusY = Math.Max(0.5, h / 2.0);
         new Drawables()
-            .FillColor(fill)
-            .Rectangle(x, y, right - 1, bottom - 1)
-            .Draw(image);
+            .FillColor(MagickColors.White)
+            .Ellipse(originX, originY, radiusX, radiusY, 0, 360)
+            .Draw(mask);
+        cropped.Composite(mask, CompositeOperator.DstIn);
     }
 
     private static void PasteRectCore(

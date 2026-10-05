@@ -30,24 +30,27 @@ public interface IImageProcessor
     Task NormalizeOrientationAsync(IImageDocument document, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Clears a rectangular region to transparent (or opaque white when <paramref name="transparent"/> is false).
+    /// Clears a region to transparent (or opaque white when <paramref name="transparent"/> is false).
+    /// <paramref name="kind"/> selects rectangle or ellipse geometry within <paramref name="pixels"/> bounds.
     /// </summary>
     Task ClearRectAsync(
         IImageDocument document,
         ImageRect pixels,
         bool transparent = true,
+        ImageSelectionKind kind = ImageSelectionKind.Rectangle,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Returns BGRA32 pixels for a rectangular region (document pixel space).
+    /// Returns BGRA32 pixels for a region (document pixel space). Ellipse kind clears outside the oval to transparent.
     /// </summary>
     Task<ImagePixelBuffer> ExtractRectAsync(
         IImageDocument document,
         ImageRect pixels,
+        ImageSelectionKind kind = ImageSelectionKind.Rectangle,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Composites a BGRA32 buffer onto the document at <paramref name="destination"/> (top-left).
+    /// Composites a BGRA32 buffer onto the document at <paramref name="destinationX"/>,<paramref name="destinationY"/> (top-left).
     /// </summary>
     Task PasteRectAsync(
         IImageDocument document,
@@ -59,13 +62,14 @@ public interface IImageProcessor
     /// <summary>
     /// Moves pixels from <paramref name="source"/> to a new top-left
     /// (<paramref name="destinationX"/>, <paramref name="destinationY"/>), clearing the source
-    /// rectangle to transparent. No-ops when the destination equals the source origin.
+    /// region to transparent. No-ops when the destination equals the source origin.
     /// </summary>
     Task MoveRectAsync(
         IImageDocument document,
         ImageRect source,
         int destinationX,
         int destinationY,
+        ImageSelectionKind kind = ImageSelectionKind.Rectangle,
         CancellationToken cancellationToken = default);
 }
 
@@ -73,6 +77,15 @@ public interface IImageProcessor
 /// Axis-aligned crop rectangle in image pixel space (origin top-left).
 /// </summary>
 public readonly record struct ImageRect(int X, int Y, int Width, int Height);
+
+/// <summary>
+/// Geometry used for pixel selection operations (clear/extract/move).
+/// </summary>
+public enum ImageSelectionKind
+{
+    Rectangle = 0,
+    Ellipse = 1,
+}
 
 public enum ImageResizeFilter
 {
