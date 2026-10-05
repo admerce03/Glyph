@@ -261,7 +261,7 @@ public sealed class PdfDocumentView : UserControl
         IPdfDocumentInfoService documentInfo,
         IPdfOptimizeService optimize,
         IPdfSecurityService security,
-        IPdfExportService export,
+        IPdfExportService pdfExport,
         ISignatureLibrary signatures,
         IPdfFormStore forms,
         IFormValueHistory formValueHistory,
@@ -286,7 +286,7 @@ public sealed class PdfDocumentView : UserControl
         _documentInfo = documentInfo;
         _optimize = optimize;
         _security = security;
-        _export = export;
+        _export = pdfExport;
         _signatures = signatures;
         _forms = forms;
         _formValueHistory = formValueHistory;
