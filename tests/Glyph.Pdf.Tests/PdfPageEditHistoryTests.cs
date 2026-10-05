@@ -179,6 +179,39 @@ public class PdfPageEditHistoryTests
         }
     }
 
+    [Fact]
+    public async Task Undo_restores_mediabox_after_permanent_crop()
+    {
+        var path = CreatePdf(pageCount: 1);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var editor = new PdfiumPageEditor();
+            var history = new PdfPageEditHistory();
+            await using var document = await factory.OpenAsync(path);
+
+            var beforeW = document.GetPage(0).WidthPoints;
+            var beforeH = document.GetPage(0).HeightPoints;
+            await history.ExecuteAsync(
+                document,
+                editor,
+                async () =>
+                {
+                    await editor.CropPagesAsync(document, [0], new PdfCropMargins(24, 24, 24, 24));
+                    await editor.PermanentCropPagesAsync(document, [0]);
+                });
+            document.GetPage(0).WidthPoints.Should().BeLessThan(beforeW - 1);
+
+            await history.UndoAsync(document, editor);
+            document.GetPage(0).WidthPoints.Should().BeApproximately(beforeW, 0.5);
+            document.GetPage(0).HeightPoints.Should().BeApproximately(beforeH, 0.5);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static string CreatePdf(int pageCount)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-undo-" + Guid.NewGuid().ToString("N") + ".pdf");

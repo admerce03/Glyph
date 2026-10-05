@@ -823,15 +823,15 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Deferred | Search is on-demand; full-doc index not required yet (same as F57-05) |
 | F58-07 | Large-document handling | Partial OCR. | M2+/M9 | Implemented | OCR selected/current pages only (F08-06/07); not whole-doc by default |
 | F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | Implemented | PDF search cancel + PDF/image OCR Cancel OCR |
-| F59-01 | Multi-document workflow | multiple tabs | M1/M3 | Implemented | Tab strip + per-tab document hosts |
-| F59-02 | Multi-document workflow | multiple windows | M1/M3 | Implemented | File → New Window; per-window `WorkspaceState` |
+| F59-01 | Multi-document workflow | multiple tabs | M1/M3 | Tested | `WorkspaceState` Open/Activate/Close/Reorder/ActivateNext unit tests |
+| F59-02 | Multi-document workflow | multiple windows | M1/M3 | Tested | File → New Window; independent `WorkspaceState` per window (reuse/close tests) |
 | F59-03 | Multi-document workflow | drag tabs between windows | M1/M3 | Implemented | `CanDragTabs` + `AllowDropTabs` cross-window; drop outside → new window |
 | F59-04 | Multi-document workflow | drag PDF pages between documents | M1/M3 | Tested | Cross-tab/window insert via `PdfPageDragRegistry` unit tests |
 | F59-05 | Multi-document workflow | drag images between compatible contexts | M1/M3 | Implemented | Image surface drag exposes file via deferred StorageItems; window drop opens |
 | F59-06 | Multi-document workflow | copy/paste between documents | M1/M3 | Tested | Ctrl+C/V pages via `PdfPageClipboard` extract/open unit tests |
 | F59-07 | Multi-document workflow | side-by-side windows using Windows Snap | M1/M3 | Implemented | Multi-window shell; Snap is OS-native |
 | F59-08 | Multi-document workflow | maintain independent undo history for each document | M1/M3 | Tested | Per-view `PdfPageEditHistory`; history unit tests |
-| F59-09 | Multi-document workflow | retain per-document page/zoom position | M1/M3 | Implemented | Per-document `PdfViewState` persistence |
+| F59-09 | Multi-document workflow | retain per-document page/zoom position | M1/M3 | Tested | `JsonDocumentViewStateStore` save/load zoom/page/layout unit tests |
 | F60-01 | Context-sensitive commands | Copy | M1/M3 | Implemented | Page right-click + Edit → Copy for selected text |
 | F60-02 | Context-sensitive commands | Highlight | M1/M3 | Implemented | Page right-click Highlight on text selection |
 | F60-03 | Context-sensitive commands | Underline | M1/M3 | Implemented | Page right-click Underline on text selection |
