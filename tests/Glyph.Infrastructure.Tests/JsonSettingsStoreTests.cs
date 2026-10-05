@@ -17,6 +17,9 @@ public class JsonSettingsStoreTests
                 Theme = ThemePreference.Dark,
                 RecentFileCapacity = 12,
                 SidebarVisible = false,
+                RestorePreviousSession = true,
+                AutoSaveToOriginal = true,
+                CrashRecoveryIntervalSeconds = 90,
             });
 
             var reloaded = new JsonSettingsStore(path);
@@ -25,6 +28,9 @@ public class JsonSettingsStoreTests
             settings.Theme.Should().Be(ThemePreference.Dark);
             settings.RecentFileCapacity.Should().Be(12);
             settings.SidebarVisible.Should().BeFalse();
+            settings.RestorePreviousSession.Should().BeTrue();
+            settings.AutoSaveToOriginal.Should().BeTrue();
+            settings.CrashRecoveryIntervalSeconds.Should().Be(90);
             reloaded.Current.Theme.Should().Be(ThemePreference.Dark);
         }
         finally

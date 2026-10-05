@@ -8,6 +8,7 @@ using Glyph.Infrastructure.Documents;
 using Glyph.Infrastructure.Forms;
 using Glyph.Infrastructure.Paths;
 using Glyph.Infrastructure.RecentFiles;
+using Glyph.Infrastructure.Session;
 using Glyph.Infrastructure.Settings;
 using Glyph.Infrastructure.Signatures;
 using Glyph.Ocr.Abstractions;
@@ -42,6 +43,9 @@ internal static class AppServices
         });
         services.AddSingleton<IDocumentViewStateStore>(_ =>
             new JsonDocumentViewStateStore(GlyphPaths.DocumentViewStateFile));
+        services.AddSingleton<ISessionStore>(_ => new JsonSessionStore(GlyphPaths.SessionFile));
+        services.AddSingleton<ICrashRecoveryStore>(_ =>
+            new FileCrashRecoveryStore(GlyphPaths.RecoveryDirectory));
         services.AddSingleton<ISignatureLibrary>(_ => new FileSignatureLibrary(GlyphPaths.SignaturesDirectory));
         services.AddSingleton<IFormValueHistory>(_ => new JsonFormValueHistory(GlyphPaths.FormValueHistoryFile));
         services.AddSingleton<IFormAutofillProfileStore>(_ =>

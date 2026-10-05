@@ -72,6 +72,7 @@ public sealed class ImageDocumentView : UserControl
     private bool _animationPlaying;
     private int _animationLoopsCompleted;
     private readonly List<IImageEditCheckpoint> _editUndoStack = [];
+    private readonly Action? _onEdited;
     private readonly List<ImageMarkupStroke> _markupStrokes = [];
     private readonly List<ImageMarkupShape> _markupShapes = [];
     private readonly List<bool> _markupUndoWasShape = [];
@@ -119,7 +120,8 @@ public sealed class ImageDocumentView : UserControl
         Func<string, Task>? openSibling = null,
         IOcrEngine? ocr = null,
         ISignatureLibrary? signatures = null,
-        IImageDecoder? decoder = null)
+        IImageDecoder? decoder = null,
+        Action? onEdited = null)
     {
         _document = document;
         _processor = processor;
@@ -129,6 +131,7 @@ public sealed class ImageDocumentView : UserControl
         _openSibling = openSibling;
         _ocr = ocr;
         _signatures = signatures;
+        _onEdited = onEdited;
         _zoom = _viewState.Zoom <= 0 ? 1.0 : _viewState.Zoom;
         IsTabStop = true;
 
@@ -1395,6 +1398,54 @@ public sealed class ImageDocumentView : UserControl
         }
 
         _undoButton.IsEnabled = _editUndoStack.Count > 0;
+        _onEdited?.Invoke();
+    }
+
+    /// <summary>True when image edits or unflattened markup have not been saved (F50).</summary>
+    public bool HasUnsavedEdits =>
+        _editUndoStack.Count > 0 || _markupStrokes.Count > 0 || _markupShapes.Count > 0;
+
+    public void ClearUnsavedEdits() => ClearEditUndoStack();
+
+    /// <summary>Write current pixels to the crash-recovery store without changing the document path.</summary>
+    public async Task WriteRecoverySnapshotAsync(
+        Glyph.Infrastructure.Session.ICrashRecoveryStore store,
+        string originalPath,
+        CancellationToken cancellationToken = default)
+    {
+        var ext = System.IO.Path.GetExtension(originalPath);
+        if (string.IsNullOrWhiteSpace(ext))
+        {
+            ext = ".png";
+        }
+
+        var temp = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(),
+            "glyph-recovery-" + Guid.NewGuid().ToString("N") + ext);
+        var previousPath = _document.Path;
+        try
+        {
+            var (format, _) = GuessSaveFormat(_document.FormatName);
+            await _encoder.SaveAsAsync(_document, temp, format, cancellationToken: cancellationToken);
+            _document.Path = previousPath;
+            await using var stream = File.OpenRead(temp);
+            await store.SaveSnapshotAsync(originalPath, stream, ext, cancellationToken);
+        }
+        finally
+        {
+            _document.Path = previousPath;
+            try
+            {
+                if (File.Exists(temp))
+                {
+                    File.Delete(temp);
+                }
+            }
+            catch
+            {
+                // best-effort temp cleanup
+            }
+        }
     }
 
     private async Task UndoEditAsync()
@@ -4290,6 +4341,7 @@ public sealed class ImageDocumentView : UserControl
             if (!saveAs && !string.IsNullOrWhiteSpace(_document.Path))
             {
                 await _encoder.SaveAsync(_document, _document.Path);
+                ClearUnsavedEdits();
                 _status.Text = "Saved " + System.IO.Path.GetFileName(_document.Path);
                 App.CurrentApp.MainWindowInstance?.NotifyActiveDocumentSaved(_document.Path!);
                 return;
@@ -4314,6 +4366,7 @@ public sealed class ImageDocumentView : UserControl
             }
 
             await _encoder.SaveAsAsync(_document, file.Path, format);
+            ClearUnsavedEdits();
             _status.Text = "Saved " + file.Name;
             App.CurrentApp.MainWindowInstance?.NotifyActiveDocumentSaved(file.Path);
         }

@@ -382,7 +382,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Scanner/webcam | §42–43 | M8 | In Progress (webcam + scanner WinRT + paper size; hardware validation TBD) |
 | Printing | §44 | M8 | Implemented (system Print UI + 1/2/4-up) |
 | Export/share/integration | §45–48 | M5–M9 | In Progress (PDF page export formats/DPI/quality/metadata/ICC/alpha) |
-| Undo/autosave/snapshots | §49–51 | M1–M4, M9 | Not Started |
+| Undo/autosave/snapshots | §49–51 | M1–M4, M9 | In Progress | F50 autosave/recovery + session restore wired; F51 version snapshots later |
 | Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Not Started |
 | Accessibility | §56 | M9 | In Progress (toolbar UIA names) |
 | Performance/large docs | §57–58 | M2+, M9 | In Progress |

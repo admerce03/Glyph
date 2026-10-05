@@ -10,6 +10,7 @@ using Glyph.Imaging.Abstractions;
 using Glyph.Infrastructure.Documents;
 using Glyph.Infrastructure.Forms;
 using Glyph.Infrastructure.RecentFiles;
+using Glyph.Infrastructure.Session;
 using Glyph.Infrastructure.Settings;
 using Glyph.Ocr.Abstractions;
 using Glyph.Pdf.Abstractions;
@@ -36,11 +37,17 @@ public sealed partial class MainWindow : Window
         ".heic", ".heif", ".avif", ".jp2", ".j2k",
     ];
 
+    private static bool _startupSessionHandled;
+
     private DocumentShareHelper? _shareHelper;
+    private DispatcherTimer? _recoveryTimer;
+    private bool _recoveryTickRunning;
 
     private readonly WorkspaceState _workspace;
     private readonly IRecentFilesStore _recentFiles;
     private readonly IDocumentViewStateStore _viewStateStore;
+    private readonly ISessionStore _sessionStore;
+    private readonly ICrashRecoveryStore _recoveryStore;
     private readonly ISettingsStore _settingsStore;
     private readonly IPdfDocumentFactory _pdfFactory;
     private readonly IPdfRenderer _pdfRenderer;
@@ -69,6 +76,8 @@ public sealed partial class MainWindow : Window
         WorkspaceState workspace,
         IRecentFilesStore recentFiles,
         IDocumentViewStateStore viewStateStore,
+        ISessionStore sessionStore,
+        ICrashRecoveryStore recoveryStore,
         ISettingsStore settingsStore,
         IPdfDocumentFactory pdfFactory,
         IPdfRenderer pdfRenderer,
@@ -95,6 +104,8 @@ public sealed partial class MainWindow : Window
         _workspace = workspace;
         _recentFiles = recentFiles;
         _viewStateStore = viewStateStore;
+        _sessionStore = sessionStore;
+        _recoveryStore = recoveryStore;
         _settingsStore = settingsStore;
         _pdfFactory = pdfFactory;
         _pdfRenderer = pdfRenderer;
@@ -121,6 +132,7 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         ResizeAndCenter(1180, 760);
         RootGrid.Loaded += RootGrid_Loaded;
+        Closed += MainWindow_Closed;
     }
 
     public void ApplyThemePreference(ThemePreference preference)
@@ -144,7 +156,27 @@ public sealed partial class MainWindow : Window
         RefreshRecentList();
         UpdateEmptyState();
         StatusText.Text = "Ready — File → Open or drop files here";
-        await Task.CompletedTask;
+        ConfigureRecoveryTimer();
+
+        if (!_startupSessionHandled)
+        {
+            _startupSessionHandled = true;
+            await PromptForCrashRecoveryAsync();
+            await RestorePreviousSessionAsync();
+        }
+    }
+
+    private async void MainWindow_Closed(object sender, WindowEventArgs args)
+    {
+        Closed -= MainWindow_Closed;
+        if (_recoveryTimer is not null)
+        {
+            _recoveryTimer.Stop();
+            _recoveryTimer.Tick -= RecoveryTimer_Tick;
+            _recoveryTimer = null;
+        }
+
+        await PersistSessionAsync();
     }
 
     private async void OpenMenuItem_Click(object sender, RoutedEventArgs e) => await OpenWithPickerAsync(allowMultiple: false);
@@ -333,6 +365,8 @@ public sealed partial class MainWindow : Window
     private async void ThemeLightItem_Click(object sender, RoutedEventArgs e) => await SetThemeAsync(ThemePreference.Light);
 
     private async void ThemeDarkItem_Click(object sender, RoutedEventArgs e) => await SetThemeAsync(ThemePreference.Dark);
+
+    private async void PreferencesMenuItem_Click(object sender, RoutedEventArgs e) => await ShowPreferencesAsync();
 
     private void NextTabMenuItem_Click(object sender, RoutedEventArgs e)
     {
@@ -942,6 +976,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        var previousPath = active.Path;
         active.Path = path;
         active.DisplayName = System.IO.Path.GetFileName(path);
         active.IsReadOnly = IsPathReadOnly(path);
@@ -949,12 +984,27 @@ public sealed partial class MainWindow : Window
         if (DocumentTabs.SelectedItem is TabViewItem tab)
         {
             tab.Header = active.DisplayName + (active.IsReadOnly ? " (read-only)" : string.Empty);
+            if (tab.Content is PdfDocumentView pdfView)
+            {
+                pdfView.ClearUnsavedEdits();
+            }
+            else if (tab.Content is ImageDocumentView imageView)
+            {
+                imageView.ClearUnsavedEdits();
+            }
         }
 
         StatusText.Text = "Saved " + active.DisplayName
             + (active.IsReadOnly ? " · read-only" : string.Empty);
         _ = _recentFiles.AddAsync(path);
         RefreshRecentList();
+        _ = DiscardRecoveryAsync(previousPath);
+        if (!string.Equals(previousPath, path, StringComparison.OrdinalIgnoreCase))
+        {
+            _ = DiscardRecoveryAsync(path);
+        }
+
+        _ = PersistSessionAsync();
     }
 
     private async Task DuplicateActiveDocumentAsync()
@@ -1367,6 +1417,7 @@ public sealed partial class MainWindow : Window
             StatusText.Text = session.IsReadOnly ? openedLabel + " · read-only" : openedLabel;
 
             _logger.LogInformation("Opened {Kind} document {Path}", kind, path);
+            await PersistSessionAsync();
         }
         catch (Exception ex)
         {
@@ -1496,7 +1547,8 @@ public sealed partial class MainWindow : Window
                 _pdfFactory,
                 session.ViewState,
                 ownerWindow: this,
-                ocr: _ocr);
+                ocr: _ocr,
+                onEdited: () => session.MarkDirty());
         }
 
         if (session.Kind == DocumentKind.Image && session.Path is not null)
@@ -1518,7 +1570,8 @@ public sealed partial class MainWindow : Window
                 openSibling: OpenImageSiblingAsync,
                 ocr: _ocr,
                 signatures: _signatures,
-                decoder: _imageDecoder);
+                decoder: _imageDecoder,
+                onEdited: () => session.MarkDirty());
         }
 
         return CreatePlaceholderContent(session);
@@ -1658,7 +1711,7 @@ public sealed partial class MainWindow : Window
             return true;
         }
 
-        if (session.IsDirty)
+        if (session.IsDirty || TabHasUnsavedEdits(id))
         {
             var dialog = new ContentDialog
             {
@@ -1689,6 +1742,12 @@ public sealed partial class MainWindow : Window
             }
         }
 
+        // Keep recovery when closing dirty without saving (F50-06); discard when clean (F50-07).
+        if (!session.IsDirty && !TabHasUnsavedEdits(id) && session.Path is not null)
+        {
+            await DiscardRecoveryAsync(session.Path);
+        }
+
         if (_openEngines.Remove(id, out var engine))
         {
             await engine.DisposeAsync();
@@ -1704,6 +1763,7 @@ public sealed partial class MainWindow : Window
         SelectTabForActiveDocument();
         UpdateEmptyState();
         StatusText.Text = _workspace.ActiveDocument is null ? "Ready" : $"Active: {_workspace.ActiveDocument.DisplayName}";
+        await PersistSessionAsync();
         return true;
     }
 
@@ -1770,5 +1830,356 @@ public sealed partial class MainWindow : Window
             AppWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
             StatusText.Text = "Fullscreen — press Fullscreen again or Esc via window chrome to exit.";
         }
+    }
+
+    private bool TabHasUnsavedEdits(DocumentId id)
+    {
+        var tab = DocumentTabs.TabItems.OfType<TabViewItem>()
+            .FirstOrDefault(t => t.Tag is DocumentId d && d.Equals(id));
+        return tab?.Content switch
+        {
+            PdfDocumentView pdf => pdf.HasUnsavedEdits,
+            ImageDocumentView image => image.HasUnsavedEdits,
+            _ => false,
+        };
+    }
+
+    private async Task PersistSessionAsync()
+    {
+        try
+        {
+            if (!_settingsStore.Current.RestorePreviousSession)
+            {
+                await _sessionStore.ClearAsync();
+                return;
+            }
+
+            var paths = _workspace.Documents
+                .Select(d => d.Path)
+                .Where(p => !string.IsNullOrWhiteSpace(p) && File.Exists(p!))
+                .Cast<string>()
+                .ToList();
+            var active = _workspace.ActiveDocument?.Path;
+            var activeIndex = 0;
+            if (active is not null)
+            {
+                var idx = paths.FindIndex(p =>
+                    string.Equals(p, active, StringComparison.OrdinalIgnoreCase));
+                if (idx >= 0)
+                {
+                    activeIndex = idx;
+                }
+            }
+
+            await _sessionStore.SaveAsync(new SessionState
+            {
+                Paths = paths,
+                ActiveIndex = activeIndex,
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to persist session");
+        }
+    }
+
+    private async Task RestorePreviousSessionAsync()
+    {
+        if (!_settingsStore.Current.RestorePreviousSession)
+        {
+            return;
+        }
+
+        try
+        {
+            var state = await _sessionStore.TryLoadAsync();
+            if (state is null || state.Paths.Count == 0)
+            {
+                return;
+            }
+
+            StatusText.Text = $"Restoring {state.Paths.Count} tab(s)…";
+            string? activePath = null;
+            if (state.ActiveIndex >= 0 && state.ActiveIndex < state.Paths.Count)
+            {
+                activePath = state.Paths[state.ActiveIndex];
+            }
+
+            foreach (var path in state.Paths)
+            {
+                await OpenPathAsync(path);
+            }
+
+            if (activePath is not null)
+            {
+                var existing = _workspace.FindByPath(activePath);
+                if (existing is not null)
+                {
+                    _workspace.Activate(existing.Id);
+                    SelectTabForActiveDocument();
+                }
+            }
+
+            StatusText.Text = $"Restored {state.Paths.Count} tab(s) from previous session.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to restore previous session");
+            StatusText.Text = "Session restore failed.";
+        }
+    }
+
+    private async Task PromptForCrashRecoveryAsync()
+    {
+        try
+        {
+            var entries = await _recoveryStore.ListAsync();
+            if (entries.Count == 0)
+            {
+                return;
+            }
+
+            var names = string.Join(", ", entries.Take(5).Select(e => e.DisplayName));
+            if (entries.Count > 5)
+            {
+                names += $" (+{entries.Count - 5} more)";
+            }
+
+            var dialog = new ContentDialog
+            {
+                Title = "Recover unsaved work?",
+                Content = $"Glyph found crash-recovery copies for: {names}.",
+                PrimaryButtonText = "Recover",
+                SecondaryButtonText = "Keep for later",
+                CloseButtonText = "Discard",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = RootGrid.XamlRoot,
+            };
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                foreach (var entry in entries)
+                {
+                    if (File.Exists(entry.RecoveryPath))
+                    {
+                        await OpenPathAsync(entry.RecoveryPath);
+                    }
+                }
+
+                StatusText.Text = $"Opened {entries.Count} recovered document(s).";
+            }
+            else if (result == ContentDialogResult.None)
+            {
+                await _recoveryStore.DiscardAllAsync();
+                StatusText.Text = "Discarded crash-recovery copies.";
+            }
+            else
+            {
+                StatusText.Text = "Crash-recovery copies kept on disk.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Crash recovery prompt failed");
+        }
+    }
+
+    private void ConfigureRecoveryTimer()
+    {
+        var seconds = _settingsStore.Current.CrashRecoveryIntervalSeconds;
+        if (_recoveryTimer is not null)
+        {
+            _recoveryTimer.Stop();
+            _recoveryTimer.Tick -= RecoveryTimer_Tick;
+            _recoveryTimer = null;
+        }
+
+        if (seconds <= 0)
+        {
+            return;
+        }
+
+        _recoveryTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(Math.Clamp(seconds, 15, 3600)),
+        };
+        _recoveryTimer.Tick += RecoveryTimer_Tick;
+        _recoveryTimer.Start();
+    }
+
+    private async void RecoveryTimer_Tick(object? sender, object e)
+    {
+        if (_recoveryTickRunning)
+        {
+            return;
+        }
+
+        _recoveryTickRunning = true;
+        try
+        {
+            await RunRecoveryAndAutosavePassAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Recovery timer pass failed");
+        }
+        finally
+        {
+            _recoveryTickRunning = false;
+        }
+    }
+
+    private async Task RunRecoveryAndAutosavePassAsync()
+    {
+        var autoSave = _settingsStore.Current.AutoSaveToOriginal;
+        foreach (var session in _workspace.Documents.ToList())
+        {
+            if (string.IsNullOrWhiteSpace(session.Path) || !File.Exists(session.Path))
+            {
+                continue;
+            }
+
+            var tab = DocumentTabs.TabItems.OfType<TabViewItem>()
+                .FirstOrDefault(t => t.Tag is DocumentId d && d.Equals(session.Id));
+            if (tab is null)
+            {
+                continue;
+            }
+
+            var needsRecovery = session.IsDirty || TabHasUnsavedEdits(session.Id);
+            if (!needsRecovery && tab.Content is PdfDocumentView pdfProbe)
+            {
+                needsRecovery = await pdfProbe.DiffersFromDiskAsync();
+                if (needsRecovery)
+                {
+                    session.MarkDirty();
+                }
+            }
+
+            if (!needsRecovery)
+            {
+                continue;
+            }
+
+            if (autoSave && !session.IsReadOnly && !IsPathReadOnly(session.Path))
+            {
+                if (ReferenceEquals(DocumentTabs.SelectedItem, tab))
+                {
+                    await SaveActiveDocumentAsync(saveAs: false);
+                }
+                else if (tab.Content is PdfDocumentView or ImageDocumentView)
+                {
+                    // Autosave only the active tab via the public save path; others get a recovery snapshot.
+                    await WriteTabRecoveryAsync(tab, session.Path);
+                }
+
+                continue;
+            }
+
+            await WriteTabRecoveryAsync(tab, session.Path);
+        }
+
+        await PersistSessionAsync();
+    }
+
+    private async Task WriteTabRecoveryAsync(TabViewItem tab, string originalPath)
+    {
+        try
+        {
+            if (tab.Content is PdfDocumentView pdfView)
+            {
+                await pdfView.WriteRecoverySnapshotAsync(_recoveryStore, originalPath);
+                return;
+            }
+
+            if (tab.Content is ImageDocumentView imageView)
+            {
+                await imageView.WriteRecoverySnapshotAsync(_recoveryStore, originalPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to write recovery snapshot for {Path}", originalPath);
+        }
+    }
+
+    private async Task DiscardRecoveryAsync(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        try
+        {
+            await _recoveryStore.DiscardAsync(path);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to discard recovery for {Path}", path);
+        }
+    }
+
+    private async Task ShowPreferencesAsync()
+    {
+        var settings = _settingsStore.Current;
+        var restoreBox = new CheckBox
+        {
+            Content = "Restore previously open tabs on startup",
+            IsChecked = settings.RestorePreviousSession,
+        };
+        var autoSaveBox = new CheckBox
+        {
+            Content = "Automatically save changes to the original file",
+            IsChecked = settings.AutoSaveToOriginal,
+        };
+        var intervalBox = new NumberBox
+        {
+            Header = "Crash recovery interval (seconds, 0 = off)",
+            Value = settings.CrashRecoveryIntervalSeconds,
+            Minimum = 0,
+            Maximum = 3600,
+            SmallChange = 30,
+            LargeChange = 60,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
+            Width = 280,
+        };
+        var recentBox = new NumberBox
+        {
+            Header = "Recent file list capacity",
+            Value = settings.RecentFileCapacity,
+            Minimum = 1,
+            Maximum = 100,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
+            Width = 280,
+        };
+
+        var panel = new StackPanel
+        {
+            Spacing = 12,
+            Children = { restoreBox, autoSaveBox, intervalBox, recentBox },
+        };
+        var dialog = new ContentDialog
+        {
+            Title = "Preferences",
+            Content = panel,
+            PrimaryButtonText = "Save",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = RootGrid.XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        settings.RestorePreviousSession = restoreBox.IsChecked == true;
+        settings.AutoSaveToOriginal = autoSaveBox.IsChecked == true;
+        settings.CrashRecoveryIntervalSeconds = (int)Math.Clamp(intervalBox.Value, 0, 3600);
+        settings.RecentFileCapacity = (int)Math.Clamp(recentBox.Value, 1, 100);
+        await _settingsStore.SaveAsync(settings);
+        ConfigureRecoveryTimer();
+        await PersistSessionAsync();
+        StatusText.Text = "Preferences saved.";
     }
 }

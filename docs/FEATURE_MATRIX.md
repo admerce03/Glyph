@@ -12,7 +12,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-02 | Application and file handling | Open multiple files simultaneously. | M1/M9 | In Progress | Multi-tab + multi-select open |
 | F01-03 | Application and file handling | Open multiple files: | M1/M9 | Not Started |  |
 | F01-04 | Application and file handling | Reopen recently used files. | M1/M9 | Tested | JsonRecentFilesStore covered by unit tests |
-| F01-05 | Application and file handling | Restore previously open tabs/windows after restart, optionally. | M1/M9 | Not Started |  |
+| F01-05 | Application and file handling | Restore previously open tabs/windows after restart, optionally. | M1/M9 | Implemented | `JsonSessionStore` + Preferences toggle; restores tabs on startup |
 | F01-06 | Application and file handling | Native Windows file associations. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
 | F01-07 | Application and file handling | Configurable default associations for supported formats. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
 | F01-08 | Application and file handling | Drag files from Explorer into an existing application window. | M1/M9 | In Progress | Explorer → window drop opens documents |
@@ -31,8 +31,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-21 | Application and file handling | File → Properties. | M1/M9 | Implemented | File → Properties / Ctrl+I → PDF Info or image Meta |
 | F01-22 | Application and file handling | Close: | M1/M9 | Implemented | Close Tab / Close All |
 | F01-23 | Application and file handling | Unsaved-change prompt where appropriate. | M1/M9 | Implemented | Close tab dirty prompt |
-| F01-24 | Application and file handling | Optional autosave. | M1/M9 | Not Started |  |
-| F01-25 | Application and file handling | Crash-recovery copy. | M1/M9 | Not Started |  |
+| F01-24 | Application and file handling | Optional autosave. | M1/M9 | Implemented | Preferences → Auto-save to original (F50-04 timer) |
+| F01-25 | Application and file handling | Crash-recovery copy. | M1/M9 | Implemented | `FileCrashRecoveryStore` + periodic snapshots |
 | F01-26 | Application and file handling | Undo/redo history. | M1/M9 | In Progress | Page-edit snapshot undo via `PdfPageEditHistory`; app-wide stack later |
 | F01-27 | Application and file handling | Do not silently overwrite originals by default. | M1/M9 | Not Started |  |
 | F02-01 | Main window and interface | Standard Windows title bar. | M1/M9 | Not Started |  |
@@ -709,13 +709,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F49-13 | Undo and redo | redaction before permanent application | M1-M4 | Not Started |  |
 | F49-14 | Undo and redo | Ctrl+Z | M1-M4 | Not Started |  |
 | F49-15 | Undo and redo | Ctrl+Y / Ctrl+Shift+Z | M1-M4 | Not Started |  |
-| F50-01 | Autosave and recovery | edits remain in memory until Save. | M1/M9 | Not Started |  |
-| F50-02 | Autosave and recovery | periodic crash-recovery snapshot. | M1/M9 | Not Started |  |
-| F50-03 | Autosave and recovery | closing unsaved file prompts user. | M1/M9 | Not Started |  |
-| F50-04 | Autosave and recovery | automatically save changes to original document. | M1/M9 | Not Started |  |
-| F50-05 | Autosave and recovery | reopen recovered document after crash. | M1/M9 | Not Started |  |
-| F50-06 | Autosave and recovery | never silently discard recovery data. | M1/M9 | Not Started |  |
-| F50-07 | Autosave and recovery | remove recovery copy after successful save/close. | M1/M9 | Not Started |  |
+| F50-01 | Autosave and recovery | edits remain in memory until Save. | M1/M9 | Implemented | Default; AutoSaveToOriginal opt-in |
+| F50-02 | Autosave and recovery | periodic crash-recovery snapshot. | M1/M9 | Implemented | DispatcherTimer → `FileCrashRecoveryStore` |
+| F50-03 | Autosave and recovery | closing unsaved file prompts user. | M1/M9 | Implemented | Close tab dirty / HasUnsavedEdits prompt |
+| F50-04 | Autosave and recovery | automatically save changes to original document. | M1/M9 | Implemented | Preferences AutoSaveToOriginal |
+| F50-05 | Autosave and recovery | reopen recovered document after crash. | M1/M9 | Implemented | Startup recovery prompt opens snapshots |
+| F50-06 | Autosave and recovery | never silently discard recovery data. | M1/M9 | Implemented | Recover / Keep / Discard prompt |
+| F50-07 | Autosave and recovery | remove recovery copy after successful save/close. | M1/M9 | Implemented | Discard on save and clean close |
 | F51-01 | Optional version snapshots | optional automatic local snapshots. | M9 | Not Started |  |
 | F51-02 | Optional version snapshots | show: | M9 | Not Started |  |
 | F51-03 | Optional version snapshots | restore snapshot. | M9 | Not Started |  |
@@ -767,8 +767,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F54-19 | Toolbar customization | reset toolbar | M1/M9 | Not Started |  |
 | F54-20 | Toolbar customization | compact icon mode | M1/M9 | Not Started |  |
 | F55-01 | Preferences | theme | M1/M9 | In Progress | Theme setting persisted in settings.json |
-| F55-02 | Preferences | restore previous session | M1/M9 | Not Started |  |
-| F55-03 | Preferences | recent file count | M1/M9 | Not Started |  |
+| F55-02 | Preferences | restore previous session | M1/M9 | Implemented | View → Preferences toggle |
+| F55-03 | Preferences | recent file count | M1/M9 | Implemented | View → Preferences NumberBox |
 | F55-04 | Preferences | check for updates | M1/M9 | Not Started |  |
 | F55-05 | Preferences | default page layout | M1/M9 | Not Started |  |
 | F55-06 | Preferences | default zoom | M1/M9 | Not Started |  |
@@ -777,7 +777,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-09 | Preferences | open PDF in tabs/windows | M1/M9 | Not Started |  |
 | F55-10 | Preferences | annotation author | M1/M9 | Not Started |  |
 | F55-11 | Preferences | OCR behavior | M1/M9 | Not Started |  |
-| F55-12 | Preferences | autosave behavior | M1/M9 | Not Started |  |
+| F55-12 | Preferences | autosave behavior | M1/M9 | Implemented | Auto-save to original checkbox |
 | F55-13 | Preferences | open multiple images in same window or separate windows | M1/M9 | Not Started |  |
 | F55-14 | Preferences | 100% zoom meaning | M1/M9 | Not Started |  |
 | F55-15 | Preferences | default interpolation | M1/M9 | Not Started |  |
@@ -786,7 +786,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-18 | Preferences | default annotation colors | M1/M9 | Not Started |  |
 | F55-19 | Preferences | default line width | M1/M9 | Not Started |  |
 | F55-20 | Preferences | signature handling | M1/M9 | Not Started |  |
-| F55-21 | Preferences | crash recovery interval | M1/M9 | Not Started |  |
+| F55-21 | Preferences | crash recovery interval | M1/M9 | Implemented | Seconds NumberBox (0 = off) |
 | F55-22 | Preferences | local-only OCR preference | M1/M9 | Not Started |  |
 | F55-23 | Preferences | clear recent files | M1/M9 | Not Started |  |
 | F55-24 | Preferences | clear saved signatures | M1/M9 | Not Started |  |

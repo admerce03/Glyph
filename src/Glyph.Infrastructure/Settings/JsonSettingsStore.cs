@@ -83,6 +83,15 @@ public sealed class JsonSettingsStore : ISettingsStore
         {
             settings.RecentFileCapacity = 100;
         }
+
+        if (settings.CrashRecoveryIntervalSeconds < 0)
+        {
+            settings.CrashRecoveryIntervalSeconds = 0;
+        }
+        else if (settings.CrashRecoveryIntervalSeconds > 3600)
+        {
+            settings.CrashRecoveryIntervalSeconds = 3600;
+        }
     }
 
     private static AppSettings Clone(AppSettings settings) => new()
@@ -90,6 +99,8 @@ public sealed class JsonSettingsStore : ISettingsStore
         Theme = settings.Theme,
         RecentFileCapacity = settings.RecentFileCapacity,
         RestorePreviousSession = settings.RestorePreviousSession,
+        AutoSaveToOriginal = settings.AutoSaveToOriginal,
+        CrashRecoveryIntervalSeconds = settings.CrashRecoveryIntervalSeconds,
         SidebarVisible = settings.SidebarVisible,
     };
 }

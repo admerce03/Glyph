@@ -16,6 +16,8 @@ public static class GlyphPaths
 
     public static string DocumentViewStateFile => System.IO.Path.Combine(LocalAppDataRoot, "view-state.json");
 
+    public static string SessionFile => System.IO.Path.Combine(LocalAppDataRoot, "session.json");
+
     public static string RecoveryDirectory => System.IO.Path.Combine(LocalAppDataRoot, "recovery");
 
     public static string SignaturesDirectory => System.IO.Path.Combine(LocalAppDataRoot, "signatures");

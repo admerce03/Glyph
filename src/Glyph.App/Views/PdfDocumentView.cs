@@ -74,6 +74,8 @@ public sealed class PdfDocumentView : UserControl
     private readonly DocumentViewState _viewState;
     private readonly DocumentNavigationHistory _history = new();
     private readonly PdfPageEditHistory _editHistory = new();
+    private readonly Action? _onEdited;
+    private bool _hasUnsavedContent;
     private readonly PageSelection _pageSelection = new();
     private readonly string _documentKey;
     private readonly string _thumbnailKey;
@@ -229,7 +231,8 @@ public sealed class PdfDocumentView : UserControl
         IPdfDocumentFactory documentFactory,
         DocumentViewState? viewState = null,
         Window? ownerWindow = null,
-        IOcrEngine? ocr = null)
+        IOcrEngine? ocr = null,
+        Action? onEdited = null)
     {
         _document = document;
         _renderer = renderer;
@@ -251,6 +254,7 @@ public sealed class PdfDocumentView : UserControl
         _documentFactory = documentFactory;
         _ocr = ocr;
         _ownerWindow = ownerWindow;
+        _onEdited = onEdited;
         _viewState = viewState ?? new DocumentViewState();
         _scale = PdfZoomCalculator.Clamp(_viewState.Zoom <= 0 ? 1.25 : _viewState.Zoom);
         _layoutMode = _viewState.PageLayout;
@@ -3782,6 +3786,7 @@ public sealed class PdfDocumentView : UserControl
                 kind,
                 _selectionQuads,
                 color);
+            NotifyEdited();
 
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
@@ -4740,6 +4745,7 @@ public sealed class PdfDocumentView : UserControl
             if (created is not null)
             {
                 _strokeUndoStack.Push(created);
+                NotifyEdited();
             }
 
             _cache.ClearDocument(_documentKey);
@@ -5530,6 +5536,7 @@ public sealed class PdfDocumentView : UserControl
             }
 
             _strokeUndoStack.Push(created);
+            NotifyEdited();
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
@@ -5649,6 +5656,7 @@ public sealed class PdfDocumentView : UserControl
             }
 
             _strokeUndoStack.Push(cleaned);
+            NotifyEdited();
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
@@ -9476,6 +9484,58 @@ public sealed class PdfDocumentView : UserControl
     private async Task RunPageEditAsync(Func<Task> mutation)
     {
         await _editHistory.ExecuteAsync(_document, _pageEditor, mutation);
+        NotifyEdited();
+    }
+
+    /// <summary>True when page edits or other mutations have not been saved (F50).</summary>
+    public bool HasUnsavedEdits => _hasUnsavedContent || _editHistory.CanUndo;
+
+    public void NotifyEdited()
+    {
+        _hasUnsavedContent = true;
+        _onEdited?.Invoke();
+    }
+
+    public void ClearUnsavedEdits()
+    {
+        _hasUnsavedContent = false;
+        _editHistory.Clear();
+    }
+
+    /// <summary>Write current in-memory PDF bytes for crash recovery (F50-02).</summary>
+    public async Task WriteRecoverySnapshotAsync(
+        Glyph.Infrastructure.Session.ICrashRecoveryStore store,
+        string originalPath,
+        CancellationToken cancellationToken = default)
+    {
+        var bytes = await _pageEditor.SaveToBytesAsync(_document, cancellationToken);
+        await using var stream = new MemoryStream(bytes);
+        await store.SaveSnapshotAsync(originalPath, stream, ".pdf", cancellationToken);
+    }
+
+    /// <summary>Heuristic: in-memory PDF length differs from on-disk file (catches annotations).</summary>
+    public async Task<bool> DiffersFromDiskAsync(CancellationToken cancellationToken = default)
+    {
+        if (HasUnsavedEdits)
+        {
+            return true;
+        }
+
+        var path = _document.Path;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            return false;
+        }
+
+        try
+        {
+            var bytes = await _pageEditor.SaveToBytesAsync(_document, cancellationToken);
+            return new FileInfo(path).Length != bytes.Length;
+        }
+        catch (Exception)
+        {
+            return HasUnsavedEdits;
+        }
     }
 
     private async Task UndoPageEditAsync()
@@ -11339,6 +11399,7 @@ public sealed class PdfDocumentView : UserControl
             }
 
             await _pageEditor.SaveAsync(_document, path!);
+            ClearUnsavedEdits();
             _status.Text = "Saved " + System.IO.Path.GetFileName(path);
             App.CurrentApp.MainWindowInstance?.NotifyActiveDocumentSaved(path!);
         }

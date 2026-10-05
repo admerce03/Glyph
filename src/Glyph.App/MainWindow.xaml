@@ -108,6 +108,12 @@
                     <RadioMenuFlyoutItem x:Name="ThemeLightItem" Text="Light" GroupName="Theme" Click="ThemeLightItem_Click" />
                     <RadioMenuFlyoutItem x:Name="ThemeDarkItem" Text="Dark" GroupName="Theme" Click="ThemeDarkItem_Click" />
                 </MenuFlyoutSubItem>
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem x:Name="PreferencesMenuItem" Text="Preferences…" Click="PreferencesMenuItem_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="OemComma" Modifiers="Control" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
             </MenuBarItem>
 
             <MenuBarItem Title="Window">
