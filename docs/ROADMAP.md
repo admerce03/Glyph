@@ -169,6 +169,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 **Status:** Tested · Depends on M2
 
+### Scope (`FEATURES.md` §13–20, §22)
+
 - Highlights / underline / strikethrough
 - Notes, text boxes, callouts
 - Shapes and freehand mouse drawing
@@ -206,6 +208,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 ## Milestone 5 — Image viewer/editor
 
 **Status:** Tested · Depends on M1 (HDR/HEIF deferred)
+
+### Scope (`FEATURES.md` §26–35, §37–38, §61 image parts)
 
 - Major formats via WIC + Magick.NET adapter
 - Navigation, zoom/pan, image list sidebar
