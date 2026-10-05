@@ -114,6 +114,66 @@ public class PdfiumAnnotationServiceTests
     }
 
     [Fact]
+    public async Task Add_rectangle_and_ellipse_survive_save()
+    {
+        var path = CreateTextPdf("Shape host page");
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-shape-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var rect = await annots.AddShapeAsync(
+                    document,
+                    0,
+                    PdfShapeKind.Rectangle,
+                    new PdfRect(72, 600, 200, 700),
+                    new PdfAnnotationColor(30, 144, 255),
+                    fillColor: new PdfAnnotationColor(30, 144, 255, 40));
+                rect.ShapeKind.Should().Be(PdfShapeKind.Rectangle);
+
+                var ellipse = await annots.AddShapeAsync(
+                    document,
+                    0,
+                    PdfShapeKind.Ellipse,
+                    new PdfRect(220, 620, 320, 720),
+                    new PdfAnnotationColor(220, 60, 40));
+                ellipse.ShapeKind.Should().Be(PdfShapeKind.Ellipse);
+
+                var line = await annots.AddShapeAsync(
+                    document,
+                    0,
+                    PdfShapeKind.Line,
+                    new PdfRect(80, 500, 180, 560),
+                    new PdfAnnotationColor(0, 128, 0));
+                line.ShapeKind.Should().Be(PdfShapeKind.Line);
+                line.IsInk.Should().BeTrue();
+
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var listed = await annots.ListAsync(reopened, 0);
+                listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Rectangle);
+                listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Ellipse);
+                listed.Should().Contain(a => a.IsInk);
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Add_ink_stroke_lists_and_survives_save()
     {
         var path = CreateTextPdf("Ink stroke host page");

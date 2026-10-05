@@ -228,21 +228,21 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-02 | PDF annotations | Underline | M4 | Tested | `AddTextMarkupAsync(Underline)` + toolbar |
 | F13-03 | PDF annotations | Strikethrough | M4 | Tested | `AddTextMarkupAsync(StrikeOut)` + toolbar |
 | F13-04 | PDF annotations | Freehand ink | M4 | Tested | `AddInkAsync` + Ink draw mode |
-| F13-05 | PDF annotations | Lines | M4 | Not Started |  |
+| F13-05 | PDF annotations | Lines | M4 | Tested | `AddShapeAsync(Line)` via 2-point ink (no PDFium SetLine) |
 | F13-06 | PDF annotations | Arrows | M4 | Not Started |  |
-| F13-07 | PDF annotations | Rectangles | M4 | Not Started |  |
+| F13-07 | PDF annotations | Rectangles | M4 | Tested | `AddShapeAsync(Rectangle)` + Rect draw mode |
 | F13-08 | PDF annotations | Rounded rectangles | M4 | Not Started |  |
-| F13-09 | PDF annotations | Ellipses | M4 | Not Started |  |
+| F13-09 | PDF annotations | Ellipses | M4 | Tested | `AddShapeAsync(Ellipse)` + Ellipse draw mode |
 | F13-10 | PDF annotations | Polygons | M4 | Not Started |  |
 | F13-11 | PDF annotations | Callouts | M4 | Not Started |  |
 | F13-12 | PDF annotations | Text boxes | M4 | Not Started |  |
-| F13-13 | PDF annotations | Sticky notes | M4 | Not Started |  |
+| F13-13 | PDF annotations | Sticky notes | M4 | Tested | Same as F15-01 `AddStickyNoteAsync` |
 | F13-14 | PDF annotations | Speech-bubble-like callouts | M4 | Not Started |  |
 | F13-15 | PDF annotations | Stamps, optionally | M4 | Not Started |  |
 | F13-16 | PDF annotations | Signatures | M4 | Not Started |  |
 | F13-17 | PDF annotations | Freeform shapes | M4 | Not Started |  |
 | F13-18 | PDF annotations | Annotation selection tool | M4 | Not Started |  |
-| F13-19 | PDF annotations | move | M4 | Not Started |  |
+| F13-19 | PDF annotations | move | M4 | Tested | `MoveAsync` API |
 | F13-20 | PDF annotations | resize | M4 | Not Started |  |
 | F13-21 | PDF annotations | rotate where appropriate | M4 | Not Started |  |
 | F13-22 | PDF annotations | duplicate | M4 | Not Started |  |
@@ -252,10 +252,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-26 | PDF annotations | paste | M4 | Not Started |  |
 | F13-27 | PDF annotations | multi-select | M4 | Not Started |  |
 | F13-28 | PDF annotations | group where useful | M4 | Not Started |  |
-| F13-29 | PDF annotations | change border color | M4 | Not Started |  |
-| F13-30 | PDF annotations | change fill color | M4 | Not Started |  |
+| F13-29 | PDF annotations | change border color | M4 | Tested | Set on create + `SetColorAsync` |
+| F13-30 | PDF annotations | change fill color | M4 | Tested | InteriorColor on shape create |
 | F13-31 | PDF annotations | change opacity | M4 | Not Started |  |
-| F13-32 | PDF annotations | change line thickness | M4 | Not Started |  |
+| F13-32 | PDF annotations | change line thickness | M4 | Tested | `borderWidthPoints` on ink/shape create |
 | F13-33 | PDF annotations | change line style | M4 | Not Started |  |
 | F13-34 | PDF annotations | change arrowheads | M4 | Not Started |  |
 | F13-35 | PDF annotations | change font | M4 | Not Started |  |

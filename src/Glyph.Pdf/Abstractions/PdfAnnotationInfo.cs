@@ -11,4 +11,5 @@ public sealed record PdfAnnotationInfo(
     PdfAnnotationColor? Color,
     string? Contents = null,
     bool IsStickyNote = false,
-    bool IsInk = false);
+    bool IsInk = false,
+    PdfShapeKind? ShapeKind = null);
