@@ -216,7 +216,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F11-09 | Preview-style PDF drag-and-drop workflows | different tabs | M3 | Implemented | Cross-tab insert via `PdfPageDragRegistry` |
 | F12-01 | PDF crop | Rectangular page crop. | M3 | Tested | CropBox rectangle via margins / absolute box; `PdfCropBox`/`PdfCropMargins` unit tests |
 | F12-02 | PDF crop | Visual crop handles. | M3 | Tested | Interactive overlay handles; `PdfCropMargins.ClampMargin` unit-tested |
-| F12-03 | PDF crop | Numeric crop dimensions. | M3 | Implemented | L/T/R/B inset dialog |
+| F12-03 | PDF crop | Numeric crop dimensions. | M3 | Tested | L/T/R/B inset dialog; `PdfCropMarginsParser` unit tests |
 | F12-04 | PDF crop | Units: | M3 | Tested | pt / in / cm / mm via `PdfLengthUnits` unit tests |
 | F12-05 | PDF crop | Apply to current page. | M3 | Tested | `PageSelection.SelectedOrFallback` when none selected |
 | F12-06 | PDF crop | Apply to selected pages. | M3 | Tested | Multi-select crop |

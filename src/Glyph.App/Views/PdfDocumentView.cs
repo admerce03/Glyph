@@ -11567,11 +11567,12 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _cropUnit = (PdfLengthUnit)Math.Clamp(unitBox.SelectedIndex, 0, 3);
-        var margins = new PdfCropMargins(
-            PdfLengthUnits.ToPoints(leftBox.Value, _cropUnit),
-            PdfLengthUnits.ToPoints(topBox.Value, _cropUnit),
-            PdfLengthUnits.ToPoints(rightBox.Value, _cropUnit),
-            PdfLengthUnits.ToPoints(bottomBox.Value, _cropUnit));
+        var margins = PdfCropMarginsParser.FromDialogValues(
+            leftBox.Value,
+            topBox.Value,
+            rightBox.Value,
+            bottomBox.Value,
+            _cropUnit);
 
         if (_cropMode)
         {
