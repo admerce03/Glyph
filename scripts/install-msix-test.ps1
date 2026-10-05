@@ -104,6 +104,11 @@ function Show-GlyphUserDefaultProbe {
 }
 
 function Open-DefaultAppsSettings {
+    if ($env:GITHUB_ACTIONS -eq 'true' -or $env:CI -eq 'true') {
+        Write-Host 'Skipping ms-settings:defaultapps on CI (no interactive Settings UI).'
+        return
+    }
+
     Write-Host 'Opening ms-settings:defaultapps …'
     Start-Process 'ms-settings:defaultapps'
 }
@@ -162,8 +167,24 @@ if ($cer.Count -eq 0) {
 }
 
 $cerPath = $cer[0].FullName
-Write-Host "Importing test cert → CurrentUser\TrustedPeople: $cerPath"
+Write-Host "Importing test cert for Appx trust: $cerPath"
+
+# CurrentUser TrustedPeople covers interactive Developer Mode installs.
 Import-Certificate -FilePath $cerPath -CertStoreLocation 'Cert:\CurrentUser\TrustedPeople' | Out-Null
+
+# Add-AppxPackage on CI / elevated hosts validates the signature against machine trust.
+# Self-signed CI certs need LocalMachine TrustedPeople (and Root as the chain terminator).
+foreach ($store in @(
+        'Cert:\LocalMachine\TrustedPeople',
+        'Cert:\LocalMachine\Root')) {
+    try {
+        Import-Certificate -FilePath $cerPath -CertStoreLocation $store | Out-Null
+        Write-Host "  imported → $store"
+    }
+    catch {
+        Write-Warning "Could not import into $store (need elevation?): $($_.Exception.Message)"
+    }
+}
 
 if ($CertOnly) {
     Write-Host 'Cert imported (-CertOnly). Skipping Add-AppxPackage.'

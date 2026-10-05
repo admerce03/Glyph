@@ -15,6 +15,7 @@ public class PackagingDeferredPolicyTests
         PackagingDeferredPolicy.MsixPackageCiTestSigned.Should().BeTrue();
         PackagingDeferredPolicy.MsixSideloadHelperShipped.Should().BeTrue();
         PackagingDeferredPolicy.MsixSideloadAssociationProbeShipped.Should().BeTrue();
+        PackagingDeferredPolicy.MsixSideloadCiAssociationProbe.Should().BeTrue();
         PackagingDeferredPolicy.NativeFileAssociationsShipped.Should().BeFalse();
         PackagingDeferredPolicy.InAppUpdateCheckShipped.Should().BeTrue();
         PackagingDeferredPolicy.Adr.Should().Be("ADR-012");
@@ -22,7 +23,21 @@ public class PackagingDeferredPolicyTests
         PackagingDeferredPolicy.InstallScript.Should().Contain("install-msix-test");
         PackagingDeferredPolicy.ManifestPath.Should().Contain("Package.appxmanifest");
         PackagingDeferredPolicy.PackagingDocsPath.Should().Be("docs/PACKAGING.md");
+        PackagingDeferredPolicy.Reason.Should().Contain("CI sideload");
         PackagingDeferredPolicy.Reason.Should().Contain("association probe");
+    }
+
+    [Fact]
+    public void Ci_workflow_runs_msix_sideload_association_probe()
+    {
+        var root = FindRepoRoot();
+        var ciPath = Path.Combine(root, ".github", "workflows", "ci.yml");
+        File.Exists(ciPath).Should().BeTrue(ciPath);
+        var yaml = File.ReadAllText(ciPath);
+        yaml.Should().Contain("install-msix-test.ps1");
+        yaml.Should().Contain("-Force");
+        yaml.Should().Contain("-ProbeUserDefaults");
+        yaml.Should().Contain("AllowDevelopmentWithoutDevLicense");
     }
 
     [Fact]

@@ -361,7 +361,7 @@ Defer durable file-association registration to installer/MSIX work (Milestone 9)
 
 ### Progress (Milestone 9)
 
-Test-signed MSIX + sideload/association probe are in-repo. Operator steps and Store-signing options: [`PACKAGING.md`](PACKAGING.md). F01-06/07 stay Deferred until Explorer default-app verification on Windows.
+Test-signed MSIX + CI sideload/association probe are in-repo (`install-msix-test.ps1` on Windows CI). Operator steps and Store-signing options: [`PACKAGING.md`](PACKAGING.md). F01-06/07 stay Deferred until Explorer default-app (UserChoice) verification on Windows.
 
 ---
 

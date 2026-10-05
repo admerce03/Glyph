@@ -16,6 +16,9 @@ Related: [`PACKAGING.md`](PACKAGING.md) (MSIX sideload), [`ROADMAP.md`](ROADMAP.
 
 ## 1. MSIX sideload + Explorer associations (F01-06/07)
 
+Windows CI already sideloads the test-signed package and probes installed `uap:FileType`
+associations. This section is the remaining **interactive** Explorer default-app proof.
+
 ```powershell
 ./scripts/install-msix-test.ps1 -PackageDir artifacts/msix -Force
 ./scripts/install-msix-test.ps1 -VerifyOnly -ProbeUserDefaults -OpenDefaultApps
