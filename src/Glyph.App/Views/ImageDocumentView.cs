@@ -2856,7 +2856,7 @@ public sealed class ImageDocumentView : UserControl
             });
         if (cancelled)
         {
-            _status.Text = BatchProgressUi.CancelledStatus("Batch resize", updated);
+            _status.Text = BatchProgressUi.CancelledStatus(BatchProgressUi.BatchResize, updated);
         }
 
         return updated;
@@ -2951,7 +2951,7 @@ public sealed class ImageDocumentView : UserControl
                 {
                     new TextBlock
                     {
-                        Text = $"Applies to {_siblings.Count} images in this folder. Convert/rename write new files; orientation/strip/profile overwrite originals.",
+                        Text = BatchProgressUi.FormatAppliesToFolder(_siblings.Count),
                         Opacity = 0.75,
                         TextWrapping = TextWrapping.Wrap,
                         MaxWidth = 360,
@@ -3227,7 +3227,7 @@ public sealed class ImageDocumentView : UserControl
             });
         if (cancelled)
         {
-            _status.Text = BatchProgressUi.CancelledStatus("Batch convert", written);
+            _status.Text = BatchProgressUi.CancelledStatus(BatchProgressUi.BatchConvert, written);
         }
 
         return written;
@@ -3266,7 +3266,7 @@ public sealed class ImageDocumentView : UserControl
             });
         if (cancelled)
         {
-            _status.Text = BatchProgressUi.CancelledStatus("Batch strip", updated);
+            _status.Text = BatchProgressUi.CancelledStatus(BatchProgressUi.BatchStrip, updated);
         }
 
         return updated;
@@ -3329,7 +3329,7 @@ public sealed class ImageDocumentView : UserControl
             });
         if (cancelled)
         {
-            _status.Text = BatchProgressUi.CancelledStatus("Batch rename", renamed);
+            _status.Text = BatchProgressUi.CancelledStatus(BatchProgressUi.BatchRename, renamed);
         }
 
         return renamed;
@@ -3890,8 +3890,8 @@ public sealed class ImageDocumentView : UserControl
                         new TextBlock
                         {
                             Text = SignatureLibraryUi.ImageMarkupUsesPasteFile
-                                ? "Places at selection top-left (or 0,0). Undo with Ctrl+Z."
-                                : "Places at selection top-left (or 0,0).",
+                                ? BatchProgressUi.StampPlacementHintWithUndo
+                                : BatchProgressUi.StampPlacementHint,
                             Opacity = 0.75,
                             TextWrapping = TextWrapping.Wrap,
                         },

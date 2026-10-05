@@ -7,6 +7,13 @@ public static class BatchProgressUi
 {
     public const string CancelHint = "Cancel stops after the current file.";
     public const string CloseButton = "Cancel";
+    public const string BatchResize = "Batch resize";
+    public const string BatchConvert = "Batch convert";
+    public const string BatchStrip = "Batch strip";
+    public const string BatchRename = "Batch rename";
+    public const string StampPlacementHint = "Places at selection top-left (or 0,0).";
+    public const string StampPlacementHintWithUndo =
+        "Places at selection top-left (or 0,0). Undo with Ctrl+Z.";
 
     public static string ProgressLabel(int completedOrCurrent, int total) =>
         $"{completedOrCurrent} / {total}";
@@ -25,4 +32,7 @@ public static class BatchProgressUi
 
     public static string FormatRenamed(int renamed) =>
         $"Batch rename: renamed {renamed} file(s).";
+
+    public static string FormatAppliesToFolder(int imageCount) =>
+        $"Applies to {imageCount} images in this folder. Convert/rename write new files; orientation/strip/profile overwrite originals.";
 }
