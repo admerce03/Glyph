@@ -59,7 +59,7 @@
                         <KeyboardAccelerator Key="I" Modifiers="Control" />
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
-                <MenuFlyoutItem x:Name="VersionSnapshotsMenuItem" Text="Version Snapshots…" Click="VersionSnapshotsMenuItem_Click" />
+                <MenuFlyoutItem x:Name="VersionSnapshotsMenuItem" Text="Version Snapshots…" Click="VersionSnapshotsMenuItem_Click" AutomationProperties.Name="Version snapshots" />
                 <MenuFlyoutItem x:Name="CopyPathMenuItem" Text="Copy File Path" Click="CopyPathMenuItem_Click" />
                 <MenuFlyoutItem x:Name="CopyFileMenuItem" Text="Copy File" Click="CopyFileMenuItem_Click" />
                 <MenuFlyoutItem x:Name="OpenWithMenuItem" Text="Open With Default App" Click="OpenWithMenuItem_Click" />
@@ -110,7 +110,7 @@
                     <RadioMenuFlyoutItem x:Name="ThemeDarkItem" Text="Dark" GroupName="Theme" Click="ThemeDarkItem_Click" />
                 </MenuFlyoutSubItem>
                 <MenuFlyoutSeparator />
-                <MenuFlyoutItem x:Name="PreferencesMenuItem" Text="Preferences…" Click="PreferencesMenuItem_Click">
+                <MenuFlyoutItem x:Name="PreferencesMenuItem" Text="Preferences…" Click="PreferencesMenuItem_Click" AutomationProperties.Name="Preferences">
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="OemComma" Modifiers="Control" />
                     </MenuFlyoutItem.KeyboardAccelerators>
@@ -171,6 +171,7 @@
                     Grid.Column="1"
                     Width="6"
                     Background="Transparent"
+                    AutomationProperties.Name="Resize sidebar"
                     PointerPressed="SidebarSplitter_PointerPressed"
                     PointerMoved="SidebarSplitter_PointerMoved"
                     PointerReleased="SidebarSplitter_PointerReleased"

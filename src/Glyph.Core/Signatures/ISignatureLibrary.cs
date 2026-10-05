@@ -7,6 +7,12 @@ public interface ISignatureLibrary
     Task<SignatureEntry> SaveAsync(
         string name,
         Stream pngStream,
+        string? description = null,
+        CancellationToken cancellationToken = default);
+
+    Task UpdateDescriptionAsync(
+        string id,
+        string description,
         CancellationToken cancellationToken = default);
 
     Task<Stream> OpenImageAsync(string id, CancellationToken cancellationToken = default);

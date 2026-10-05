@@ -14,13 +14,17 @@ public class FileSignatureLibraryTests
             var library = new FileSignatureLibrary(dir);
             await using (var png = new MemoryStream(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }))
             {
-                var saved = await library.SaveAsync("My Sig", png);
+                var saved = await library.SaveAsync("My Sig", png, description: "Signature of Test User");
                 saved.Name.Should().Be("My Sig");
+                saved.Description.Should().Be("Signature of Test User");
                 saved.Id.Should().NotBeNullOrWhiteSpace();
             }
 
             var listed = await library.ListAsync();
-            listed.Should().ContainSingle(e => e.Name == "My Sig");
+            listed.Should().ContainSingle(e => e.Name == "My Sig" && e.Description == "Signature of Test User");
+
+            await library.UpdateDescriptionAsync(listed[0].Id, "Updated alt text");
+            (await library.ListAsync())[0].Description.Should().Be("Updated alt text");
 
             await using (var opened = await library.OpenImageAsync(listed[0].Id))
             {

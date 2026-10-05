@@ -792,15 +792,15 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-24 | Preferences | clear saved signatures | M1/M9 | Not Started |  |
 | F55-25 | Preferences | strip metadata defaults | M1/M9 | Not Started |  |
 | F56-01 | Accessibility | Windows UI Automation. | M9 | Implemented | WinUI Automation tree; toolbar `AutomationProperties.Name` |
-| F56-02 | Accessibility | Keyboard-accessible controls. | M9 | Not Started |  |
-| F56-03 | Accessibility | Visible focus indicators. | M9 | Not Started |  |
-| F56-04 | Accessibility | Screen-reader labels. | M9 | Implemented | Toolbar/search/annot controls mirror ToolTips as Name |
+| F56-02 | Accessibility | Keyboard-accessible controls. | M9 | In Progress | Menus/accelerators; document tools keyboard paths |
+| F56-03 | Accessibility | Visible focus indicators. | M9 | In Progress | WinUI default focus visuals |
+| F56-04 | Accessibility | Screen-reader labels. | M9 | Implemented | Toolbar/search/annot/signature controls mirror ToolTips as Name |
 | F56-05 | Accessibility | High-contrast mode. | M9 | Not Started |  |
 | F56-06 | Accessibility | Windows text scaling. | M9 | Not Started |  |
 | F56-07 | Accessibility | Logical tab order. | M9 | Not Started |  |
 | F56-08 | Accessibility | Descriptive names for toolbar icons. | M9 | Implemented | PDF/image toolbars set AutomationProperties.Name |
 | F56-09 | Accessibility | Custom description/alt text for images where PDF/image format supports it. | M9 | Not Started |  |
-| F56-10 | Accessibility | Signature descriptions. | M9 | Not Started |  |
+| F56-10 | Accessibility | Signature descriptions. | M9 | Implemented | Library Description + stamp `/Contents` for a11y |
 | F56-11 | Accessibility | Zoom without breaking UI layout. | M9 | Not Started |  |
 | F57-01 | Performance behavior | very fast startup | M2+/M9 | Not Started |  |
 | F57-02 | Performance behavior | fast first-page PDF display | M2+/M9 | Not Started |  |

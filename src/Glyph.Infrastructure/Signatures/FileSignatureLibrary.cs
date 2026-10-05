@@ -38,6 +38,7 @@ public sealed class FileSignatureLibrary : ISignatureLibrary
     public async Task<SignatureEntry> SaveAsync(
         string name,
         Stream pngStream,
+        string? description = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -55,11 +56,42 @@ public sealed class FileSignatureLibrary : ISignatureLibrary
                 await pngStream.CopyToAsync(file, cancellationToken);
             }
 
-            var entry = new SignatureEntry(id, name.Trim(), fileName, DateTimeOffset.UtcNow);
+            var entry = new SignatureEntry(
+                id,
+                name.Trim(),
+                fileName,
+                DateTimeOffset.UtcNow,
+                (description ?? string.Empty).Trim());
             var list = (await ReadIndexAsync(cancellationToken)).ToList();
             list.Add(entry);
             await WriteIndexAsync(list, cancellationToken);
             return entry;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task UpdateDescriptionAsync(
+        string id,
+        string description,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var list = (await ReadIndexAsync(cancellationToken)).ToList();
+            var index = list.FindIndex(e => e.Id == id);
+            if (index < 0)
+            {
+                throw new FileNotFoundException($"Signature '{id}' was not found.");
+            }
+
+            var existing = list[index];
+            list[index] = existing with { Description = (description ?? string.Empty).Trim() };
+            await WriteIndexAsync(list, cancellationToken);
         }
         finally
         {
@@ -170,7 +202,15 @@ public sealed class FileSignatureLibrary : ISignatureLibrary
 
         await using var stream = File.OpenRead(_indexPath);
         var list = await JsonSerializer.DeserializeAsync<List<SignatureEntry>>(stream, JsonOptions, cancellationToken);
-        return list ?? [];
+        if (list is null)
+        {
+            return [];
+        }
+
+        // Normalize legacy index rows that omit description.
+        return list
+            .Select(e => e with { Description = e.Description ?? string.Empty })
+            .ToList();
     }
 
     private async Task WriteIndexAsync(IReadOnlyList<SignatureEntry> entries, CancellationToken cancellationToken)

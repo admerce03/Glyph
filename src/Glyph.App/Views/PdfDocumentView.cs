@@ -5790,23 +5790,53 @@ public sealed class PdfDocumentView : UserControl
         {
             Height = 200,
             SelectionMode = ListViewSelectionMode.Single,
-            ItemsSource = library.Select(e => e.Name).ToList(),
             SelectedIndex = 0,
+        };
+        var descBox = new TextBox
+        {
+            Header = "Accessibility description (F56-10)",
+            PlaceholderText = "e.g. Signature of Jane Doe",
+            Width = 360,
         };
         var up = new Button { Content = "↑", Padding = new Thickness(10, 4, 10, 4) };
         var down = new Button { Content = "↓", Padding = new Thickness(10, 4, 10, 4) };
         var del = new Button { Content = "Delete", Padding = new Thickness(10, 4, 10, 4) };
+        var saveDesc = new Button { Content = "Save description", Padding = new Thickness(10, 4, 10, 4) };
         ToolTipService.SetToolTip(up, "Move selected signature earlier in the library");
         ToolTipService.SetToolTip(down, "Move selected signature later in the library");
         ToolTipService.SetToolTip(del, "Delete selected signature from the library");
+        ToolTipService.SetToolTip(saveDesc, "Save accessibility description for the selected signature");
+        AutomationProperties.SetName(up, "Move signature up");
+        AutomationProperties.SetName(down, "Move signature down");
+        AutomationProperties.SetName(del, "Delete signature");
+        AutomationProperties.SetName(saveDesc, "Save signature description");
+        AutomationProperties.SetName(descBox, "Signature accessibility description");
+        AutomationProperties.SetName(list, "Saved signatures");
 
         void RefreshList(int selectIndex)
         {
-            list.ItemsSource = library.Select(e => e.Name).ToList();
+            list.ItemsSource = library.Select(FormatSignatureListLabel).ToList();
             list.SelectedIndex = library.Count == 0
                 ? -1
                 : Math.Clamp(selectIndex, 0, library.Count - 1);
+            if (list.SelectedIndex >= 0 && list.SelectedIndex < library.Count)
+            {
+                descBox.Text = library[list.SelectedIndex].Description;
+            }
+            else
+            {
+                descBox.Text = string.Empty;
+            }
         }
+
+        list.SelectionChanged += (_, _) =>
+        {
+            if (list.SelectedIndex >= 0 && list.SelectedIndex < library.Count)
+            {
+                descBox.Text = library[list.SelectedIndex].Description;
+            }
+        };
+        RefreshList(0);
 
         up.Click += async (_, _) =>
         {
@@ -5869,6 +5899,27 @@ public sealed class PdfDocumentView : UserControl
                 _status.Text = "Delete failed: " + ex.Message;
             }
         };
+        saveDesc.Click += async (_, _) =>
+        {
+            var i = list.SelectedIndex;
+            if (i < 0 || i >= library.Count)
+            {
+                return;
+            }
+
+            try
+            {
+                var text = descBox.Text?.Trim() ?? string.Empty;
+                await _signatures.UpdateDescriptionAsync(library[i].Id, text);
+                library[i] = library[i] with { Description = text };
+                RefreshList(i);
+                _status.Text = "Signature description saved.";
+            }
+            catch (Exception ex)
+            {
+                _status.Text = "Description save failed: " + ex.Message;
+            }
+        };
 
         var panel = new StackPanel
         {
@@ -5877,11 +5928,12 @@ public sealed class PdfDocumentView : UserControl
             {
                 new TextBlock { Text = "Saved signatures — Insert places the selection on the current page." },
                 list,
+                descBox,
                 new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
                     Spacing = 8,
-                    Children = { up, down, del },
+                    Children = { up, down, del, saveDesc },
                 },
             },
         };
@@ -5994,6 +6046,7 @@ public sealed class PdfDocumentView : UserControl
                 pixels,
                 width,
                 height);
+            await ApplySignatureContentsAsync(CurrentPageIndex, FormatSignatureContents(entry));
 
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
@@ -6005,6 +6058,38 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Insert signature failed: " + ex.Message;
+        }
+    }
+
+    private static string FormatSignatureListLabel(SignatureEntry entry)
+        => string.IsNullOrWhiteSpace(entry.Description)
+            ? entry.Name
+            : $"{entry.Name} — {entry.Description}";
+
+    private static string FormatSignatureContents(SignatureEntry entry)
+        => string.IsNullOrWhiteSpace(entry.Description)
+            ? $"Signature: {entry.Name}"
+            : entry.Description.Trim();
+
+    private static string FormatSignatureContents(string name, string? description)
+        => string.IsNullOrWhiteSpace(description)
+            ? $"Signature: {name}"
+            : description.Trim();
+
+    private async Task ApplySignatureContentsAsync(int pageIndex, string contents)
+    {
+        try
+        {
+            var annots = await _annotations.ListAsync(_document, pageIndex);
+            var stamp = annots.LastOrDefault(a => a.IsStamp);
+            if (stamp is not null)
+            {
+                await _annotations.SetContentsAsync(_document, stamp.PageIndex, stamp.AnnotIndex, contents);
+            }
+        }
+        catch
+        {
+            // Contents is accessibility metadata; insertion already succeeded.
         }
     }
 
@@ -6061,11 +6146,19 @@ public sealed class PdfDocumentView : UserControl
         {
             Text = "Signature",
             PlaceholderText = "Signature name",
+            Header = "Name",
         };
+        var descBox = new TextBox
+        {
+            PlaceholderText = "e.g. Signature of Jane Doe",
+            Header = "Accessibility description",
+        };
+        AutomationProperties.SetName(nameBox, "Signature name");
+        AutomationProperties.SetName(descBox, "Signature accessibility description");
         var nameDialog = new ContentDialog
         {
             Title = "Save signature",
-            Content = nameBox,
+            Content = new StackPanel { Spacing = 8, Children = { nameBox, descBox } },
             PrimaryButtonText = "Insert",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
@@ -6079,6 +6172,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var name = string.IsNullOrWhiteSpace(nameBox.Text) ? "Signature" : nameBox.Text.Trim();
+        var description = descBox.Text?.Trim() ?? string.Empty;
 
         try
         {
@@ -6088,7 +6182,7 @@ public sealed class PdfDocumentView : UserControl
             var png = SignaturePngEncoder.EncodeBgra(raster.BgraPixels, raster.PixelWidth, raster.PixelHeight);
             await using (var pngStream = new MemoryStream(png))
             {
-                await _signatures.SaveAsync(name, pngStream);
+                await _signatures.SaveAsync(name, pngStream, description);
             }
 
             var minX = points.Min(p => p.X);
@@ -6105,6 +6199,7 @@ public sealed class PdfDocumentView : UserControl
                 raster.BgraPixels,
                 raster.PixelWidth,
                 raster.PixelHeight);
+            await ApplySignatureContentsAsync(pageIndex, FormatSignatureContents(name, description));
 
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
@@ -6162,14 +6257,20 @@ public sealed class PdfDocumentView : UserControl
                 await using var copy = await file.OpenStreamForReadAsync();
                 await _signatures.SaveAsync(
                     System.IO.Path.GetFileNameWithoutExtension(file.Name),
-                    copy);
+                    copy,
+                    description: $"Signature image {file.Name}");
             }
             catch
             {
                 // Library save is best-effort; insertion can still proceed.
             }
 
-            await InsertSignaturePixelsAsync(pixels, width, height, statusOnSuccess: "Signature inserted.");
+            await InsertSignaturePixelsAsync(
+                pixels,
+                width,
+                height,
+                statusOnSuccess: "Signature inserted.",
+                contents: $"Signature image {file.Name}");
         }
         catch (Exception ex)
         {
@@ -6250,14 +6351,20 @@ public sealed class PdfDocumentView : UserControl
                 await using var pngStream = new MemoryStream(png);
                 await _signatures.SaveAsync(
                     $"Webcam {DateTime.Now:yyyy-MM-dd HH:mm}",
-                    pngStream);
+                    pngStream,
+                    description: "Webcam paper signature");
             }
             catch
             {
                 // Library save is best-effort.
             }
 
-            await InsertSignaturePixelsAsync(pixels, width, height, statusOnSuccess: "Webcam signature inserted.");
+            await InsertSignaturePixelsAsync(
+                pixels,
+                width,
+                height,
+                statusOnSuccess: "Webcam signature inserted.",
+                contents: "Webcam paper signature");
         }
         catch (Exception ex)
         {
@@ -6269,7 +6376,8 @@ public sealed class PdfDocumentView : UserControl
         byte[] pixels,
         int width,
         int height,
-        string statusOnSuccess)
+        string statusOnSuccess,
+        string? contents = null)
     {
         var page = _document.GetPage(CurrentPageIndex);
         var targetWidth = Math.Min(180, page.WidthPoints * 0.35);
@@ -6286,6 +6394,9 @@ public sealed class PdfDocumentView : UserControl
             pixels,
             width,
             height);
+        await ApplySignatureContentsAsync(
+            CurrentPageIndex,
+            string.IsNullOrWhiteSpace(contents) ? "Signature" : contents);
 
         _cache.ClearDocument(_documentKey);
         _cache.ClearDocument(_thumbnailKey);
@@ -6994,6 +7105,7 @@ public sealed class PdfDocumentView : UserControl
             pixels,
             width,
             height);
+        await ApplySignatureContentsAsync(field.PageIndex, FormatSignatureContents(entry));
 
         _cache.ClearDocument(_documentKey);
         _cache.ClearDocument(_thumbnailKey);
