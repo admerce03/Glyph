@@ -615,23 +615,23 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F40-09 | Clipboard integration | text into annotation/text field | M1/M5 | Not Started |  |
 | F40-10 | Clipboard integration | file paths where appropriate | M1/M5 | Not Started |  |
 | F41-00 | Screenshot workflow | (see FEATURES.md §41) | M1/M5 | Not Started | |
-| F42-01 | Scanner support | Discover connected scanners. | M8 | Not Started |  |
-| F42-02 | Scanner support | Flatbed scanner. | M8 | Not Started |  |
-| F42-03 | Scanner support | Automatic document feeder. | M8 | Not Started |  |
-| F42-04 | Scanner support | Duplex feeder. | M8 | Not Started |  |
-| F42-05 | Scanner support | Color. | M8 | Not Started |  |
-| F42-06 | Scanner support | Grayscale. | M8 | Not Started |  |
-| F42-07 | Scanner support | Black and white. | M8 | Not Started |  |
-| F42-08 | Scanner support | Resolution/DPI. | M8 | Not Started |  |
-| F42-09 | Scanner support | Paper size. | M8 | Not Started |  |
-| F42-10 | Scanner support | Auto crop. | M8 | Not Started |  |
-| F42-11 | Scanner support | Auto straighten. | M8 | Not Started |  |
-| F42-12 | Scanner support | Brightness/contrast where hardware supports it. | M8 | Not Started |  |
-| F42-13 | Scanner support | Scan one page. | M8 | Not Started |  |
-| F42-14 | Scanner support | Scan multiple pages. | M8 | Not Started |  |
-| F42-15 | Scanner support | Scan directly into new PDF. | M8 | Not Started |  |
-| F42-16 | Scanner support | Insert scanned pages into existing PDF. | M8 | Not Started |  |
-| F42-17 | Scanner support | Scan multiple photos separately from a flatbed where detection is practical. | M8 | Not Started |  |
+| F42-01 | Scanner support | Discover connected scanners. | M8 | Implemented | `ImageScanner.GetDeviceSelector` + DeviceInformation |
+| F42-02 | Scanner support | Flatbed scanner. | M8 | Implemented | Scan dialog → Flatbed source |
+| F42-03 | Scanner support | Automatic document feeder. | M8 | Implemented | Scan dialog → Feeder (ADF) |
+| F42-04 | Scanner support | Duplex feeder. | M8 | Implemented | Scan dialog Duplex when feeder supports it |
+| F42-05 | Scanner support | Color. | M8 | Implemented | ColorMode Color |
+| F42-06 | Scanner support | Grayscale. | M8 | Implemented | ColorMode Grayscale |
+| F42-07 | Scanner support | Black and white. | M8 | Implemented | ColorMode Monochrome |
+| F42-08 | Scanner support | Resolution/DPI. | M8 | Implemented | DesiredResolution 150–600 |
+| F42-09 | Scanner support | Paper size. | M8 | Deferred | Feeder PageSize available; UI uses device default |
+| F42-10 | Scanner support | Auto crop. | M8 | Implemented | AutoCroppingMode SingleRegion toggle |
+| F42-11 | Scanner support | Auto straighten. | M8 | Deferred | No WinRT straighten API; post-process TBD |
+| F42-12 | Scanner support | Brightness/contrast where hardware supports it. | M8 | Implemented | Scan dialog brightness/contrast sliders |
+| F42-13 | Scanner support | Scan one page. | M8 | Implemented | Flatbed / MaxPages=1 |
+| F42-14 | Scanner support | Scan multiple pages. | M8 | Implemented | Feeder MaxPages |
+| F42-15 | Scanner support | Scan directly into new PDF. | M8 | Tested | Destination → New PDF via Magick collection |
+| F42-16 | Scanner support | Insert scanned pages into existing PDF. | M8 | Implemented | Destination → Insert into current PDF |
+| F42-17 | Scanner support | Scan multiple photos separately from a flatbed where detection is practical. | M8 | Deferred | MultipleRegion when device supports; not exposed yet |
 | F43-01 | Webcam/camera import | select webcam | M8 | Implemented | Uses default MediaCapture video device |
 | F43-02 | Webcam/camera import | capture image | M8 | Implemented | File → Capture from Camera; PDF Camera button |
 | F43-03 | Webcam/camera import | crop result | M8 | Implemented | Post-capture Crop… in image view; stamp size on PDF |
@@ -669,18 +669,18 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F45-08 | Exporting | transparency | M5-M9 | Implemented | PNG/WebP/TIFF/AVIF keep render alpha; JPEG/JP2/BMP/GIF flatten |
 | F45-09 | Exporting | PDF security | M5-M9 | Blocked | Needs ADR-015 password-write |
 | F45-10 | Exporting | annotation flattening | M5-M9 | Implemented | Raster page export renders annotations into pixels |
-| F46-01 | Sharing and Windows integration | Windows Share UI where available | M9 | Not Started |  |
-| F46-02 | Sharing and Windows integration | Open containing folder | M9 | Not Started |  |
-| F46-03 | Sharing and Windows integration | Copy file path | M9 | Not Started |  |
-| F46-04 | Sharing and Windows integration | Copy file | M9 | Not Started |  |
-| F46-05 | Sharing and Windows integration | Send to default email workflow where practical | M9 | Not Started |  |
-| F46-06 | Sharing and Windows integration | Nearby Share through Windows system facilities where available rather than custom implementation | M9 | Not Started |  |
-| F46-07 | Sharing and Windows integration | OneDrive works naturally because files are ordinary filesystem objects | M9 | Not Started |  |
-| F47-01 | External application integration | Open With... | M9 | Not Started |  |
-| F47-02 | External application integration | Show in File Explorer | M9 | Not Started |  |
-| F47-03 | External application integration | Open URL | M9 | Not Started |  |
-| F47-04 | External application integration | Open location in browser/maps | M9 | Not Started |  |
-| F47-05 | External application integration | Send via default mail application where possible | M9 | Not Started |  |
+| F46-01 | Sharing and Windows integration | Windows Share UI where available | M9 | Implemented | File → Share… (`DataTransferManagerInterop`) |
+| F46-02 | Sharing and Windows integration | Open containing folder | M9 | Implemented | File → Show in File Explorer |
+| F46-03 | Sharing and Windows integration | Copy file path | M9 | Implemented | File → Copy File Path |
+| F46-04 | Sharing and Windows integration | Copy file | M9 | Implemented | File → Copy File |
+| F46-05 | Sharing and Windows integration | Send to default email workflow where practical | M9 | Implemented | File → Send Email… (mailto + path note) |
+| F46-06 | Sharing and Windows integration | Nearby Share through Windows system facilities where available rather than custom implementation | M9 | Implemented | Via system Share UI when available |
+| F46-07 | Sharing and Windows integration | OneDrive works naturally because files are ordinary filesystem objects | M9 | Implemented | Ordinary paths; no special casing |
+| F47-01 | External application integration | Open With... | M9 | Implemented | File → Open With Default App |
+| F47-02 | External application integration | Show in File Explorer | M9 | Implemented | Alias of F46-02 |
+| F47-03 | External application integration | Open URL | M9 | Implemented | PDF link launcher / OSM maps already |
+| F47-04 | External application integration | Open location in browser/maps | M9 | Implemented | Image Meta → Open map |
+| F47-05 | External application integration | Send via default mail application where possible | M9 | Implemented | Alias of F46-05 |
 | F48-01 | File properties and inspector | dimensions | M5/M9 | Not Started |  |
 | F48-02 | File properties and inspector | pages | M5/M9 | Not Started |  |
 | F48-03 | File properties and inspector | metadata | M5/M9 | Not Started |  |

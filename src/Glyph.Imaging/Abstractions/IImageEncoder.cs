@@ -22,6 +22,14 @@ public interface IImageEncoder
         ImageEncodeFormat format,
         ImageEncodeOptions? options = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Combines image files into a multi-page PDF (scan → PDF path).
+    /// </summary>
+    Task WriteImagesAsPdfAsync(
+        IReadOnlyList<string> imagePaths,
+        string pdfPath,
+        CancellationToken cancellationToken = default);
 }
 
 public enum ImageEncodeFormat

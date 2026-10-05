@@ -1,4 +1,6 @@
 using Glyph.App.Capture;
+using Glyph.App.Scanning;
+using Glyph.App.Sharing;
 using Glyph.App.Views;
 using Glyph.Core.Documents;
 using Glyph.Core.IO;
@@ -33,6 +35,8 @@ public sealed partial class MainWindow : Window
         ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tif", ".tiff", ".webp", ".ico",
         ".heic", ".heif", ".avif", ".jp2", ".j2k",
     ];
+
+    private DocumentShareHelper? _shareHelper;
 
     private readonly WorkspaceState _workspace;
     private readonly IRecentFilesStore _recentFiles;
@@ -150,6 +154,20 @@ public sealed partial class MainWindow : Window
     private async void NewFromClipboardMenuItem_Click(object sender, RoutedEventArgs e) => await NewFromClipboardAsync();
 
     private async void CaptureCameraMenuItem_Click(object sender, RoutedEventArgs e) => await CaptureFromCameraAsync();
+
+    private async void ScanMenuItem_Click(object sender, RoutedEventArgs e) => await ScanDocumentAsync();
+
+    private void ShareMenuItem_Click(object sender, RoutedEventArgs e) => ShareActiveDocument();
+
+    private async void ShowInExplorerMenuItem_Click(object sender, RoutedEventArgs e) => await ShowActiveInExplorerAsync();
+
+    private void CopyPathMenuItem_Click(object sender, RoutedEventArgs e) => CopyActivePath();
+
+    private async void CopyFileMenuItem_Click(object sender, RoutedEventArgs e) => await CopyActiveFileAsync();
+
+    private async void OpenWithMenuItem_Click(object sender, RoutedEventArgs e) => await OpenActiveWithDefaultAsync();
+
+    private async void EmailMenuItem_Click(object sender, RoutedEventArgs e) => await EmailActiveAsync();
 
     private void NewWindowMenuItem_Click(object sender, RoutedEventArgs e) => App.CurrentApp.OpenNewWindow();
 
@@ -491,6 +509,337 @@ public sealed partial class MainWindow : Window
         {
             _logger.LogError(ex, "Camera capture failed");
             StatusText.Text = "Camera capture failed: " + ex.Message;
+        }
+    }
+
+    private async Task ScanDocumentAsync()
+    {
+        try
+        {
+            StatusText.Text = "Looking for scanners…";
+            var devices = await ScannerCaptureHelper.DiscoverAsync();
+            if (devices.Count == 0)
+            {
+                StatusText.Text = "No scanners found.";
+                var none = new ContentDialog
+                {
+                    Title = "No scanners",
+                    Content = "Windows did not report any image scanners. Connect a scanner and try again.",
+                    CloseButtonText = "OK",
+                    XamlRoot = Content.XamlRoot,
+                };
+                await none.ShowAsync();
+                return;
+            }
+
+            var deviceBox = new ComboBox
+            {
+                Header = "Scanner",
+                Width = 320,
+                ItemsSource = devices.Select(d => d.Name).ToList(),
+                SelectedIndex = 0,
+            };
+            var sourceBox = new ComboBox
+            {
+                Header = "Source",
+                Width = 320,
+                ItemsSource = new[] { "Flatbed", "Feeder (ADF)", "Auto" },
+                SelectedIndex = 0,
+            };
+            var colorBox = new ComboBox
+            {
+                Header = "Color",
+                Width = 320,
+                ItemsSource = new[] { "Color", "Grayscale", "Black and white" },
+                SelectedIndex = 0,
+            };
+            var dpiBox = new ComboBox
+            {
+                Header = "DPI",
+                Width = 320,
+                ItemsSource = new[] { "150", "200", "300", "600" },
+                SelectedIndex = 2,
+            };
+            var duplex = new CheckBox { Content = "Duplex (feeder)" };
+            var autoCrop = new CheckBox { Content = "Auto crop", IsChecked = true };
+            var pagesBox = new NumberBox
+            {
+                Header = "Max pages (feeder)",
+                Value = 1,
+                Minimum = 1,
+                Maximum = 50,
+                SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
+                Width = 160,
+            };
+            var destBox = new ComboBox
+            {
+                Header = "Destination",
+                Width = 320,
+                ItemsSource = new[]
+                {
+                    "Open as images",
+                    "New PDF",
+                    "Insert into current PDF",
+                },
+                SelectedIndex = 1,
+            };
+            var brightness = new Slider
+            {
+                Header = "Brightness (device, if supported)",
+                Minimum = -1000,
+                Maximum = 1000,
+                Value = 0,
+                Width = 320,
+            };
+            var contrast = new Slider
+            {
+                Header = "Contrast (device, if supported)",
+                Minimum = -1000,
+                Maximum = 1000,
+                Value = 0,
+                Width = 320,
+            };
+
+            var dialog = new ContentDialog
+            {
+                Title = "Scan",
+                Content = new ScrollViewer
+                {
+                    Content = new StackPanel
+                    {
+                        Spacing = 8,
+                        Children =
+                        {
+                            deviceBox, sourceBox, colorBox, dpiBox, duplex, autoCrop, pagesBox, destBox, brightness, contrast,
+                        },
+                    },
+                    MaxHeight = 480,
+                },
+                PrimaryButtonText = "Scan",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = Content.XamlRoot,
+            };
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            {
+                StatusText.Text = "Scan cancelled.";
+                return;
+            }
+
+            var device = devices[Math.Clamp(deviceBox.SelectedIndex, 0, devices.Count - 1)];
+            var source = sourceBox.SelectedIndex switch
+            {
+                1 => Windows.Devices.Scanners.ImageScannerScanSource.Feeder,
+                2 => Windows.Devices.Scanners.ImageScannerScanSource.AutoConfigured,
+                _ => Windows.Devices.Scanners.ImageScannerScanSource.Flatbed,
+            };
+            var color = colorBox.SelectedIndex switch
+            {
+                1 => Windows.Devices.Scanners.ImageScannerColorMode.Grayscale,
+                2 => Windows.Devices.Scanners.ImageScannerColorMode.Monochrome,
+                _ => Windows.Devices.Scanners.ImageScannerColorMode.Color,
+            };
+            uint.TryParse(dpiBox.SelectedItem as string, out var dpi);
+            if (dpi == 0)
+            {
+                dpi = 300;
+            }
+
+            var scanRoot = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "GlyphScans");
+            Directory.CreateDirectory(scanRoot);
+            var folder = await StorageFolder.GetFolderFromPathAsync(scanRoot);
+            var sessionFolder = await folder.CreateFolderAsync(
+                DateTime.Now.ToString("yyyyMMdd-HHmmss"),
+                CreationCollisionOption.GenerateUniqueName);
+
+            StatusText.Text = $"Scanning with {device.Name}…";
+            var files = await ScannerCaptureHelper.ScanToFolderAsync(
+                device.Id,
+                sessionFolder,
+                new ScannerOptions(
+                    Source: source,
+                    ColorMode: color,
+                    Dpi: dpi,
+                    Duplex: duplex.IsChecked == true,
+                    AutoCrop: autoCrop.IsChecked == true,
+                    Brightness: (int)brightness.Value == 0 ? null : (int)brightness.Value,
+                    Contrast: (int)contrast.Value == 0 ? null : (int)contrast.Value,
+                    MaxPages: (uint)Math.Clamp(pagesBox.Value, 1, 50)));
+
+            if (files.Count == 0)
+            {
+                StatusText.Text = "Scan produced no files.";
+                return;
+            }
+
+            var paths = files.Select(f => f.Path).ToList();
+            switch (destBox.SelectedIndex)
+            {
+                case 0:
+                    foreach (var path in paths)
+                    {
+                        await OpenPathAsync(path);
+                    }
+
+                    StatusText.Text = $"Opened {paths.Count} scanned image(s).";
+                    break;
+                case 2:
+                    await InsertScansIntoActivePdfAsync(paths);
+                    break;
+                default:
+                    var pdfPath = System.IO.Path.Combine(
+                        sessionFolder.Path,
+                        "Scan-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".pdf");
+                    await _imageEncoder.WriteImagesAsPdfAsync(paths, pdfPath);
+                    await OpenPathAsync(pdfPath);
+                    StatusText.Text = $"Created PDF from {paths.Count} scan(s).";
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Scan failed");
+            StatusText.Text = "Scan failed: " + ex.Message;
+        }
+    }
+
+    private async Task InsertScansIntoActivePdfAsync(IReadOnlyList<string> imagePaths)
+    {
+        var active = _workspace.ActiveDocument;
+        if (active is null || active.Kind != DocumentKind.Pdf)
+        {
+            StatusText.Text = "Open a PDF first to insert scanned pages.";
+            return;
+        }
+
+        if (!_openEngines.TryGetValue(active.Id, out var engine) || engine is not IPdfDocument pdf)
+        {
+            StatusText.Text = "PDF engine unavailable for insert.";
+            return;
+        }
+
+        var insertPdf = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(),
+            "glyph-scan-insert-" + Guid.NewGuid().ToString("N") + ".pdf");
+        await _imageEncoder.WriteImagesAsPdfAsync(imagePaths, insertPdf);
+        await using var scanDoc = await _pdfFactory.OpenAsync(insertPdf);
+        await _pdfPageEditor.InsertPagesAsync(
+            pdf,
+            scanDoc,
+            Enumerable.Range(0, scanDoc.PageCount).ToList(),
+            pdf.PageCount);
+        active.MarkDirty();
+        StatusText.Text = $"Inserted {imagePaths.Count} scanned page(s) into PDF.";
+    }
+
+    private void ShareActiveDocument()
+    {
+        var active = _workspace.ActiveDocument;
+        if (active is null || string.IsNullOrWhiteSpace(active.Path))
+        {
+            StatusText.Text = "Nothing to share — open a saved document.";
+            return;
+        }
+
+        try
+        {
+            var hwnd = WindowNative.GetWindowHandle(this);
+            _shareHelper ??= new DocumentShareHelper(hwnd);
+            _shareHelper.ShowShareUi(active.DisplayName, active.Path);
+            StatusText.Text = "Share UI opened.";
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Share failed: " + ex.Message;
+        }
+    }
+
+    private async Task ShowActiveInExplorerAsync()
+    {
+        var path = _workspace.ActiveDocument?.Path;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            StatusText.Text = "No file path for the active document.";
+            return;
+        }
+
+        try
+        {
+            await DocumentShareHelper.OpenContainingFolderAsync(path);
+            StatusText.Text = "Opened containing folder.";
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Show in Explorer failed: " + ex.Message;
+        }
+    }
+
+    private void CopyActivePath()
+    {
+        var path = _workspace.ActiveDocument?.Path;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            StatusText.Text = "No file path to copy.";
+            return;
+        }
+
+        DocumentShareHelper.CopyPathToClipboard(path);
+        StatusText.Text = "Copied path.";
+    }
+
+    private async Task CopyActiveFileAsync()
+    {
+        var path = _workspace.ActiveDocument?.Path;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            StatusText.Text = "No file to copy.";
+            return;
+        }
+
+        try
+        {
+            await DocumentShareHelper.CopyFileToClipboardAsync(path);
+            StatusText.Text = "Copied file to clipboard.";
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Copy file failed: " + ex.Message;
+        }
+    }
+
+    private async Task OpenActiveWithDefaultAsync()
+    {
+        var path = _workspace.ActiveDocument?.Path;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            StatusText.Text = "No file to open.";
+            return;
+        }
+
+        try
+        {
+            await DocumentShareHelper.OpenWithDefaultAsync(path);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Open With failed: " + ex.Message;
+        }
+    }
+
+    private async Task EmailActiveAsync()
+    {
+        var active = _workspace.ActiveDocument;
+        try
+        {
+            await DocumentShareHelper.SendMailtoAsync(
+                subject: active?.DisplayName ?? "Glyph document",
+                body: "Shared from Glyph.",
+                attachmentPath: active?.Path);
+            StatusText.Text = "Mail client opened.";
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Email failed: " + ex.Message;
         }
     }
 

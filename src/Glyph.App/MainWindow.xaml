@@ -32,6 +32,15 @@
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
                 <MenuFlyoutItem x:Name="CaptureCameraMenuItem" Text="Capture from Camera…" Click="CaptureCameraMenuItem_Click" />
+                <MenuFlyoutItem x:Name="ScanMenuItem" Text="Scan…" Click="ScanMenuItem_Click" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem x:Name="ShareMenuItem" Text="Share…" Click="ShareMenuItem_Click" />
+                <MenuFlyoutItem x:Name="ShowInExplorerMenuItem" Text="Show in File Explorer" Click="ShowInExplorerMenuItem_Click" />
+                <MenuFlyoutItem x:Name="CopyPathMenuItem" Text="Copy File Path" Click="CopyPathMenuItem_Click" />
+                <MenuFlyoutItem x:Name="CopyFileMenuItem" Text="Copy File" Click="CopyFileMenuItem_Click" />
+                <MenuFlyoutItem x:Name="OpenWithMenuItem" Text="Open With Default App" Click="OpenWithMenuItem_Click" />
+                <MenuFlyoutItem x:Name="EmailMenuItem" Text="Send Email…" Click="EmailMenuItem_Click" />
+                <MenuFlyoutSeparator />
                 <MenuFlyoutItem x:Name="NewWindowMenuItem" Text="New Window" Click="NewWindowMenuItem_Click">
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="N" Modifiers="Control" />

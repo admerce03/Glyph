@@ -204,6 +204,39 @@ public sealed class MagickImageEncoder : IImageEncoder
         }
     }
 
+    public Task WriteImagesAsPdfAsync(
+        IReadOnlyList<string> imagePaths,
+        string pdfPath,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(imagePaths);
+        ArgumentException.ThrowIfNullOrWhiteSpace(pdfPath);
+        if (imagePaths.Count == 0)
+        {
+            throw new ArgumentException("At least one image is required.", nameof(imagePaths));
+        }
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                using var collection = new MagickImageCollection();
+                foreach (var path in imagePaths)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    ArgumentException.ThrowIfNullOrWhiteSpace(path);
+                    var image = new MagickImage(path)
+                    {
+                        Format = MagickFormat.Pdf,
+                    };
+                    collection.Add(image);
+                }
+
+                collection.Write(pdfPath);
+            },
+            cancellationToken);
+    }
+
     private static MagickImageDocument RequireMagick(IImageDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
