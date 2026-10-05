@@ -49,4 +49,24 @@ public class PageSelectionTests
         selection.ApplyClick(3, ctrlOrMeta: true, shift: false).Should().BeTrue();
         selection.SelectedIndexes.Should().Equal(2, 4);
     }
+
+    [Fact]
+    public void SelectAll_selects_every_page()
+    {
+        var selection = new PageSelection();
+        selection.SelectAll(4);
+        selection.SelectedIndexes.Should().Equal(0, 1, 2, 3);
+    }
+
+    [Fact]
+    public void ApplyKeyboardMove_extends_with_shift()
+    {
+        var selection = new PageSelection();
+        selection.SelectOnly(1);
+        selection.ApplyKeyboardMove(3, extendRange: true);
+        selection.SelectedIndexes.Should().Equal(1, 2, 3);
+
+        selection.ApplyKeyboardMove(0, extendRange: false);
+        selection.SelectedIndexes.Should().Equal(0);
+    }
 }

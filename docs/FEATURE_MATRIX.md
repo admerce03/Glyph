@@ -182,8 +182,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F09-07 | PDF bookmarks | Preserve bookmarks when saving. | M2/M4 | Not Started |  |
 | F09-08 | PDF bookmarks | Export them as standard PDF bookmarks where compatible. | M2/M4 | Not Started |  |
 | F10-01 | PDF page manipulation | Select page thumbnails. | M3 | Implemented | Click thumbnails; chrome shows selection |
-| F10-02 | PDF page manipulation | Multi-select pages. | M3 | Tested | Ctrl+click via `PageSelection` |
-| F10-03 | PDF page manipulation | Select ranges. | M3 | Tested | Shift+click via `PageSelection` |
+| F10-02 | PDF page manipulation | Multi-select pages. | M3 | Tested | Ctrl+click / Ctrl+A via `PageSelection` |
+| F10-03 | PDF page manipulation | Select ranges. | M3 | Tested | Shift+click / Shift+↑↓ via `PageSelection` |
 | F10-04 | PDF page manipulation | Reorder pages by dragging thumbnails. | M3 | Tested | Thumbnail drag-drop + `PageReorder` helper |
 | F10-05 | PDF page manipulation | Move multiple pages as one selection. | M3 | Implemented | Move ↑/↓ shifts contiguous selection |
 | F10-06 | PDF page manipulation | Delete pages. | M3 | Tested | `IPdfPageEditor.DeletePagesAsync` + toolbar |

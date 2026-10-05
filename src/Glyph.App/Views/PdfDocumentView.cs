@@ -907,9 +907,24 @@ public sealed class PdfDocumentView : UserControl
         var ctrlDown = Microsoft.UI.Input.InputKeyboardSource
             .GetKeyStateForCurrentThread(VirtualKey.Control)
             .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        var shiftDown = Microsoft.UI.Input.InputKeyboardSource
+            .GetKeyStateForCurrentThread(VirtualKey.Shift)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
         if (ctrlDown && e.Key == VirtualKey.C)
         {
             await CopyTextAsync();
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrlDown && e.Key == VirtualKey.A)
+        {
+            _pageSelection.SelectAll(_document.PageCount);
+            RefreshThumbnailSelectionChrome();
+            _status.Text = _document.PageCount == 1
+                ? "Selected 1 page."
+                : $"Selected {_document.PageCount} pages.";
             e.Handled = true;
             return;
         }
@@ -924,6 +939,32 @@ public sealed class PdfDocumentView : UserControl
         if (ctrlDown && e.Key == VirtualKey.Y)
         {
             await RedoPageEditAsync();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key is VirtualKey.Delete or VirtualKey.Back)
+        {
+            await DeleteSelectedAsync();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key is VirtualKey.Up or VirtualKey.Down)
+        {
+            var delta = e.Key == VirtualKey.Up ? -1 : 1;
+            var focus = _pageSelection.SelectedIndexes.DefaultIfEmpty(CurrentPageIndex).Max();
+            if (shiftDown && _pageSelection.Count > 0)
+            {
+                focus = delta < 0
+                    ? _pageSelection.SelectedIndexes.Min()
+                    : _pageSelection.SelectedIndexes.Max();
+            }
+
+            var next = Math.Clamp(focus + delta, 0, Math.Max(0, _document.PageCount - 1));
+            _pageSelection.ApplyKeyboardMove(next, extendRange: shiftDown);
+            RefreshThumbnailSelectionChrome();
+            await GoToPageAsync(next, recordHistory: !shiftDown);
             e.Handled = true;
             return;
         }
