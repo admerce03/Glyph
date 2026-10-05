@@ -694,17 +694,8 @@ public sealed class PdfDocumentView : UserControl
         {
             Margin = new Thickness(8, 8, 8, 4),
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            ItemsSource = new[]
-            {
-                "Pages",
-                "Contents",
-                "Bookmarks",
-                "Search",
-                "Annotations",
-                "Properties",
-                "Attachments",
-            },
-            SelectedIndex = 0,
+            ItemsSource = SidebarModeCombo.Labels.ToArray(),
+            SelectedIndex = SidebarModeCombo.FromSidebarMode(_viewState.SidebarMode),
         };
         AutomationProperties.SetName(_sidebarModeBox, "Sidebar mode");
         ToolTipService.SetToolTip(_sidebarModeBox, "Switch sidebar mode without opening another window");
@@ -4116,7 +4107,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        ShowSidebarMode(3); // Search results panel
+        ShowSidebarMode(SidebarModeCombo.SearchIndex); // Search results panel
 
         var ocrHits = PdfPageTextSearch.Find(_ocrPageTexts, query, _searchCaseSensitive);
         var merged = PdfPageTextSearch.Merge(result.Hits, ocrHits);
@@ -10542,7 +10533,8 @@ public sealed class PdfDocumentView : UserControl
 
     private void ApplySidebarMode()
     {
-        var selected = _sidebarModeBox?.SelectedIndex ?? 0;
+        var selected = SidebarModeCombo.ClampIndex(_sidebarModeBox?.SelectedIndex ?? 0);
+        _viewState.SidebarMode = SidebarModeCombo.ToSidebarMode(selected);
         for (var i = 0; i < _sidebarSections.Count; i++)
         {
             _sidebarSections[i].Visibility = i == selected ? Visibility.Visible : Visibility.Collapsed;
@@ -10551,7 +10543,7 @@ public sealed class PdfDocumentView : UserControl
 
     private void ShowSidebarMode(int modeIndex)
     {
-        if (_sidebarModeBox is null || modeIndex < 0 || modeIndex >= _sidebarSections.Count)
+        if (_sidebarModeBox is null || !SidebarModeCombo.IsValidIndex(modeIndex))
         {
             return;
         }

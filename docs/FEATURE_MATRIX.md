@@ -33,7 +33,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-23 | Application and file handling | Unsaved-change prompt where appropriate. | M1/M9 | Tested | Close tab dirty / HasUnsavedEdits; `MarkDirty`/`MarkClean` unit tests |
 | F01-24 | Application and file handling | Optional autosave. | M1/M9 | Tested | Preferences → Auto-save to original; `AutoSaveToOriginal` prefs round-trip |
 | F01-25 | Application and file handling | Crash-recovery copy. | M1/M9 | Tested | `FileCrashRecoveryStore` SaveSnapshot/List/Discard unit tests |
-| F01-26 | Application and file handling | Undo/redo history. | M1/M9 | Implemented | Per-doc: page edits, annot/form/meta/signature, image checkpoints; unified app-wide stack later |
+| F01-26 | Application and file handling | Undo/redo history. | M1/M9 | Tested | Per-doc stacks: `PdfPageEditHistory`, AnnotationUndoStack, Magick checkpoints (unified app-wide later) |
 | F01-27 | Application and file handling | Do not silently overwrite originals by default. | M1/M9 | Tested | Autosave-to-original opt-in off by default (prefs default unit test) |
 | F02-01 | Main window and interface | Standard Windows title bar. | M1/M9 | Implemented | WinUI AppWindow system title bar |
 | F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | Implemented | MenuBar File/View/Window |
@@ -44,7 +44,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-07 | Main window and interface | Resizable sidebar. | M1/M9 | Tested | Drag splitter; `SidebarWidth` clamp + prefs unit tests |
 | F02-08 | Main window and interface | Resizable document area. | M1/M9 | Implemented | Content pane fills remaining space; window resize |
 | F02-09 | Main window and interface | Full-screen mode. | M1/M9 | Implemented | View → Full Screen / F11 / toolbar |
-| F02-10 | Main window and interface | Tabbed documents. | M1/M9 | Implemented | TabView + Ctrl+Tab navigation |
+| F02-10 | Main window and interface | Tabbed documents. | M1/M9 | Tested | TabView + `WorkspaceState` Open/Activate/Reorder/ActivateNext unit tests |
 | F02-11 | Main window and interface | Tear tab into separate window. | M1/M9 | Tested | Window → Move Tab to New Window; `TabTearOffPolicy` unit tests |
 | F02-12 | Main window and interface | Move tabs between windows. | M1/M9 | Tested | Tear-off + `CanDragTabs`/`AllowDropTabs`; `TabTearOffPolicy` (see F59-03) |
 | F02-13 | Main window and interface | Reorder tabs. | M1/M9 | Tested | TabView CanReorderTabs + `WorkspaceState.Reorder` unit test |
@@ -68,7 +68,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-07 | Sidebar modes | Contact sheet | M2-M5 | Tested | Layout → Contact sheet; `ContactSheetLayout` grid unit tests |
 | F03-08 | Sidebar modes | Document attachments, if supported | M2-M5 | Tested | PDF sidebar Attachments list + Save…; `ListAttachments` unit test |
 | F03-09 | Sidebar modes | Metadata/properties where useful | M2-M5 | Tested | PDF sidebar Properties; `DisplayValue`/`PdfPageSizeFormat`/`ByteSizeFormat`; GetInfo unit tests (F48) |
-| F03-10 | Sidebar modes | Switch sidebar mode without opening another window. | M2-M5 | Implemented | Sidebar mode ComboBox: Pages/Contents/Bookmarks/Search/Annotations/Properties/Attachments |
+| F03-10 | Sidebar modes | Switch sidebar mode without opening another window. | M2-M5 | Tested | Sidebar ComboBox; `SidebarModeCombo` labels/index unit tests |
 | F03-11 | Sidebar modes | Resize thumbnail size. | M2-M5 | Tested | Pages S/M/L; `ThumbnailWidth` clamp + prefs unit tests |
 | F03-12 | Sidebar modes | Multi-select sidebar items. | M2-M5 | Tested | `PageSelection` Toggle/SelectAll unit tests |
 | F03-13 | Sidebar modes | Shift-click range selection. | M2-M5 | Tested | `PageSelection.SelectRange` / ApplyClick shift unit tests |
