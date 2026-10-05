@@ -87,7 +87,6 @@ public static class WebcamCaptureHelper
                 // ignore
             }
 
-            preview.Source = null;
             if (result != ContentDialogResult.Primary)
             {
                 return null;

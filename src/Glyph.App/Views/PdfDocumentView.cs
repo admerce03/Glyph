@@ -590,6 +590,8 @@ public sealed class PdfDocumentView : UserControl
         annotHeaderRow.Children.Add(rotateAnnot);
         annotHeaderRow.Children.Add(removeAnnot);
 
+        _status = new TextBlock { Opacity = 0.75, FontSize = 12, Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+
         var propertiesHeader = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -657,7 +659,7 @@ public sealed class PdfDocumentView : UserControl
         attachmentHeader.Children.Add(saveAttachment);
         attachmentHeader.Children.Add(refreshAttachments);
 
-        static Grid BuildSidebarSection(FrameworkElement header, FrameworkElement body)
+        static Grid BuildSidebarSection(UIElement header, UIElement body)
         {
             var section = new Grid
             {
@@ -667,9 +669,17 @@ public sealed class PdfDocumentView : UserControl
                     new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
                 },
             };
-            Grid.SetRow(header, 0);
+            if (header is FrameworkElement headerFe)
+            {
+                Grid.SetRow(headerFe, 0);
+            }
+
             section.Children.Add(header);
-            Grid.SetRow(body, 1);
+            if (body is FrameworkElement bodyFe)
+            {
+                Grid.SetRow(bodyFe, 1);
+            }
+
             section.Children.Add(body);
             return section;
         }
