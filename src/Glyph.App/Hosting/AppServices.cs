@@ -24,7 +24,8 @@ internal static class AppServices
             builder.SetMinimumLevel(LogLevel.Information);
         });
 
-        services.AddSingleton<WorkspaceState>();
+        // Per-window document workspace so each Glyph window has independent tabs.
+        services.AddTransient<WorkspaceState>();
         services.AddSingleton<ISettingsStore>(_ => new JsonSettingsStore(GlyphPaths.SettingsFile));
         services.AddSingleton<IRecentFilesStore>(sp =>
         {
@@ -41,7 +42,7 @@ internal static class AppServices
         services.AddSingleton<IPdfPageEditor, PdfiumPageEditor>();
         services.AddSingleton<IPdfTextSearchService, PdfPigTextSearchService>();
         services.AddSingleton<PageRenderCache>(_ => new PageRenderCache(capacity: 48));
-        services.AddSingleton<MainWindow>();
+        services.AddTransient<MainWindow>();
 
         return services.BuildServiceProvider();
     }

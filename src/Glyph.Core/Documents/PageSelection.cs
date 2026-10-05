@@ -52,6 +52,35 @@ public sealed class PageSelection
         }
     }
 
+    public void SelectAll(int pageCount)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(pageCount);
+        _selected.Clear();
+        for (var i = 0; i < pageCount; i++)
+        {
+            _selected.Add(i);
+        }
+
+        _anchor = pageCount > 0 ? 0 : null;
+    }
+
+    /// <summary>
+    /// Keyboard navigation: move focus/selection to <paramref name="pageIndex"/>,
+    /// optionally extending a shift-range from the anchor.
+    /// </summary>
+    public void ApplyKeyboardMove(int pageIndex, bool extendRange)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(pageIndex);
+        if (extendRange)
+        {
+            SelectRange(pageIndex);
+        }
+        else
+        {
+            SelectOnly(pageIndex);
+        }
+    }
+
     /// <summary>
     /// Applies a click with optional modifiers. Returns true when the selection changed.
     /// </summary>

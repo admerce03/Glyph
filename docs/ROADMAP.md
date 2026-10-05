@@ -159,7 +159,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Explorer PDF → thumbnail insert, cross-tab page DnD (`PageDragPayload` / `PdfPageDragRegistry`), and drag-out extract via deferred StorageItems.
 - Non-destructive CropBox crop (`CropPagesAsync` / `SetCropBoxAsync` + numeric Crop dialog / visual handles).
 - Merge / split APIs + toolbar (`MergeDocumentsAsync` / `SplitDocumentAsync`).
-- Next: multi-window DnD (parallel PR), §11 demo recording.
+- Multi-window shell (`File → New Window`) with per-window workspace for cross-window page DnD.
+- Next: §11 demo recording / M3 completion proof.
 
 ---
 

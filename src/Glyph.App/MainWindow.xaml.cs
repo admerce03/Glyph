@@ -107,6 +107,8 @@ public sealed partial class MainWindow : Window
 
     private async void NewFromClipboardMenuItem_Click(object sender, RoutedEventArgs e) => await NewFromClipboardAsync();
 
+    private void NewWindowMenuItem_Click(object sender, RoutedEventArgs e) => App.CurrentApp.OpenNewWindow();
+
     private async void CloseTabMenuItem_Click(object sender, RoutedEventArgs e) => await CloseActiveTabAsync();
 
     private async void CloseAllMenuItem_Click(object sender, RoutedEventArgs e) => await CloseAllAsync();
@@ -118,7 +120,7 @@ public sealed partial class MainWindow : Window
         StatusText.Text = "Recent files cleared.";
     }
 
-    private void ExitMenuItem_Click(object sender, RoutedEventArgs e) => Close();
+    private void ExitMenuItem_Click(object sender, RoutedEventArgs e) => App.CurrentApp.CloseAllWindows();
 
     private async void ToggleSidebarMenuItem_Click(object sender, RoutedEventArgs e)
     {
@@ -412,7 +414,8 @@ public sealed partial class MainWindow : Window
                 _pdfLinks,
                 _pdfPageEditor,
                 _pdfFactory,
-                session.ViewState);
+                session.ViewState,
+                ownerWindow: this);
         }
 
         return CreatePlaceholderContent(session);
@@ -618,7 +621,7 @@ public sealed partial class MainWindow : Window
 
     private async Task SetThemeAsync(ThemePreference preference)
     {
-        ApplyThemePreference(preference);
+        App.CurrentApp.ApplyThemePreference(preference);
         var settings = _settingsStore.Current;
         settings.Theme = preference;
         await _settingsStore.SaveAsync(settings);

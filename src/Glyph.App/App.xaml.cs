@@ -8,7 +8,7 @@ namespace Glyph.App;
 
 public partial class App : Application
 {
-    private MainWindow? _window;
+    private readonly List<MainWindow> _windows = [];
 
     public App()
     {
@@ -28,20 +28,70 @@ public partial class App : Application
 
     public static App CurrentApp => (App)Current;
 
-    public MainWindow? MainWindowInstance => _window;
+    /// <summary>Most recently activated Glyph window (used for picker HWND fallbacks).</summary>
+    public MainWindow? MainWindowInstance { get; private set; }
+
+    public IReadOnlyList<MainWindow> Windows => _windows;
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
         var settingsStore = Services.GetRequiredService<ISettingsStore>();
         await settingsStore.LoadAsync();
 
-        _window = Services.GetRequiredService<MainWindow>();
-        _window.ApplyThemePreference(settingsStore.Current.Theme);
-        _window.Activate();
+        OpenNewWindow();
+    }
+
+    public MainWindow OpenNewWindow()
+    {
+        var settingsStore = Services.GetRequiredService<ISettingsStore>();
+        var window = Services.GetRequiredService<MainWindow>();
+        window.ApplyThemePreference(settingsStore.Current.Theme);
+        window.Closed += Window_Closed;
+        window.Activated += Window_Activated;
+        _windows.Add(window);
+        MainWindowInstance = window;
+        window.Activate();
+        return window;
     }
 
     public void ApplyThemePreference(ThemePreference preference)
     {
-        _window?.ApplyThemePreference(preference);
+        foreach (var window in _windows)
+        {
+            window.ApplyThemePreference(preference);
+        }
+    }
+
+    public void CloseAllWindows()
+    {
+        foreach (var window in _windows.ToArray())
+        {
+            window.Close();
+        }
+    }
+
+    private void Window_Activated(object sender, WindowActivatedEventArgs args)
+    {
+        if (sender is MainWindow window &&
+            args.WindowActivationState != WindowActivationState.Deactivated)
+        {
+            MainWindowInstance = window;
+        }
+    }
+
+    private void Window_Closed(object sender, WindowEventArgs args)
+    {
+        if (sender is not MainWindow window)
+        {
+            return;
+        }
+
+        window.Closed -= Window_Closed;
+        window.Activated -= Window_Activated;
+        _windows.Remove(window);
+        if (ReferenceEquals(MainWindowInstance, window))
+        {
+            MainWindowInstance = _windows.LastOrDefault();
+        }
     }
 }

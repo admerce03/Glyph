@@ -182,8 +182,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F09-07 | PDF bookmarks | Preserve bookmarks when saving. | M2/M4 | Not Started |  |
 | F09-08 | PDF bookmarks | Export them as standard PDF bookmarks where compatible. | M2/M4 | Not Started |  |
 | F10-01 | PDF page manipulation | Select page thumbnails. | M3 | Implemented | Click thumbnails; chrome shows selection |
-| F10-02 | PDF page manipulation | Multi-select pages. | M3 | Tested | Ctrl+click via `PageSelection` |
-| F10-03 | PDF page manipulation | Select ranges. | M3 | Tested | Shift+click via `PageSelection` |
+| F10-02 | PDF page manipulation | Multi-select pages. | M3 | Tested | Ctrl+click / Ctrl+A via `PageSelection` |
+| F10-03 | PDF page manipulation | Select ranges. | M3 | Tested | Shift+click / Shift+↑↓ via `PageSelection` |
 | F10-04 | PDF page manipulation | Reorder pages by dragging thumbnails. | M3 | Tested | Thumbnail drag-drop + `PageReorder` helper |
 | F10-05 | PDF page manipulation | Move multiple pages as one selection. | M3 | Implemented | Move ↑/↓ shifts contiguous selection |
 | F10-06 | PDF page manipulation | Delete pages. | M3 | Tested | `IPdfPageEditor.DeletePagesAsync` + toolbar |
@@ -204,7 +204,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F10-21 | PDF page manipulation | Crop selected page. | M3 | Tested | `CropPagesAsync` / Crop toolbar dialog |
 | F10-22 | PDF page manipulation | Apply same crop to multiple pages. | M3 | Tested | Multi-select + SetCropBox / apply-all |
 | F10-23 | PDF page manipulation | Change page order. | M3 | Implemented | `ReorderPagesAsync` + Move ↑/↓ |
-| F10-24 | PDF page manipulation | Copy/paste pages between documents. | M3 | Implemented | Cross-doc thumbnail DnD via `PageDragPayload` + registry |
+| F10-24 | PDF page manipulation | Copy/paste pages between documents. | M3 | Implemented | DnD + Ctrl+C/V via `PdfPageClipboard` |
 | F11-01 | Preview-style PDF drag-and-drop workflows | one page | M3 | Implemented | Thumbnail CanDrag + page payload |
 | F11-02 | Preview-style PDF drag-and-drop workflows | multiple contiguous pages | M3 | Implemented | Multi-select drag uses selection set |
 | F11-03 | Preview-style PDF drag-and-drop workflows | multiple noncontiguous pages | M3 | Implemented | Noncontiguous selection preserved in payload |
@@ -212,7 +212,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F11-05 | Preview-style PDF drag-and-drop workflows | visible insertion indicator | M3 | Implemented | Orange before/after border highlight |
 | F11-06 | Preview-style PDF drag-and-drop workflows | insert entire PDF at drop location. | M3 | Implemented | Explorer `.pdf` StorageItems → insert |
 | F11-07 | Preview-style PDF drag-and-drop workflows | create a new PDF containing those selected pages. | M3 | Implemented | Deferred StorageItems extract on drag-out |
-| F11-08 | Preview-style PDF drag-and-drop workflows | different windows | M3 | In Progress | Same-process registry; multi-window shell later |
+| F11-08 | Preview-style PDF drag-and-drop workflows | different windows | M3 | Implemented | File → New Window; per-window workspace + shared page drag registry |
 | F11-09 | Preview-style PDF drag-and-drop workflows | different tabs | M3 | Implemented | Cross-tab insert via `PdfPageDragRegistry` |
 | F12-01 | PDF crop | Rectangular page crop. | M3 | Implemented | CropBox rectangle via margins / absolute box |
 | F12-02 | PDF crop | Visual crop handles. | M3 | Implemented | Interactive overlay handles + Apply/Cancel chrome |
