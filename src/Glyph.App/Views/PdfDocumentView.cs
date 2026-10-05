@@ -150,6 +150,9 @@ public sealed class PdfDocumentView : UserControl
     private string? _annotResizeHandle;
     private Microsoft.UI.Xaml.Shapes.Rectangle? _annotSelectionRect;
     private readonly List<FrameworkElement> _annotResizeHandleVisuals = [];
+    /// <summary>In-app annotation clipboard (page/annot index). Cut removes the source on paste.</summary>
+    private (int PageIndex, int AnnotIndex)? _annotClipboard;
+    private bool _annotClipboardIsCut;
     private string _searchQuery = string.Empty;
     private bool _searchCaseSensitive;
     private bool _cropMode;
@@ -347,7 +350,19 @@ public sealed class PdfDocumentView : UserControl
         var duplicateAnnot = new Button { Content = "Dup", Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(duplicateAnnot, "Duplicate selected annotation (offset copy)");
         duplicateAnnot.Click += async (_, _) => await DuplicateSelectedAnnotationAsync();
+        var copyAnnot = new Button { Content = "Copy", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(copyAnnot, "Copy selected annotation (Ctrl+C when selected)");
+        copyAnnot.Click += (_, _) => CopySelectedAnnotationToClipboard();
+        var cutAnnot = new Button { Content = "Cut", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(cutAnnot, "Cut selected annotation (Ctrl+X when selected)");
+        cutAnnot.Click += (_, _) => CutSelectedAnnotationToClipboard();
+        var pasteAnnot = new Button { Content = "Paste", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(pasteAnnot, "Paste annotation clipboard (Ctrl+V when clipboard has an annotation)");
+        pasteAnnot.Click += async (_, _) => await PasteAnnotationClipboardAsync();
         annotHeaderRow.Children.Add(duplicateAnnot);
+        annotHeaderRow.Children.Add(copyAnnot);
+        annotHeaderRow.Children.Add(cutAnnot);
+        annotHeaderRow.Children.Add(pasteAnnot);
         var colorAnnot = new Button { Content = "Color", Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(colorAnnot, "Change selected annotation color");
         colorAnnot.Click += async (_, _) => await SetSelectedAnnotationColorAsync();
@@ -1250,10 +1265,14 @@ public sealed class PdfDocumentView : UserControl
 
         if (ctrlDown && e.Key == VirtualKey.C)
         {
-            // Prefer text when the user has a text selection; otherwise copy selected pages.
+            // Prefer text, then selected annotation, then selected pages.
             if (!string.IsNullOrEmpty(_selectedText))
             {
                 await CopyTextAsync();
+            }
+            else if (TryGetSelectedAnnotation(out _))
+            {
+                CopySelectedAnnotationToClipboard();
             }
             else
             {
@@ -1264,9 +1283,27 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (ctrlDown && e.Key == VirtualKey.X)
+        {
+            if (TryGetSelectedAnnotation(out _))
+            {
+                CutSelectedAnnotationToClipboard();
+                e.Handled = true;
+                return;
+            }
+        }
+
         if (ctrlDown && e.Key == VirtualKey.V)
         {
-            await PastePagesAsync();
+            if (_annotClipboard is not null)
+            {
+                await PasteAnnotationClipboardAsync();
+            }
+            else
+            {
+                await PastePagesAsync();
+            }
+
             e.Handled = true;
             return;
         }
@@ -6243,6 +6280,97 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Duplicate annotation failed: " + ex.Message;
+        }
+    }
+
+    private bool TryGetSelectedAnnotation(out PdfAnnotationInfo item)
+    {
+        var index = _annotationList.SelectedIndex;
+        if (index >= 0 && index < _annotationItems.Count)
+        {
+            item = _annotationItems[index];
+            return true;
+        }
+
+        if (_selectedAnnot is not null)
+        {
+            item = _selectedAnnot;
+            return true;
+        }
+
+        item = null!;
+        return false;
+    }
+
+    private void CopySelectedAnnotationToClipboard()
+    {
+        if (!TryGetSelectedAnnotation(out var item))
+        {
+            _status.Text = "Select an annotation to copy.";
+            return;
+        }
+
+        _annotClipboard = (item.PageIndex, item.AnnotIndex);
+        _annotClipboardIsCut = false;
+        _status.Text = $"Copied {FormatAnnotationLabel(item)}.";
+    }
+
+    private void CutSelectedAnnotationToClipboard()
+    {
+        if (!TryGetSelectedAnnotation(out var item))
+        {
+            _status.Text = "Select an annotation to cut.";
+            return;
+        }
+
+        _annotClipboard = (item.PageIndex, item.AnnotIndex);
+        _annotClipboardIsCut = true;
+        _status.Text = $"Cut {FormatAnnotationLabel(item)} (removed on paste).";
+    }
+
+    private async Task PasteAnnotationClipboardAsync()
+    {
+        if (_annotClipboard is not { } clip)
+        {
+            _status.Text = "Annotation clipboard is empty.";
+            return;
+        }
+
+        try
+        {
+            var copy = await _annotations.DuplicateAsync(_document, clip.PageIndex, clip.AnnotIndex);
+            var copyPage = copy.PageIndex;
+            var copyIndex = copy.AnnotIndex;
+            var wasCut = _annotClipboardIsCut;
+            if (wasCut)
+            {
+                await _annotations.RemoveAsync(_document, clip.PageIndex, clip.AnnotIndex);
+                if (clip.PageIndex == copyPage && clip.AnnotIndex < copyIndex)
+                {
+                    copyIndex--;
+                }
+
+                _annotClipboard = null;
+                _annotClipboardIsCut = false;
+            }
+
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            var pasted = _annotationItems.FirstOrDefault(a => a.PageIndex == copyPage && a.AnnotIndex == copyIndex)
+                ?? copy with { AnnotIndex = copyIndex };
+            _selectedAnnot = pasted;
+            SyncSidebarSelection(pasted);
+            DrawAnnotSelection(pasted);
+            _status.Text = wasCut
+                ? $"Pasted {FormatAnnotationLabel(pasted)} (cut)."
+                : $"Pasted {FormatAnnotationLabel(pasted)}.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Paste annotation failed: " + ex.Message;
         }
     }
 

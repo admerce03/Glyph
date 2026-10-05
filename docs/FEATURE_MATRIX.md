@@ -247,9 +247,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-21 | PDF annotations | rotate where appropriate | M4 | Not Started |  |
 | F13-22 | PDF annotations | duplicate | M4 | Tested | `DuplicateAsync` offset clone + sidebar Dup |
 | F13-23 | PDF annotations | delete | M4 | Tested | `RemoveAsync` by page/annot index |
-| F13-24 | PDF annotations | cut | M4 | Not Started |  |
-| F13-25 | PDF annotations | copy | M4 | Not Started |  |
-| F13-26 | PDF annotations | paste | M4 | Not Started |  |
+| F13-24 | PDF annotations | cut | M4 | Implemented | Sidebar Cut / Ctrl+X; removes source on paste |
+| F13-25 | PDF annotations | copy | M4 | Implemented | Sidebar Copy / Ctrl+C when annot selected |
+| F13-26 | PDF annotations | paste | M4 | Implemented | Sidebar Paste / Ctrl+V; `DuplicateAsync` + optional cut-remove |
 | F13-27 | PDF annotations | multi-select | M4 | Not Started |  |
 | F13-28 | PDF annotations | group where useful | M4 | Not Started |  |
 | F13-29 | PDF annotations | change border color | M4 | Tested | Set on create + `SetColorAsync` |
@@ -301,20 +301,20 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F16-15 | Text boxes and callouts | Alignment. | M4 | Not Started |  |
 | F16-16 | Text boxes and callouts | Callout pointer. | M4 | Tested | Ink pointer from tip to nearest box edge |
 | F16-17 | Text boxes and callouts | Move pointer separately from text box. | M4 | Not Started |  |
-| F17-01 | Shapes | line | M4 | Not Started |  |
+| F17-01 | Shapes | line | M4 | Tested | Same as F13-05 Line draw mode |
 | F17-02 | Shapes | arrow | M4 | Tested | Same as F13-06 Arrow draw mode |
-| F17-03 | Shapes | rectangle | M4 | Not Started |  |
+| F17-03 | Shapes | rectangle | M4 | Tested | Same as F13-07 Rect draw mode |
 | F17-04 | Shapes | rounded rectangle | M4 | Not Started |  |
-| F17-05 | Shapes | ellipse | M4 | Not Started |  |
+| F17-05 | Shapes | ellipse | M4 | Tested | Same as F13-09 Ellipse draw mode |
 | F17-06 | Shapes | polygon | M4 | Implemented | Freeform closed ink path |
 | F17-07 | Shapes | star | M4 | Not Started |  |
-| F17-08 | Shapes | speech bubble/callout | M4 | Not Started |  |
+| F17-08 | Shapes | speech bubble/callout | M4 | Not Started | Distinct from FreeText callout (F13-11); bubble shape TBD |
 | F17-09 | Shapes | translucent highlight rectangle | M4 | Not Started |  |
 | F17-10 | Shapes | magnification/loupe annotation, optionally | M4 | Not Started |  |
-| F17-11 | Shapes | resize | M4 | Not Started |  |
+| F17-11 | Shapes | resize | M4 | Tested | Same as F13-20 selection handles → `MoveAsync` |
 | F17-12 | Shapes | rotate | M4 | Not Started |  |
-| F17-13 | Shapes | move | M4 | Not Started |  |
-| F17-14 | Shapes | duplicate | M4 | Not Started |  |
+| F17-13 | Shapes | move | M4 | Tested | Same as F13-19 drag / `MoveAsync` |
+| F17-14 | Shapes | duplicate | M4 | Tested | Same as F13-22 `DuplicateAsync` |
 | F17-15 | Shapes | multi-select | M4 | Not Started |  |
 | F17-16 | Shapes | border color | M4 | Implemented | Stroke picker when entering Rect/Ellipse/Line/Arrow |
 | F17-17 | Shapes | border width | M4 | Implemented | Width picker with stroke color dialog |
@@ -328,8 +328,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F18-04 | Freehand drawing | Stroke opacity. | M4 | Not Started |  |
 | F18-05 | Freehand drawing | Eraser. | M4 | Not Started |  |
 | F18-06 | Freehand drawing | Undo stroke. | M4 | Not Started |  |
-| F18-07 | Freehand drawing | Select/move completed strokes. | M4 | Not Started |  |
-| F18-08 | Freehand drawing | Delete stroke. | M4 | Not Started |  |
+| F18-07 | Freehand drawing | Select/move completed strokes. | M4 | Implemented | Ink annots use selection tool + `MoveAsync` |
+| F18-08 | Freehand drawing | Delete stroke. | M4 | Implemented | Sidebar Delete / `RemoveAsync` on ink annot |
 | F18-09 | Freehand drawing | recognize rough: | M4 | Not Started |  |
 | F18-10 | Freehand drawing | offer cleaned-up shape or original stroke. | M4 | Not Started |  |
 | F19-01 | PDF signatures | mouse | M4 | Tested | Draw mode → BGRA raster → library + stamp |
