@@ -526,7 +526,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F33-13 | Image color adjustments | Reset individual adjustment | M5 | Tested | Adjust ↺ per slider; `ImageAdjustments.IsIdentity` unit tests |
 | F33-14 | Image color adjustments | Reset all | M5 | Tested | Adjust Reset all → identity; `ImageAdjustments.IsIdentity` |
 | F33-15 | Image color adjustments | live preview | M5 | Implemented | Adjust dialog previews via checkpoint clone/restore |
-| F33-16 | Image color adjustments | histogram | M5 | Implemented | Adjust dialog luminance histogram (64 bins) |
+| F33-16 | Image color adjustments | histogram | M5 | Tested | Adjust luminance histogram; `ImageLuminanceHistogram.BuildBins` unit tests |
 | F34-01 | Image markup | mouse drawing | M5 | Tested | Draw toolbar → non-destructive overlay; Flatten / Save bakes via `FlattenMarkupAsync` |
 | F34-02 | Image markup | shapes | M5 | Tested | Draw → Rectangle/Ellipse overlay; FlattenMarkupAsync |
 | F34-03 | Image markup | arrows | M5 | Tested | Draw → Line/Arrow overlay with head wings |

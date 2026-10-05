@@ -3711,14 +3711,7 @@ public sealed class ImageDocumentView : UserControl
             try
             {
                 var pixels = await _document.GetPixelsAsync(maxEdge: 160);
-                var bins = new int[64];
-                var data = pixels.BgraPixels;
-                for (var i = 0; i + 3 < data.Length; i += 4)
-                {
-                    var lum = (data[i] * 29 + data[i + 1] * 150 + data[i + 2] * 77) / 256;
-                    bins[Math.Clamp(lum * 64 / 256, 0, 63)]++;
-                }
-
+                var bins = ImageLuminanceHistogram.BuildBins(pixels.BgraPixels);
                 var max = Math.Max(1, bins.Max());
                 histCanvas.Children.Clear();
                 var barW = histCanvas.Width / bins.Length;
