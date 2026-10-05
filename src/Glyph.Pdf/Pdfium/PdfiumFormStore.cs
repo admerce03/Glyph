@@ -38,7 +38,8 @@ public sealed class PdfiumFormStore : IPdfFormStore
                 lock (PdfiumSync.Gate)
                 {
                     pdfium.ThrowIfDisposed();
-                    using var form = new PdfiumFormFillEnvironment(pdfium.Handle);
+                    // Prefer annotation dictionary reads over FPDFDOC_InitFormFillEnvironment:
+                    // ExitFormFillEnvironment SEGV'd on Windows CI with stub FPDF_FORMFILLINFO callbacks.
                     var fields = new List<PdfFormFieldInfo>();
                     var tab = 0;
                     for (var pageIndex = 0; pageIndex < pdfium.PageCount; pageIndex++)
@@ -51,49 +52,40 @@ public sealed class PdfiumFormStore : IPdfFormStore
 
                         try
                         {
-                            fpdf_formfill.FORM_OnAfterLoadPage(page, form.Handle);
-                            try
+                            var count = fpdf_annot.FPDFPageGetAnnotCount(page);
+                            for (var annotIndex = 0; annotIndex < count; annotIndex++)
                             {
-                                var count = fpdf_annot.FPDFPageGetAnnotCount(page);
-                                for (var annotIndex = 0; annotIndex < count; annotIndex++)
+                                var annot = fpdf_annot.FPDFPageGetAnnot(page, annotIndex);
+                                if (annot is null)
                                 {
-                                    var annot = fpdf_annot.FPDFPageGetAnnot(page, annotIndex);
-                                    if (annot is null)
+                                    continue;
+                                }
+
+                                try
+                                {
+                                    if (fpdf_annot.FPDFAnnotGetSubtype(annot) != PdfiumAnnotSubtypes.Widget)
                                     {
                                         continue;
                                     }
 
-                                    try
-                                    {
-                                        if (fpdf_annot.FPDFAnnotGetSubtype(annot) != PdfiumAnnotSubtypes.Widget)
-                                        {
-                                            continue;
-                                        }
-
-                                        var kindCode = fpdf_annot.FPDFAnnotGetFormFieldType(form.Handle, annot);
-                                        var kind = MapKind(kindCode);
-                                        var name = PdfiumFormStrings.GetFormFieldName(form.Handle, annot);
-                                        var value = PdfiumFormStrings.GetFormFieldValue(form.Handle, annot);
-                                        var bounds = ReadRect(annot);
-                                        fields.Add(new PdfFormFieldInfo(
-                                            pageIndex,
-                                            annotIndex,
-                                            string.IsNullOrWhiteSpace(name) ? $"Field{tab + 1}" : name,
-                                            kind,
-                                            value,
-                                            bounds,
-                                            tab));
-                                        tab++;
-                                    }
-                                    finally
-                                    {
-                                        fpdf_annot.FPDFPageCloseAnnot(annot);
-                                    }
+                                    var kind = MapKindFromFt(PdfiumAnnotStrings.GetString(annot, "FT"));
+                                    var name = PdfiumAnnotStrings.GetString(annot, "T");
+                                    var value = PdfiumAnnotStrings.GetString(annot, "V");
+                                    var bounds = ReadRect(annot);
+                                    fields.Add(new PdfFormFieldInfo(
+                                        pageIndex,
+                                        annotIndex,
+                                        string.IsNullOrWhiteSpace(name) ? $"Field{tab + 1}" : name,
+                                        kind,
+                                        value,
+                                        bounds,
+                                        tab));
+                                    tab++;
                                 }
-                            }
-                            finally
-                            {
-                                fpdf_formfill.FORM_OnBeforeClosePage(page, form.Handle);
+                                finally
+                                {
+                                    fpdf_annot.FPDFPageCloseAnnot(annot);
+                                }
                             }
                         }
                         finally
@@ -129,7 +121,6 @@ public sealed class PdfiumFormStore : IPdfFormStore
                 lock (PdfiumSync.Gate)
                 {
                     pdfium.ThrowIfDisposed();
-                    using var form = new PdfiumFormFillEnvironment(pdfium.Handle);
                     var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
                     if (page is null)
                     {
@@ -138,48 +129,37 @@ public sealed class PdfiumFormStore : IPdfFormStore
 
                     try
                     {
-                        fpdf_formfill.FORM_OnAfterLoadPage(page, form.Handle);
+                        var annot = fpdf_annot.FPDFPageGetAnnot(page, annotIndex);
+                        if (annot is null)
+                        {
+                            throw new ArgumentOutOfRangeException(nameof(annotIndex), "Annotation not found.");
+                        }
+
                         try
                         {
-                            var annot = fpdf_annot.FPDFPageGetAnnot(page, annotIndex);
-                            if (annot is null)
+                            if (fpdf_annot.FPDFAnnotGetSubtype(annot) != PdfiumAnnotSubtypes.Widget)
                             {
-                                throw new ArgumentOutOfRangeException(nameof(annotIndex), "Annotation not found.");
+                                throw new InvalidOperationException("Target annotation is not a form widget.");
                             }
 
-                            try
+                            var kind = MapKindFromFt(PdfiumAnnotStrings.GetString(annot, "FT"));
+                            if (kind is not (PdfFormFieldKind.TextField or PdfFormFieldKind.ComboBox))
                             {
-                                if (fpdf_annot.FPDFAnnotGetSubtype(annot) != PdfiumAnnotSubtypes.Widget)
-                                {
-                                    throw new InvalidOperationException("Target annotation is not a form widget.");
-                                }
-
-                                var kind = fpdf_annot.FPDFAnnotGetFormFieldType(form.Handle, annot);
-                                if (kind != PdfiumFormFieldKinds.TextField
-                                    && kind != PdfiumFormFieldKinds.ComboBox)
-                                {
-                                    throw new NotSupportedException(
-                                        $"Setting values for form field kind {kind} is not supported yet.");
-                                }
-
-                                // Prefer writing /V directly. Interactive FORM_ReplaceSelection requires a
-                                // richer FPDF_FORMFILLINFO host (caret/timer/page callbacks) and can SEGV
-                                // with stub callbacks; /V + NeedAppearances is the durable fill path.
-                                if (!PdfiumAnnotStrings.SetString(annot, "V", value))
-                                {
-                                    throw new InvalidOperationException("Failed to set form field /V value.");
-                                }
-
-                                pdfium.NotifyAnnotationsChanged();
+                                throw new NotSupportedException(
+                                    $"Setting values for form field kind {kind} is not supported yet.");
                             }
-                            finally
+
+                            // Durable fill path: write /V (NeedAppearances regenerates appearance in viewers).
+                            if (!PdfiumAnnotStrings.SetString(annot, "V", value))
                             {
-                                fpdf_annot.FPDFPageCloseAnnot(annot);
+                                throw new InvalidOperationException("Failed to set form field /V value.");
                             }
+
+                            pdfium.NotifyAnnotationsChanged();
                         }
                         finally
                         {
-                            fpdf_formfill.FORM_OnBeforeClosePage(page, form.Handle);
+                            fpdf_annot.FPDFPageCloseAnnot(annot);
                         }
                     }
                     finally
@@ -225,15 +205,12 @@ public sealed class PdfiumFormStore : IPdfFormStore
         return fields[next];
     }
 
-    private static PdfFormFieldKind MapKind(int code) => code switch
+    private static PdfFormFieldKind MapKindFromFt(string ft) => ft switch
     {
-        PdfiumFormFieldKinds.PushButton => PdfFormFieldKind.PushButton,
-        PdfiumFormFieldKinds.CheckBox => PdfFormFieldKind.CheckBox,
-        PdfiumFormFieldKinds.RadioButton => PdfFormFieldKind.RadioButton,
-        PdfiumFormFieldKinds.ComboBox => PdfFormFieldKind.ComboBox,
-        PdfiumFormFieldKinds.ListBox => PdfFormFieldKind.ListBox,
-        PdfiumFormFieldKinds.TextField => PdfFormFieldKind.TextField,
-        PdfiumFormFieldKinds.Signature => PdfFormFieldKind.Signature,
+        "Tx" => PdfFormFieldKind.TextField,
+        "Btn" => PdfFormFieldKind.CheckBox, // radio/push distinguished later via Ff
+        "Ch" => PdfFormFieldKind.ComboBox,  // list vs combo distinguished later via Ff
+        "Sig" => PdfFormFieldKind.Signature,
         _ => PdfFormFieldKind.Unknown,
     };
 
