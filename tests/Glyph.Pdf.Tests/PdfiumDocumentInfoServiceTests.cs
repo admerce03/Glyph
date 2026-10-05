@@ -1,6 +1,9 @@
+using System.Runtime.InteropServices;
+using System.Text;
 using FluentAssertions;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Pdfium;
+using PDFiumCore;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.Core;
 using UglyToad.PdfPig.Fonts.Standard14Fonts;
@@ -111,6 +114,58 @@ public class PdfiumDocumentInfoServiceTests
         finally
         {
             File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task ListAttachments_and_GetAttachmentBytes_round_trip()
+    {
+        var path = CreateInfoPdf();
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var infoService = new PdfiumDocumentInfoService();
+            await using var document = await factory.OpenAsync(path);
+            var pdfium = (PdfiumDocument)document;
+
+            var payload = Encoding.UTF8.GetBytes("glyph-attachment-payload");
+            lock (PdfiumSync.Gate)
+            {
+                AddAttachment(pdfium.Handle, "note.txt", payload);
+            }
+
+            var listed = infoService.ListAttachments(document);
+            listed.Should().ContainSingle();
+            listed[0].Name.Should().Be("note.txt");
+            listed[0].SizeBytes.Should().Be(payload.Length);
+
+            var bytes = infoService.GetAttachmentBytes(document, listed[0].Index);
+            bytes.Should().Equal(payload);
+
+            infoService.GetInfo(document).EmbeddedAttachmentCount.Should().Be(1);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    private static unsafe void AddAttachment(FpdfDocumentT handle, string name, byte[] contents)
+    {
+        var nameBytes = Encoding.Unicode.GetBytes(name + "\0");
+        fixed (byte* namePtr = nameBytes)
+        {
+            var attachment = fpdf_attachment.FPDFDocAddAttachment(handle, ref *(ushort*)namePtr);
+            attachment.Should().NotBeNull();
+            fixed (byte* dataPtr = contents)
+            {
+                fpdf_attachment.FPDFAttachmentSetFile(
+                        attachment,
+                        handle,
+                        (IntPtr)dataPtr,
+                        (uint)contents.Length)
+                    .Should().NotBe(0);
+            }
         }
     }
 

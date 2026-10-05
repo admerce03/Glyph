@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using Glyph.Pdf.Abstractions;
@@ -66,6 +67,139 @@ public sealed class PdfiumDocumentInfoService : IPdfDocumentInfoService
             var baseBytes = PdfiumDocumentSaver.SaveToBytes(pdfium.Handle, flags: 2);
             var patched = PdfInfoDictionaryPatcher.Apply(baseBytes, fields);
             pdfium.ReplaceFromBytes(patched);
+        }
+    }
+
+    public IReadOnlyList<PdfEmbeddedAttachmentInfo> ListAttachments(IPdfDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        if (document is not PdfiumDocument pdfium)
+        {
+            throw new ArgumentException("Document must be a PDFium-backed instance.", nameof(document));
+        }
+
+        PdfiumLibrary.EnsureInitialized();
+        lock (PdfiumSync.Gate)
+        {
+            pdfium.ThrowIfDisposed();
+            var handle = pdfium.Handle;
+            var count = Math.Max(0, fpdf_attachment.FPDFDocGetAttachmentCount(handle));
+            if (count == 0)
+            {
+                return [];
+            }
+
+            var list = new List<PdfEmbeddedAttachmentInfo>(count);
+            for (var i = 0; i < count; i++)
+            {
+                var attachment = fpdf_attachment.FPDFDocGetAttachment(handle, i);
+                if (attachment is null)
+                {
+                    list.Add(new PdfEmbeddedAttachmentInfo(i, $"(attachment {i + 1})", null));
+                    continue;
+                }
+
+                var name = ReadAttachmentName(attachment) ?? $"(attachment {i + 1})";
+                long? size = null;
+                uint outLen = 0;
+                if (fpdf_attachment.FPDFAttachmentGetFile(attachment, IntPtr.Zero, 0, ref outLen) != 0)
+                {
+                    size = outLen;
+                }
+
+                list.Add(new PdfEmbeddedAttachmentInfo(i, name, size));
+            }
+
+            return list;
+        }
+    }
+
+    public byte[] GetAttachmentBytes(IPdfDocument document, int index)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        if (document is not PdfiumDocument pdfium)
+        {
+            throw new ArgumentException("Document must be a PDFium-backed instance.", nameof(document));
+        }
+
+        if (index < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        PdfiumLibrary.EnsureInitialized();
+        lock (PdfiumSync.Gate)
+        {
+            pdfium.ThrowIfDisposed();
+            var handle = pdfium.Handle;
+            var count = Math.Max(0, fpdf_attachment.FPDFDocGetAttachmentCount(handle));
+            if (index >= count)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index));
+            }
+
+            var attachment = fpdf_attachment.FPDFDocGetAttachment(handle, index)
+                ?? throw new InvalidOperationException($"Attachment {index} is unavailable.");
+
+            uint length = 0;
+            fpdf_attachment.FPDFAttachmentGetFile(attachment, IntPtr.Zero, 0, ref length);
+            if (length == 0)
+            {
+                return [];
+            }
+
+            var buffer = Marshal.AllocHGlobal((int)length);
+            try
+            {
+                uint written = 0;
+                if (fpdf_attachment.FPDFAttachmentGetFile(attachment, buffer, length, ref written) == 0)
+                {
+                    throw new InvalidOperationException("Failed to read attachment bytes.");
+                }
+
+                var bytes = new byte[written];
+                Marshal.Copy(buffer, bytes, 0, (int)written);
+                return bytes;
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(buffer);
+            }
+        }
+    }
+
+    private static unsafe string? ReadAttachmentName(FpdfAttachmentT attachment)
+    {
+        ushort unused = 0;
+        var length = fpdf_attachment.FPDFAttachmentGetName(attachment, ref unused, 0);
+        if (length <= 2)
+        {
+            return null;
+        }
+
+        var bytes = new byte[length];
+        var handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
+        try
+        {
+            ref var first = ref Unsafe.AsRef<ushort>((void*)handle.AddrOfPinnedObject());
+            var written = fpdf_attachment.FPDFAttachmentGetName(attachment, ref first, length);
+            if (written == 0)
+            {
+                return null;
+            }
+
+            var charCount = (int)written / 2;
+            if (charCount <= 0)
+            {
+                return null;
+            }
+
+            var text = Encoding.Unicode.GetString(bytes, 0, charCount * 2).TrimEnd('\0').Trim();
+            return string.IsNullOrEmpty(text) ? null : text;
+        }
+        finally
+        {
+            handle.Free();
         }
     }
 

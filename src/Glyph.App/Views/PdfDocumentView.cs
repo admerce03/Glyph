@@ -63,6 +63,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfDocumentFactory _documentFactory;
     private readonly IOcrEngine? _ocr;
     private readonly Button _ocrCancelButton;
+    private readonly ProgressBar _jobProgress;
     private CancellationTokenSource? _ocrCts;
     private readonly Dictionary<int, string> _ocrPageTexts = new();
     private readonly Dictionary<int, (OcrResult Result, int SourceWidth, int SourceHeight)> _ocrPageData = new();
@@ -95,7 +96,9 @@ public sealed class PdfDocumentView : UserControl
     private readonly ListView _searchResults;
     private StackPanel? _toolbar;
     private readonly ListView _annotationList;
+    private readonly ListView _attachmentList;
     private readonly TextBlock _propertiesSummary;
+    private IReadOnlyList<PdfEmbeddedAttachmentInfo> _attachmentItems = [];
     private readonly TextBox _searchBox;
     private readonly TextBox _gotoBox;
     private readonly CheckBox _caseSensitiveBox;
@@ -335,6 +338,16 @@ public sealed class PdfDocumentView : UserControl
         _ocrCancelButton = new Button { Content = "Cancel OCR", Visibility = Visibility.Collapsed };
         _ocrCancelButton.Click += (_, _) => CancelOcr();
         ToolTipService.SetToolTip(_ocrCancelButton, "Cancel the in-flight OCR job");
+        _jobProgress = new ProgressBar
+        {
+            Width = 120,
+            Height = 8,
+            Minimum = 0,
+            Maximum = 100,
+            Visibility = Visibility.Collapsed,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        ToolTipService.SetToolTip(_jobProgress, "Long-running job progress");
         _copyOcrButton = new Button { Content = "Copy OCR", Visibility = Visibility.Collapsed };
         _copyOcrButton.Click += (_, _) => CopySelectedOcrText();
         ToolTipService.SetToolTip(_copyOcrButton, "Copy selected OCR words (or all OCR text on visible pages)");
@@ -370,6 +383,12 @@ public sealed class PdfDocumentView : UserControl
         };
         _annotationList.SelectionChanged += AnnotationList_SelectionChanged;
         _annotationList.RightTapped += AnnotationList_RightTapped;
+        _attachmentList = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            Height = 72,
+        };
+        _attachmentList.RightTapped += AttachmentList_RightTapped;
 
         var sidePanel = new Grid
         {
@@ -388,6 +407,8 @@ public sealed class PdfDocumentView : UserControl
                 new RowDefinition { Height = new GridLength(120) },
                 new RowDefinition { Height = GridLength.Auto },
                 new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(80) },
             },
         };
         _sidePanel = sidePanel;
@@ -606,6 +627,34 @@ public sealed class PdfDocumentView : UserControl
         };
         Grid.SetRow(_propertiesSummary, 11);
         sidePanel.Children.Add(_propertiesSummary);
+
+        var attachmentHeader = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            Margin = new Thickness(8, 8, 8, 4),
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = "Attachments",
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+            },
+        };
+        var saveAttachment = new Button { Content = "Save…", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(saveAttachment, "Save selected embedded attachment to disk");
+        saveAttachment.Click += async (_, _) => await SaveSelectedAttachmentAsync();
+        var refreshAttachments = new Button { Content = "↻", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(refreshAttachments, "Refresh attachment list");
+        refreshAttachments.Click += (_, _) => RefreshAttachmentsSidebar();
+        attachmentHeader.Children.Add(saveAttachment);
+        attachmentHeader.Children.Add(refreshAttachments);
+        Grid.SetRow(attachmentHeader, 12);
+        sidePanel.Children.Add(attachmentHeader);
+        Grid.SetRow(_attachmentList, 13);
+        sidePanel.Children.Add(_attachmentList);
 
         _status = new TextBlock { Opacity = 0.75, FontSize = 12, Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
         _gotoBox = new TextBox { PlaceholderText = "#", Width = 48 };
@@ -841,7 +890,7 @@ public sealed class PdfDocumentView : UserControl
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
                 highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, print, camera, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, fullscreen,
-                _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _status,
+                _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _jobProgress, _status,
             },
         };
 
@@ -898,6 +947,7 @@ public sealed class PdfDocumentView : UserControl
         RefreshBookmarkList();
         _ = RefreshAnnotationSidebarAsync();
         RefreshPropertiesSidebar();
+        RefreshAttachmentsSidebar();
     }
 
     private void PdfDocumentView_Unloaded(object sender, RoutedEventArgs e)
@@ -2751,6 +2801,7 @@ public sealed class PdfDocumentView : UserControl
         _ocrCts?.Dispose();
         _ocrCts = new CancellationTokenSource();
         _ocrCancelButton.Visibility = Visibility.Visible;
+        ShowJobProgress(0, determinate: true);
     }
 
     private void EndOcrJob()
@@ -2758,6 +2809,25 @@ public sealed class PdfDocumentView : UserControl
         _ocrCancelButton.Visibility = Visibility.Collapsed;
         _ocrCts?.Dispose();
         _ocrCts = null;
+        HideJobProgress();
+    }
+
+    private void ShowJobProgress(double percent, bool determinate = true)
+    {
+        _jobProgress.IsIndeterminate = !determinate;
+        if (determinate)
+        {
+            _jobProgress.Value = Math.Clamp(percent, 0, 100);
+        }
+
+        _jobProgress.Visibility = Visibility.Visible;
+    }
+
+    private void HideJobProgress()
+    {
+        _jobProgress.IsIndeterminate = false;
+        _jobProgress.Value = 0;
+        _jobProgress.Visibility = Visibility.Collapsed;
     }
 
     private async Task OnOcrButtonClickAsync()
@@ -2826,6 +2896,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 token.ThrowIfCancellationRequested();
                 var pageIndex = pages[i];
+                ShowJobProgress(pages.Count <= 1 ? 5 : (100.0 * i / pages.Count));
                 _status.Text = pages.Count == 1
                     ? $"Running OCR on page {pageIndex + 1}… (1/1)"
                     : $"Running OCR on page {pageIndex + 1} ({i + 1}/{pages.Count})…";
@@ -2868,6 +2939,7 @@ public sealed class PdfDocumentView : UserControl
                 sections.Add(pages.Count == 1
                     ? body
                     : $"--- Page {pageIndex + 1} ---\n{body}");
+                ShowJobProgress(100.0 * (i + 1) / pages.Count);
             }
 
             UpdateOcrOverlayChrome();
@@ -11707,8 +11779,17 @@ public sealed class PdfDocumentView : UserControl
                 }
 
                 _status.Text = "Exporting page…";
-                await ExportPageImageAsync(indexes[0], scale, file.Path, format, options);
-                _status.Text = $"Exported page {indexes[0] + 1} to {file.Name}.";
+                ShowJobProgress(0, determinate: false);
+                try
+                {
+                    await ExportPageImageAsync(indexes[0], scale, file.Path, format, options);
+                    _status.Text = $"Exported page {indexes[0] + 1} to {file.Name}.";
+                }
+                finally
+                {
+                    HideJobProgress();
+                }
+
                 return;
             }
 
@@ -11725,19 +11806,30 @@ public sealed class PdfDocumentView : UserControl
             }
 
             _status.Text = $"Exporting {indexes.Count} pages…";
-            var written = 0;
-            foreach (var pageIndex in indexes)
+            ShowJobProgress(0, determinate: true);
+            try
             {
-                var name = $"{baseName}-p{pageIndex + 1}{extension}";
-                var path = System.IO.Path.Combine(folder.Path, name);
-                await ExportPageImageAsync(pageIndex, scale, path, format, options);
-                written++;
-            }
+                var written = 0;
+                foreach (var pageIndex in indexes)
+                {
+                    var name = $"{baseName}-p{pageIndex + 1}{extension}";
+                    var path = System.IO.Path.Combine(folder.Path, name);
+                    await ExportPageImageAsync(pageIndex, scale, path, format, options);
+                    written++;
+                    ShowJobProgress(100.0 * written / indexes.Count);
+                    _status.Text = $"Exporting {written}/{indexes.Count}…";
+                }
 
-            _status.Text = $"Exported {written} page image(s) to {folder.Name}.";
+                _status.Text = $"Exported {written} page image(s) to {folder.Name}.";
+            }
+            finally
+            {
+                HideJobProgress();
+            }
         }
         catch (Exception ex)
         {
+            HideJobProgress();
             _status.Text = "Export failed: " + ex.Message;
         }
     }
@@ -11923,6 +12015,7 @@ public sealed class PdfDocumentView : UserControl
         try
         {
             _status.Text = "Optimizing…";
+            ShowJobProgress(0, determinate: false);
             var result = await _optimize.OptimizeAsync(_document, BuildOptions());
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
@@ -11936,6 +12029,10 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Optimize failed: " + ex.Message;
+        }
+        finally
+        {
+            HideJobProgress();
         }
 
         static string FormatBytes(long size) =>
@@ -12220,6 +12317,100 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _propertiesSummary.Text = "Properties unavailable: " + ex.Message;
+        }
+    }
+
+    private void RefreshAttachmentsSidebar()
+    {
+        try
+        {
+            _attachmentItems = _documentInfo.ListAttachments(_document);
+            static string Bytes(long? size) =>
+                size is null ? "?" : size.Value < 1024
+                    ? $"{size.Value} B"
+                    : size.Value < 1024 * 1024
+                        ? $"{size.Value / 1024.0:0.#} KB"
+                        : $"{size.Value / (1024.0 * 1024.0):0.##} MB";
+
+            _attachmentList.ItemsSource = _attachmentItems.Count == 0
+                ? new[] { "(none)" }
+                : _attachmentItems
+                    .Select(a => $"{a.Name} · {Bytes(a.SizeBytes)}")
+                    .ToList();
+        }
+        catch (Exception ex)
+        {
+            _attachmentItems = [];
+            _attachmentList.ItemsSource = new[] { "Unavailable: " + ex.Message };
+        }
+    }
+
+    private void AttachmentList_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (_attachmentItems.Count == 0
+            || _attachmentList.SelectedIndex < 0
+            || _attachmentList.SelectedIndex >= _attachmentItems.Count)
+        {
+            _status.Text = "Select an attachment, then right-click to save.";
+            return;
+        }
+
+        if (sender is not FrameworkElement target)
+        {
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+        var saveItem = new MenuFlyoutItem { Text = "Save as…" };
+        saveItem.Click += async (_, _) => await SaveSelectedAttachmentAsync();
+        flyout.Items.Add(saveItem);
+        flyout.ShowAt(target, e.GetPosition(target));
+        e.Handled = true;
+    }
+
+    private async Task SaveSelectedAttachmentAsync()
+    {
+        if (_attachmentItems.Count == 0
+            || _attachmentList.SelectedIndex < 0
+            || _attachmentList.SelectedIndex >= _attachmentItems.Count)
+        {
+            _status.Text = "Select an attachment to save.";
+            return;
+        }
+
+        var item = _attachmentItems[_attachmentList.SelectedIndex];
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for attachment save.");
+
+        try
+        {
+            var bytes = _documentInfo.GetAttachmentBytes(_document, item.Index);
+            var picker = new FileSavePicker();
+            var hwnd = WindowNative.GetWindowHandle(window);
+            InitializeWithWindow.Initialize(picker, hwnd);
+            picker.SuggestedStartLocation = PickerLocationId.Downloads;
+            picker.SuggestedFileName = string.IsNullOrWhiteSpace(item.Name) ? "attachment.bin" : item.Name;
+            var ext = System.IO.Path.GetExtension(item.Name);
+            if (string.IsNullOrWhiteSpace(ext))
+            {
+                ext = ".bin";
+            }
+
+            picker.FileTypeChoices.Add("Attachment", [ext]);
+            var file = await picker.PickSaveFileAsync();
+            if (file is null)
+            {
+                _status.Text = "Attachment save cancelled.";
+                return;
+            }
+
+            await FileIO.WriteBytesAsync(file, bytes);
+            _status.Text = $"Saved attachment “{item.Name}” ({bytes.Length} bytes).";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Attachment save failed: " + ex.Message;
         }
     }
 }

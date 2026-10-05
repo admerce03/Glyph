@@ -66,7 +66,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-05 | Sidebar modes | Highlights and annotations | M2-M5 | Implemented | PDF sidebar Annotations list (markup, notes, ink, shapes, signatures) |
 | F03-06 | Sidebar modes | Image list | M2-M5 | Not Started |  |
 | F03-07 | Sidebar modes | Contact sheet | M2-M5 | Not Started |  |
-| F03-08 | Sidebar modes | Document attachments, if supported | M2-M5 | Not Started |  |
+| F03-08 | Sidebar modes | Document attachments, if supported | M2-M5 | Implemented | PDF sidebar Attachments list + Save… via `ListAttachments` |
 | F03-09 | Sidebar modes | Metadata/properties where useful | M2-M5 | Implemented | PDF sidebar Properties summary + More/Edit (F48) |
 | F03-10 | Sidebar modes | Switch sidebar mode without opening another window. | M2-M5 | In Progress | Thumbs/TOC/search coexist in one panel; dedicated mode switcher later |
 | F03-11 | Sidebar modes | Resize thumbnail size. | M2-M5 | Implemented | Pages S/M/L buttons; `ThumbnailWidth` persisted |
@@ -814,7 +814,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F57-10 | Performance behavior | low memory usage | M2+/M9 | In Progress | Bounded `PageRenderCache` (capacity 32) |
 | F57-11 | Performance behavior | unload distant PDF pages | M2+/M9 | Implemented | Clear distant page Image.Source; LRU evicts bitmaps |
 | F57-12 | Performance behavior | cancel long-running operations | M2+/M9 | In Progress | PDF OCR Cancel OCR + `CancellationToken`; PDF search cancel |
-| F57-13 | Performance behavior | progress indicator for: | M2+/M9 | Not Started |  |
+| F57-13 | Performance behavior | progress indicator for: | M2+/M9 | Implemented | Toolbar `ProgressBar` for OCR/export/optimize; batch image dialog ProgressBar (F36) |
 | F58-01 | Large-document handling | PDFs with thousands of pages. | M2+/M9 | In Progress | Page virtualization via on-demand render + cache |
 | F58-02 | Large-document handling | Very large raster images. | M2+/M9 | Not Started |  |
 | F58-03 | Large-document handling | Progressive rendering. | M2+/M9 | Not Started |  |
