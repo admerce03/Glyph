@@ -100,4 +100,11 @@ public class JsonSessionStoreTests
             }
         }
     }
+
+    [Fact]
+    public void SessionState_is_flat_path_list_without_window_layout()
+    {
+        var names = typeof(SessionState).GetProperties().Select(p => p.Name).OrderBy(n => n).ToArray();
+        names.Should().Equal("ActiveIndex", "Paths", "UpdatedAtUtc");
+    }
 }
