@@ -3,6 +3,9 @@ using Glyph.Ocr.Abstractions;
 using Windows.Globalization;
 using Windows.Graphics.Imaging;
 using Windows.Media.Ocr;
+using OcrLine = Glyph.Ocr.Abstractions.OcrLine;
+using OcrResult = Glyph.Ocr.Abstractions.OcrResult;
+using OcrWord = Glyph.Ocr.Abstractions.OcrWord;
 
 namespace Glyph.App.Ocr;
 
