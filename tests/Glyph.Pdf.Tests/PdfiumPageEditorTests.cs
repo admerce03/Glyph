@@ -213,6 +213,92 @@ public class PdfiumPageEditorTests
     }
 
     [Fact]
+    public async Task Crop_pages_sets_non_destructive_cropbox_and_shrinks_page_size()
+    {
+        var path = CreateMultiPagePdf(pageCount: 2);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var editor = new PdfiumPageEditor();
+            await using var document = await factory.OpenAsync(path);
+
+            var beforeWidth = document.GetPage(0).WidthPoints;
+            var beforeHeight = document.GetPage(0).HeightPoints;
+            var margins = new PdfCropMargins(36, 48, 36, 48);
+
+            await editor.CropPagesAsync(document, [0], margins);
+
+            document.GetPage(0).WidthPoints.Should().BeApproximately(beforeWidth - 72, 1.0);
+            document.GetPage(0).HeightPoints.Should().BeApproximately(beforeHeight - 96, 1.0);
+            // Uncropped page keeps original size.
+            document.GetPage(1).WidthPoints.Should().BeApproximately(beforeWidth, 1.0);
+            document.GetPage(1).HeightPoints.Should().BeApproximately(beforeHeight, 1.0);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task SetCropBox_applies_same_box_to_multiple_pages()
+    {
+        var path = CreateMultiPagePdf(pageCount: 3);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var editor = new PdfiumPageEditor();
+            await using var document = await factory.OpenAsync(path);
+
+            var box = new PdfCropBox(20, 40, 400, 600);
+            await editor.SetCropBoxAsync(document, [0, 2], box);
+
+            document.GetPage(0).WidthPoints.Should().BeApproximately(380, 1.0);
+            document.GetPage(0).HeightPoints.Should().BeApproximately(560, 1.0);
+            document.GetPage(2).WidthPoints.Should().BeApproximately(380, 1.0);
+            document.GetPage(2).HeightPoints.Should().BeApproximately(560, 1.0);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task Permanent_crop_sets_mediabox_to_cropbox_and_round_trips()
+    {
+        var path = CreateMultiPagePdf(pageCount: 1);
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-perm-crop-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var editor = new PdfiumPageEditor();
+            await using var document = await factory.OpenAsync(path);
+
+            await editor.CropPagesAsync(document, [0], new PdfCropMargins(36, 36, 36, 36));
+            var croppedWidth = document.GetPage(0).WidthPoints;
+            var croppedHeight = document.GetPage(0).HeightPoints;
+
+            await using var extracted = await editor.ExtractPagesAsync(document, [0]);
+            await editor.PermanentCropPagesAsync(extracted, [0]);
+            await editor.SaveAsync(extracted, outPath);
+
+            await using var reopened = await factory.OpenAsync(outPath);
+            reopened.PageCount.Should().Be(1);
+            reopened.GetPage(0).WidthPoints.Should().BeApproximately(croppedWidth, 1.0);
+            reopened.GetPage(0).HeightPoints.Should().BeApproximately(croppedHeight, 1.0);
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Merge_documents_appends_all_source_pages()
     {
         var destPath = CreateMultiPagePdf(pageCount: 2);

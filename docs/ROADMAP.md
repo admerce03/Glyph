@@ -157,9 +157,10 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Thumbnail drag-reorder within a document landed (`PageReorder` + thumb CanDrag/Drop).
 - Snapshot undo/redo for page edits (`PdfPageEditHistory` + Ctrl+Z/Y).
 - Explorer PDF → thumbnail insert, cross-tab page DnD (`PageDragPayload` / `PdfPageDragRegistry`), and drag-out extract via deferred StorageItems.
+- Non-destructive CropBox crop (`CropPagesAsync` / `SetCropBoxAsync` + numeric Crop dialog / visual handles).
 - Merge / split APIs + toolbar (`MergeDocumentsAsync` / `SplitDocumentAsync`).
 - Multi-window shell (`File → New Window`) with per-window workspace for cross-window page DnD.
-- Next: CropBox (parallel PR), §11 demo recording.
+- Next: §11 demo recording / M3 completion proof.
 
 ---
 
