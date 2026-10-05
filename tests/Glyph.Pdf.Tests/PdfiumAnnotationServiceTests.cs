@@ -40,8 +40,24 @@ public class PdfiumAnnotationServiceTests
                 created.TextMarkupKind.Should().Be(PdfTextMarkupKind.Highlight);
                 created.PageIndex.Should().Be(0);
 
+                var green = await annots.AddTextMarkupAsync(
+                    document,
+                    0,
+                    PdfTextMarkupKind.Highlight,
+                    quads,
+                    PdfAnnotationColor.GreenHighlight);
+                green.Color.Should().NotBeNull();
+                green.Color!.Value.R.Should().Be(PdfAnnotationColor.GreenHighlight.R);
+
+                await annots.SetColorAsync(document, 0, created.AnnotIndex, PdfAnnotationColor.PinkHighlight);
+
                 var listed = await annots.ListAsync(document, pageIndex: 0);
-                listed.Should().ContainSingle(a => a.TextMarkupKind == PdfTextMarkupKind.Highlight);
+                listed.Count(a => a.TextMarkupKind == PdfTextMarkupKind.Highlight).Should().Be(2);
+                listed.Should().Contain(a =>
+                    a.AnnotIndex == created.AnnotIndex &&
+                    a.Color!.Value.R == PdfAnnotationColor.PinkHighlight.R);
+
+                PdfAnnotationColor.HighlightPresets.Should().HaveCount(5);
 
                 await editor.SaveAsync(document, outPath);
             }

@@ -275,6 +275,10 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(duplicateAnnot, "Duplicate selected annotation (offset copy)");
         duplicateAnnot.Click += async (_, _) => await DuplicateSelectedAnnotationAsync();
         annotHeaderRow.Children.Add(duplicateAnnot);
+        var colorAnnot = new Button { Content = "Color", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(colorAnnot, "Change selected annotation color");
+        colorAnnot.Click += async (_, _) => await SetSelectedAnnotationColorAsync();
+        annotHeaderRow.Children.Add(colorAnnot);
         var opacityAnnot = new Button { Content = "Opacity", Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(opacityAnnot, "Change selected annotation opacity");
         opacityAnnot.Click += async (_, _) => await SetSelectedAnnotationOpacityAsync();
@@ -2092,13 +2096,27 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var color = kind switch
+        PdfAnnotationColor color;
+        if (kind == PdfTextMarkupKind.Highlight)
         {
-            PdfTextMarkupKind.Highlight => PdfAnnotationColor.YellowHighlight,
-            PdfTextMarkupKind.Underline => PdfAnnotationColor.UnderlineBlue,
-            PdfTextMarkupKind.StrikeOut => PdfAnnotationColor.StrikeOutRed,
-            _ => PdfAnnotationColor.YellowHighlight,
-        };
+            var picked = await PickHighlightColorAsync();
+            if (picked is null)
+            {
+                _status.Text = "Highlight cancelled.";
+                return;
+            }
+
+            color = picked.Value;
+        }
+        else
+        {
+            color = kind switch
+            {
+                PdfTextMarkupKind.Underline => PdfAnnotationColor.UnderlineBlue,
+                PdfTextMarkupKind.StrikeOut => PdfAnnotationColor.StrikeOutRed,
+                _ => PdfAnnotationColor.YellowHighlight,
+            };
+        }
 
         try
         {
@@ -2131,6 +2149,116 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Markup failed: " + ex.Message;
+        }
+    }
+
+    private async Task<PdfAnnotationColor?> PickHighlightColorAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for color dialog.");
+
+        var list = new ListView
+        {
+            Height = 220,
+            SelectionMode = ListViewSelectionMode.Single,
+            ItemsSource = PdfAnnotationColor.HighlightPresets.Select(p => p.Name).ToList(),
+        };
+        list.SelectedIndex = 0;
+        var dialog = new ContentDialog
+        {
+            Title = "Highlight color",
+            Content = list,
+            PrimaryButtonText = "Apply",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return null;
+        }
+
+        var index = Math.Clamp(list.SelectedIndex, 0, PdfAnnotationColor.HighlightPresets.Count - 1);
+        return PdfAnnotationColor.HighlightPresets[index].Color;
+    }
+
+    private async Task SetSelectedAnnotationColorAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for color dialog.");
+
+        var index = _annotationList.SelectedIndex;
+        PdfAnnotationInfo? item = index >= 0 && index < _annotationItems.Count
+            ? _annotationItems[index]
+            : _selectedAnnot;
+        if (item is null)
+        {
+            _status.Text = "Select an annotation to change color.";
+            return;
+        }
+
+        PdfAnnotationColor color;
+        if (item.TextMarkupKind == PdfTextMarkupKind.Highlight)
+        {
+            var picked = await PickHighlightColorAsync();
+            if (picked is null)
+            {
+                return;
+            }
+
+            color = picked.Value;
+        }
+        else
+        {
+            // Simple presets for non-highlight annots.
+            var presets = new (string Name, PdfAnnotationColor Color)[]
+            {
+                ("Dodger blue", new PdfAnnotationColor(30, 144, 255)),
+                ("Red", new PdfAnnotationColor(220, 50, 50)),
+                ("Green", new PdfAnnotationColor(40, 160, 60)),
+                ("Orange", new PdfAnnotationColor(255, 140, 0)),
+                ("Purple", new PdfAnnotationColor(140, 60, 200)),
+            };
+            var list = new ListView
+            {
+                Height = 220,
+                SelectionMode = ListViewSelectionMode.Single,
+                ItemsSource = presets.Select(p => p.Name).ToList(),
+            };
+            list.SelectedIndex = 0;
+            var dialog = new ContentDialog
+            {
+                Title = $"Color — {FormatAnnotationLabel(item)}",
+                Content = list,
+                PrimaryButtonText = "Apply",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = window.Content.XamlRoot,
+            };
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            {
+                return;
+            }
+
+            color = presets[Math.Clamp(list.SelectedIndex, 0, presets.Length - 1)].Color;
+        }
+
+        try
+        {
+            await _annotations.SetColorAsync(_document, item.PageIndex, item.AnnotIndex, color);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = "Annotation color updated.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Color failed: " + ex.Message;
         }
     }
 
