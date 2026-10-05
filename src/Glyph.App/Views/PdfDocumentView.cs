@@ -2779,6 +2779,49 @@ public sealed class PdfDocumentView : UserControl
             }
 
             // Edit
+            if (field.Kind == PdfFormFieldKind.CheckBox)
+            {
+                var currentlyOn = !string.Equals(field.Value, "Off", StringComparison.OrdinalIgnoreCase)
+                    && !string.IsNullOrEmpty(field.Value);
+                var toggle = new ContentDialog
+                {
+                    Title = field.Name,
+                    Content = currentlyOn ? "Checkbox is checked." : "Checkbox is unchecked.",
+                    PrimaryButtonText = currentlyOn ? "Uncheck" : "Check",
+                    CloseButtonText = "Cancel",
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = window.Content.XamlRoot,
+                };
+
+                if (await toggle.ShowAsync() != ContentDialogResult.Primary)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    await _forms.SetCheckBoxAsync(
+                        _document,
+                        field.PageIndex,
+                        field.AnnotIndex,
+                        isChecked: !currentlyOn);
+                    fields = await _forms.ListFieldsAsync(_document);
+                    list.ItemsSource = fields
+                        .Select(f => $"{f.TabOrder + 1}. {f.Name} ({f.Kind}) = \"{f.Value}\"")
+                        .ToList();
+                    list.SelectedIndex = Math.Clamp(index, 0, fields.Count - 1);
+                    _cache.ClearDocument(_documentKey);
+                    await RenderVisibleAsync();
+                    _status.Text = $"Updated {field.Name}.";
+                }
+                catch (Exception ex)
+                {
+                    _status.Text = "Form fill failed: " + ex.Message;
+                }
+
+                continue;
+            }
+
             if (field.Kind is not (PdfFormFieldKind.TextField or PdfFormFieldKind.ComboBox))
             {
                 _status.Text = $"Editing {field.Kind} fields is not supported yet.";

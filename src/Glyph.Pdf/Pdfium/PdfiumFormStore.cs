@@ -68,9 +68,13 @@ public sealed class PdfiumFormStore : IPdfFormStore
                                         continue;
                                     }
 
-                                    var kind = MapKindFromFt(PdfiumAnnotStrings.GetString(annot, "FT"));
+                                    var kind = MapKind(annot);
                                     var name = PdfiumAnnotStrings.GetString(annot, "T");
                                     var value = PdfiumAnnotStrings.GetString(annot, "V");
+                                    if (string.IsNullOrEmpty(value) && kind == PdfFormFieldKind.CheckBox)
+                                    {
+                                        value = PdfiumAnnotStrings.GetString(annot, "AS");
+                                    }
                                     var bounds = ReadRect(annot);
                                     fields.Add(new PdfFormFieldInfo(
                                         pageIndex,
@@ -142,7 +146,7 @@ public sealed class PdfiumFormStore : IPdfFormStore
                                 throw new InvalidOperationException("Target annotation is not a form widget.");
                             }
 
-                            var kind = MapKindFromFt(PdfiumAnnotStrings.GetString(annot, "FT"));
+                            var kind = MapKind(annot);
                             if (kind is not (PdfFormFieldKind.TextField or PdfFormFieldKind.ComboBox))
                             {
                                 throw new NotSupportedException(
@@ -153,6 +157,76 @@ public sealed class PdfiumFormStore : IPdfFormStore
                             if (!PdfiumAnnotStrings.SetString(annot, "V", value))
                             {
                                 throw new InvalidOperationException("Failed to set form field /V value.");
+                            }
+
+                            pdfium.NotifyAnnotationsChanged();
+                        }
+                        finally
+                        {
+                            fpdf_annot.FPDFPageCloseAnnot(annot);
+                        }
+                    }
+                    finally
+                    {
+                        fpdfview.FPDF_ClosePage(page);
+                    }
+                }
+            },
+            cancellationToken);
+    }
+
+    public Task SetCheckBoxAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        bool isChecked,
+        CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        ArgumentOutOfRangeException.ThrowIfNegative(pageIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(pageIndex, pdfium.PageCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(annotIndex);
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
+                    if (page is null)
+                    {
+                        throw new InvalidOperationException($"Failed to load page {pageIndex} for checkbox.");
+                    }
+
+                    try
+                    {
+                        var annot = fpdf_annot.FPDFPageGetAnnot(page, annotIndex);
+                        if (annot is null)
+                        {
+                            throw new ArgumentOutOfRangeException(nameof(annotIndex), "Annotation not found.");
+                        }
+
+                        try
+                        {
+                            if (fpdf_annot.FPDFAnnotGetSubtype(annot) != PdfiumAnnotSubtypes.Widget)
+                            {
+                                throw new InvalidOperationException("Target annotation is not a form widget.");
+                            }
+
+                            if (MapKind(annot) != PdfFormFieldKind.CheckBox)
+                            {
+                                throw new NotSupportedException("Target annotation is not a checkbox.");
+                            }
+
+                            var onState = ResolveCheckBoxOnState(annot);
+                            var state = isChecked ? onState : "Off";
+                            if (!PdfiumAnnotStrings.SetString(annot, "V", state) ||
+                                !PdfiumAnnotStrings.SetString(annot, "AS", state))
+                            {
+                                throw new InvalidOperationException("Failed to set checkbox /V and /AS.");
                             }
 
                             pdfium.NotifyAnnotationsChanged();
@@ -205,14 +279,77 @@ public sealed class PdfiumFormStore : IPdfFormStore
         return fields[next];
     }
 
-    private static PdfFormFieldKind MapKindFromFt(string ft) => ft switch
+    private static PdfFormFieldKind MapKind(FpdfAnnotationT annot)
     {
-        "Tx" => PdfFormFieldKind.TextField,
-        "Btn" => PdfFormFieldKind.CheckBox, // radio/push distinguished later via Ff
-        "Ch" => PdfFormFieldKind.ComboBox,  // list vs combo distinguished later via Ff
-        "Sig" => PdfFormFieldKind.Signature,
-        _ => PdfFormFieldKind.Unknown,
-    };
+        var ft = PdfiumAnnotStrings.GetString(annot, "FT");
+        if (ft == "Tx")
+        {
+            return PdfFormFieldKind.TextField;
+        }
+
+        if (ft == "Sig")
+        {
+            return PdfFormFieldKind.Signature;
+        }
+
+        if (ft == "Ch")
+        {
+            // Bit 17 (131072) = combo; otherwise list box.
+            return (ReadFf(annot) & 131072) != 0
+                ? PdfFormFieldKind.ComboBox
+                : PdfFormFieldKind.ListBox;
+        }
+
+        if (ft == "Btn")
+        {
+            var ff = ReadFf(annot);
+            if ((ff & 65536) != 0) // pushbutton
+            {
+                return PdfFormFieldKind.PushButton;
+            }
+
+            if ((ff & 32768) != 0) // radio
+            {
+                return PdfFormFieldKind.RadioButton;
+            }
+
+            return PdfFormFieldKind.CheckBox;
+        }
+
+        return PdfFormFieldKind.Unknown;
+    }
+
+    private static int ReadFf(FpdfAnnotationT annot)
+    {
+        if (fpdf_annot.FPDFAnnotHasKey(annot, "Ff") == 0)
+        {
+            return 0;
+        }
+
+        float value = 0;
+        return fpdf_annot.FPDFAnnotGetNumberValue(annot, "Ff", ref value) == 0
+            ? 0
+            : (int)value;
+    }
+
+    private static string ResolveCheckBoxOnState(FpdfAnnotationT annot)
+    {
+        var current = PdfiumAnnotStrings.GetString(annot, "V");
+        if (!string.IsNullOrEmpty(current) &&
+            !string.Equals(current, "Off", StringComparison.Ordinal))
+        {
+            return current;
+        }
+
+        var appearance = PdfiumAnnotStrings.GetString(annot, "AS");
+        if (!string.IsNullOrEmpty(appearance) &&
+            !string.Equals(appearance, "Off", StringComparison.Ordinal))
+        {
+            return appearance;
+        }
+
+        return "Yes";
+    }
 
     private static PdfRect ReadRect(FpdfAnnotationT annot)
     {
