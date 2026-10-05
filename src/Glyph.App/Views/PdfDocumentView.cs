@@ -41,6 +41,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfPageEditor _pageEditor;
     private readonly IPdfAnnotationService _annotations;
     private readonly IPdfRedactionService _redaction;
+    private readonly IPdfDocumentInfoService _documentInfo;
     private readonly ISignatureLibrary _signatures;
     private readonly IPdfFormStore _forms;
     private readonly IPdfDocumentFactory _documentFactory;
@@ -174,6 +175,7 @@ public sealed class PdfDocumentView : UserControl
         IPdfPageEditor pageEditor,
         IPdfAnnotationService annotations,
         IPdfRedactionService redaction,
+        IPdfDocumentInfoService documentInfo,
         ISignatureLibrary signatures,
         IPdfFormStore forms,
         IPdfDocumentFactory documentFactory,
@@ -191,6 +193,7 @@ public sealed class PdfDocumentView : UserControl
         _pageEditor = pageEditor;
         _annotations = annotations;
         _redaction = redaction;
+        _documentInfo = documentInfo;
         _signatures = signatures;
         _forms = forms;
         _documentFactory = documentFactory;
@@ -395,6 +398,7 @@ public sealed class PdfDocumentView : UserControl
         var callout = new Button { Content = "Callout" };
         var flatten = new Button { Content = "Flatten" };
         var redact = new Button { Content = "Redact" };
+        var info = new Button { Content = "Info" };
         var sign = new Button { Content = "Sign" };
         var formFill = new Button { Content = "Form" };
         var ink = new Button { Content = "Ink" };
@@ -435,6 +439,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(callout, "Draw a callout: drag from tip to text box");
         ToolTipService.SetToolTip(flatten, "Flatten annotations into page content (permanent)");
         ToolTipService.SetToolTip(redact, "Mark areas/text for redaction; apply permanently removes content");
+        ToolTipService.SetToolTip(info, "Document metadata, encryption, and permissions");
         ToolTipService.SetToolTip(sign, "Signature: draw with mouse or import PNG/JPEG (saved to library)");
         ToolTipService.SetToolTip(formFill, "Form fill: overlay mode or field list (Tab order)");
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
@@ -493,6 +498,7 @@ public sealed class PdfDocumentView : UserControl
         callout.Click += (_, _) => ToggleCalloutMode();
         flatten.Click += async (_, _) => await FlattenAnnotationsAsync();
         redact.Click += async (_, _) => await OnRedactButtonClickAsync();
+        info.Click += async (_, _) => await ShowDocumentInfoAsync();
         sign.Click += async (_, _) => await BeginSignatureAsync();
         formFill.Click += async (_, _) => await OnFormButtonClickAsync();
         ink.Click += async (_, _) => await ToggleInkModeAsync();
@@ -515,7 +521,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, sign, formFill, ink, freeform, rect, ellipse, line, arrow,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, sign, formFill, ink, freeform, rect, ellipse, line, arrow,
                 _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -7218,7 +7224,86 @@ public sealed class PdfDocumentView : UserControl
     private void UpdateStatus()
     {
         _gotoBox.Text = (CurrentPageIndex + 1).ToString();
+        var encrypted = _document.IsEncrypted ? "    Encrypted" : string.Empty;
         _status.Text =
-            $"Page {CurrentPageIndex + 1} / {_document.PageCount}    Zoom {(int)Math.Round(_scale * 100)}%    {_layoutMode}";
+            $"Page {CurrentPageIndex + 1} / {_document.PageCount}    Zoom {(int)Math.Round(_scale * 100)}%    {_layoutMode}{encrypted}";
+    }
+
+    private async Task ShowDocumentInfoAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for document info.");
+
+        PdfDocumentInfo info;
+        try
+        {
+            info = _documentInfo.GetInfo(_document);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Info failed: " + ex.Message;
+            return;
+        }
+
+        static string Val(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
+        static string Bytes(long? size) =>
+            size is null ? "—" : size.Value < 1024
+                ? $"{size.Value} B"
+                : size.Value < 1024 * 1024
+                    ? $"{size.Value / 1024.0:0.#} KB"
+                    : $"{size.Value / (1024.0 * 1024.0):0.##} MB";
+
+        var perms = info.Permissions;
+        var permissionLines =
+            $"Print: {(perms.CanPrint ? "yes" : "no")}\n"
+            + $"Modify: {(perms.CanModify ? "yes" : "no")}\n"
+            + $"Copy: {(perms.CanCopy ? "yes" : "no")}\n"
+            + $"Annotate: {(perms.CanAnnotate ? "yes" : "no")}\n"
+            + $"Fill forms: {(perms.CanFillForms ? "yes" : "no")}\n"
+            + $"Assemble: {(perms.CanAssemble ? "yes" : "no")}\n"
+            + $"High-quality print: {(perms.CanPrintHighQuality ? "yes" : "no")}";
+
+        var body = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 460,
+            Text =
+                $"Title: {Val(info.Title)}\n"
+                + $"Author: {Val(info.Author)}\n"
+                + $"Subject: {Val(info.Subject)}\n"
+                + $"Keywords: {Val(info.Keywords)}\n"
+                + $"Creator: {Val(info.Creator)}\n"
+                + $"Producer: {Val(info.Producer)}\n"
+                + $"Created: {Val(info.CreationDate)}\n"
+                + $"Modified: {Val(info.ModificationDate)}\n"
+                + $"Pages: {info.PageCount}\n"
+                + $"File: {Val(info.FilePath is null ? null : System.IO.Path.GetFileName(info.FilePath))}\n"
+                + $"Size: {Bytes(info.FileSizeBytes)}\n"
+                + $"Encrypted: {(info.IsEncrypted ? "yes" : "no")}\n"
+                + $"Security handler revision: {(info.SecurityHandlerRevision < 0 ? "none" : info.SecurityHandlerRevision.ToString())}\n"
+                + $"Permission flags: 0x{info.PermissionFlags:X8}\n\n"
+                + "Permissions (PDF flags — enforcement is advisory):\n"
+                + permissionLines,
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = "Document info",
+            Content = new ScrollViewer
+            {
+                Content = body,
+                MaxHeight = 420,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            },
+            CloseButtonText = "Close",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        await dialog.ShowAsync();
+        _status.Text = info.IsEncrypted
+            ? "Document is encrypted — permissions shown are advisory."
+            : "Document info.";
     }
 }

@@ -348,9 +348,9 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | PDF forms | §20 | M4 | In Progress |
 | Redaction | §21 | M7 | In Progress (mark/preview/apply content removal) |
 | Flattening | §22 | M4 | Not Started |
-| PDF security | §23 | M7 | Not Started |
+| PDF security | §23 | M7 | In Progress (open encrypted + info/permissions display) |
 | Optimization | §24 | M7 | Not Started |
-| PDF metadata | §25 | M7 | Not Started |
+| PDF metadata | §25 | M7 | In Progress (read-only Info dialog) |
 | Image viewing/editing | §26–35 | M5 | In Progress |
 | Batch images | §36 | M8 | Not Started |
 | Image metadata/GPS | §37–38 | M5, M8 | In Progress (EXIF/GPS inspector + strip) |

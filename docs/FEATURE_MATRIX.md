@@ -379,15 +379,15 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F22-04 | PDF annotation flattening | signatures | M4 | Tested | Stamp annots included in `FlattenAsync` |
 | F22-05 | PDF annotation flattening | text boxes | M4 | Tested | Same flatten path |
 | F22-06 | PDF annotation flattening | drawings | M4 | Tested | Ink strokes included in flatten |
-| F23-01 | PDF security | Open encrypted PDFs. | M7 | Not Started |  |
+| F23-01 | PDF security | Open encrypted PDFs. | M7 | Tested | Open with password prompt via `OpenPdfWithPasswordAsync` / fixture test||
 | F23-02 | PDF security | Create password-protected PDFs. | M7 | Not Started |  |
 | F23-03 | PDF security | Set document-open password. | M7 | Not Started |  |
 | F23-04 | PDF security | Set permissions/owner password where PDF standard permits. | M7 | Not Started |  |
 | F23-05 | PDF security | Restrict: | M7 | Not Started |  |
 | F23-06 | PDF security | Change existing permissions where credentials permit. | M7 | Not Started |  |
 | F23-07 | PDF security | Remove protection when authorized. | M7 | Not Started |  |
-| F23-08 | PDF security | Display encryption information. | M7 | Not Started |  |
-| F23-09 | PDF security | Warn about limitations of PDF permission enforcement. | M7 | Not Started |  |
+| F23-08 | PDF security | Display encryption information. | M7 | Implemented | Info dialog + status "Encrypted"; `IPdfDocumentInfoService` permissions||
+| F23-09 | PDF security | Warn about limitations of PDF permission enforcement. | M7 | Implemented | Info dialog notes PDF permission flags are advisory||
 | F24-01 | PDF optimization and compression | Lossless | M7 | Not Started |  |
 | F24-02 | PDF optimization and compression | High quality | M7 | Not Started |  |
 | F24-03 | PDF optimization and compression | Balanced | M7 | Not Started |  |
@@ -404,20 +404,20 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F24-14 | PDF optimization and compression | linearize / Fast Web View | M7 | Not Started |  |
 | F24-15 | PDF optimization and compression | remove metadata optionally | M7 | Not Started |  |
 | F24-16 | PDF optimization and compression | estimate output size before saving where feasible | M7 | Not Started |  |
-| F25-01 | PDF metadata | title | M7 | Not Started |  |
-| F25-02 | PDF metadata | author | M7 | Not Started |  |
-| F25-03 | PDF metadata | subject | M7 | Not Started |  |
-| F25-04 | PDF metadata | keywords | M7 | Not Started |  |
-| F25-05 | PDF metadata | creator | M7 | Not Started |  |
-| F25-06 | PDF metadata | producer | M7 | Not Started |  |
-| F25-07 | PDF metadata | created date | M7 | Not Started |  |
-| F25-08 | PDF metadata | modified date | M7 | Not Started |  |
-| F25-09 | PDF metadata | page count | M7 | Not Started |  |
+| F25-01 | PDF metadata | title | M7 | Implemented | Info dialog Title from `FPDF_GetMetaText`||
+| F25-02 | PDF metadata | author | M7 | Implemented | Info dialog Author||
+| F25-03 | PDF metadata | subject | M7 | Implemented | Info dialog Subject||
+| F25-04 | PDF metadata | keywords | M7 | Implemented | Info dialog Keywords||
+| F25-05 | PDF metadata | creator | M7 | Implemented | Info dialog Creator||
+| F25-06 | PDF metadata | producer | M7 | Implemented | Info dialog Producer||
+| F25-07 | PDF metadata | created date | M7 | Implemented | Info dialog CreationDate||
+| F25-08 | PDF metadata | modified date | M7 | Implemented | Info dialog ModDate||
+| F25-09 | PDF metadata | page count | M7 | Implemented | Info dialog page count||
 | F25-10 | PDF metadata | PDF version | M7 | Not Started |  |
 | F25-11 | PDF metadata | page dimensions | M7 | Not Started |  |
-| F25-12 | PDF metadata | file size | M7 | Not Started |  |
-| F25-13 | PDF metadata | encryption status | M7 | Not Started |  |
-| F25-14 | PDF metadata | permissions | M7 | Not Started |  |
+| F25-12 | PDF metadata | file size | M7 | Implemented | Info dialog file size||
+| F25-13 | PDF metadata | encryption status | M7 | Implemented | Info dialog + status encryption flag||
+| F25-14 | PDF metadata | permissions | M7 | Implemented | Info dialog decoded permission flags||
 | F25-15 | PDF metadata | embedded fonts, optionally | M7 | Not Started |  |
 | F25-16 | PDF metadata | title | M7 | Not Started |  |
 | F25-17 | PDF metadata | author | M7 | Not Started |  |
