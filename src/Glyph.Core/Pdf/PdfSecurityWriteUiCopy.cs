@@ -13,5 +13,6 @@ public static class PdfSecurityWriteUiCopy
 
     public static string DialogBody() =>
         PdfPasswordWriteBlockedPolicy.Reason
+        + "\n\nProduct choice required (ADR-015): Accept A (PdfSharp MIT), C (commercial SDK), or D (keep blocked)."
         + "\n\nOpening encrypted PDFs and viewing encryption/permissions (Info) remain available.";
 }
