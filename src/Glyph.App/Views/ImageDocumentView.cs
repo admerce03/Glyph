@@ -3,7 +3,10 @@ using Glyph.Core.Documents;
 using Glyph.Imaging.Abstractions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Shapes;
 
 namespace Glyph.App.Views;
 
@@ -18,16 +21,27 @@ public sealed class ImageDocumentView : UserControl
     private readonly DocumentViewState _viewState;
     private readonly Func<string, Task>? _openSibling;
     private readonly ScrollViewer _scrollViewer;
+    private readonly Grid _imageSurface;
     private readonly Image _image;
+    private readonly Canvas _cropOverlay;
+    private readonly Rectangle _cropRect;
     private readonly TextBlock _status;
     private readonly TextBox _cropBox;
     private readonly ListView _siblingList;
     private readonly Button _prevButton;
     private readonly Button _nextButton;
+    private readonly Button _interactiveCropButton;
+    private readonly Button _applyCropButton;
+    private readonly Button _cancelCropButton;
     private IReadOnlyList<string> _siblings = Array.Empty<string>();
     private double _zoom = 1.0;
     private bool _loaded;
     private bool _syncingList;
+    private bool _cropMode;
+    private bool _cropDragging;
+    private Windows.Foundation.Point _cropStart;
+    private int _displayWidth;
+    private int _displayHeight;
 
     public ImageDocumentView(
         IImageDocument document,
@@ -46,12 +60,28 @@ public sealed class ImageDocumentView : UserControl
         _image = new Image
         {
             Stretch = Microsoft.UI.Xaml.Media.Stretch.None,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
         };
+        _cropRect = new Rectangle
+        {
+            Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 200, 0)),
+            StrokeThickness = 2,
+            Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 255, 200, 0)),
+            Visibility = Visibility.Collapsed,
+        };
+        _cropOverlay = new Canvas
+        {
+            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(1, 0, 0, 0)),
+            IsHitTestVisible = false,
+        };
+        _cropOverlay.Children.Add(_cropRect);
+        _imageSurface = new Grid();
+        _imageSurface.Children.Add(_image);
+        _imageSurface.Children.Add(_cropOverlay);
         _scrollViewer = new ScrollViewer
         {
-            Content = _image,
+            Content = _imageSurface,
             ZoomMode = ZoomMode.Disabled,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
@@ -78,6 +108,9 @@ public sealed class ImageDocumentView : UserControl
         var flipH = new Button { Content = "Flip H" };
         var flipV = new Button { Content = "Flip V" };
         var crop = new Button { Content = "Crop" };
+        _interactiveCropButton = new Button { Content = "Crop…" };
+        _applyCropButton = new Button { Content = "Apply crop", Visibility = Visibility.Collapsed };
+        _cancelCropButton = new Button { Content = "Cancel crop", Visibility = Visibility.Collapsed };
         var resize = new Button { Content = "Resize" };
         var adjust = new Button { Content = "Adjust" };
         var meta = new Button { Content = "Meta" };
@@ -90,6 +123,7 @@ public sealed class ImageDocumentView : UserControl
         _nextButton = new Button { Content = "▶", Width = 36 };
 
         ToolTipService.SetToolTip(crop, "Crop using x,y,w,h pixels (origin top-left)");
+        ToolTipService.SetToolTip(_interactiveCropButton, "Drag a rectangle on the image to crop");
         ToolTipService.SetToolTip(resize, "Resize width/height with optional aspect lock");
         ToolTipService.SetToolTip(adjust, "Brightness / contrast / saturation");
         ToolTipService.SetToolTip(meta, "Image metadata, EXIF, and GPS");
@@ -110,6 +144,9 @@ public sealed class ImageDocumentView : UserControl
         flipH.Click += async (_, _) => await MutateAsync(() => _processor.FlipHorizontalAsync(_document), "Flipped horizontally.");
         flipV.Click += async (_, _) => await MutateAsync(() => _processor.FlipVerticalAsync(_document), "Flipped vertically.");
         crop.Click += async (_, _) => await CropAsync();
+        _interactiveCropButton.Click += (_, _) => EnterCropMode();
+        _applyCropButton.Click += async (_, _) => await ApplyInteractiveCropAsync();
+        _cancelCropButton.Click += (_, _) => ExitCropMode();
         resize.Click += async (_, _) => await ResizeAsync();
         adjust.Click += async (_, _) => await AdjustAsync();
         meta.Click += async (_, _) => await ShowMetadataAsync();
@@ -120,6 +157,11 @@ public sealed class ImageDocumentView : UserControl
         _prevButton.Click += async (_, _) => await NavigateSiblingAsync(-1);
         _nextButton.Click += async (_, _) => await NavigateSiblingAsync(1);
 
+        _cropOverlay.PointerPressed += CropOverlay_PointerPressed;
+        _cropOverlay.PointerMoved += CropOverlay_PointerMoved;
+        _cropOverlay.PointerReleased += CropOverlay_PointerReleased;
+        _cropOverlay.PointerCaptureLost += (_, _) => _cropDragging = false;
+
         var toolbar = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -128,7 +170,7 @@ public sealed class ImageDocumentView : UserControl
             Children =
             {
                 _prevButton, _nextButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, flipH, flipV,
-                _cropBox, crop, resize, adjust, meta, save, exportPng, exportJpeg, convert, _status,
+                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, save, exportPng, exportJpeg, convert, _status,
             },
         };
 
@@ -284,7 +326,17 @@ public sealed class ImageDocumentView : UserControl
         _image.Source = bitmap;
         _image.Width = buffer.Width;
         _image.Height = buffer.Height;
+        _displayWidth = buffer.Width;
+        _displayHeight = buffer.Height;
+        _cropOverlay.Width = buffer.Width;
+        _cropOverlay.Height = buffer.Height;
+        _imageSurface.Width = buffer.Width;
+        _imageSurface.Height = buffer.Height;
         _viewState.Zoom = _zoom;
+        if (_cropMode)
+        {
+            ClearCropSelection();
+        }
     }
 
     private async Task SetZoomAsync(double zoom)
@@ -318,6 +370,128 @@ public sealed class ImageDocumentView : UserControl
         }
 
         await MutateAsync(() => _processor.CropAsync(_document, new ImageRect(x, y, w, h)), $"Cropped to {w}×{h}.");
+    }
+
+    private void EnterCropMode()
+    {
+        _cropMode = true;
+        _cropOverlay.IsHitTestVisible = true;
+        _interactiveCropButton.Visibility = Visibility.Collapsed;
+        _applyCropButton.Visibility = Visibility.Visible;
+        _cancelCropButton.Visibility = Visibility.Visible;
+        ClearCropSelection();
+        _status.Text = "Drag on the image to select a crop region.";
+    }
+
+    private void ExitCropMode()
+    {
+        _cropMode = false;
+        _cropDragging = false;
+        _cropOverlay.IsHitTestVisible = false;
+        _interactiveCropButton.Visibility = Visibility.Visible;
+        _applyCropButton.Visibility = Visibility.Collapsed;
+        _cancelCropButton.Visibility = Visibility.Collapsed;
+        ClearCropSelection();
+        UpdateStatus();
+    }
+
+    private void ClearCropSelection()
+    {
+        _cropRect.Visibility = Visibility.Collapsed;
+        _cropRect.Width = 0;
+        _cropRect.Height = 0;
+        Canvas.SetLeft(_cropRect, 0);
+        Canvas.SetTop(_cropRect, 0);
+    }
+
+    private void CropOverlay_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_cropMode)
+        {
+            return;
+        }
+
+        _cropDragging = true;
+        _cropStart = e.GetCurrentPoint(_cropOverlay).Position;
+        _cropOverlay.CapturePointer(e.Pointer);
+        UpdateCropRect(_cropStart, _cropStart);
+        e.Handled = true;
+    }
+
+    private void CropOverlay_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_cropDragging)
+        {
+            return;
+        }
+
+        UpdateCropRect(_cropStart, e.GetCurrentPoint(_cropOverlay).Position);
+        e.Handled = true;
+    }
+
+    private void CropOverlay_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_cropDragging)
+        {
+            return;
+        }
+
+        _cropDragging = false;
+        _cropOverlay.ReleasePointerCapture(e.Pointer);
+        UpdateCropRect(_cropStart, e.GetCurrentPoint(_cropOverlay).Position);
+        e.Handled = true;
+    }
+
+    private void UpdateCropRect(Windows.Foundation.Point a, Windows.Foundation.Point b)
+    {
+        var x = Math.Max(0, Math.Min(a.X, b.X));
+        var y = Math.Max(0, Math.Min(a.Y, b.Y));
+        var right = Math.Min(_displayWidth, Math.Max(a.X, b.X));
+        var bottom = Math.Min(_displayHeight, Math.Max(a.Y, b.Y));
+        var w = Math.Max(0, right - x);
+        var h = Math.Max(0, bottom - y);
+        Canvas.SetLeft(_cropRect, x);
+        Canvas.SetTop(_cropRect, y);
+        _cropRect.Width = w;
+        _cropRect.Height = h;
+        _cropRect.Visibility = w > 0 && h > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (w > 0 && h > 0 && _displayWidth > 0 && _displayHeight > 0)
+        {
+            var mapped = ImageCropMapper.ToDocumentPixels(
+                x, y, w, h, _displayWidth, _displayHeight, _document.PixelWidth, _document.PixelHeight);
+            _status.Text = $"Crop selection → {mapped.Width}×{mapped.Height} px";
+            _cropBox.Text = $"{mapped.X},{mapped.Y},{mapped.Width},{mapped.Height}";
+        }
+    }
+
+    private async Task ApplyInteractiveCropAsync()
+    {
+        if (_cropRect.Visibility != Visibility.Visible || _cropRect.Width < 1 || _cropRect.Height < 1)
+        {
+            _status.Text = "Drag a crop region first.";
+            return;
+        }
+
+        if (_displayWidth <= 0 || _displayHeight <= 0)
+        {
+            _status.Text = "Image not ready to crop.";
+            return;
+        }
+
+        var mapped = ImageCropMapper.ToDocumentPixels(
+            Canvas.GetLeft(_cropRect),
+            Canvas.GetTop(_cropRect),
+            _cropRect.Width,
+            _cropRect.Height,
+            _displayWidth,
+            _displayHeight,
+            _document.PixelWidth,
+            _document.PixelHeight);
+
+        ExitCropMode();
+        await MutateAsync(
+            () => _processor.CropAsync(_document, mapped),
+            $"Cropped to {mapped.Width}×{mapped.Height}.");
     }
 
     private async Task ResizeAsync()

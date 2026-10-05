@@ -482,12 +482,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F29-09 | Smart object/background selection | Undo. | M8 | Not Started |  |
 | F29-10 | Smart object/background selection | Copy extracted subject. | M8 | Not Started |  |
 | F29-11 | Smart object/background selection | Save extracted subject as separate image. | M8 | Not Started |  |
-| F30-01 | Image crop | Interactive crop box. | M5 | Not Started |  |
-| F30-02 | Image crop | Free aspect ratio. | M5 | Not Started |  |
+| F30-01 | Image crop | Interactive crop box. | M5 | Implemented | Drag rectangle overlay (Crop…) |
+| F30-02 | Image crop | Free aspect ratio. | M5 | Implemented | Free drag selection |
 | F30-03 | Image crop | Original aspect ratio. | M5 | Not Started |  |
 | F30-04 | Image crop | Common presets: | M5 | Not Started |  |
 | F30-05 | Image crop | Numeric width/height. | M5 | Implemented | Crop x,y,w,h text box |
-| F30-06 | Image crop | Apply crop. | M5 | Implemented | Crop toolbar → MagickImageProcessor.CropAsync |
+| F30-06 | Image crop | Apply crop. | M5 | Implemented | Crop / Apply crop → MagickImageProcessor.CropAsync |
 | F30-07 | Image crop | Undo. | M5 | Not Started |  |
 | F30-08 | Image crop | Non-destructive editing internally until save where practical. | M5 | Not Started |  |
 | F31-01 | Image resizing | Adjust width. | M5 | Implemented | Resize dialog width (px) |
