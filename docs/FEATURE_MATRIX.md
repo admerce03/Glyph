@@ -154,8 +154,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F08-03 | OCR / Live Text equivalent | Copy text. | M6 | Implemented | OCR result dialog Copy text |
 | F08-04 | OCR / Live Text equivalent | Copy all recognized text. | M6 | Implemented | Same as copy full result text |
 | F08-05 | OCR / Live Text equivalent | Search recognized text. | M6 | Not Started |  |
-| F08-06 | OCR / Live Text equivalent | OCR current page. | M6 | Implemented | PdfDocumentView OCR renders current page → Windows.Media.Ocr |
-| F08-07 | OCR / Live Text equivalent | OCR selected pages. | M6 | Not Started |  |
+| F08-06 | OCR / Live Text equivalent | OCR current page. | M6 | Implemented | PdfDocumentView OCR uses selected-or-current pages |
+| F08-07 | OCR / Live Text equivalent | OCR selected pages. | M6 | Implemented | Multi-select thumbnails → OCR concatenates page sections |
 | F08-08 | OCR / Live Text equivalent | OCR entire PDF. | M6 | Not Started |  |
 | F08-09 | OCR / Live Text equivalent | OCR multiple images. | M6 | Not Started |  |
 | F08-10 | OCR / Live Text equivalent | Optionally embed OCR text layer into PDF. | M6 | Not Started |  |
