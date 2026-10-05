@@ -180,10 +180,10 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Completion criteria
 
-- Markup survives save/reopen
-- Flatten produces non-editable visuals
-- Form field tab order works on sample AcroForms
-- Tests for annotation model serialization
+- [x] Markup survives save/reopen
+- [x] Flatten produces non-editable visuals
+- [ ] Form field tab order works on sample AcroForms
+- [x] Tests for annotation model serialization
 
 ### Progress notes
 
@@ -194,6 +194,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Freehand ink: `AddInkAsync` + Ink draw mode on page surface; listed in annotation sidebar.
 - Shapes: `AddShapeAsync` for rectangle/ellipse (Square/Circle) and line (2-point ink); Rect/Ellipse/Line draw modes.
 - Text boxes: `AddTextBoxAsync` FreeText with Contents + DA; TextBox toolbar dialog; listed in sidebar.
+- Flatten: `FlattenAsync` via `FPDFPage_Flatten` + Flatten toolbar (confirm dialog); editable annots removed after bake.
 
 ---
 

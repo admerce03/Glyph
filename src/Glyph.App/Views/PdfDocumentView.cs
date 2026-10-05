@@ -297,6 +297,7 @@ public sealed class PdfDocumentView : UserControl
         var strikeout = new Button { Content = "Strike" };
         var stickyNote = new Button { Content = "Note" };
         var textBox = new Button { Content = "TextBox" };
+        var flatten = new Button { Content = "Flatten" };
         var ink = new Button { Content = "Ink" };
         var rect = new Button { Content = "Rect" };
         var ellipse = new Button { Content = "Ellipse" };
@@ -323,6 +324,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(strikeout, "Strike through selected text");
         ToolTipService.SetToolTip(stickyNote, "Add a sticky note on the current page");
         ToolTipService.SetToolTip(textBox, "Add a FreeText text box on the current page");
+        ToolTipService.SetToolTip(flatten, "Flatten annotations into page content (permanent)");
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
         ToolTipService.SetToolTip(rect, "Draw a rectangle annotation");
         ToolTipService.SetToolTip(ellipse, "Draw an ellipse annotation");
@@ -374,6 +376,7 @@ public sealed class PdfDocumentView : UserControl
         strikeout.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.StrikeOut);
         stickyNote.Click += async (_, _) => await AddStickyNoteAsync();
         textBox.Click += async (_, _) => await AddTextBoxAsync();
+        flatten.Click += async (_, _) => await FlattenAnnotationsAsync();
         ink.Click += (_, _) => ToggleInkMode();
         rect.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Rectangle);
         ellipse.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Ellipse);
@@ -392,7 +395,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, ink, rect, ellipse, line,
+                highlight, underline, strikeout, stickyNote, textBox, flatten, ink, rect, ellipse, line,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -2421,6 +2424,61 @@ public sealed class PdfDocumentView : UserControl
         _inkDrawing = false;
         _inkPageIndex = -1;
         _inkPoints.Clear();
+    }
+
+    private async Task FlattenAnnotationsAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for flatten dialog.");
+
+        var dialog = new ContentDialog
+        {
+            Title = "Flatten annotations",
+            Content = "Bake all annotations into page content? This cannot be undone from the annotation layer.",
+            PrimaryButtonText = "Flatten",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result != ContentDialogResult.Primary)
+        {
+            _status.Text = "Flatten cancelled.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Flattening…";
+            var outcome = await _annotations.FlattenAsync(_document);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+
+            if (outcome.PagesFailed > 0)
+            {
+                _status.Text =
+                    $"Flattened {outcome.PagesChanged} page(s); {outcome.PagesFailed} failed.";
+            }
+            else if (outcome.PagesChanged == 0)
+            {
+                _status.Text = "Nothing to flatten.";
+            }
+            else
+            {
+                _status.Text = outcome.PagesChanged == 1
+                    ? "Flattened annotations on 1 page."
+                    : $"Flattened annotations on {outcome.PagesChanged} pages.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Flatten failed: " + ex.Message;
+        }
     }
 
     private async Task AddStickyNoteAsync()

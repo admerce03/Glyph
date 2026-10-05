@@ -81,4 +81,13 @@ public interface IPdfAnnotationService
         int pageIndex,
         int annotIndex,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Bake annotations into page content. When <paramref name="pageIndexes"/> is null, all pages are flattened.
+    /// </summary>
+    Task<PdfFlattenResult> FlattenAsync(
+        IPdfDocument document,
+        IReadOnlyList<int>? pageIndexes = null,
+        bool forPrint = false,
+        CancellationToken cancellationToken = default);
 }

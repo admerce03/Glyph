@@ -114,6 +114,65 @@ public class PdfiumAnnotationServiceTests
     }
 
     [Fact]
+    public async Task Flatten_removes_editable_markup_after_bake()
+    {
+        var path = CreateTextPdf("Flatten host page with text");
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-flat-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var text = new PdfiumTextExtractor();
+            var annots = new PdfiumAnnotationService();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var chars = await text.GetCharsAsync(document, 0);
+                var quads = PdfTextMarkupQuads.FromIndexRange(chars, 0, Math.Min(4, chars.Count - 1));
+                await annots.AddTextMarkupAsync(document, 0, PdfTextMarkupKind.Highlight, quads, PdfAnnotationColor.YellowHighlight);
+                await annots.AddShapeAsync(
+                    document,
+                    0,
+                    PdfShapeKind.Rectangle,
+                    new PdfRect(72, 500, 180, 580),
+                    new PdfAnnotationColor(30, 144, 255));
+
+                var before = await annots.ListAsync(document, 0);
+                before.Count.Should().BeGreaterThanOrEqualTo(2);
+
+                var result = await annots.FlattenAsync(document);
+                result.PagesProcessed.Should().Be(1);
+                result.PagesFailed.Should().Be(0);
+                result.PagesChanged.Should().BeGreaterThan(0);
+
+                var after = await annots.ListAsync(document, 0);
+                after.Should().NotContain(a => a.TextMarkupKind == PdfTextMarkupKind.Highlight);
+                after.Should().NotContain(a => a.ShapeKind == PdfShapeKind.Rectangle);
+
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var listed = await annots.ListAsync(reopened, 0);
+                listed.Where(a => a.TextMarkupKind != null || a.ShapeKind != null).Should().BeEmpty();
+
+                var renderer = new PdfiumRenderer();
+                using var rendered = await renderer.RenderPageAsync(reopened, 0, new PdfRenderRequest(1.0));
+                rendered.Width.Should().BeGreaterThan(10);
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Add_text_box_sets_contents_and_survives_save()
     {
         var path = CreateTextPdf("Text box host page");

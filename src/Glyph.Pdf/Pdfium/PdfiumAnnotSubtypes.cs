@@ -23,3 +23,16 @@ internal static class PdfiumAnnotSubtypes
     public const int Ink = 15;
     public const int Popup = 16;
 }
+
+/// <summary>
+/// <c>FLAT_*</c> / <c>FLATTEN_*</c> values for <c>FPDFPage_Flatten</c> (not exported by PDFiumCore).
+/// </summary>
+internal static class PdfiumFlattenFlags
+{
+    public const int FlatNormalDisplay = 0;
+    public const int FlatPrint = 1;
+
+    public const int FlattenFail = 0;
+    public const int FlattenSuccess = 1;
+    public const int FlattenNothingToDo = 2;
+}
