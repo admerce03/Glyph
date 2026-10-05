@@ -26,7 +26,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M6 | OCR and scanned-document capabilities | **Tested** (PRs #62–#66 merged; offline OCR/Live Text/entities) | M2, M5 |
 | M7 | Redaction, PDF security, optimization, metadata | **Tested** (#67; password-write → ADR-015) | M2–M4 |
 | M8 | Batch ops, scanner, color management, advanced | **Tested** (hardware validation TBD; ML subject deferred) | M5–M7 |
-| M9 | Performance, polish, a11y, installer, audit | **In Progress** (packaging+shortcuts+updates+bg Find index; Explorer verify + ADR-015 TBD) | M1–M8 core paths |
+| M9 | Performance, polish, a11y, installer, audit | **In Progress** (packaging+shortcuts+updates+bg Find+toolbar reorder+notices; Explorer verify + ADR-015 TBD) | M1–M8 core paths |
 
 M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behind separate interfaces. M3 remains the highest-priority Preview-differentiator after viewing works.
 
