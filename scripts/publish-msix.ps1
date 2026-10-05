@@ -18,13 +18,20 @@ param(
     [ValidateSet('win-x64', 'win-arm64')]
     [string]$Runtime = 'win-x64',
 
-    [string]$Output = (Join-Path $PSScriptRoot '..' 'artifacts' 'msix')
+    # Relative to repo root, or an absolute path. Default: artifacts/msix
+    [string]$Output = 'artifacts/msix'
 )
 
 $ErrorActionPreference = 'Stop'
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $project = Join-Path $repoRoot 'src' 'Glyph.App' 'Glyph.App.csproj'
-$outDir = Join-Path $repoRoot ($Output.TrimStart('.', '\', '/'))
+
+if ([System.IO.Path]::IsPathRooted($Output)) {
+    $outDir = $Output
+}
+else {
+    $outDir = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $Output))
+}
 
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
@@ -43,4 +50,15 @@ if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE"
 }
 
-Write-Host "MSIX publish completed. Look under $outDir for .msix / layout."
+$msix = Get-ChildItem -Path $outDir -Filter *.msix -Recurse -ErrorAction SilentlyContinue
+$manifest = Get-ChildItem -Path $outDir -Filter AppxManifest.xml -Recurse -ErrorAction SilentlyContinue
+Write-Host "MSIX publish completed under $outDir"
+if ($msix) {
+    Write-Host ("Found MSIX: " + (($msix | ForEach-Object FullName) -join ', '))
+}
+elseif ($manifest) {
+    Write-Host ("Found AppxManifest layout: " + (($manifest | ForEach-Object FullName) -join ', '))
+}
+else {
+    Write-Host "Note: no .msix / AppxManifest.xml found yet — inspect $outDir for publish layout."
+}
