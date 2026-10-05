@@ -135,7 +135,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F06-14 | PDF search | Previous match. | M2/M6 | Implemented | Toolbar previous-match control |
 | F06-15 | PDF search | Clear search. | M2/M6 | Implemented | Clear button + Escape; cancels in-flight search and overlays |
 | F06-16 | PDF search | Click result to jump to it. | M2/M6 | Tested | Selection jumps to hit page index |
-| F06-17 | PDF search | Search OCR text where OCR has been generated. | M2/M6 | Not Started | Image-only PDFs report OCR required |
+| F06-17 | PDF search | Search OCR text where OCR has been generated. | M2/M6 | Implemented | Session OCR cache merged into Find results (`PdfPageTextSearch`) |
 | F07-01 | PDF text interaction | Text selection. | M2/M6 | Implemented | Click near glyphs selects word-ish run via PDFium text |
 | F07-02 | PDF text interaction | Copy text. | M2/M6 | Implemented | Copy button / Ctrl+C |
 | F07-03 | PDF text interaction | Select across lines. | M2/M6 | Not Started |  |
