@@ -160,19 +160,19 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F08-09 | OCR / Live Text equivalent | OCR multiple images. | M6 | Not Started |  |
 | F08-10 | OCR / Live Text equivalent | Optionally embed OCR text layer into PDF. | M6 | Implemented | OCR→PDF export via `OcrSearchablePdfWriter` invisible text |
 | F08-11 | OCR / Live Text equivalent | Preserve image underneath the OCR layer. | M6 | Implemented | Full-bleed page render under invisible text layer |
-| F08-12 | OCR / Live Text equivalent | URLs | M6 | Not Started |  |
-| F08-13 | OCR / Live Text equivalent | email addresses | M6 | Not Started |  |
-| F08-14 | OCR / Live Text equivalent | phone numbers | M6 | Not Started |  |
-| F08-15 | OCR / Live Text equivalent | physical addresses | M6 | Not Started |  |
-| F08-16 | OCR / Live Text equivalent | dates | M6 | Not Started |  |
-| F08-17 | OCR / Live Text equivalent | times | M6 | Not Started |  |
-| F08-18 | OCR / Live Text equivalent | Open URL in default browser. | M6 | Not Started |  |
-| F08-19 | OCR / Live Text equivalent | Create email in default mail application. | M6 | Not Started |  |
-| F08-20 | OCR / Live Text equivalent | Copy phone number. | M6 | Not Started |  |
-| F08-21 | OCR / Live Text equivalent | Open address in user's default mapping/web service. | M6 | Not Started |  |
-| F08-22 | OCR / Live Text equivalent | Create calendar event through appropriate Windows/system mechanism where feasible. | M6 | Not Started |  |
-| F08-23 | OCR / Live Text equivalent | Search web. | M6 | Not Started |  |
-| F08-24 | OCR / Live Text equivalent | Copy recognized value. | M6 | Not Started |  |
+| F08-12 | OCR / Live Text equivalent | URLs | M6 | Implemented | `OcrEntityDetector` + Entities dialog Open |
+| F08-13 | OCR / Live Text equivalent | email addresses | M6 | Implemented | `OcrEntityDetector` + mailto launch |
+| F08-14 | OCR / Live Text equivalent | phone numbers | M6 | Implemented | `OcrEntityDetector` + Copy value |
+| F08-15 | OCR / Live Text equivalent | physical addresses | M6 | Implemented | `OcrEntityDetector` street + city/ST/ZIP |
+| F08-16 | OCR / Live Text equivalent | dates | M6 | Implemented | `OcrEntityDetector` date patterns |
+| F08-17 | OCR / Live Text equivalent | times | M6 | Implemented | `OcrEntityDetector` time patterns |
+| F08-18 | OCR / Live Text equivalent | Open URL in default browser. | M6 | Implemented | Entities → Open / act |
+| F08-19 | OCR / Live Text equivalent | Create email in default mail application. | M6 | Implemented | Entities → mailto: |
+| F08-20 | OCR / Live Text equivalent | Copy phone number. | M6 | Implemented | Entities → Copy value |
+| F08-21 | OCR / Live Text equivalent | Open address in user's default mapping/web service. | M6 | Implemented | Entities → Bing Maps query |
+| F08-22 | OCR / Live Text equivalent | Create calendar event through appropriate Windows/system mechanism where feasible. | M6 | Implemented | Entities → temp `.ics` via `OcrCalendarInvite` |
+| F08-23 | OCR / Live Text equivalent | Search web. | M6 | Implemented | Entities dialog → Bing |
+| F08-24 | OCR / Live Text equivalent | Copy recognized value. | M6 | Implemented | Entities → Copy value |
 | F09-01 | PDF bookmarks | Add bookmark at current page/location. | M2/M4 | Not Started |  |
 | F09-02 | PDF bookmarks | Rename bookmark. | M2/M4 | Not Started |  |
 | F09-03 | PDF bookmarks | Delete bookmark. | M2/M4 | Not Started |  |

@@ -258,7 +258,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Find on image-only PDFs offers OCR-current-page fallback; **Find sel** searches the text selection
 - PDF **Live Text** word-box overlay after OCR (click/Ctrl+click select + **Copy OCR**)
 - **OCR→PDF** exports OCR'd pages as a searchable PDF (image + invisible text via `OcrSearchablePdfWriter`)
-- Entity actions still outstanding (image-side on entities stack)
+- **Entities** dialog on PDF OCR text (URL/email/phone/address/date/time + maps/calendar/search web)
+- Image-folder OCR / Live Text image overlays still on parallel entities/live-text stack
 ---
 
 ## Milestone 7 — Redaction, PDF security, optimization, metadata
