@@ -299,6 +299,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Password-protect write blocked on ADR-015 (Needs approval)
 - Local polish (+69 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
 - Print N-up/scale/rotate/center extracted to `PrintSheetLayout`; scroll throttle + presentation defaults unit-tested
+- Search result snippets unified via `PdfSearchSnippet` (F06-10)
 
 ---
 

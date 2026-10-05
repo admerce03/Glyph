@@ -40,7 +40,7 @@ public static class PdfPageTextSearch
 
                 hits.Add(new PdfSearchHit(
                     pageIndex,
-                    BuildSnippet(text, index, trimmed.Length),
+                    PdfSearchSnippet.Build(text, index, trimmed.Length),
                     index,
                     trimmed.Length));
                 start = index + Math.Max(1, trimmed.Length);
@@ -85,24 +85,5 @@ public static class PdfPageTextSearch
         }
 
         return merged;
-    }
-
-    private static string BuildSnippet(string text, int matchStart, int matchLength)
-    {
-        const int pad = 28;
-        var from = Math.Max(0, matchStart - pad);
-        var to = Math.Min(text.Length, matchStart + matchLength + pad);
-        var snippet = text[from..to].Replace('\r', ' ').Replace('\n', ' ').Trim();
-        if (from > 0)
-        {
-            snippet = "…" + snippet;
-        }
-
-        if (to < text.Length)
-        {
-            snippet += "…";
-        }
-
-        return snippet;
     }
 }
