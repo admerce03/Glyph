@@ -82,6 +82,8 @@ public sealed class PdfDocumentView : UserControl
     private IReadOnlyList<PdfAnnotationInfo> _annotationItems = [];
     private bool _suppressAnnotationNav;
     private bool _inkMode;
+    private bool _highlightMode;
+    private PdfAnnotationColor _highlightModeColor = PdfAnnotationColor.YellowHighlight;
     private bool _signatureMode;
     private bool _inkDrawing;
     private int _inkPageIndex = -1;
@@ -93,6 +95,7 @@ public sealed class PdfDocumentView : UserControl
     private Windows.Foundation.Point _shapeStart;
     private FrameworkElement? _shapePreview;
     private Button? _inkButton;
+    private Button? _highlightButton;
     private Button? _signButton;
     private Button? _rectButton;
     private Button? _ellipseButton;
@@ -339,6 +342,7 @@ public sealed class PdfDocumentView : UserControl
         var arrow = new Button { Content = "Arrow" };
         _signButton = sign;
         _inkButton = ink;
+        _highlightButton = highlight;
         _rectButton = rect;
         _ellipseButton = ellipse;
         _lineButton = line;
@@ -356,7 +360,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(merge, "Merge other PDF files into this document");
         ToolTipService.SetToolTip(split, "Split document before each selected page");
         ToolTipService.SetToolTip(crop, "Interactive CropBox crop (visual handles; numeric via Crop → Numeric)");
-        ToolTipService.SetToolTip(highlight, "Highlight selected text");
+        ToolTipService.SetToolTip(highlight, "Highlight selected text, or toggle persistent highlight mode");
         ToolTipService.SetToolTip(underline, "Underline selected text");
         ToolTipService.SetToolTip(strikeout, "Strike through selected text");
         ToolTipService.SetToolTip(stickyNote, "Add a sticky note on the current page");
@@ -411,7 +415,7 @@ public sealed class PdfDocumentView : UserControl
         merge.Click += async (_, _) => await MergePdfsAsync();
         split.Click += async (_, _) => await SplitDocumentAsync();
         crop.Click += async (_, _) => await BeginCropModeAsync();
-        highlight.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.Highlight);
+        highlight.Click += async (_, _) => await OnHighlightButtonClickAsync();
         underline.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.Underline);
         strikeout.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.StrikeOut);
         stickyNote.Click += async (_, _) => await AddStickyNoteAsync();
@@ -1065,6 +1069,15 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (_highlightMode && e.Key == VirtualKey.Escape)
+        {
+            ClearHighlightMode();
+            RefreshToolButtonChrome();
+            _status.Text = "Highlight mode off.";
+            e.Handled = true;
+            return;
+        }
+
         if (_cropMode && e.Key == VirtualKey.Enter)
         {
             await ApplyCropModeAsync();
@@ -1580,6 +1593,12 @@ public sealed class PdfDocumentView : UserControl
             _selectionQuads = PdfTextMarkupQuads.FromSelectionRect(chars, selection);
             await RefreshSearchHighlightsAsync();
             DrawSelectionOverlay(pageIndex, chars, selection);
+            if (_highlightMode && !string.IsNullOrEmpty(_selectedText))
+            {
+                await ApplyTextMarkupAsync(PdfTextMarkupKind.Highlight, usePersistentColor: true);
+                return;
+            }
+
             _status.Text = string.IsNullOrEmpty(_selectedText)
                 ? "No text in selection."
                 : $"Selected “{TrimForStatus(_selectedText)}”";
@@ -1631,6 +1650,11 @@ public sealed class PdfDocumentView : UserControl
         _status.Text = string.IsNullOrEmpty(_selectedText)
             ? $"Page {pageIndex + 1}"
             : $"Selected “{TrimForStatus(_selectedText)}”";
+
+        if (_highlightMode && !string.IsNullOrEmpty(_selectedText))
+        {
+            await ApplyTextMarkupAsync(PdfTextMarkupKind.Highlight, usePersistentColor: true);
+        }
     }
 
     private void DrawSelectionOverlay(int pageIndex, IReadOnlyList<PdfTextChar> chars, PdfRect selection)
@@ -2088,25 +2112,98 @@ public sealed class PdfDocumentView : UserControl
         _status.Text = $"Duplicated {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")}.";
     }
 
-    private async Task ApplyTextMarkupAsync(PdfTextMarkupKind kind)
+    private async Task OnHighlightButtonClickAsync()
+    {
+        // One-shot: selection present and mode off → apply once with color picker.
+        if (!_highlightMode
+            && _selectionPageIndex >= 0
+            && _selectionQuads.Count > 0
+            && !string.IsNullOrEmpty(_selectedText))
+        {
+            await ApplyTextMarkupAsync(PdfTextMarkupKind.Highlight);
+            return;
+        }
+
+        await ToggleHighlightModeAsync();
+    }
+
+    private async Task ToggleHighlightModeAsync()
+    {
+        if (_highlightMode)
+        {
+            ClearHighlightMode();
+            RefreshToolButtonChrome();
+            _status.Text = "Highlight mode off.";
+            return;
+        }
+
+        var picked = await PickHighlightColorAsync();
+        if (picked is null)
+        {
+            _status.Text = "Highlight mode cancelled.";
+            return;
+        }
+
+        ClearShapeMode();
+        ClearSignatureMode();
+        if (_inkMode)
+        {
+            _inkMode = false;
+            CancelInkStroke();
+        }
+
+        if (_cropMode)
+        {
+            CancelCropMode();
+        }
+
+        _highlightMode = true;
+        _highlightModeColor = picked.Value;
+        RefreshToolButtonChrome();
+        _status.Text = "Highlight mode on — select text to highlight (Esc to exit).";
+
+        if (_selectionPageIndex >= 0
+            && _selectionQuads.Count > 0
+            && !string.IsNullOrEmpty(_selectedText))
+        {
+            await ApplyTextMarkupAsync(PdfTextMarkupKind.Highlight, usePersistentColor: true);
+        }
+    }
+
+    private void ClearHighlightMode()
+    {
+        _highlightMode = false;
+    }
+
+    private async Task ApplyTextMarkupAsync(PdfTextMarkupKind kind, bool usePersistentColor = false)
     {
         if (_selectionPageIndex < 0 || _selectionQuads.Count == 0 || string.IsNullOrEmpty(_selectedText))
         {
-            _status.Text = "Select text first, then apply markup.";
+            _status.Text = _highlightMode && kind == PdfTextMarkupKind.Highlight
+                ? "Highlight mode on — select text to highlight."
+                : "Select text first, then apply markup.";
             return;
         }
 
         PdfAnnotationColor color;
         if (kind == PdfTextMarkupKind.Highlight)
         {
-            var picked = await PickHighlightColorAsync();
-            if (picked is null)
+            if (usePersistentColor || _highlightMode)
             {
-                _status.Text = "Highlight cancelled.";
-                return;
+                color = _highlightModeColor;
             }
+            else
+            {
+                var picked = await PickHighlightColorAsync();
+                if (picked is null)
+                {
+                    _status.Text = "Highlight cancelled.";
+                    return;
+                }
 
-            color = picked.Value;
+                color = picked.Value;
+                _highlightModeColor = color;
+            }
         }
         else
         {
@@ -2141,7 +2238,9 @@ public sealed class PdfDocumentView : UserControl
             await RefreshAnnotationSidebarAsync();
             _status.Text = kind switch
             {
-                PdfTextMarkupKind.Highlight => "Highlight added.",
+                PdfTextMarkupKind.Highlight => _highlightMode
+                    ? "Highlight added — select more text, or Esc to exit mode."
+                    : "Highlight added.",
                 PdfTextMarkupKind.Underline => "Underline added.",
                 _ => "Strikethrough added.",
             };
@@ -2340,6 +2439,7 @@ public sealed class PdfDocumentView : UserControl
     {
         ClearShapeMode();
         ClearSignatureMode();
+        ClearHighlightMode();
         _inkMode = !_inkMode;
         if (!_inkMode)
         {
@@ -2367,6 +2467,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         ClearSignatureMode();
+        ClearHighlightMode();
 
         if (_shapeMode == kind)
         {
@@ -2416,6 +2517,11 @@ public sealed class PdfDocumentView : UserControl
         if (_inkButton is not null)
         {
             _inkButton.Background = _inkMode ? active : null;
+        }
+
+        if (_highlightButton is not null)
+        {
+            _highlightButton.Background = _highlightMode ? active : null;
         }
 
         if (_signButton is not null)
@@ -2799,6 +2905,7 @@ public sealed class PdfDocumentView : UserControl
     private void StartSignatureDrawMode()
     {
         ClearShapeMode();
+        ClearHighlightMode();
         if (_inkMode)
         {
             _inkMode = false;
