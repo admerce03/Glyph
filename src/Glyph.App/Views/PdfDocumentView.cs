@@ -3009,7 +3009,63 @@ public sealed class PdfDocumentView : UserControl
                 continue;
             }
 
-            if (field.Kind is not (PdfFormFieldKind.TextField or PdfFormFieldKind.ComboBox))
+            if (field.Kind is PdfFormFieldKind.ComboBox or PdfFormFieldKind.ListBox)
+            {
+                var options = field.ChoiceOptions;
+                if (options.Count > 0)
+                {
+                    var choiceList = new ListView
+                    {
+                        Height = 220,
+                        SelectionMode = ListViewSelectionMode.Single,
+                        ItemsSource = options.ToList(),
+                    };
+                    var selected = options.ToList().FindIndex(o => o == field.Value);
+                    choiceList.SelectedIndex = selected >= 0 ? selected : 0;
+                    var pick = new ContentDialog
+                    {
+                        Title = $"Select {field.Name}",
+                        Content = choiceList,
+                        PrimaryButtonText = "Apply",
+                        CloseButtonText = "Cancel",
+                        DefaultButton = ContentDialogButton.Primary,
+                        XamlRoot = window.Content.XamlRoot,
+                    };
+
+                    if (await pick.ShowAsync() != ContentDialogResult.Primary)
+                    {
+                        continue;
+                    }
+
+                    var choice = choiceList.SelectedItem as string ?? field.Value;
+                    try
+                    {
+                        await _forms.SetTextValueAsync(
+                            _document,
+                            field.PageIndex,
+                            field.AnnotIndex,
+                            choice);
+                        fields = await _forms.ListFieldsAsync(_document);
+                        list.ItemsSource = fields
+                            .Select(f => $"{f.TabOrder + 1}. {f.Name} ({f.Kind}) = \"{f.Value}\"")
+                            .ToList();
+                        list.SelectedIndex = Math.Clamp(index, 0, fields.Count - 1);
+                        _cache.ClearDocument(_documentKey);
+                        await RenderVisibleAsync();
+                        _status.Text = $"Updated {field.Name}.";
+                    }
+                    catch (Exception ex)
+                    {
+                        _status.Text = "Form fill failed: " + ex.Message;
+                    }
+
+                    continue;
+                }
+            }
+
+            if (field.Kind is not (PdfFormFieldKind.TextField
+                or PdfFormFieldKind.ComboBox
+                or PdfFormFieldKind.ListBox))
             {
                 _status.Text = $"Editing {field.Kind} fields is not supported yet.";
                 continue;

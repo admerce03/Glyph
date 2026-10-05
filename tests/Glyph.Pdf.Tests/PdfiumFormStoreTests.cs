@@ -159,10 +159,57 @@ public class PdfiumFormStoreTests
         }
     }
 
+    [Fact]
+    public async Task Choice_fields_expose_options_and_set_value()
+    {
+        var path = CreateAcroFormPdf(includeChoice: true);
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-choice-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var forms = new PdfiumFormStore();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var fields = await forms.ListFieldsAsync(document);
+                var combo = fields.Should().ContainSingle(f => f.Name == "Flavor").Subject;
+                combo.Kind.Should().Be(PdfFormFieldKind.ComboBox);
+                combo.ChoiceOptions.Should().BeEquivalentTo("Vanilla", "Chocolate", "Strawberry");
+
+                var listBox = fields.Should().ContainSingle(f => f.Name == "Size").Subject;
+                listBox.Kind.Should().Be(PdfFormFieldKind.ListBox);
+                listBox.ChoiceOptions.Should().BeEquivalentTo("Small", "Medium", "Large");
+
+                await forms.SetTextValueAsync(document, combo.PageIndex, combo.AnnotIndex, "Chocolate");
+                await forms.SetTextValueAsync(document, listBox.PageIndex, listBox.AnnotIndex, "Large");
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var fields = await forms.ListFieldsAsync(reopened);
+                fields.Should().Contain(f => f.Name == "Flavor" && f.Value == "Chocolate");
+                fields.Should().Contain(f => f.Name == "Size" && f.Value == "Large");
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
     /// <summary>
     /// Minimal AcroForm (letter page) written with a correct xref.
     /// </summary>
-    private static string CreateAcroFormPdf(bool includeCheckBox = false, bool includeRadio = false)
+    private static string CreateAcroFormPdf(
+        bool includeCheckBox = false,
+        bool includeRadio = false,
+        bool includeChoice = false)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-acroform-" + Guid.NewGuid().ToString("N") + ".pdf");
         var annotRefs = new List<string> { "7 0 R", "8 0 R" };
@@ -174,6 +221,13 @@ public class PdfiumFormStoreTests
         }
 
         if (includeRadio)
+        {
+            annotRefs.Add($"{nextObj} 0 R");
+            annotRefs.Add($"{nextObj + 1} 0 R");
+            nextObj += 2;
+        }
+
+        if (includeChoice)
         {
             annotRefs.Add($"{nextObj} 0 R");
             annotRefs.Add($"{nextObj + 1} 0 R");
@@ -214,6 +268,15 @@ public class PdfiumFormStoreTests
                 "<< /Type /Annot /Subtype /Widget /Rect [120 590 140 610] /F 4 /P 3 0 R /FT /Btn /T (Color) /V /Off /AS /Off /DV /Red /Ff 32768 /MK << >> >>");
             objects.Add(
                 "<< /Type /Annot /Subtype /Widget /Rect [160 590 180 610] /F 4 /P 3 0 R /FT /Btn /T (Color) /V /Off /AS /Off /DV /Blue /Ff 32768 /MK << >> >>");
+        }
+
+        if (includeChoice)
+        {
+            // Ff bit 18 (131072) = combo. List box has Ff without combo bit.
+            objects.Add(
+                "<< /Type /Annot /Subtype /Widget /Rect [120 550 280 575] /F 4 /P 3 0 R /FT /Ch /T (Flavor) /V (Vanilla) /DV (Vanilla) /Opt [(Vanilla)(Chocolate)(Strawberry)] /Ff 131072 /DA (/Helv 12 Tf 0 g) /MK << >> >>");
+            objects.Add(
+                "<< /Type /Annot /Subtype /Widget /Rect [120 500 280 545] /F 4 /P 3 0 R /FT /Ch /T (Size) /V (Small) /DV (Small) /Opt [(Small)(Medium)(Large)] /Ff 0 /DA (/Helv 12 Tf 0 g) /MK << >> >>");
         }
 
         using var ms = new MemoryStream();
