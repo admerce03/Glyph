@@ -1819,7 +1819,7 @@ public sealed partial class MainWindow : Window
                 await WriteTabRecoveryAsync(tab, session.Path!);
                 var entries = await _recoveryStore.ListAsync();
                 var match = entries.FirstOrDefault(e =>
-                    string.Equals(e.OriginalPath, Path.GetFullPath(session.Path!), StringComparison.OrdinalIgnoreCase));
+                    string.Equals(e.OriginalPath, System.IO.Path.GetFullPath(session.Path!), StringComparison.OrdinalIgnoreCase));
                 if (match is null || !File.Exists(match.RecoveryPath))
                 {
                     StatusText.Text = "Could not create recovery copy for move.";

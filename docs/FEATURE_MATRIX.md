@@ -45,10 +45,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-08 | Main window and interface | Resizable document area. | M1/M9 | Not Started |  |
 | F02-09 | Main window and interface | Full-screen mode. | M1/M9 | Implemented | View → Full Screen / F11 / toolbar |
 | F02-10 | Main window and interface | Tabbed documents. | M1/M9 | In Progress | TabView + Ctrl+Tab navigation |
-| F02-11 | Main window and interface | Tear tab into separate window. | M1/M9 | Not Started |  |
-| F02-12 | Main window and interface | Move tabs between windows. | M1/M9 | Not Started |  |
+| F02-11 | Main window and interface | Tear tab into separate window. | M1/M9 | Implemented | Window → Move Tab to New Window + tab context menu |
+| F02-12 | Main window and interface | Move tabs between windows. | M1/M9 | In Progress | Tear-off to new window; cross-window drag later |
 | F02-13 | Main window and interface | Reorder tabs. | M1/M9 | Implemented | TabView CanReorderTabs + WorkspaceState.Reorder |
-| F02-14 | Main window and interface | Context menus throughout. | M1/M9 | Not Started |  |
+| F02-14 | Main window and interface | Context menus throughout. | M1/M9 | In Progress | Tab context menu (Close / Move to New Window) |
 | F02-15 | Main window and interface | Dark mode. | M1/M9 | In Progress | Theme preference Dark |
 | F02-16 | Main window and interface | Light mode. | M1/M9 | In Progress | Theme preference Light |
 | F02-17 | Main window and interface | Follow Windows system theme. | M1/M9 | In Progress | Theme preference System → ElementTheme.Default |
