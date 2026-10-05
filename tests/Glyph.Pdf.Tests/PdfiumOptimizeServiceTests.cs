@@ -5,7 +5,6 @@ using Glyph.Pdf.Pdfium;
 using PDFiumCore;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.Writer;
-using Xunit;
 
 namespace Glyph.Pdf.Tests;
 

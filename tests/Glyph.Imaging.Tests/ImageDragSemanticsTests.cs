@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Glyph.Imaging.Abstractions;
-using Xunit;
 
 namespace Glyph.Imaging.Tests;
 

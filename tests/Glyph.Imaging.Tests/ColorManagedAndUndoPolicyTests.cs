@@ -1,5 +1,4 @@
 using FluentAssertions;
-using Glyph.Core.Documents;
 using Glyph.Imaging.Abstractions;
 
 namespace Glyph.Imaging.Tests;

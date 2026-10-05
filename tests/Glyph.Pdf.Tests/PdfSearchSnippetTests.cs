@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Glyph.Pdf.Text;
-using Xunit;
 
 namespace Glyph.Pdf.Tests;
 

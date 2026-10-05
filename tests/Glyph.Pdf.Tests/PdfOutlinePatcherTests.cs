@@ -3,7 +3,6 @@ using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Pdfium;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.Writer;
-using Xunit;
 
 namespace Glyph.Pdf.Tests;
 

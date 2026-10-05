@@ -31,11 +31,8 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.ApplicationModel.DataTransfer.DragDrop;
 using Windows.Graphics.Imaging;
-using Windows.Media.Capture;
-using Windows.Media.MediaProperties;
 using Windows.Storage;
 using Windows.Storage.Pickers;
-using Windows.Storage.Streams;
 using Windows.System;
 using WinRT.Interop;
 

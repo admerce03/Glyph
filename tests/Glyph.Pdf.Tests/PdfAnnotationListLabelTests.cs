@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Editing;
-using Xunit;
 
 namespace Glyph.Pdf.Tests;
 

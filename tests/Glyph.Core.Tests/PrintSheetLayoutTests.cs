@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Glyph.Core.Printing;
-using Xunit;
 
 namespace Glyph.Core.Tests;
 
