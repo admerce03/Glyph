@@ -5619,12 +5619,44 @@ public sealed class PdfDocumentView : UserControl
             ?? App.CurrentApp.MainWindowInstance
             ?? throw new InvalidOperationException("Main window unavailable for redaction apply.");
 
+        var removeAnnotations = new CheckBox
+        {
+            Content = "Remove intersecting annotations",
+            IsChecked = true,
+        };
+        var removeAttachments = new CheckBox
+        {
+            Content = "Remove embedded file attachments",
+            IsChecked = true,
+        };
+        var removeMetadata = new CheckBox
+        {
+            Content = "Clear Info metadata (title/author/subject/keywords)",
+            IsChecked = true,
+        };
+
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock
+                {
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 420,
+                    Text =
+                        $"Apply {pending.Count} redaction mark(s)? Underlying text and covered image content will be removed. This cannot be undone.",
+                },
+                removeAnnotations,
+                removeAttachments,
+                removeMetadata,
+            },
+        };
+
         var dialog = new ContentDialog
         {
             Title = "Apply redactions permanently?",
-            Content =
-                $"Apply {pending.Count} redaction mark(s)? Underlying text and covered content will be removed from the PDF. "
-                + "Intersecting annotations, embedded file entries, and Info metadata will also be cleared. This cannot be undone.",
+            Content = panel,
             PrimaryButtonText = "Apply",
             SecondaryButtonText = "Clear marks",
             CloseButtonText = "Cancel",
@@ -5655,9 +5687,9 @@ public sealed class PdfDocumentView : UserControl
                 new PdfRedactionApplyOptions(
                     RemoveIntersectingTextObjects: true,
                     RemoveIntersectingImageObjects: true,
-                    RemoveIntersectingAnnotations: true,
-                    RemoveEmbeddedAttachments: true,
-                    RemoveMetadata: true));
+                    RemoveIntersectingAnnotations: removeAnnotations.IsChecked == true,
+                    RemoveEmbeddedAttachments: removeAttachments.IsChecked == true,
+                    RemoveMetadata: removeMetadata.IsChecked == true));
             ClearRedactionMode();
             RefreshToolButtonChrome();
             _cache.ClearDocument(_documentKey);
