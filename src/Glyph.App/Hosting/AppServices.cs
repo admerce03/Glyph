@@ -1,8 +1,10 @@
+using Glyph.Core.Signatures;
 using Glyph.Core.Workspace;
 using Glyph.Infrastructure.Documents;
 using Glyph.Infrastructure.Paths;
 using Glyph.Infrastructure.RecentFiles;
 using Glyph.Infrastructure.Settings;
+using Glyph.Infrastructure.Signatures;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Pdfium;
 using Glyph.Pdf.Rendering;
@@ -34,6 +36,7 @@ internal static class AppServices
         });
         services.AddSingleton<IDocumentViewStateStore>(_ =>
             new JsonDocumentViewStateStore(GlyphPaths.DocumentViewStateFile));
+        services.AddSingleton<ISignatureLibrary>(_ => new FileSignatureLibrary(GlyphPaths.SignaturesDirectory));
         services.AddSingleton<IPdfDocumentFactory, PdfiumDocumentFactory>();
         services.AddSingleton<IPdfRenderer, PdfiumRenderer>();
         services.AddSingleton<IPdfTextExtractor, PdfiumTextExtractor>();

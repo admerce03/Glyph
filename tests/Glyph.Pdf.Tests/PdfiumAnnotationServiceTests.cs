@@ -114,6 +114,61 @@ public class PdfiumAnnotationServiceTests
     }
 
     [Fact]
+    public async Task Add_stamp_from_bgra_lists_and_survives_save()
+    {
+        var path = CreateTextPdf("Stamp host page");
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-stamp-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+            var editor = new PdfiumPageEditor();
+
+            // Tiny opaque red BGRA square.
+            const int w = 16;
+            const int h = 8;
+            var pixels = new byte[w * h * 4];
+            for (var i = 0; i < pixels.Length; i += 4)
+            {
+                pixels[i] = 0;       // B
+                pixels[i + 1] = 0;   // G
+                pixels[i + 2] = 220; // R
+                pixels[i + 3] = 255; // A
+            }
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var created = await annots.AddStampAsync(
+                    document,
+                    0,
+                    new PdfRect(72, 100, 200, 160),
+                    pixels,
+                    w,
+                    h);
+                created.IsStamp.Should().BeTrue();
+
+                var listed = await annots.ListAsync(document, 0);
+                listed.Should().Contain(a => a.IsStamp);
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var listed = await annots.ListAsync(reopened, 0);
+                listed.Should().Contain(a => a.IsStamp);
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Flatten_removes_editable_markup_after_bake()
     {
         var path = CreateTextPdf("Flatten host page with text");

@@ -616,6 +616,171 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             cancellationToken);
     }
 
+    public Task<PdfAnnotationInfo> AddStampAsync(
+        IPdfDocument document,
+        int pageIndex,
+        PdfRect bounds,
+        ReadOnlyMemory<byte> bgraPixels,
+        int pixelWidth,
+        int pixelHeight,
+        CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        ArgumentOutOfRangeException.ThrowIfNegative(pageIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(pageIndex, pdfium.PageCount);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pixelWidth);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pixelHeight);
+        if (bounds.Width < 1 || bounds.Height < 1)
+        {
+            throw new ArgumentException("Stamp bounds must have positive size.", nameof(bounds));
+        }
+
+        var expected = checked(pixelWidth * pixelHeight * 4);
+        if (bgraPixels.Length < expected)
+        {
+            throw new ArgumentException(
+                $"BGRA buffer length {bgraPixels.Length} is shorter than {expected} bytes.",
+                nameof(bgraPixels));
+        }
+
+        // Copy so the Task.Run closure owns a stable buffer for pinning.
+        var pixels = bgraPixels.Slice(0, expected).ToArray();
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    if (fpdf_annot.FPDFAnnotIsSupportedSubtype(PdfiumAnnotSubtypes.Stamp) == 0)
+                    {
+                        throw new NotSupportedException("PDFium does not support stamp annotations.");
+                    }
+
+                    if (fpdf_annot.FPDFAnnotIsObjectSupportedSubtype(PdfiumAnnotSubtypes.Stamp) == 0)
+                    {
+                        throw new NotSupportedException("PDFium does not support objects on stamp annotations.");
+                    }
+
+                    var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
+                    if (page is null)
+                    {
+                        throw new InvalidOperationException($"Failed to load page {pageIndex} for stamp.");
+                    }
+
+                    try
+                    {
+                        var annot = fpdf_annot.FPDFPageCreateAnnot(page, PdfiumAnnotSubtypes.Stamp);
+                        if (annot is null)
+                        {
+                            throw new InvalidOperationException("FPDFPage_CreateAnnot failed for stamp.");
+                        }
+
+                        try
+                        {
+                            using var rect = new FS_RECTF_();
+                            rect.Left = (float)bounds.Left;
+                            rect.Bottom = (float)bounds.Bottom;
+                            rect.Right = (float)bounds.Right;
+                            rect.Top = (float)bounds.Top;
+                            if (fpdf_annot.FPDFAnnotSetRect(annot, rect) == 0)
+                            {
+                                throw new InvalidOperationException("FPDFAnnot_SetRect failed for stamp.");
+                            }
+
+                            var image = fpdf_edit.FPDFPageObjNewImageObj(pdfium.Handle);
+                            if (image is null)
+                            {
+                                throw new InvalidOperationException("FPDFPageObj_NewImageObj failed.");
+                            }
+
+                            var handle = System.Runtime.InteropServices.GCHandle.Alloc(pixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+                            FpdfBitmapT? bitmap = null;
+                            try
+                            {
+                                var stride = pixelWidth * 4;
+                                bitmap = fpdfview.FPDFBitmapCreateEx(
+                                    pixelWidth,
+                                    pixelHeight,
+                                    PdfiumBitmapFormats.Bgra,
+                                    handle.AddrOfPinnedObject(),
+                                    stride);
+                                if (bitmap is null)
+                                {
+                                    throw new InvalidOperationException("FPDFBitmap_CreateEx failed.");
+                                }
+
+                                if (fpdf_edit.FPDFImageObjSetBitmap(page, 1, image, bitmap) == 0)
+                                {
+                                    throw new InvalidOperationException("FPDFImageObj_SetBitmap failed.");
+                                }
+
+                                if (fpdf_edit.FPDFImageObjSetMatrix(
+                                        image,
+                                        bounds.Width,
+                                        0,
+                                        0,
+                                        bounds.Height,
+                                        bounds.Left,
+                                        bounds.Bottom) == 0)
+                                {
+                                    throw new InvalidOperationException("FPDFImageObj_SetMatrix failed.");
+                                }
+
+                                if (fpdf_annot.FPDFAnnotAppendObject(annot, image) == 0)
+                                {
+                                    throw new InvalidOperationException("FPDFAnnot_AppendObject failed for stamp image.");
+                                }
+                            }
+                            finally
+                            {
+                                if (bitmap is not null)
+                                {
+                                    fpdfview.FPDFBitmapDestroy(bitmap);
+                                }
+
+                                if (handle.IsAllocated)
+                                {
+                                    handle.Free();
+                                }
+                            }
+
+                            var index = fpdf_annot.FPDFPageGetAnnotIndex(page, annot);
+                            if (index < 0)
+                            {
+                                throw new InvalidOperationException("Created stamp has no page index.");
+                            }
+
+                            pdfium.NotifyAnnotationsChanged();
+                            return new PdfAnnotationInfo(
+                                pageIndex,
+                                index,
+                                TextMarkupKind: null,
+                                bounds,
+                                Color: null,
+                                Contents: null,
+                                IsStickyNote: false,
+                                IsInk: false,
+                                ShapeKind: null,
+                                IsTextBox: false,
+                                IsStamp: true);
+                        }
+                        finally
+                        {
+                            fpdf_annot.FPDFPageCloseAnnot(annot);
+                        }
+                    }
+                    finally
+                    {
+                        fpdfview.FPDF_ClosePage(page);
+                    }
+                }
+            },
+            cancellationToken);
+    }
+
     public Task SetContentsAsync(
         IPdfDocument document,
         int pageIndex,
@@ -893,6 +1058,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                     var isInk = subtype == PdfiumAnnotSubtypes.Ink;
                     var shapeKind = FromShapeSubtype(subtype);
                     var isTextBox = subtype == PdfiumAnnotSubtypes.FreeText;
+                    var isStamp = subtype == PdfiumAnnotSubtypes.Stamp;
                     results.Add(new PdfAnnotationInfo(
                         pageIndex,
                         i,
@@ -903,7 +1069,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                         isSticky,
                         isInk,
                         shapeKind,
-                        isTextBox));
+                        isTextBox,
+                        isStamp));
                 }
                 finally
                 {

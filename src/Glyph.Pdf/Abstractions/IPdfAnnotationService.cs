@@ -50,6 +50,18 @@ public interface IPdfAnnotationService
         float fontSizePoints = 12f,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Insert a stamp annotation backed by a BGRA32 image (e.g. signature PNG with alpha).
+    /// </summary>
+    Task<PdfAnnotationInfo> AddStampAsync(
+        IPdfDocument document,
+        int pageIndex,
+        PdfRect bounds,
+        ReadOnlyMemory<byte> bgraPixels,
+        int pixelWidth,
+        int pixelHeight,
+        CancellationToken cancellationToken = default);
+
     Task SetContentsAsync(
         IPdfDocument document,
         int pageIndex,

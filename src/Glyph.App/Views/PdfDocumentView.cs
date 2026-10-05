@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.Core.Documents;
+using Glyph.Core.Signatures;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Editing;
 using Glyph.Pdf.Rendering;
@@ -12,8 +13,11 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.ApplicationModel.DataTransfer.DragDrop;
+using Windows.Graphics.Imaging;
 using Windows.Storage;
+using Windows.Storage.Pickers;
 using Windows.System;
+using WinRT.Interop;
 
 namespace Glyph.App.Views;
 
@@ -34,6 +38,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfLinkService _linkService;
     private readonly IPdfPageEditor _pageEditor;
     private readonly IPdfAnnotationService _annotations;
+    private readonly ISignatureLibrary _signatures;
     private readonly IPdfDocumentFactory _documentFactory;
     private readonly Window? _ownerWindow;
     private readonly DocumentViewState _viewState;
@@ -119,6 +124,7 @@ public sealed class PdfDocumentView : UserControl
         IPdfLinkService linkService,
         IPdfPageEditor pageEditor,
         IPdfAnnotationService annotations,
+        ISignatureLibrary signatures,
         IPdfDocumentFactory documentFactory,
         DocumentViewState? viewState = null,
         Window? ownerWindow = null)
@@ -132,6 +138,7 @@ public sealed class PdfDocumentView : UserControl
         _linkService = linkService;
         _pageEditor = pageEditor;
         _annotations = annotations;
+        _signatures = signatures;
         _documentFactory = documentFactory;
         _ownerWindow = ownerWindow;
         _viewState = viewState ?? new DocumentViewState();
@@ -298,6 +305,7 @@ public sealed class PdfDocumentView : UserControl
         var stickyNote = new Button { Content = "Note" };
         var textBox = new Button { Content = "TextBox" };
         var flatten = new Button { Content = "Flatten" };
+        var sign = new Button { Content = "Sign" };
         var ink = new Button { Content = "Ink" };
         var rect = new Button { Content = "Rect" };
         var ellipse = new Button { Content = "Ellipse" };
@@ -325,6 +333,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(stickyNote, "Add a sticky note on the current page");
         ToolTipService.SetToolTip(textBox, "Add a FreeText text box on the current page");
         ToolTipService.SetToolTip(flatten, "Flatten annotations into page content (permanent)");
+        ToolTipService.SetToolTip(sign, "Insert a signature image stamp (import PNG/JPEG; save to library)");
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
         ToolTipService.SetToolTip(rect, "Draw a rectangle annotation");
         ToolTipService.SetToolTip(ellipse, "Draw an ellipse annotation");
@@ -377,6 +386,7 @@ public sealed class PdfDocumentView : UserControl
         stickyNote.Click += async (_, _) => await AddStickyNoteAsync();
         textBox.Click += async (_, _) => await AddTextBoxAsync();
         flatten.Click += async (_, _) => await FlattenAnnotationsAsync();
+        sign.Click += async (_, _) => await InsertSignatureAsync();
         ink.Click += (_, _) => ToggleInkMode();
         rect.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Rectangle);
         ellipse.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Ellipse);
@@ -395,7 +405,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, flatten, ink, rect, ellipse, line,
+                highlight, underline, strikeout, stickyNote, textBox, flatten, sign, ink, rect, ellipse, line,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -2033,7 +2043,7 @@ public sealed class PdfDocumentView : UserControl
         {
             var all = await _annotations.ListAsync(_document);
             _annotationItems = all
-                .Where(a => a.TextMarkupKind is not null || a.IsStickyNote || a.IsInk || a.ShapeKind is not null || a.IsTextBox)
+                .Where(a => a.TextMarkupKind is not null || a.IsStickyNote || a.IsInk || a.ShapeKind is not null || a.IsTextBox || a.IsStamp)
                 .OrderBy(a => a.PageIndex)
                 .ThenBy(a => a.AnnotIndex)
                 .ToList();
@@ -2066,6 +2076,11 @@ public sealed class PdfDocumentView : UserControl
                 ? "(empty)"
                 : TrimForStatus(info.Contents);
             return $"Text · p.{info.PageIndex + 1}: {preview}";
+        }
+
+        if (info.IsStamp)
+        {
+            return $"Signature · p.{info.PageIndex + 1}";
         }
 
         if (info.ShapeKind is { } shape)
@@ -2424,6 +2439,89 @@ public sealed class PdfDocumentView : UserControl
         _inkDrawing = false;
         _inkPageIndex = -1;
         _inkPoints.Clear();
+    }
+
+    private async Task InsertSignatureAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for signature picker.");
+
+        var picker = new FileOpenPicker();
+        var hwnd = WindowNative.GetWindowHandle(window);
+        InitializeWithWindow.Initialize(picker, hwnd);
+        picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
+        picker.FileTypeFilter.Add(".png");
+        picker.FileTypeFilter.Add(".jpg");
+        picker.FileTypeFilter.Add(".jpeg");
+
+        var file = await picker.PickSingleFileAsync();
+        if (file is null)
+        {
+            _status.Text = "Signature cancelled.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Loading signature…";
+            await using var winStream = await file.OpenAsync(FileAccessMode.Read);
+            var decoder = await BitmapDecoder.CreateAsync(winStream);
+            var pixelData = await decoder.GetPixelDataAsync(
+                BitmapPixelFormat.Bgra8,
+                BitmapAlphaMode.Straight,
+                new BitmapTransform(),
+                ExifOrientationMode.IgnoreExifOrientation,
+                ColorManagementMode.DoNotColorManage);
+            var pixels = pixelData.DetachPixelData();
+            var width = (int)decoder.PixelWidth;
+            var height = (int)decoder.PixelHeight;
+            if (width <= 0 || height <= 0)
+            {
+                _status.Text = "Signature image is empty.";
+                return;
+            }
+
+            // Persist a copy into the local signature library (PNG preferred).
+            try
+            {
+                await using var copy = await file.OpenStreamForReadAsync();
+                await _signatures.SaveAsync(
+                    System.IO.Path.GetFileNameWithoutExtension(file.Name),
+                    copy);
+            }
+            catch
+            {
+                // Library save is best-effort; insertion can still proceed.
+            }
+
+            var page = _document.GetPage(CurrentPageIndex);
+            var targetWidth = Math.Min(180, page.WidthPoints * 0.35);
+            var aspect = height / (double)width;
+            var targetHeight = Math.Clamp(targetWidth * aspect, 24, page.HeightPoints * 0.25);
+            var left = Math.Max(36, page.WidthPoints - targetWidth - 48);
+            var bottom = Math.Max(36, 48.0);
+            var bounds = new PdfRect(left, bottom, left + targetWidth, bottom + targetHeight);
+
+            await _annotations.AddStampAsync(
+                _document,
+                CurrentPageIndex,
+                bounds,
+                pixels,
+                width,
+                height);
+
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = "Signature inserted.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Signature failed: " + ex.Message;
+        }
     }
 
     private async Task FlattenAnnotationsAsync()
