@@ -738,11 +738,11 @@ public sealed class PdfDocumentView : UserControl
         {
             Width = 150,
             ItemsSource = new[] { "Continuous", "Single", "Two-page", "Two-page + cover", "Contact sheet" },
-            SelectedIndex = LayoutToComboIndex(_layoutMode),
+            SelectedIndex = PageLayoutCombo.ToComboIndex(_layoutMode),
         };
         _layoutBox.SelectionChanged += async (_, _) =>
         {
-            if (_layoutBox.SelectedIndex == 4)
+            if (_layoutBox.SelectedIndex == PageLayoutCombo.ContactSheetIndex)
             {
                 await EnterContactSheetAsync();
                 return;
@@ -1296,34 +1296,20 @@ public sealed class PdfDocumentView : UserControl
         }
     }
 
-    private PageLayoutMode SelectedLayout() => _layoutBox.SelectedIndex switch
-    {
-        1 => PageLayoutMode.SinglePage,
-        2 => PageLayoutMode.TwoPage,
-        3 => PageLayoutMode.TwoPageWithCover,
-        _ => PageLayoutMode.Continuous,
-    };
-
-    private static int LayoutToComboIndex(PageLayoutMode mode) => mode switch
-    {
-        PageLayoutMode.SinglePage => 1,
-        PageLayoutMode.TwoPage => 2,
-        PageLayoutMode.TwoPageWithCover => 3,
-        _ => 0,
-    };
+    private PageLayoutMode SelectedLayout() => PageLayoutCombo.FromComboIndex(_layoutBox.SelectedIndex);
 
     private async Task SetLayoutModeAsync(PageLayoutMode mode)
     {
         _contactSheetMode = false;
         _layoutMode = mode;
-        if (_layoutBox.SelectedIndex != LayoutToComboIndex(mode) && _layoutBox.SelectedIndex != 4)
+        if (_layoutBox.SelectedIndex != PageLayoutCombo.ToComboIndex(mode) && _layoutBox.SelectedIndex != PageLayoutCombo.ContactSheetIndex)
         {
-            _layoutBox.SelectedIndex = LayoutToComboIndex(mode);
+            _layoutBox.SelectedIndex = PageLayoutCombo.ToComboIndex(mode);
         }
-        else if (_layoutBox.SelectedIndex == 4)
+        else if (_layoutBox.SelectedIndex == PageLayoutCombo.ContactSheetIndex)
         {
             // Leaving contact sheet via SetLayoutMode — sync combo to mode.
-            _layoutBox.SelectedIndex = LayoutToComboIndex(mode);
+            _layoutBox.SelectedIndex = PageLayoutCombo.ToComboIndex(mode);
         }
 
         CurrentPageIndex = PageLayoutCalculator.NormalizePageIndex(mode, CurrentPageIndex, _document.PageCount);
@@ -4446,7 +4432,7 @@ public sealed class PdfDocumentView : UserControl
             _bodyGrid.ColumnDefinitions[0].Width = new GridLength(0);
         }
 
-        await SetLayoutModeAsync(PageLayoutMode.Single);
+        await SetLayoutModeAsync(PageLayoutMode.SinglePage);
         await FitPageAsync();
         if (App.CurrentApp.MainWindowInstance is MainWindow mw
             && mw.AppWindow.Presenter.Kind != AppWindowPresenterKind.FullScreen)
