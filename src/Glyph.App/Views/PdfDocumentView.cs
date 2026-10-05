@@ -278,7 +278,7 @@ public sealed class PdfDocumentView : UserControl
         var saveDoc = new Button { Content = "Save" };
         var ocrPage = new Button { Content = "OCR" };
         var meta = new Button { Content = "Meta" };
-        var security = new Button { Content = "Security" };
+        var securityButton = new Button { Content = "Security" };
         var protect = new Button { Content = "Protect" };
         var markRedact = new Button { Content = "Mark redact" };
         var applyRedact = new Button { Content = "Apply redact" };
@@ -322,7 +322,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(saveDoc, "Save PDF including markup");
         ToolTipService.SetToolTip(ocrPage, "Offline OCR of the current page (scanned PDFs)");
         ToolTipService.SetToolTip(meta, "View / edit PDF metadata (title, author, subject, keywords)");
-        ToolTipService.SetToolTip(security, "Show encryption and permission flags (permissions are advisory)");
+        ToolTipService.SetToolTip(securityButton, "Show encryption and permission flags (permissions are advisory)");
         ToolTipService.SetToolTip(protect, "Save a password-protected copy");
         ToolTipService.SetToolTip(markRedact, "Mark selection or a page rectangle for redaction");
         ToolTipService.SetToolTip(applyRedact, "Permanently apply pending rededctions (removes underlying content)");
@@ -381,7 +381,7 @@ public sealed class PdfDocumentView : UserControl
         saveDoc.Click += async (_, _) => await SaveDocumentAsync();
         ocrPage.Click += async (_, _) => await RunPageOcrAsync();
         meta.Click += async (_, _) => await EditMetadataAsync();
-        security.Click += async (_, _) => await ShowSecurityInfoAsync();
+        securityButton.Click += async (_, _) => await ShowSecurityInfoAsync();
         protect.Click += async (_, _) => await ProtectDocumentAsync();
         markRedact.Click += async (_, _) => await MarkRedactionAsync();
         applyRedact.Click += async (_, _) => await ApplyRedactionsAsync();
@@ -398,7 +398,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 first, prev, _gotoBox, next, last, back, forward,
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy, saveDoc, ocrPage,
-                meta, security, protect, markRedact, applyRedact, optimize,
+                meta, securityButton, protect, markRedact, applyRedact, optimize,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
                 highlight, underline, strike, note, removeMarkup, recolor, _markupColorBox, _drawToolBox, _persistentHighlightBox,
