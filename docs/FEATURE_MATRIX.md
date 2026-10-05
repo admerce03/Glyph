@@ -273,8 +273,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F14-09 | Highlight workflow | Click annotation in sidebar to jump to it. | M4 | Implemented | Selection jumps to annotation page |
 | F15-01 | Notes | Add sticky note. | M4 | Tested | `AddStickyNoteAsync` + Note toolbar |
 | F15-02 | Notes | Enter note text. | M4 | Implemented | ContentDialog on add |
-| F15-03 | Notes | Collapse note. | M4 | Not Started | PDF Text annot is icon by default |
-| F15-04 | Notes | Expand note. | M4 | Not Started |  |
+| F15-03 | Notes | Collapse note. | M4 | Implemented | Sidebar Collapse hides sticky popup overlay |
+| F15-04 | Notes | Expand note. | M4 | Implemented | Sidebar Expand / select note shows contents popup on page |
 | F15-05 | Notes | Move note icon. | M4 | Tested | `MoveAsync` API; drag UI later |
 | F15-06 | Notes | Change note color. | M4 | Tested | Create picker + sidebar Color → StickyNotePresets / `SetColorAsync` |
 | F15-07 | Notes | Edit. | M4 | Implemented | Sidebar Edit → `SetContentsAsync` (notes/text boxes/callouts) |
