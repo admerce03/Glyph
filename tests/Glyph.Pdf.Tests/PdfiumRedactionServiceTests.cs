@@ -37,6 +37,30 @@ public class PdfiumRedactionServiceTests
     }
 
     [Fact]
+    public async Task ClearPending_removes_all_marks()
+    {
+        var path = CreateTextPdf("Secret data here");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var redaction = new PdfiumRedactionService();
+            await using var document = await factory.OpenAsync(path);
+
+            redaction.MarkRectangle(document, 0, new PdfRect(50, 700, 100, 740), "a");
+            redaction.MarkTextRegion(document, 0, new PdfRect(120, 700, 200, 740), "b");
+            redaction.GetPending(document).Should().HaveCount(2);
+
+            redaction.ClearPending(document);
+            redaction.GetPending(document).Should().BeEmpty();
+            redaction.UndoLastPending(document).Should().BeNull();
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Undo_last_pending_removes_most_recent_mark()
     {
         var path = CreateTextPdf("Secret data here");

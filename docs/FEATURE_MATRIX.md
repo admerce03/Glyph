@@ -367,7 +367,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F21-02 | Redaction | Mark rectangular areas for redaction. | M7 | Tested | `MarkRectangle` + pending store unit tests |
 | F21-03 | Redaction | Preview pending redactions. | M7 | Implemented | Pending marks drawn on dedicated overlay canvas |
 | F21-04 | Redaction | Remove pending redaction. | M7 | Tested | `RemovePending` / `UndoLastPending` unit tests |
-| F21-05 | Redaction | Apply reded permanently. | M7 | Tested | `ApplyAsync` unit tests (text/image/annot sanitize) |
+| F21-05 | Redaction | Apply redactions permanently. | M7 | Tested | `ApplyAsync` unit tests (text/image/annot sanitize) |
 | F21-06 | Redaction | Remove underlying text/image data, not merely cover it visually. | M7 | Tested | Black page object + remove intersecting text/images; search empty after apply |
 | F21-07 | Redaction | Warn before permanent application. | M7 | Implemented | ContentDialog confirm before `ApplyAsync` |
 | F21-08 | Redaction | Sanitize associated hidden content where practical. | M7 | Tested | Apply removes intersecting annotations via `RemoveIntersectingAnnotations` |
