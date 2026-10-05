@@ -822,15 +822,15 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Not Started |  |
 | F58-07 | Large-document handling | Partial OCR. | M2+/M9 | Not Started |  |
 | F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | Not Started |  |
-| F59-01 | Multi-document workflow | multiple tabs | M1/M3 | Not Started |  |
-| F59-02 | Multi-document workflow | multiple windows | M1/M3 | Not Started |  |
+| F59-01 | Multi-document workflow | multiple tabs | M1/M3 | Implemented | Tab strip + per-tab document hosts |
+| F59-02 | Multi-document workflow | multiple windows | M1/M3 | Implemented | File → New Window; per-window `WorkspaceState` |
 | F59-03 | Multi-document workflow | drag tabs between windows | M1/M3 | Not Started |  |
-| F59-04 | Multi-document workflow | drag PDF pages between documents | M1/M3 | Not Started |  |
-| F59-05 | Multi-document workflow | drag images between compatible contexts | M1/M3 | Not Started |  |
-| F59-06 | Multi-document workflow | copy/paste between documents | M1/M3 | Not Started |  |
-| F59-07 | Multi-document workflow | side-by-side windows using Windows Snap | M1/M3 | Not Started |  |
-| F59-08 | Multi-document workflow | maintain independent undo history for each document | M1/M3 | Not Started |  |
-| F59-09 | Multi-document workflow | retain per-document page/zoom position | M1/M3 | Not Started |  |
+| F59-04 | Multi-document workflow | drag PDF pages between documents | M1/M3 | Implemented | Cross-tab/window insert via `PdfPageDragRegistry` |
+| F59-05 | Multi-document workflow | drag images between compatible contexts | M1/M3 | Deferred | Needs M5 image editor |
+| F59-06 | Multi-document workflow | copy/paste between documents | M1/M3 | Implemented | Ctrl+C/V pages via `PdfPageClipboard` |
+| F59-07 | Multi-document workflow | side-by-side windows using Windows Snap | M1/M3 | Implemented | Multi-window shell; Snap is OS-native |
+| F59-08 | Multi-document workflow | maintain independent undo history for each document | M1/M3 | Implemented | Per-view `PdfPageEditHistory` |
+| F59-09 | Multi-document workflow | retain per-document page/zoom position | M1/M3 | Implemented | Per-document `PdfViewState` persistence |
 | F60-01 | Context-sensitive commands | Copy | M1/M3 | Not Started |  |
 | F60-02 | Context-sensitive commands | Highlight | M1/M3 | Not Started |  |
 | F60-03 | Context-sensitive commands | Underline | M1/M3 | Not Started |  |
@@ -842,7 +842,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F60-09 | Context-sensitive commands | Copy | M1/M3 | Not Started |  |
 | F61-01 | Non-destructive editing where practical | PDF annotations | M3-M5 | Not Started |  |
 | F61-02 | Non-destructive editing where practical | image markup | M3-M5 | Not Started |  |
-| F61-03 | Non-destructive editing where practical | crops | M3-M5 | Not Started |  |
+| F61-03 | Non-destructive editing where practical | crops | M3-M5 | Tested | CropBox-only until optional permanent export |
 | F61-04 | Non-destructive editing where practical | adjustments | M3-M5 | Not Started |  |
 | F61-05 | Non-destructive editing where practical | signatures | M3-M5 | Not Started |  |
 | F61-06 | Non-destructive editing where practical | shapes | M3-M5 | Not Started |  |

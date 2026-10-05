@@ -20,7 +20,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M0 | Architecture and engineering foundation | **Tested** | — |
 | M1 | Application shell and basic file opening | **Implemented** (CI green; interactive screenshot pending) | M0 |
 | M2 | Core PDF viewer | **Implemented** (landed via PR #7 → `33deca2`) | M1 |
-| M3 | Core PDF page manipulation | **In Progress** | M2 |
+| M3 | Core PDF page manipulation | **Implemented** (CI green; §11 cross-doc DnD screen recording pending) | M2 |
 | M4 | PDF markup and editing | Not Started | M2 (forms/security touch M7) |
 | M5 | Image viewer/editor | Not Started | M1 (shares shell/DnD with M3) |
 | M6 | OCR and scanned-document capabilities | Not Started | M2, M5 |
@@ -131,7 +131,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 3 — Core PDF page manipulation
 
-**Status:** In Progress · Depends on M2
+**Status:** Implemented · Depends on M2
 
 ### Scope (`FEATURES.md` §10–12, §59 PDF DnD)
 
@@ -145,22 +145,22 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Completion criteria
 
-- All first-class DnD workflows in §11 work
-- Undo/redo for page ops
-- Round-trip tests on sample PDFs
-- Screen recording of cross-document page drag
+- [x] All first-class DnD workflows in §11 work (code + CI; interactive screen recording still pending)
+- [x] Undo/redo for page ops
+- [x] Round-trip tests on sample PDFs
+- [ ] Screen recording of cross-document page drag
 
 ### Progress notes
 
-- `IPdfPageEditor` / `PdfiumPageEditor`: rotate, delete, reorder, extract, insert blank, duplicate, insert-from, save behind PDFium.
-- `PageSelection` models Ctrl/Shift thumbnail multi-select; viewer wires rotate/delete/move ↑↓/blank/dup/extract.
-- Thumbnail drag-reorder within a document landed (`PageReorder` + thumb CanDrag/Drop).
+- Landed via PRs #9–#15, #14 (CropBox), #18 (multi-window / keyboard / page clipboard) → `acd07ae`.
+- `IPdfPageEditor` / `PdfiumPageEditor`: rotate, delete, reorder, extract, insert blank, duplicate, insert-from, merge/split, crop, save behind PDFium.
+- `PageSelection` models Ctrl/Shift/keyboard thumbnail multi-select; viewer wires rotate/delete/move ↑↓/blank/dup/extract/merge/split/crop.
+- Thumbnail drag-reorder within a document (`PageReorder` + thumb CanDrag/Drop).
 - Snapshot undo/redo for page edits (`PdfPageEditHistory` + Ctrl+Z/Y).
-- Explorer PDF → thumbnail insert, cross-tab page DnD (`PageDragPayload` / `PdfPageDragRegistry`), and drag-out extract via deferred StorageItems.
-- Non-destructive CropBox crop (`CropPagesAsync` / `SetCropBoxAsync` + numeric Crop dialog / visual handles).
-- Merge / split APIs + toolbar (`MergeDocumentsAsync` / `SplitDocumentAsync`).
-- Multi-window shell (`File → New Window`) with per-window workspace for cross-window page DnD.
-- Next: §11 demo recording / M3 completion proof.
+- Explorer PDF → thumbnail insert, cross-tab/window page DnD (`PageDragPayload` / `PdfPageDragRegistry`), drag-out extract via deferred StorageItems, Ctrl+C/V via `PdfPageClipboard`.
+- Non-destructive CropBox crop (`CropPagesAsync` / `SetCropBoxAsync` + numeric dialog / visual handles + optional permanent export).
+- Multi-window shell (`File → New Window`) with per-window `WorkspaceState`.
+- Remaining M3 polish: §11 cross-document DnD screen recording (same class of proof debt as M1 interactive screenshot).
 
 ---
 
@@ -305,7 +305,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | PDF text interaction | §7 | M2, M6 | Implemented |
 | OCR / Live Text | §8 | M6 | Not Started |
 | User bookmarks | §9 | M2/M4 | Not Started |
-| PDF page manipulation | §10–12 | M3 | In Progress |
+| PDF page manipulation | §10–12 | M3 | Implemented |
 | PDF annotations/markup | §13–19 | M4 | Not Started |
 | PDF forms | §20 | M4 | Not Started |
 | Redaction | §21 | M7 | Not Started |
@@ -325,7 +325,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Not Started |
 | Accessibility | §56 | M9 | Not Started |
 | Performance/large docs | §57–58 | M2+, M9 | In Progress |
-| Multi-doc workflows | §59–60 | M1, M3 | Not Started |
-| Non-destructive editing | §61 | M3–M5 | Not Started |
+| Multi-doc workflows | §59–60 | M1, M3 | In Progress (tabs/windows/page DnD/clipboard/undo; tab tear-off + §60 context cmds open) |
+| Non-destructive editing | §61 | M3–M5 | In Progress (CropBox crops; annotations/markup later) |
 | Output formats | §62 | M5, M7 | Not Started |
 | Explicit exclusions | §63 | — | Documented (out of scope) |
