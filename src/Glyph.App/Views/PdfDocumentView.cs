@@ -3644,12 +3644,6 @@ public sealed class PdfDocumentView : UserControl
         _status.Text = "Callout tip — click on the page where the pointer should point.";
     }
 
-    private void ClearCalloutTipEditMode()
-    {
-        _calloutTipEditMode = false;
-        _calloutTipTarget = null;
-    }
-
     private async Task FinishCalloutTipEditAsync(Border border, int pageIndex, PointerRoutedEventArgs e)
     {
         var target = _calloutTipTarget;
