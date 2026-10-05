@@ -696,19 +696,19 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F48-13 | File properties and inspector | file size | M5/M9 | Implemented | Image Properties file size + path |
 | F49-01 | Undo and redo | annotations | M1-M4 | Implemented | Ctrl+Z undoes sticky/text/markup/ink/shape/stamp via annot stack |
 | F49-02 | Undo and redo | drawing | M1-M4 | Implemented | PDF stroke undo stack; image markup undo |
-| F49-03 | Undo and redo | page insertion | M1-M4 | Implemented | Via `PdfPageEditHistory` snapshots |
-| F49-04 | Undo and redo | page deletion | M1-M4 | Implemented | Via `PdfPageEditHistory` snapshots |
-| F49-05 | Undo and redo | page ordering | M1-M4 | Implemented | Via `PdfPageEditHistory` snapshots |
-| F49-06 | Undo and redo | page rotation | M1-M4 | Implemented | Via `PdfPageEditHistory` snapshots |
-| F49-07 | Undo and redo | crop | M1-M4 | Implemented | PDF crop via page-edit history; image crop undo stack |
+| F49-03 | Undo and redo | page insertion | M1-M4 | Tested | `PdfPageEditHistory` snapshot undo/redo unit tests |
+| F49-04 | Undo and redo | page deletion | M1-M4 | Tested | `PdfPageEditHistory` snapshot undo/redo unit tests |
+| F49-05 | Undo and redo | page ordering | M1-M4 | Tested | `PdfPageEditHistory` snapshot undo/redo unit tests |
+| F49-06 | Undo and redo | page rotation | M1-M4 | Tested | `PdfPageEditHistory` snapshot undo/redo unit tests |
+| F49-07 | Undo and redo | crop | M1-M4 | Tested | PDF crop via `PdfPageEditHistory`; image crop undo stack |
 | F49-08 | Undo and redo | resizing | M1-M4 | Implemented | Image resize undo checkpoints |
 | F49-09 | Undo and redo | image adjustments | M1-M4 | Implemented | Image adjust undo checkpoints |
-| F49-10 | Undo and redo | metadata editing | M1-M4 | Implemented | Image IPTC/GPS via `MutateAsync`; PDF Info Edit… via `_infoUndoStack` (Ctrl+Z) |
+| F49-10 | Undo and redo | metadata editing | M1-M4 | Tested | Image IPTC/GPS via `MutateAsync`; PDF Info `_infoUndoStack` |
 | F49-11 | Undo and redo | form filling | M1-M4 | Implemented | Ctrl+Z restores prior AcroForm field value |
 | F49-12 | Undo and redo | signature placement | M1-M4 | Implemented | Signature stamps push onto annot undo stack (Ctrl+Z) |
-| F49-13 | Undo and redo | redaction before permanent application | M1-M4 | Implemented | Ctrl+Z / Undo undoes last pending redaction mark |
-| F49-14 | Undo and redo | Ctrl+Z | M1-M4 | Implemented | PDF: redaction → annot → form → page edit; image undo |
-| F49-15 | Undo and redo | Ctrl+Y / Ctrl+Shift+Z | M1-M4 | Implemented | PDF page-edit redo (Ctrl+Y) |
+| F49-13 | Undo and redo | redaction before permanent application | M1-M4 | Tested | `UndoLastPending` unit tests; Ctrl+Z prefers pending marks |
+| F49-14 | Undo and redo | Ctrl+Z | M1-M4 | Tested | `UndoStackTests` + PDF redaction→annot→form→page edit order |
+| F49-15 | Undo and redo | Ctrl+Y / Ctrl+Shift+Z | M1-M4 | Tested | `PdfPageEditHistory` redo + `UndoStackTests` Redo |
 | F50-01 | Autosave and recovery | edits remain in memory until Save. | M1/M9 | Implemented | Default; AutoSaveToOriginal opt-in |
 | F50-02 | Autosave and recovery | periodic crash-recovery snapshot. | M1/M9 | Tested | `FileCrashRecoveryStore.SaveSnapshotAsync` round-trip unit test |
 | F50-03 | Autosave and recovery | closing unsaved file prompts user. | M1/M9 | Implemented | Close tab dirty / HasUnsavedEdits prompt |

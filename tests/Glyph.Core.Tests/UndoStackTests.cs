@@ -24,6 +24,22 @@ public class UndoStackTests
         session.DisplayName.Should().Be("renamed.pdf");
     }
 
+    [Fact]
+    public void New_execute_clears_redo_stack()
+    {
+        var session = new DocumentSession(DocumentKind.Pdf, "a.pdf");
+        session.Execute(new RenameCommand("b.pdf"));
+        session.Undo();
+        session.CanRedo.Should().BeTrue();
+
+        session.Execute(new RenameCommand("c.pdf"));
+        session.CanRedo.Should().BeFalse();
+        session.DisplayName.Should().Be("c.pdf");
+
+        session.Undo();
+        session.DisplayName.Should().Be("a.pdf");
+    }
+
     private sealed class RenameCommand(string newName) : IEditCommand
     {
         private string? _previous;
