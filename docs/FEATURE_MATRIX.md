@@ -594,7 +594,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F38-02 | GPS metadata | Copy coordinates. | M5/M8 | Implemented | Copy GPS button |
 | F38-03 | GPS metadata | Open in default/browser mapping service. | M5/M8 | Implemented | Open map → OpenStreetMap |
 | F38-04 | GPS metadata | Remove GPS metadata. | M5/M8 | Tested | RemoveGpsMetadataAsync |
-| F38-05 | GPS metadata | Optional embedded map later. | M5/M8 | Not Started |  |
+| F38-05 | GPS metadata | Optional embedded map later. | M5/M8 | Deferred | Open map uses OSM/browser (F38-03); in-app WebView map post-M8 |
+| F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Deferred | Search is on-demand; full-doc index not required yet (same as F57-05) |
+| F59-03 | Multi-document workflow | drag tabs between windows | M1/M3 | Implemented | `CanDragTabs` + `AllowDropTabs`; drop outside → new window |
 | F39-01 | Color management | Detect embedded ICC profile. | M8 | Tested | `HasIccProfile` via Magick `GetColorProfile`; Meta shows ICC |
 | F39-02 | Color management | Honor embedded profile while displaying. | M8 | Tested | GetPixelsAsync transforms ICC → sRGB for display (toggle in Meta) |
 | F39-03 | Color management | Assign ICC profile. | M8 | Tested | Meta → Assign sRGB; `AssignColorProfileAsync` |

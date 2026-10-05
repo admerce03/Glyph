@@ -561,6 +561,16 @@ public sealed partial class MainWindow : Window
 
     private async void DocumentTabs_AddTabButtonClick(TabView sender, object args) => await OpenWithPickerAsync(allowMultiple: false);
 
+    private async void DocumentTabs_TabDroppedOutside(TabView sender, TabViewTabDroppedOutsideEventArgs args)
+    {
+        if (args.Tab is not TabViewItem { Tag: DocumentId id })
+        {
+            return;
+        }
+
+        await TearTabToNewWindowAsync(id);
+    }
+
     private async void DocumentTabs_TabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
     {
         if (args.Tab.Tag is DocumentId id)

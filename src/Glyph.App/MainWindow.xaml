@@ -207,10 +207,12 @@
                     <TabView x:Name="DocumentTabs"
                              TabIndex="3"
                              CanReorderTabs="True"
+                             CanDragTabs="True"
                              AllowDropTabs="True"
                              AddTabButtonClick="DocumentTabs_AddTabButtonClick"
                              TabCloseRequested="DocumentTabs_TabCloseRequested"
                              TabItemsChanged="DocumentTabs_TabItemsChanged"
+                             TabDroppedOutside="DocumentTabs_TabDroppedOutside"
                              SelectionChanged="DocumentTabs_SelectionChanged"
                              AutomationProperties.Name="Open documents" />
 
