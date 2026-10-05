@@ -324,7 +324,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | PDF security | §23 | M7 | Not Started |
 | Optimization | §24 | M7 | Not Started |
 | PDF metadata | §25 | M7 | Not Started |
-| Image viewing/editing | §26–35 | M5 | Not Started |
+| Image viewing/editing | §26–35 | M5 | In Progress |
 | Batch images | §36 | M8 | Not Started |
 | Image metadata/GPS | §37–38 | M5, M8 | Not Started |
 | Color management | §39 | M8 | Not Started |

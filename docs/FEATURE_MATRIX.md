@@ -486,12 +486,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F30-02 | Image crop | Free aspect ratio. | M5 | Not Started |  |
 | F30-03 | Image crop | Original aspect ratio. | M5 | Not Started |  |
 | F30-04 | Image crop | Common presets: | M5 | Not Started |  |
-| F30-05 | Image crop | Numeric width/height. | M5 | Not Started |  |
-| F30-06 | Image crop | Apply crop. | M5 | Not Started |  |
+| F30-05 | Image crop | Numeric width/height. | M5 | Implemented | Crop x,y,w,h box |
+| F30-06 | Image crop | Apply crop. | M5 | Tested | `IImageProcessor.CropAsync` |
 | F30-07 | Image crop | Undo. | M5 | Not Started |  |
 | F30-08 | Image crop | Non-destructive editing internally until save where practical. | M5 | Not Started |  |
-| F31-01 | Image resizing | Adjust width. | M5 | Not Started |  |
-| F31-02 | Image resizing | Adjust height. | M5 | Not Started |  |
+| F31-01 | Image resizing | Adjust width. | M5 | Tested | `ResizeAsync` API |
+| F31-02 | Image resizing | Adjust height. | M5 | Tested | `ResizeAsync` API |
 | F31-03 | Image resizing | Lock aspect ratio. | M5 | Not Started |  |
 | F31-04 | Image resizing | Percentage scaling. | M5 | Not Started |  |
 | F31-05 | Image resizing | Pixel units. | M5 | Not Started |  |
@@ -503,13 +503,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F31-11 | Image resizing | Estimated resulting dimensions. | M5 | Not Started |  |
 | F31-12 | Image resizing | Estimated file size. | M5 | Not Started |  |
 | F31-13 | Image resizing | Batch resize selected images. | M5 | Not Started |  |
-| F32-01 | Image orientation | Rotate left 90°. | M5 | Not Started |  |
-| F32-02 | Image orientation | Rotate right 90°. | M5 | Not Started |  |
-| F32-03 | Image orientation | Rotate 180°. | M5 | Not Started |  |
-| F32-04 | Image orientation | Flip horizontal. | M5 | Not Started |  |
-| F32-05 | Image orientation | Flip vertical. | M5 | Not Started |  |
+| F32-01 | Image orientation | Rotate left 90°. | M5 | Tested | Toolbar ⟲ |
+| F32-02 | Image orientation | Rotate right 90°. | M5 | Tested | Toolbar ⟳ |
+| F32-03 | Image orientation | Rotate 180°. | M5 | Implemented | `RotateAsync(180)` |
+| F32-04 | Image orientation | Flip horizontal. | M5 | Tested | Flip H toolbar |
+| F32-05 | Image orientation | Flip vertical. | M5 | Tested | Flip V toolbar |
 | F32-06 | Image orientation | Batch operations on selected images. | M5 | Not Started |  |
-| F32-07 | Image orientation | Respect EXIF orientation. | M5 | Not Started |  |
+| F32-07 | Image orientation | Respect EXIF orientation. | M5 | Implemented | Magick `AutoOrient` on pixel export |
 | F32-08 | Image orientation | Option to normalize EXIF orientation into pixels. | M5 | Not Started |  |
 | F33-01 | Image color adjustments | Auto Levels | M5 | Not Started |  |
 | F33-02 | Image color adjustments | Exposure | M5 | Not Started |  |
@@ -538,12 +538,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F34-09 | Image markup | rotate | M5 | Not Started |  |
 | F34-10 | Image markup | Save/export to a flat image format, or | M5 | Not Started |  |
 | F34-11 | Image markup | user explicitly flattens. | M5 | Not Started |  |
-| F35-01 | Image format conversion | PNG | M5 | Not Started |  |
-| F35-02 | Image format conversion | JPEG | M5 | Not Started |  |
-| F35-03 | Image format conversion | WebP | M5 | Not Started |  |
-| F35-04 | Image format conversion | TIFF | M5 | Not Started |  |
-| F35-05 | Image format conversion | BMP | M5 | Not Started |  |
-| F35-06 | Image format conversion | GIF | M5 | Not Started |  |
+| F35-01 | Image format conversion | PNG | M5 | Implemented | →PNG export toolbar |
+| F35-02 | Image format conversion | JPEG | M5 | Implemented | →JPEG export toolbar |
+| F35-03 | Image format conversion | WebP | M5 | Implemented | `SaveAsAsync(Webp)` |
+| F35-04 | Image format conversion | TIFF | M5 | Implemented | `SaveAsAsync(Tiff)` |
+| F35-05 | Image format conversion | BMP | M5 | Implemented | `SaveAsAsync(Bmp)` |
+| F35-06 | Image format conversion | GIF | M5 | Implemented | `SaveAsAsync(Gif)` |
 | F35-07 | Image format conversion | HEIC/HEIF where supported | M5 | Not Started |  |
 | F35-08 | Image format conversion | AVIF | M5 | Not Started |  |
 | F35-09 | Image format conversion | JPEG 2000 | M5 | Not Started |  |
