@@ -12909,15 +12909,15 @@ public sealed class PdfDocumentView : UserControl
 
         var dialog = new ContentDialog
         {
-            Title = "Document info",
+            Title = PdfDocumentInfoUi.DialogTitle,
             Content = new ScrollViewer
             {
                 Content = body,
                 MaxHeight = 420,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             },
-            PrimaryButtonText = "Edit…",
-            CloseButtonText = "Close",
+            PrimaryButtonText = PdfDocumentInfoUi.EditButton,
+            CloseButtonText = PdfDocumentInfoUi.CloseButton,
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = window.Content.XamlRoot,
         };
@@ -13129,7 +13129,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _propertiesSummary.Text = "Properties unavailable: " + ex.Message;
+            _propertiesSummary.Text = PdfDocumentInfoUi.PropertiesUnavailablePrefix + ex.Message;
         }
     }
 
