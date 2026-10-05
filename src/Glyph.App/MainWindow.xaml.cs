@@ -42,6 +42,7 @@ public sealed partial class MainWindow : Window
     private readonly IPdfPageEditor _pdfPageEditor;
     private readonly IPdfAnnotationService _pdfAnnotations;
     private readonly ISignatureLibrary _signatures;
+    private readonly IPdfFormStore _pdfForms;
     private readonly PageRenderCache _pageCache;
     private readonly ILogger<MainWindow> _logger;
     private readonly Dictionary<DocumentId, IAsyncDisposable> _openEngines = new();
@@ -60,6 +61,7 @@ public sealed partial class MainWindow : Window
         IPdfPageEditor pdfPageEditor,
         IPdfAnnotationService pdfAnnotations,
         ISignatureLibrary signatures,
+        IPdfFormStore pdfForms,
         PageRenderCache pageCache,
         ILogger<MainWindow> logger)
     {
@@ -76,6 +78,7 @@ public sealed partial class MainWindow : Window
         _pdfPageEditor = pdfPageEditor;
         _pdfAnnotations = pdfAnnotations;
         _signatures = signatures;
+        _pdfForms = pdfForms;
         _pageCache = pageCache;
         _logger = logger;
 
@@ -422,6 +425,7 @@ public sealed partial class MainWindow : Window
                 _pdfPageEditor,
                 _pdfAnnotations,
                 _signatures,
+                _pdfForms,
                 _pdfFactory,
                 session.ViewState,
                 ownerWindow: this);

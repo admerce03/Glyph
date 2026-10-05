@@ -39,6 +39,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfPageEditor _pageEditor;
     private readonly IPdfAnnotationService _annotations;
     private readonly ISignatureLibrary _signatures;
+    private readonly IPdfFormStore _forms;
     private readonly IPdfDocumentFactory _documentFactory;
     private readonly Window? _ownerWindow;
     private readonly DocumentViewState _viewState;
@@ -127,6 +128,7 @@ public sealed class PdfDocumentView : UserControl
         IPdfPageEditor pageEditor,
         IPdfAnnotationService annotations,
         ISignatureLibrary signatures,
+        IPdfFormStore forms,
         IPdfDocumentFactory documentFactory,
         DocumentViewState? viewState = null,
         Window? ownerWindow = null)
@@ -141,6 +143,7 @@ public sealed class PdfDocumentView : UserControl
         _pageEditor = pageEditor;
         _annotations = annotations;
         _signatures = signatures;
+        _forms = forms;
         _documentFactory = documentFactory;
         _ownerWindow = ownerWindow;
         _viewState = viewState ?? new DocumentViewState();
@@ -308,6 +311,7 @@ public sealed class PdfDocumentView : UserControl
         var textBox = new Button { Content = "TextBox" };
         var flatten = new Button { Content = "Flatten" };
         var sign = new Button { Content = "Sign" };
+        var formFill = new Button { Content = "Form" };
         var ink = new Button { Content = "Ink" };
         var rect = new Button { Content = "Rect" };
         var ellipse = new Button { Content = "Ellipse" };
@@ -337,6 +341,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(textBox, "Add a FreeText text box on the current page");
         ToolTipService.SetToolTip(flatten, "Flatten annotations into page content (permanent)");
         ToolTipService.SetToolTip(sign, "Signature: draw with mouse or import PNG/JPEG (saved to library)");
+        ToolTipService.SetToolTip(formFill, "List and fill AcroForm fields (Tab order)");
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
         ToolTipService.SetToolTip(rect, "Draw a rectangle annotation");
         ToolTipService.SetToolTip(ellipse, "Draw an ellipse annotation");
@@ -390,6 +395,7 @@ public sealed class PdfDocumentView : UserControl
         textBox.Click += async (_, _) => await AddTextBoxAsync();
         flatten.Click += async (_, _) => await FlattenAnnotationsAsync();
         sign.Click += async (_, _) => await BeginSignatureAsync();
+        formFill.Click += async (_, _) => await EditFormFieldsAsync();
         ink.Click += (_, _) => ToggleInkMode();
         rect.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Rectangle);
         ellipse.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Ellipse);
@@ -408,7 +414,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, flatten, sign, ink, rect, ellipse, line,
+                highlight, underline, strikeout, stickyNote, textBox, flatten, sign, formFill, ink, rect, ellipse, line,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -2690,6 +2696,138 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Signature failed: " + ex.Message;
+        }
+    }
+
+    private async Task EditFormFieldsAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for form dialog.");
+
+        if (!await _forms.HasFormAsync(_document))
+        {
+            _status.Text = "No AcroForm fields in this document.";
+            return;
+        }
+
+        var fields = await _forms.ListFieldsAsync(_document);
+        if (fields.Count == 0)
+        {
+            _status.Text = "AcroForm present but no widget fields found.";
+            return;
+        }
+
+        var list = new ListView
+        {
+            Height = 260,
+            SelectionMode = ListViewSelectionMode.Single,
+            ItemsSource = fields
+                .Select(f => $"{f.TabOrder + 1}. {f.Name} ({f.Kind}) = \"{f.Value}\"")
+                .ToList(),
+        };
+        list.SelectedIndex = 0;
+
+        var dialog = new ContentDialog
+        {
+            Title = "Form fields",
+            Content = list,
+            PrimaryButtonText = "Edit",
+            SecondaryButtonText = "Next (Tab)",
+            CloseButtonText = "Close",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        while (true)
+        {
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.None)
+            {
+                _status.Text = "Form editor closed.";
+                return;
+            }
+
+            var index = list.SelectedIndex;
+            if (index < 0 || index >= fields.Count)
+            {
+                index = 0;
+            }
+
+            var field = fields[index];
+            if (result == ContentDialogResult.Secondary)
+            {
+                var next = await _forms.FocusAdjacentAsync(
+                    _document,
+                    field.PageIndex,
+                    field.AnnotIndex,
+                    forward: true);
+                if (next is null)
+                {
+                    continue;
+                }
+
+                var nextIndex = fields.ToList().FindIndex(
+                    f => f.PageIndex == next.PageIndex && f.AnnotIndex == next.AnnotIndex);
+                if (nextIndex >= 0)
+                {
+                    list.SelectedIndex = nextIndex;
+                }
+
+                await GoToPageAsync(next.PageIndex, recordHistory: true);
+                continue;
+            }
+
+            // Edit
+            if (field.Kind is not (PdfFormFieldKind.TextField or PdfFormFieldKind.ComboBox))
+            {
+                _status.Text = $"Editing {field.Kind} fields is not supported yet.";
+                continue;
+            }
+
+            var box = new TextBox
+            {
+                Text = field.Value,
+                AcceptsReturn = field.Kind == PdfFormFieldKind.TextField,
+                TextWrapping = TextWrapping.Wrap,
+                Height = 100,
+                PlaceholderText = field.Name,
+            };
+            var edit = new ContentDialog
+            {
+                Title = $"Edit {field.Name}",
+                Content = box,
+                PrimaryButtonText = "Save",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = window.Content.XamlRoot,
+            };
+
+            if (await edit.ShowAsync() != ContentDialogResult.Primary)
+            {
+                continue;
+            }
+
+            try
+            {
+                await _forms.SetTextValueAsync(
+                    _document,
+                    field.PageIndex,
+                    field.AnnotIndex,
+                    box.Text ?? string.Empty);
+                fields = await _forms.ListFieldsAsync(_document);
+                list.ItemsSource = fields
+                    .Select(f => $"{f.TabOrder + 1}. {f.Name} ({f.Kind}) = \"{f.Value}\"")
+                    .ToList();
+                list.SelectedIndex = Math.Clamp(index, 0, fields.Count - 1);
+                _cache.ClearDocument(_documentKey);
+                await RenderVisibleAsync();
+                _status.Text = $"Updated {field.Name}.";
+            }
+            catch (Exception ex)
+            {
+                _status.Text = "Form fill failed: " + ex.Message;
+            }
         }
     }
 

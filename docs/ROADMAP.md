@@ -182,7 +182,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 - [x] Markup survives save/reopen
 - [x] Flatten produces non-editable visuals
-- [ ] Form field tab order works on sample AcroForms
+- [x] Form field tab order works on sample AcroForms
 - [x] Tests for annotation model serialization
 
 ### Progress notes
@@ -196,6 +196,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Text boxes: `AddTextBoxAsync` FreeText with Contents + DA; TextBox toolbar dialog; listed in sidebar.
 - Flatten: `FlattenAsync` via `FPDFPage_Flatten` + Flatten toolbar (confirm dialog); editable annots removed after bake.
 - Signatures: `AddStampAsync` (BGRA stamp image) + local `FileSignatureLibrary`; Sign toolbar Draw (mouse stroke → PNG/library/stamp) or Import image.
+- AcroForm: `IPdfFormStore` / `PdfiumFormStore` lists widgets, sets text/combo `/V`, tab-adjacent focus; Form toolbar dialog; Pdf.Tests sample AcroForm.
 
 ---
 
@@ -319,7 +320,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | User bookmarks | §9 | M2/M4 | Not Started |
 | PDF page manipulation | §10–12 | M3 | Implemented |
 | PDF annotations/markup | §13–19 | M4 | In Progress |
-| PDF forms | §20 | M4 | Not Started |
+| PDF forms | §20 | M4 | In Progress |
 | Redaction | §21 | M7 | Not Started |
 | Flattening | §22 | M4 | Not Started |
 | PDF security | §23 | M7 | Not Started |
