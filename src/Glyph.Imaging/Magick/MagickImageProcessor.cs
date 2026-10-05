@@ -761,17 +761,7 @@ public sealed class MagickImageProcessor : IImageProcessor
             case ImageMarkupShapeKind.Text:
             {
                 var text = string.IsNullOrWhiteSpace(shape.Text) ? "Text" : shape.Text;
-                try
-                {
-                    new Drawables()
-                        .FillColor(color)
-                        .StrokeColor(MagickColors.Transparent)
-                        .Font(MarkupFont.Value)
-                        .FontPointSize(shape.FontSizePixels)
-                        .Text(x1, y1 + shape.FontSizePixels, text)
-                        .Draw(image);
-                }
-                catch (MagickException)
+                if (!TryDrawMarkupText(image, color, x1, y1 + shape.FontSizePixels, text, shape.FontSizePixels))
                 {
                     // No usable FreeType font in this environment — keep dimensions via a stub box.
                     new Drawables()
@@ -794,27 +784,17 @@ public sealed class MagickImageProcessor : IImageProcessor
                 var tipY = bottom + Math.Max(12, (bottom - top) * 0.25);
                 var tipSpread = Math.Max(8, (right - left) * 0.12);
                 var label = string.IsNullOrWhiteSpace(shape.Text) ? "Callout" : shape.Text;
-                var callout = new Drawables()
+                // Geometry only — never chain Font/Text onto this builder so a font failure
+                // cannot poison a retry Draw of the callout outline.
+                new Drawables()
                     .StrokeColor(color)
                     .StrokeWidth(shape.WidthPixels)
                     .FillColor(MagickColors.Transparent)
                     .Rectangle(left, top, right, bottom)
                     .Line(midX - tipSpread, bottom, midX, tipY)
-                    .Line(midX + tipSpread, bottom, midX, tipY);
-                try
-                {
-                    callout
-                        .FillColor(color)
-                        .StrokeColor(MagickColors.Transparent)
-                        .Font(MarkupFont.Value)
-                        .FontPointSize(shape.FontSizePixels)
-                        .Text(left + 4, top + shape.FontSizePixels + 2, label)
-                        .Draw(image);
-                }
-                catch (MagickException)
-                {
-                    callout.Draw(image);
-                }
+                    .Line(midX + tipSpread, bottom, midX, tipY)
+                    .Draw(image);
+                _ = TryDrawMarkupText(image, color, left + 4, top + shape.FontSizePixels + 2, label, shape.FontSizePixels);
 
                 return;
             }
@@ -823,14 +803,54 @@ public sealed class MagickImageProcessor : IImageProcessor
         drawables.Draw(image);
     }
 
-    private static readonly Lazy<string> MarkupFont = new(ResolveMarkupFont);
+    private static bool TryDrawMarkupText(
+        MagickImage image,
+        MagickColor color,
+        double x,
+        double y,
+        string text,
+        double fontSizePixels)
+    {
+        var font = MarkupFont.Value;
+        if (font is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            new Drawables()
+                .FillColor(color)
+                .StrokeColor(MagickColors.Transparent)
+                .Font(font)
+                .FontPointSize(fontSizePixels)
+                .Text(x, y, text)
+                .Draw(image);
+            return true;
+        }
+        catch (MagickException)
+        {
+            return false;
+        }
+    }
+
+    private static readonly Lazy<string?> MarkupFont = new(ResolveMarkupFont);
 
     /// <summary>
-    /// Prefer a font that exists on Ubuntu CI runners; fall back to ImageMagick defaults.
+    /// Prefer a TTF path or family that FreeType can load on Ubuntu CI / Windows desktops.
     /// </summary>
-    private static string ResolveMarkupFont()
+    private static string? ResolveMarkupFont()
     {
-        foreach (var candidate in new[] { "DejaVu-Sans", "Liberation-Sans", "Arial", "Helvetica" })
+        foreach (var candidate in new[]
+                 {
+                     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                     "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                     "/usr/share/fonts/truetype/croscore/Arimo-Regular.ttf",
+                     "DejaVu-Sans",
+                     "Liberation-Sans",
+                     "Arial",
+                     "Helvetica",
+                 })
         {
             try
             {
@@ -844,7 +864,7 @@ public sealed class MagickImageProcessor : IImageProcessor
             }
         }
 
-        return "sans";
+        return null;
     }
 
     public Task PasteFileAsync(
