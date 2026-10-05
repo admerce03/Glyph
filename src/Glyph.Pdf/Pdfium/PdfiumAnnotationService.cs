@@ -831,6 +831,53 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             });
     }
 
+    public Task SetOpacityAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        float opacity,
+        CancellationToken cancellationToken = default)
+    {
+        if (opacity is < 0f or > 1f)
+        {
+            throw new ArgumentOutOfRangeException(nameof(opacity), "Opacity must be between 0 and 1.");
+        }
+
+        return MutateAnnotAsync(
+            document,
+            pageIndex,
+            annotIndex,
+            cancellationToken,
+            annot =>
+            {
+                uint r = 0, g = 0, b = 0, a = 255;
+                if (fpdf_annot.FPDFAnnotGetColor(
+                        annot,
+                        FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_Color,
+                        ref r,
+                        ref g,
+                        ref b,
+                        ref a) == 0)
+                {
+                    r = 30;
+                    g = 144;
+                    b = 255;
+                }
+
+                var alpha = (uint)Math.Clamp((int)Math.Round(opacity * 255f), 0, 255);
+                if (fpdf_annot.FPDFAnnotSetColor(
+                        annot,
+                        FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_Color,
+                        r,
+                        g,
+                        b,
+                        alpha) == 0)
+                {
+                    throw new InvalidOperationException("Failed to set annotation opacity.");
+                }
+            });
+    }
+
     public Task MoveAsync(
         IPdfDocument document,
         int pageIndex,
