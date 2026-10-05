@@ -202,6 +202,17 @@ public interface IPdfAnnotationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Rotate an annotation by a multiple of 90° clockwise where supported
+    /// (stamps, ink/shapes, FreeText, square/circle). Sticky notes and text markup are not rotated.
+    /// </summary>
+    Task<PdfAnnotationInfo> RotateAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        int degreesClockwise,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Replaces a line/arrow ink shape with new endpoints, preserving stroke style metadata.
     /// </summary>
     Task<PdfAnnotationInfo> SetLineEndpointsAsync(

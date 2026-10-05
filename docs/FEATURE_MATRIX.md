@@ -244,7 +244,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-18 | PDF annotations | Annotation selection tool | M4 | Tested | Click annot on page / sidebar; drag moves |
 | F13-19 | PDF annotations | move | M4 | Tested | `MoveAsync` API + drag on page |
 | F13-20 | PDF annotations | resize | M4 | Tested | Selection handles → `MoveAsync` new bounds |
-| F13-21 | PDF annotations | rotate where appropriate | M4 | Not Started |  |
+| F13-21 | PDF annotations | rotate where appropriate | M4 | Tested | `RotateAsync` 90° CW for stamp/ink/shapes/FreeText; sticky & text markup unsupported |
 | F13-22 | PDF annotations | duplicate | M4 | Tested | `DuplicateAsync` offset clone + sidebar Dup |
 | F13-23 | PDF annotations | delete | M4 | Tested | `RemoveAsync` by page/annot index |
 | F13-24 | PDF annotations | cut | M4 | Implemented | Sidebar Cut / Ctrl+X; removes source on paste |
@@ -288,7 +288,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F16-02 | Text boxes and callouts | Type arbitrary text over PDF. | M4 | Implemented | Contents via dialog |
 | F16-03 | Text boxes and callouts | Move it. | M4 | Tested | `MoveAsync` API |
 | F16-04 | Text boxes and callouts | Resize it. | M4 | Tested | `MoveAsync` with new bounds |
-| F16-05 | Text boxes and callouts | Rotate where appropriate. | M4 | Not Started |  |
+| F16-05 | Text boxes and callouts | Rotate where appropriate. | M4 | Tested | Sidebar Rotate → `RotateAsync` swaps FreeText bounds around center |
 | F16-06 | Text boxes and callouts | Font family. | M4 | Implemented | Helvetica/Times/Courier via DA (`PdfFreeTextFont`) |
 | F16-07 | Text boxes and callouts | Font size. | M4 | Implemented | `fontSizePoints` + TextBox/Callout dialog NumberBox |
 | F16-08 | Text boxes and callouts | Bold. | M4 | Implemented | Dialog Bold → HeBo/TiBo/CoBo in DA |
@@ -312,7 +312,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F17-09 | Shapes | translucent highlight rectangle | M4 | Tested | `AddShapeAsync(HighlightRectangle)` + Area toolbar; translucent fill |
 | F17-10 | Shapes | magnification/loupe annotation, optionally | M4 | Not Started |  |
 | F17-11 | Shapes | resize | M4 | Tested | Same as F13-20 selection handles → `MoveAsync` |
-| F17-12 | Shapes | rotate | M4 | Not Started |  |
+| F17-12 | Shapes | rotate | M4 | Tested | Ink shapes/lines/arrows via stroke point rotation; square/circle via bounds |
 | F17-13 | Shapes | move | M4 | Tested | Same as F13-19 drag / `MoveAsync` |
 | F17-14 | Shapes | duplicate | M4 | Tested | Same as F13-22 `DuplicateAsync` |
 | F17-15 | Shapes | multi-select | M4 | Implemented | Same as F13-27 Ctrl+click / Extended list |
@@ -344,7 +344,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F19-10 | PDF signatures | insert | M4 | Implemented | Sign toolbar |
 | F19-11 | PDF signatures | resize | M4 | Tested | Bounds on insert / `MoveAsync` |
 | F19-12 | PDF signatures | move | M4 | Tested | `MoveAsync` |
-| F19-13 | PDF signatures | rotate where appropriate | M4 | Not Started |  |
+| F19-13 | PDF signatures | rotate where appropriate | M4 | Tested | Stamp rotate via BGRA 90° + bounds swap (`RotateAsync`) |
 | F19-14 | PDF signatures | duplicate | M4 | Tested | Sidebar Dup / `DuplicateAsync` clones stamp image + offset bounds |
 | F19-15 | PDF signatures | delete | M4 | Implemented | Sidebar Delete |
 | F19-16 | PDF signatures | preserve transparency | M4 | Tested | BGRA alpha channel |

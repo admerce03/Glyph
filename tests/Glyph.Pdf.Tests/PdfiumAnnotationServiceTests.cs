@@ -816,6 +816,60 @@ public class PdfiumAnnotationServiceTests
     }
 
     [Fact]
+    public async Task Rotate_stamp_and_line_ninety_degrees()
+    {
+        var path = CreateTextPdf("Rotate host");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+
+            await using var document = await factory.OpenAsync(path);
+            var pixels = new byte[]
+            {
+                0, 0, 255, 255, 255, 0, 0, 255,
+                0, 255, 0, 255, 0, 0, 0, 255,
+            };
+            var stamp = await annots.AddStampAsync(
+                document,
+                0,
+                new PdfRect(100, 100, 140, 120),
+                pixels,
+                pixelWidth: 2,
+                pixelHeight: 2);
+            stamp.IsStamp.Should().BeTrue();
+            stamp.Bounds.Width.Should().Be(40);
+            stamp.Bounds.Height.Should().Be(20);
+
+            var rotatedStamp = await annots.RotateAsync(document, 0, stamp.AnnotIndex, 90);
+            rotatedStamp.IsStamp.Should().BeTrue();
+            rotatedStamp.Bounds.Width.Should().BeApproximately(20, 0.01);
+            rotatedStamp.Bounds.Height.Should().BeApproximately(40, 0.01);
+
+            var line = await annots.AddShapeAsync(
+                document,
+                0,
+                PdfShapeKind.Line,
+                new PdfRect(50, 200, 150, 200),
+                new PdfAnnotationColor(0, 0, 0));
+            line.EndpointA.Should().Be(new PdfPagePoint(50, 200));
+            line.EndpointB.Should().Be(new PdfPagePoint(150, 200));
+
+            var rotatedLine = await annots.RotateAsync(document, 0, line.AnnotIndex, 90);
+            rotatedLine.ShapeKind.Should().Be(PdfShapeKind.Line);
+            rotatedLine.EndpointA.Should().NotBeNull();
+            rotatedLine.EndpointB.Should().NotBeNull();
+            // Horizontal line about center (100,200) -> vertical after 90° CW.
+            rotatedLine.EndpointA!.Value.X.Should().BeApproximately(100, 0.5);
+            rotatedLine.EndpointB!.Value.X.Should().BeApproximately(100, 0.5);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Set_line_endpoints_recreates_line_preserving_style()
     {
         var path = CreateTextPdf("Line endpoints host");

@@ -2682,6 +2682,254 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         }
     }
 
+    public async Task<PdfAnnotationInfo> RotateAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        int degreesClockwise,
+        CancellationToken cancellationToken = default)
+    {
+        _ = PdfAnnotationRotate.NormalizeQuarterTurns(degreesClockwise);
+        var listed = await ListAsync(document, pageIndex, cancellationToken).ConfigureAwait(false);
+        var existing = listed.FirstOrDefault(a => a.AnnotIndex == annotIndex)
+            ?? throw new ArgumentOutOfRangeException(nameof(annotIndex), "Annotation not found.");
+
+        if (existing.IsStickyNote || existing.TextMarkupKind is not null)
+        {
+            throw new NotSupportedException(
+                "Sticky notes and text markup cannot be rotated (no durable /Rotate write path).");
+        }
+
+        if (existing.IsStamp)
+        {
+            return await RotateStampAsync(document, pageIndex, annotIndex, existing, degreesClockwise, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        if (existing.IsInk || existing.ShapeKind is PdfShapeKind.Line or PdfShapeKind.Arrow
+            or PdfShapeKind.Star or PdfShapeKind.SpeechBubble or PdfShapeKind.Freeform
+            or PdfShapeKind.Polygon)
+        {
+            return await RotateInkAsync(document, pageIndex, annotIndex, existing, degreesClockwise, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        if (existing.IsTextBox
+            || existing.ShapeKind is PdfShapeKind.Rectangle or PdfShapeKind.Ellipse
+                or PdfShapeKind.RoundedRectangle or PdfShapeKind.HighlightRectangle)
+        {
+            var rotatedBounds = PdfAnnotationRotate.RotateBounds(existing.Bounds, degreesClockwise);
+            await MoveAsync(document, pageIndex, annotIndex, rotatedBounds, cancellationToken)
+                .ConfigureAwait(false);
+            var after = await ListAsync(document, pageIndex, cancellationToken).ConfigureAwait(false);
+            return after.First(a => a.AnnotIndex == annotIndex);
+        }
+
+        throw new NotSupportedException($"Rotation is not supported for this annotation ({existing.ShapeKind}).");
+    }
+
+    private async Task<PdfAnnotationInfo> RotateStampAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        PdfAnnotationInfo existing,
+        int degreesClockwise,
+        CancellationToken cancellationToken)
+    {
+        var pdfium = RequirePdfium(document);
+        byte[] pixels;
+        int width;
+        int height;
+        lock (PdfiumSync.Gate)
+        {
+            pdfium.ThrowIfDisposed();
+            PdfiumLibrary.EnsureInitialized();
+            var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex)
+                ?? throw new InvalidOperationException($"Failed to load page {pageIndex} for rotate.");
+            try
+            {
+                var annot = fpdf_annot.FPDFPageGetAnnot(page, annotIndex)
+                    ?? throw new ArgumentOutOfRangeException(nameof(annotIndex));
+                try
+                {
+                    var extracted = TryExtractStampBgra(annot, out width, out height);
+                    if (extracted is null || width <= 0 || height <= 0)
+                    {
+                        throw new InvalidOperationException("Failed to extract stamp pixels for rotate.");
+                    }
+
+                    pixels = extracted;
+                }
+                finally
+                {
+                    fpdf_annot.FPDFPageCloseAnnot(annot);
+                }
+            }
+            finally
+            {
+                fpdfview.FPDF_ClosePage(page);
+            }
+        }
+
+        var rotated = PdfAnnotationRotate.RotateBgra(pixels, width, height, degreesClockwise, out var nw, out var nh);
+        var newBounds = PdfAnnotationRotate.RotateBounds(existing.Bounds, degreesClockwise);
+        await RemoveAsync(document, pageIndex, annotIndex, cancellationToken).ConfigureAwait(false);
+        return await AddStampAsync(document, pageIndex, newBounds, rotated, nw, nh, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<PdfAnnotationInfo> RotateInkAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        PdfAnnotationInfo existing,
+        int degreesClockwise,
+        CancellationToken cancellationToken)
+    {
+        var pdfium = RequirePdfium(document);
+        var center = PdfAnnotationRotate.BoundsCenter(existing.Bounds);
+        List<IReadOnlyList<PdfPagePoint>> strokes;
+        float borderWidth;
+        PdfAnnotationColor color;
+        string contents;
+        lock (PdfiumSync.Gate)
+        {
+            pdfium.ThrowIfDisposed();
+            PdfiumLibrary.EnsureInitialized();
+            var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex)
+                ?? throw new InvalidOperationException($"Failed to load page {pageIndex} for rotate.");
+            try
+            {
+                var annot = fpdf_annot.FPDFPageGetAnnot(page, annotIndex)
+                    ?? throw new ArgumentOutOfRangeException(nameof(annotIndex));
+                try
+                {
+                    contents = PdfiumAnnotStrings.GetString(annot, "Contents") ?? string.Empty;
+                    uint r = 40, g = 40, b = 40, a = 255;
+                    _ = fpdf_annot.FPDFAnnotGetColor(
+                        annot,
+                        FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_Color,
+                        ref r,
+                        ref g,
+                        ref b,
+                        ref a);
+                    color = new PdfAnnotationColor((byte)r, (byte)g, (byte)b, (byte)a);
+                    borderWidth = 1.5f;
+                    if (PdfiumNative.AnnotGetBorder(annot.__Instance, out _, out _, out var bw) != 0 && bw > 0)
+                    {
+                        borderWidth = bw;
+                    }
+
+                    strokes = ExtractInkStrokes(annot);
+                }
+                finally
+                {
+                    fpdf_annot.FPDFPageCloseAnnot(annot);
+                }
+            }
+            finally
+            {
+                fpdfview.FPDF_ClosePage(page);
+            }
+        }
+
+        if (strokes.Count == 0)
+        {
+            throw new InvalidOperationException("Ink annotation has no strokes to rotate.");
+        }
+
+        var rotatedStrokes = strokes
+            .Select(stroke => (IReadOnlyList<PdfPagePoint>)stroke
+                .Select(p => PdfAnnotationRotate.RotatePoint(p, center, degreesClockwise))
+                .ToList())
+            .ToList();
+
+        PdfPagePoint? endsA = null;
+        PdfPagePoint? endsB = null;
+        if (existing.EndpointA is { } ea && existing.EndpointB is { } eb)
+        {
+            endsA = PdfAnnotationRotate.RotatePoint(ea, center, degreesClockwise);
+            endsB = PdfAnnotationRotate.RotatePoint(eb, center, degreesClockwise);
+        }
+
+        await RemoveAsync(document, pageIndex, annotIndex, cancellationToken).ConfigureAwait(false);
+        var created = await AddLabeledInkAsync(
+            document,
+            pageIndex,
+            rotatedStrokes,
+            color,
+            borderWidth,
+            contents,
+            cancellationToken).ConfigureAwait(false);
+
+        if (endsA is { } ra && endsB is { } rb)
+        {
+            await PersistLineEndpointsAsync(document, pageIndex, created.AnnotIndex, ra, rb, cancellationToken)
+                .ConfigureAwait(false);
+            created = created with
+            {
+                EndpointA = ra,
+                EndpointB = rb,
+                ShapeKind = existing.ShapeKind,
+                IsInk = true,
+            };
+        }
+        else
+        {
+            created = created with { ShapeKind = existing.ShapeKind, IsInk = true };
+        }
+
+        return created;
+    }
+
+    private static List<IReadOnlyList<PdfPagePoint>> ExtractInkStrokes(FpdfAnnotationT annot)
+    {
+        var inkStrokes = new List<IReadOnlyList<PdfPagePoint>>();
+        var strokeCount = (uint)PdfiumNative.AnnotGetInkListCount(annot.__Instance);
+        for (uint s = 0; s < strokeCount; s++)
+        {
+            var needed = PdfiumNative.AnnotGetInkListPath(annot.__Instance, s, IntPtr.Zero, 0);
+            if (needed == 0)
+            {
+                continue;
+            }
+
+            var buffer = new PdfiumNative.FsPointF[needed];
+            var handle = System.Runtime.InteropServices.GCHandle.Alloc(
+                buffer,
+                System.Runtime.InteropServices.GCHandleType.Pinned);
+            try
+            {
+                var written = PdfiumNative.AnnotGetInkListPath(
+                    annot.__Instance,
+                    s,
+                    handle.AddrOfPinnedObject(),
+                    needed);
+                if (written == 0)
+                {
+                    continue;
+                }
+
+                var stroke = new List<PdfPagePoint>((int)written);
+                for (var i = 0; i < (int)written; i++)
+                {
+                    stroke.Add(new PdfPagePoint(buffer[i].X, buffer[i].Y));
+                }
+
+                if (stroke.Count >= 2)
+                {
+                    inkStrokes.Add(stroke);
+                }
+            }
+            finally
+            {
+                handle.Free();
+            }
+        }
+
+        return inkStrokes;
+    }
+
     public async Task<PdfAnnotationInfo> SetLineEndpointsAsync(
         IPdfDocument document,
         int pageIndex,

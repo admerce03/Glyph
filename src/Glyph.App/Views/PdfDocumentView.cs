@@ -447,6 +447,10 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(widthAnnot, "Change stroke or border width for ink and shapes");
         widthAnnot.Click += async (_, _) => await SetSelectedAnnotationBorderWidthAsync();
         annotHeaderRow.Children.Add(widthAnnot);
+        var rotateAnnot = new Button { Content = "Rotate", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(rotateAnnot, "Rotate selected stamp, ink/shape, or text box 90° clockwise");
+        rotateAnnot.Click += async (_, _) => await RotateSelectedAnnotationAsync();
+        annotHeaderRow.Children.Add(rotateAnnot);
         annotHeaderRow.Children.Add(removeAnnot);
         Grid.SetRow(annotHeaderRow, 6);
         sidePanel.Children.Add(annotHeaderRow);
@@ -8475,6 +8479,42 @@ public sealed class PdfDocumentView : UserControl
         var text = PdfNotesExport.Format(annotations, documentTitle: title);
         await Windows.Storage.FileIO.WriteTextAsync(file, text);
         _status.Text = $"Exported {noteCount} note{(noteCount == 1 ? string.Empty : "s")} to {file.Name}.";
+    }
+
+    private async Task RotateSelectedAnnotationAsync()
+    {
+        if (!TryGetSelectedAnnotation(out var item))
+        {
+            _status.Text = "Select an annotation to rotate.";
+            return;
+        }
+
+        if (item.IsStickyNote || item.TextMarkupKind is not null)
+        {
+            _status.Text = "Sticky notes and text markup cannot be rotated.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Rotating annotation…";
+            var updated = await _annotations.RotateAsync(
+                _document,
+                item.PageIndex,
+                item.AnnotIndex,
+                degreesClockwise: 90);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            RestoreSelectionAfterRefresh(updated.PageIndex, updated.AnnotIndex, updated.Bounds);
+            _status.Text = "Annotation rotated 90°.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Rotate failed: " + ex.Message;
+        }
     }
 
     private async Task ToggleSelectedTextUnderlineAsync()
