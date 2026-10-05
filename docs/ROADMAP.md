@@ -225,7 +225,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 ### Progress notes
 
 - Magick.NET adapter: `MagickImageDecoder` / `Document` / `Processor` / `Encoder` (open with EXIF AutoOrient, rotate, flip, crop, resize, color adjust, metadata/EXIF/GPS, export PNG/JPEG/WebP/TIFF/BMP/GIF with JPEG/WebP quality options).
-- `ImageDocumentView`: zoom/fit, rotate L/R/180, Orient (normalize EXIF), flip H/V, numeric crop, interactive drag-crop (Crop…), resize dialog (px/%, aspect lock), Adjust (brightness/contrast/saturation), Meta (EXIF/GPS copy/map/strip), Convert dialog (WebP quality/lossless), JPEG quality export, folder prev/next + image list sidebar (in-place tab reuse when clean), save/export; wired from MainWindow for image kinds.
+- `ImageDocumentView`: zoom/fit, fullscreen, rotate L/R/180, Orient (normalize EXIF), flip H/V, numeric crop, interactive drag-crop (Crop…), resize dialog (px/%, aspect lock), Adjust (brightness/contrast/saturation), Meta (EXIF/GPS copy/map/strip), Convert dialog (WebP quality/lossless), JPEG quality export, folder prev/next + image list sidebar (in-place tab reuse when clean), save/export; wired from MainWindow for image kinds.
 - Imaging.Tests cover processor round-trips including rotate-right/180, resize, AdjustAsync, multi-format SaveAs, JPEG quality sizing, WebP lossless, EXIF read/orientation, GPS strip, folder sibling navigation, and crop display→pixel mapping.
 ---
 

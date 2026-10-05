@@ -773,4 +773,18 @@ public sealed partial class MainWindow : Window
             work.X + (work.Width - width) / 2,
             work.Y + (work.Height - height) / 2));
     }
+
+    public void ToggleFullscreen()
+    {
+        if (AppWindow.Presenter.Kind == AppWindowPresenterKind.FullScreen)
+        {
+            AppWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
+            StatusText.Text = "Exited fullscreen.";
+        }
+        else
+        {
+            AppWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
+            StatusText.Text = "Fullscreen — press Fullscreen again or Esc via window chrome to exit.";
+        }
+    }
 }
