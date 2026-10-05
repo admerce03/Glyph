@@ -27,4 +27,7 @@ public static class StickyNoteExpandPolicy
 
     public static bool ShouldCollapseAll(bool hasSelectedSticky, int expandedCount) =>
         !hasSelectedSticky && expandedCount > 0;
+
+    public static string FormatExported(int noteCount, string fileName) =>
+        $"Exported {noteCount} note{(noteCount == 1 ? string.Empty : "s")} to {fileName}.";
 }

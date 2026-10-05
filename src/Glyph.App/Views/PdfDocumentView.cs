@@ -1654,7 +1654,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (_hits.Count == 0)
         {
-            _status.Text = "No search results.";
+            _status.Text = PdfFindStatus.NoResults;
             return;
         }
 
@@ -1953,7 +1953,7 @@ public sealed class PdfDocumentView : UserControl
         var totalInserted = 0;
         foreach (var file in pdfFiles)
         {
-            _status.Text = $"Inserting {file.Name}…";
+            _status.Text = PageClipboardStatus.FormatInserting(file.Name);
             await using var source = await _documentFactory.OpenAsync(file.Path);
             var indexes = Enumerable.Range(0, source.PageCount).ToList();
             if (indexes.Count == 0)
@@ -2453,7 +2453,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (parts.Count == 0)
         {
-            _status.Text = "No extractable text in document.";
+            _status.Text = PdfFindStatus.NoExtractableText;
             return;
         }
 
@@ -2515,7 +2515,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (string.IsNullOrEmpty(_selectedText))
         {
-            _status.Text = "No extractable text to copy.";
+            _status.Text = PdfFindStatus.NoExtractableTextToCopy;
             return;
         }
 
@@ -2560,7 +2560,7 @@ public sealed class PdfDocumentView : UserControl
     {
         if (!PdfPageClipboard.HasPages)
         {
-            _status.Text = "No pages on the clipboard.";
+            _status.Text = PageClipboardStatus.NoPagesOnClipboard;
             return;
         }
 
@@ -2575,7 +2575,7 @@ public sealed class PdfDocumentView : UserControl
             tempPath = path;
             if (source is null || source.PageCount == 0)
             {
-                _status.Text = "Clipboard pages unavailable.";
+                _status.Text = PageClipboardStatus.ClipboardPagesUnavailable;
                 return;
             }
 
@@ -3094,7 +3094,7 @@ public sealed class PdfDocumentView : UserControl
                 && link.DestinationPageIndex is int dest)
             {
                 await GoToPageAsync(dest, recordHistory: true);
-                _status.Text = $"Followed link to page {dest + 1}.";
+                _status.Text = PdfFindStatus.FormatFollowedLink(dest + 1);
                 return;
             }
         }
@@ -3815,7 +3815,7 @@ public sealed class PdfDocumentView : UserControl
         var entities = OcrEntityDetector.Detect(text);
         if (entities.Count == 0)
         {
-            _status.Text = "No URLs, emails, phones, addresses, dates, or times detected.";
+            _status.Text = PdfFindStatus.NoEntitiesDetected;
             return;
         }
 
@@ -3839,7 +3839,7 @@ public sealed class PdfDocumentView : UserControl
             var package = new DataPackage();
             package.SetText(entities[list.SelectedIndex].Value);
             Clipboard.SetContent(package);
-            _status.Text = $"Copied {entities[list.SelectedIndex].Kind}.";
+            _status.Text = PdfFindStatus.FormatCopiedEntity(entities[list.SelectedIndex].Kind);
         };
         open.Click += async (_, _) =>
         {
@@ -3946,7 +3946,7 @@ public sealed class PdfDocumentView : UserControl
             var package = new DataPackage();
             package.SetText(entity.Value);
             Clipboard.SetContent(package);
-            _status.Text = $"Copied {entity.Kind} (could not parse for calendar).";
+            _status.Text = PdfFindStatus.FormatCopiedEntityUnparsed(entity.Kind);
             return;
         }
 
@@ -3956,7 +3956,7 @@ public sealed class PdfDocumentView : UserControl
         await System.IO.File.WriteAllTextAsync(path, ics);
         var file = await StorageFile.GetFileFromPathAsync(path);
         await Launcher.LaunchFileAsync(file);
-        _status.Text = "Opened calendar invite.";
+        _status.Text = PdfFindStatus.OpenedCalendarInvite;
     }
 
     private async Task SearchWebAsync(string query)
@@ -4085,7 +4085,7 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var query = _searchBox.Text ?? string.Empty;
-        _status.Text = "Searching…";
+        _status.Text = PdfFindStatus.Searching;
         _searchQuery = query.Trim();
         _searchCaseSensitive = _caseSensitiveBox.IsChecked == true;
 
@@ -4662,7 +4662,7 @@ public sealed class PdfDocumentView : UserControl
         _status.Text = PageEditStatus.Rotating;
         await RunPageEditAsync(() => _pageEditor.RotatePagesAsync(_document, indexes, deltaDegrees));
         await ReloadAfterPageEditAsync();
-        _status.Text = $"Rotated {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")}.";
+        _status.Text = PageEditStatus.FormatRotated(indexes.Count);
     }
 
     private async Task DeleteSelectedAsync()
@@ -4682,7 +4682,7 @@ public sealed class PdfDocumentView : UserControl
         _status.Text = PageEditStatus.Deleting;
         await RunPageEditAsync(() => _pageEditor.DeletePagesAsync(_document, indexes));
         await ReloadAfterPageEditAsync();
-        _status.Text = $"Deleted {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")}.";
+        _status.Text = PageEditStatus.FormatDeleted(indexes.Count);
     }
 
     private async Task MoveSelectedAsync(int delta)
@@ -4781,7 +4781,7 @@ public sealed class PdfDocumentView : UserControl
         _status.Text = PageEditStatus.Duplicating;
         await RunPageEditAsync(() => _pageEditor.DuplicatePagesAsync(_document, indexes));
         await ReloadAfterPageEditAsync();
-        _status.Text = $"Duplicated {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")}.";
+        _status.Text = PageEditStatus.FormatDuplicated(indexes.Count);
     }
 
     private async Task OnHighlightButtonClickAsync()
@@ -5424,7 +5424,7 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
-            _status.Text = "Adding callout…";
+            _status.Text = AnnotationGroupStatus.AddingCallout;
             await _annotations.AddCalloutAsync(
                 _document,
                 pageIndex,
@@ -5729,7 +5729,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (_polygonPageIndex >= 0 && _polygonPageIndex != pageIndex)
         {
-            _status.Text = "Finish the current page polygon first (Enter), or Esc to cancel.";
+            _status.Text = AnnotationGroupStatus.FinishPolygonFirst;
             return;
         }
 
@@ -5870,7 +5870,7 @@ public sealed class PdfDocumentView : UserControl
             var hiColor = await PickHighlightColorAsync();
             if (hiColor is null)
             {
-                _status.Text = "Area highlight cancelled.";
+                _status.Text = AnnotationGroupStatus.AreaHighlightCancelled;
                 return;
             }
 
@@ -6590,7 +6590,7 @@ public sealed class PdfDocumentView : UserControl
                     points,
                     _drawStrokeColor,
                     borderWidthPoints: _drawStrokeWidth);
-                _status.Text = "Ink stroke added.";
+                _status.Text = AnnotationGroupStatus.InkStrokeAdded;
             }
 
             _strokeUndoStack.Push(created);
@@ -6707,7 +6707,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = $"Replaced stroke with cleaned {label}.";
+            _status.Text = AnnotationGroupStatus.FormatReplacedStroke(label);
         }
         catch (Exception ex)
         {
@@ -7633,7 +7633,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
         {
-            _status.Text = "Profile edit cancelled.";
+            _status.Text = FormFieldActionStatus.ProfileEditCancelled;
             return;
         }
 
@@ -7653,7 +7653,7 @@ public sealed class PdfDocumentView : UserControl
         var profile = _formProfile.Current;
         if (!profile.HasAnyValue)
         {
-            _status.Text = "AutoFill profile is empty — choose Edit AutoFill profile first.";
+            _status.Text = FormFieldActionStatus.AutoFillEmpty;
             await EditFormAutofillProfileAsync();
             profile = _formProfile.Current;
             if (!profile.HasAnyValue)
@@ -7880,7 +7880,7 @@ public sealed class PdfDocumentView : UserControl
         _formOverlayFocusIndex = nextIndex;
         DrawFormOverlays();
         await GoToPageAsync(next.PageIndex, recordHistory: true);
-        _status.Text = $"Focused {next.Name} ({next.Kind}).";
+        _status.Text = FormFieldActionStatus.FormatFocused(next.Name, next.Kind);
     }
 
     private async Task EditFocusedFormOverlayFieldAsync()
@@ -8048,12 +8048,12 @@ public sealed class PdfDocumentView : UserControl
                     || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps
                         && uri.Scheme != Uri.UriSchemeMailto))
                 {
-                    _status.Text = "Button link uses an unsupported scheme.";
+                    _status.Text = FormFieldActionStatus.UnsupportedButtonScheme;
                     return false;
                 }
 
                 await Launcher.LaunchUriAsync(uri);
-                _status.Text = $"Opened {caption}.";
+                _status.Text = FormFieldActionStatus.FormatOpened(caption);
             }
             catch (Exception ex)
             {
@@ -8067,7 +8067,7 @@ public sealed class PdfDocumentView : UserControl
             && dest >= 0 && dest < _document.PageCount)
         {
             await GoToPageAsync(dest, recordHistory: true);
-            _status.Text = $"Button {caption} → page {dest + 1}.";
+            _status.Text = FormFieldActionStatus.FormatButtonToPage(caption, dest + 1);
             return false;
         }
 
@@ -8087,7 +8087,7 @@ public sealed class PdfDocumentView : UserControl
             XamlRoot = window.Content.XamlRoot,
         };
         await dlg.ShowAsync();
-        _status.Text = $"Button {caption}: no activatable action.";
+        _status.Text = FormFieldActionStatus.FormatButtonNoAction(caption);
         return false;
     }
 
@@ -8296,7 +8296,7 @@ public sealed class PdfDocumentView : UserControl
                     field.PageIndex,
                     field.AnnotIndex);
                 NotifyEdited();
-                _status.Text = $"Selected radio {field.Name}.";
+                _status.Text = FormFieldActionStatus.FormatSelectedRadio(field.Name);
                 return true;
             }
             catch (Exception ex)
@@ -8398,7 +8398,7 @@ public sealed class PdfDocumentView : UserControl
             or PdfFormFieldKind.ComboBox
             or PdfFormFieldKind.ListBox))
         {
-            _status.Text = $"Editing {field.Kind} fields is not supported yet.";
+            _status.Text = FormFieldActionStatus.FormatUnsupportedEdit(field.Kind);
             return false;
         }
 
@@ -8998,7 +8998,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (applyChoice != ContentDialogResult.Primary)
         {
-            _status.Text = "Apply cancelled.";
+            _status.Text = FormFieldActionStatus.ApplyCancelled;
             return;
         }
 
@@ -9455,7 +9455,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (members.Select(m => m.PageIndex).Distinct().Count() > 1)
         {
-            _status.Text = "Grouping is limited to annotations on the same page.";
+            _status.Text = AnnotationGroupStatus.SamePageOnly;
             return;
         }
 
@@ -9468,7 +9468,7 @@ public sealed class PdfDocumentView : UserControl
                 groupId);
             await RefreshAnnotationSidebarAsync();
             RestoreSelectionAfterRefresh(members[0].PageIndex, members[0].AnnotIndex);
-            _status.Text = $"Grouped {members.Count} annotations.";
+            _status.Text = AnnotationGroupStatus.FormatGrouped(members.Count);
         }
         catch (Exception ex)
         {
@@ -9495,7 +9495,7 @@ public sealed class PdfDocumentView : UserControl
             .ToList();
         if (groupIds.Count == 0)
         {
-            _status.Text = "Selection is not grouped.";
+            _status.Text = AnnotationGroupStatus.SelectionNotGrouped;
             return;
         }
 
@@ -9517,7 +9517,7 @@ public sealed class PdfDocumentView : UserControl
                 RestoreSelectionAfterRefresh(members[0].PageIndex, members[0].AnnotIndex);
             }
 
-            _status.Text = $"Ungrouped {toClear.Count} annotation(s).";
+            _status.Text = AnnotationGroupStatus.FormatUngrouped(toClear.Count);
         }
         catch (Exception ex)
         {
@@ -9720,7 +9720,7 @@ public sealed class PdfDocumentView : UserControl
                 dy);
             try
             {
-                _status.Text = "Updating line endpoints…";
+                _status.Text = AnnotationGroupStatus.UpdatingLineEndpoints;
                 var updated = await _annotations.SetLineEndpointsAsync(
                     _document,
                     _selectedAnnot.PageIndex,
@@ -9733,7 +9733,7 @@ public sealed class PdfDocumentView : UserControl
                 await RenderThumbnailsAsync();
                 await RefreshAnnotationSidebarAsync();
                 RestoreSelectionAfterRefresh(updated.PageIndex, updated.AnnotIndex, updated.Bounds);
-                _status.Text = "Line endpoints updated.";
+                _status.Text = AnnotationGroupStatus.LineEndpointsUpdated;
             }
             catch (Exception ex)
             {
@@ -9748,7 +9748,7 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
-            _status.Text = "Resizing annotation…";
+            _status.Text = AnnotationGroupStatus.Resizing;
             await _annotations.MoveAsync(
                 _document,
                 _selectedAnnot.PageIndex,
@@ -10172,7 +10172,7 @@ public sealed class PdfDocumentView : UserControl
             : System.IO.Path.GetFileName(_document.Path);
         var text = PdfNotesExport.Format(annotations, documentTitle: title);
         await Windows.Storage.FileIO.WriteTextAsync(file, text);
-        _status.Text = $"Exported {noteCount} note{(noteCount == 1 ? string.Empty : "s")} to {file.Name}.";
+        _status.Text = StickyNoteExpandPolicy.FormatExported(noteCount, file.Name);
     }
 
     private async Task RotateSelectedAnnotationAsync()
@@ -10191,7 +10191,7 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
-            _status.Text = "Rotating annotation…";
+            _status.Text = AnnotationGroupStatus.Rotating;
             var updated = await _annotations.RotateAsync(
                 _document,
                 item.PageIndex,
@@ -10288,7 +10288,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
             RestoreSelectionAfterRefresh(updated.PageIndex, updated.AnnotIndex, updated.Bounds);
-            _status.Text = $"Alignment set to {quadding}.";
+            _status.Text = AnnotationGroupStatus.FormatAlignment(quadding);
         }
         catch (Exception ex)
         {
@@ -10576,7 +10576,7 @@ public sealed class PdfDocumentView : UserControl
         BuildThumbnailPlaceholders();
         RefreshThumbnailSelectionChrome();
         _ = RenderThumbnailsAsync();
-        _status.Text = $"Thumbnail size {_thumbnailWidth:0}px.";
+        _status.Text = AnnotationGroupStatus.FormatThumbnailSize(_thumbnailWidth);
     }
 
     private string ResolveDefaultStickyNoteColorName()
@@ -10851,7 +10851,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = $"Stroke width set to {width:0.#} pt.";
+            _status.Text = AnnotationGroupStatus.FormatStrokeWidth(width);
         }
         catch (Exception ex)
         {
@@ -10918,7 +10918,7 @@ public sealed class PdfDocumentView : UserControl
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
             await RefreshAnnotationSidebarAsync();
-            _status.Text = $"Opacity set to {(int)slider.Value}%.";
+            _status.Text = AnnotationGroupStatus.FormatOpacity((int)slider.Value);
         }
         catch (Exception ex)
         {
@@ -11131,14 +11131,14 @@ public sealed class PdfDocumentView : UserControl
         var file = await picker.PickSaveFileAsync();
         if (file is null)
         {
-            _status.Text = "Extract cancelled.";
+            _status.Text = PageClipboardStatus.ExtractCancelled;
             return;
         }
 
-        _status.Text = "Extracting…";
+        _status.Text = PageClipboardStatus.Extracting;
         await using var extracted = await _pageEditor.ExtractPagesAsync(_document, indexes);
         await _pageEditor.SaveAsync(extracted, file.Path);
-        _status.Text = $"Extracted {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")} to {file.Name}.";
+        _status.Text = PageEditStatus.FormatExtracted(indexes.Count, file.Name);
     }
 
     private async Task BeginCropModeAsync()
@@ -11328,7 +11328,7 @@ public sealed class PdfDocumentView : UserControl
         {
             if (_document.PageCount < 2)
             {
-                _status.Text = "Need at least two pages to split.";
+                _status.Text = PageClipboardStatus.NeedTwoPagesToSplit;
                 return;
             }
 
@@ -12081,13 +12081,13 @@ public sealed class PdfDocumentView : UserControl
     {
         if (_viewState.Bookmarks.Count == 0)
         {
-            _status.Text = "Add bookmarks before exporting to the PDF outline.";
+            _status.Text = BookmarkStatus.AddBeforeExport;
             return;
         }
 
         try
         {
-            _status.Text = "Writing PDF outline…";
+            _status.Text = BookmarkStatus.WritingOutline;
             var entries = _viewState.Bookmarks
                 .Select(b => new PdfOutlineExportEntry(b.Title, b.PageIndex))
                 .ToList();
@@ -12147,7 +12147,7 @@ public sealed class PdfDocumentView : UserControl
         });
         RefreshBookmarkList();
         SyncViewState();
-        _status.Text = $"Bookmarked “{title}”.";
+        _status.Text = BookmarkStatus.FormatBookmarked(title);
     }
 
     private async Task RenameSelectedBookmarkAsync()
@@ -12182,7 +12182,7 @@ public sealed class PdfDocumentView : UserControl
         bookmark.Title = string.IsNullOrWhiteSpace(box.Text) ? bookmark.Title : box.Text.Trim();
         RefreshBookmarkList();
         SyncViewState();
-        _status.Text = "Bookmark renamed.";
+        _status.Text = BookmarkStatus.Renamed;
     }
 
     private void DeleteSelectedBookmark()
@@ -12198,7 +12198,7 @@ public sealed class PdfDocumentView : UserControl
         {
             RefreshBookmarkList();
             SyncViewState();
-            _status.Text = "Bookmark deleted.";
+            _status.Text = BookmarkStatus.Deleted;
         }
     }
 
@@ -12248,7 +12248,7 @@ public sealed class PdfDocumentView : UserControl
             var info = _documentInfo.GetInfo(_document);
             if (!info.Permissions.CanPrint)
             {
-                _status.Text = "This PDF does not allow printing.";
+                _status.Text = PrintPageScopeChooser.PrintingNotAllowed;
                 return;
             }
 
@@ -12359,7 +12359,7 @@ public sealed class PdfDocumentView : UserControl
                 _ => 1,
             };
 
-            _status.Text = $"Preparing {indexes.Count} page(s) for print…";
+            _status.Text = PrintPageScopeChooser.FormatPreparing(indexes.Count);
             var bitmaps = new List<WriteableBitmap>();
             const double printDpi = 150;
             var renderScale = printDpi / 72.0;
@@ -12924,11 +12924,11 @@ public sealed class PdfDocumentView : UserControl
         if (App.CurrentApp.MainWindowInstance is MainWindow window)
         {
             window.ToggleFullscreen();
-            _status.Text = "Fullscreen toggled.";
+            _status.Text = FullscreenTogglePolicy.Toggled;
             return;
         }
 
-        _status.Text = "Fullscreen unavailable.";
+        _status.Text = FullscreenTogglePolicy.Unavailable;
     }
 
     public void ToggleToolbarVisibility()
@@ -12968,7 +12968,7 @@ public sealed class PdfDocumentView : UserControl
                 var file = await picker.PickSaveFileAsync();
                 if (file is null)
                 {
-                    _status.Text = "Save cancelled.";
+                    _status.Text = DocumentSaveStatus.Cancelled;
                     return;
                 }
 
@@ -12977,7 +12977,7 @@ public sealed class PdfDocumentView : UserControl
 
             await _pageEditor.SaveAsync(_document, path!);
             ClearUnsavedEdits();
-            _status.Text = "Saved " + System.IO.Path.GetFileName(path);
+            _status.Text = DocumentSaveStatus.SavedFileName(System.IO.Path.GetFileName(path));
             App.CurrentApp.MainWindowInstance?.NotifyActiveDocumentSaved(path!);
         }
         catch (Exception ex)
@@ -13191,12 +13191,12 @@ public sealed class PdfDocumentView : UserControl
             var file = await picker.PickSaveFileAsync();
             if (file is null)
             {
-                _status.Text = "Attachment save cancelled.";
+                _status.Text = AttachmentSaveStatus.Cancelled;
                 return;
             }
 
             await FileIO.WriteBytesAsync(file, bytes);
-            _status.Text = $"Saved attachment “{item.Name}” ({bytes.Length} bytes).";
+            _status.Text = AttachmentSaveStatus.FormatSaved(item.Name, bytes.Length);
         }
         catch (Exception ex)
         {

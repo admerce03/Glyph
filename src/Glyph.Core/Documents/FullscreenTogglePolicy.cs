@@ -5,6 +5,9 @@ namespace Glyph.Core.Documents;
 /// </summary>
 public static class FullscreenTogglePolicy
 {
+    public const string Toggled = "Fullscreen toggled.";
+    public const string Unavailable = "Fullscreen unavailable.";
+
     public static bool ShouldExitFullscreen(bool currentlyFullscreen) => currentlyFullscreen;
 
     public static string StatusAfterToggle(bool currentlyFullscreen) =>

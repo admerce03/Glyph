@@ -26,6 +26,18 @@ public static class PageEditStatus
     public static string FormatPastePagesFailed(string message) =>
         PastePagesFailedPrefix + message;
 
+    public static string FormatRotated(int count) =>
+        $"Rotated {count} page{(count == 1 ? string.Empty : "s")}.";
+
+    public static string FormatDeleted(int count) =>
+        $"Deleted {count} page{(count == 1 ? string.Empty : "s")}.";
+
+    public static string FormatDuplicated(int count) =>
+        $"Duplicated {count} page{(count == 1 ? string.Empty : "s")}.";
+
+    public static string FormatExtracted(int count, string fileName) =>
+        $"Extracted {count} page{(count == 1 ? string.Empty : "s")} to {fileName}.";
+
     public static string FormatMerging(int fileCount) =>
         fileCount == 1 ? "Merging PDF…" : $"Merging {fileCount} PDFs…";
 

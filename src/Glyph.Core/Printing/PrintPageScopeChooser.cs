@@ -11,6 +11,10 @@ public static class PrintPageScopeChooser
     public const string AllPages = "All pages";
     public const string CancelledStatus = "Print cancelled.";
     public const string NoPagesToPrint = "No pages to print.";
+    public const string PrintingNotAllowed = "This PDF does not allow printing.";
+
+    public static string FormatPreparing(int pageCount) =>
+        $"Preparing {pageCount} page(s) for print…";
 
     public static IReadOnlyList<string> Labels { get; } =
     [
