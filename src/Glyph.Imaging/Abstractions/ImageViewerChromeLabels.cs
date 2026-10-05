@@ -33,6 +33,15 @@ public static class ImageViewerChromeLabels
     public const string Background = "BG";
     public const string Metadata = "Meta";
     public const string Ocr = "OCR";
+    public const string CopyOcr = "Copy OCR";
+    public const string ClearOcr = "Clear OCR";
+    public const string OcrToPdf = "OCR→PDF";
+    public const string Entities = "Entities";
+    public const string SearchWeb = "Search web";
+    public const string FindOcr = "Find OCR";
+    public const string NextOcr = "Next OCR";
+    public const string CopyValue = "Copy value";
+    public const string OpenOrAct = "Open / act";
     public const string Rotate180 = "180°";
     public const string Orient = "Orient";
     public const string Straighten = "Straighten";

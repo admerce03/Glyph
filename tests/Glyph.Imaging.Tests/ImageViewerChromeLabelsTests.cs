@@ -12,5 +12,9 @@ public class ImageViewerChromeLabelsTests
         ImageViewerChromeLabels.Plus.Should().NotBeNullOrEmpty();
         ImageViewerChromeLabels.Fit.Should().NotBeNullOrEmpty();
         ImageViewerChromeLabels.Minus.Should().Be("−");
+        ImageViewerChromeLabels.CopyOcr.Should().Be("Copy OCR");
+        ImageViewerChromeLabels.Entities.Should().Be("Entities");
+        ImageViewerChromeLabels.FindOcr.Should().Be("Find OCR");
+        ImageViewerChromeLabels.OcrToPdf.Should().Contain("PDF");
     }
 }
