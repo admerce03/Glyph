@@ -436,9 +436,9 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Printing | §44 | M8 | Tested (system Print UI + `PrintPageScopeChooser` / `PrintSheetLayout` / `PrintSystemCapabilities`) |
 | Export/share/integration | §45–48 | M5–M9 | Tested (matrix F45–F47; PDF security export → ADR-015) |
 | Undo/autosave/snapshots | §49–51 | M1–M4, M9 | Tested (per-doc stacks + F50 crash-recovery UI; unified app-wide later) |
-| Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Tested (F52–F53 catalogs; update check → ADR-012) |
+| Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Tested (F52–F55 catalogs incl. update check; associations → ADR-012) |
 | Accessibility | §56 | M9 | Tested (`AccessibilityPolicy` + chrome automation names) |
-| Performance/large docs | §57–58 | M2+, M9 | Tested (`PerformanceBehaviorPolicy` / `ContinuousPageWindow`; bg index / GPU deferred) |
+| Performance/large docs | §57–58 | M2+, M9 | Tested (`PerformanceBehaviorPolicy` / `ContinuousPageWindow` / bg Find index; GPU deferred) |
 | Multi-doc workflows | §59–60 | M1, M3 | Tested (tabs/windows/page+image DnD/clipboard/registry; interactive DnD demo pending) |
 | Non-destructive editing | §61 | M3–M5 | Tested (CropBox + in-memory image edits until Save) |
 | Output formats | §62 | M5, M7 | Tested (HEIF deferred; `OutputFormatSupport`) |

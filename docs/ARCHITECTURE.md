@@ -118,8 +118,8 @@ Abstracted as:
 
 Offline-first:
 
-1. Prefer `Windows.Media.Ocr` when available for the installed language packs
-2. Optional Tesseract adapter for broader language packs / batch consistency
+1. Prefer `Windows.Media.Ocr` when available for the installed language packs (`WindowsOcrEngine` in `Glyph.App`)
+2. Optional Tesseract adapter (ADR-005) for broader language packs / batch consistency — **not shipped yet**
 
 Always behind `IOcrEngine` with cancelable page/region jobs and text-hit overlays.
 
