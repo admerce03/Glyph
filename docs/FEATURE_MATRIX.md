@@ -356,7 +356,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F20-06 | PDF forms | combo boxes | M4 | Tested | `SetTextValueAsync` + option list UI |
 | F20-07 | PDF forms | list boxes | M4 | Tested | `SetTextValueAsync` + `/Opt` picker |
 | F20-08 | PDF forms | buttons where applicable | M4 | Tested | PushButton listed; URI `/A` via PdfPig; Form Overlay/Edit activates (Launcher) |
-| F20-09 | PDF forms | signatures where supported | M4 | Not Started |  |
+| F20-09 | PDF forms | signatures where supported | M4 | Implemented | Sig widgets listed; Form Overlay/Edit places stamp in field bounds (visual, not PKCS#7) |
 | F20-10 | PDF forms | tab-order navigation | M4 | Tested | `FocusAdjacentAsync` + Form dialog Next |
 | F20-11 | PDF forms | form-filling mode that overlays text fields manually. | M4 | Implemented | Form → Overlay draws clickable field boxes; Tab/Enter/Esc |
 | F20-12 | PDF forms | automatic font sizing | M4 | Tested | `SetTextValueAsync` rewrites text `/DA` to `0 Tf`; `PdfFormDefaultAppearance` |

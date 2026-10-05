@@ -300,6 +300,82 @@ public class PdfiumFormStoreTests
     }
 
     [Fact]
+    public async Task Signature_field_accepts_stamp_in_field_bounds()
+    {
+        var path = CreateAcroFormPdf(includeSignature: true);
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-sigfield-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var forms = new PdfiumFormStore();
+            var annots = new PdfiumAnnotationService();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var fields = await forms.ListFieldsAsync(document);
+                var sig = fields.Should().ContainSingle(f => f.Kind == PdfFormFieldKind.Signature).Subject;
+
+                // 2×2 opaque black BGRA stamp fitted into the field rect.
+                var pixels = new byte[]
+                {
+                    0, 0, 0, 255, 0, 0, 0, 255,
+                    0, 0, 0, 255, 0, 0, 0, 255,
+                };
+                await annots.AddStampAsync(
+                    document,
+                    sig.PageIndex,
+                    sig.Bounds,
+                    pixels,
+                    pixelWidth: 2,
+                    pixelHeight: 2);
+
+                var listed = await annots.ListAsync(document, sig.PageIndex);
+                listed.Should().Contain(a => a.IsStamp);
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var listed = await annots.ListAsync(reopened, 0);
+                listed.Should().Contain(a => a.IsStamp);
+                var formsListed = await forms.ListFieldsAsync(reopened);
+                formsListed.Should().Contain(f => f.Name == "Signer" && f.Kind == PdfFormFieldKind.Signature);
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Signature_field_is_listed_as_signature_kind()
+    {
+        var path = CreateAcroFormPdf(includeSignature: true);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var forms = new PdfiumFormStore();
+
+            await using var document = await factory.OpenAsync(path);
+            var fields = await forms.ListFieldsAsync(document);
+            var sig = fields.Should().ContainSingle(f => f.Name == "Signer").Subject;
+            sig.Kind.Should().Be(PdfFormFieldKind.Signature);
+            sig.Bounds.Width.Should().BeGreaterThan(10);
+            sig.Bounds.Height.Should().BeGreaterThan(10);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Push_button_exposes_uri_action()
     {
         var path = CreateAcroFormPdf(includePushButton: true);
@@ -331,7 +407,8 @@ public class PdfiumFormStoreTests
         bool includeCheckBox = false,
         bool includeRadio = false,
         bool includeChoice = false,
-        bool includePushButton = false)
+        bool includePushButton = false,
+        bool includeSignature = false)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-acroform-" + Guid.NewGuid().ToString("N") + ".pdf");
         var annotRefs = new List<string> { "7 0 R", "8 0 R" };
@@ -357,6 +434,12 @@ public class PdfiumFormStoreTests
         }
 
         if (includePushButton)
+        {
+            annotRefs.Add($"{nextObj} 0 R");
+            nextObj++;
+        }
+
+        if (includeSignature)
         {
             annotRefs.Add($"{nextObj} 0 R");
         }
@@ -412,6 +495,12 @@ public class PdfiumFormStoreTests
             // Ff bit 17 (65536) = pushbutton. URI action + caption in /MK /CA.
             objects.Add(
                 "<< /Type /Annot /Subtype /Widget /Rect [120 450 220 480] /F 4 /P 3 0 R /FT /Btn /T (Website) /Ff 65536 /TU (Open site) /MK << /CA (Open site) >> /A << /S /URI /URI (https://example.com/glyph) >> >>");
+        }
+
+        if (includeSignature)
+        {
+            objects.Add(
+                "<< /Type /Annot /Subtype /Widget /Rect [120 380 320 430] /F 4 /P 3 0 R /FT /Sig /T (Signer) /V null /MK << >> >>");
         }
 
         using var ms = new MemoryStream();

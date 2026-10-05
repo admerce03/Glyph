@@ -6504,6 +6504,159 @@ public sealed class PdfDocumentView : UserControl
     }
 
     /// <summary>
+    /// Places a library/drawn/imported signature stamp into an AcroForm signature field rect.
+    /// Cryptographic PKCS#7 signing is out of scope; this is visual fill "where supported".
+    /// </summary>
+    private async Task<bool> FillFormSignatureFieldAsync(PdfFormFieldInfo field)
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for signature dialog.");
+
+        IReadOnlyList<SignatureEntry> library;
+        try
+        {
+            library = await _signatures.ListAsync();
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Could not open signature library: " + ex.Message;
+            return false;
+        }
+
+        ContentDialog pick;
+        ListView? list = null;
+        if (library.Count > 0)
+        {
+            list = new ListView
+            {
+                Height = 200,
+                SelectionMode = ListViewSelectionMode.Single,
+                ItemsSource = library.Select(e => e.Name).ToList(),
+                SelectedIndex = 0,
+            };
+            pick = new ContentDialog
+            {
+                Title = $"Sign {field.Name}",
+                Content = new StackPanel
+                {
+                    Spacing = 8,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = "Place a signature stamp in this form field (visual; not PKCS#7).",
+                            TextWrapping = TextWrapping.Wrap,
+                        },
+                        list,
+                    },
+                },
+                PrimaryButtonText = "Insert",
+                SecondaryButtonText = "Draw new",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = window.Content.XamlRoot,
+            };
+        }
+        else
+        {
+            pick = new ContentDialog
+            {
+                Title = $"Sign {field.Name}",
+                Content = "No saved signatures. Draw a new one to place in this field.",
+                PrimaryButtonText = "Draw",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = window.Content.XamlRoot,
+            };
+        }
+
+        var result = await pick.ShowAsync();
+        if (result == ContentDialogResult.None)
+        {
+            return false;
+        }
+
+        if (library.Count == 0 || result == ContentDialogResult.Secondary)
+        {
+            // Fall back to normal signature draw; user can then re-open the field.
+            StartSignatureDrawMode();
+            _status.Text = "Draw a signature, then choose the form field again to insert it.";
+            return false;
+        }
+
+        if (list is null || list.SelectedIndex < 0 || list.SelectedIndex >= library.Count)
+        {
+            return false;
+        }
+
+        try
+        {
+            await InsertSignatureIntoFieldAsync(library[list.SelectedIndex], field);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Form signature failed: " + ex.Message;
+            return false;
+        }
+    }
+
+    private async Task InsertSignatureIntoFieldAsync(SignatureEntry entry, PdfFormFieldInfo field)
+    {
+        _status.Text = "Signing form field…";
+        await using var stream = await _signatures.OpenImageAsync(entry.Id);
+        using var mem = new MemoryStream();
+        await stream.CopyToAsync(mem);
+        mem.Position = 0;
+        using var rasStream = mem.AsRandomAccessStream();
+        var decoder = await BitmapDecoder.CreateAsync(rasStream);
+        var pixelData = await decoder.GetPixelDataAsync(
+            BitmapPixelFormat.Bgra8,
+            BitmapAlphaMode.Straight,
+            new BitmapTransform(),
+            ExifOrientationMode.IgnoreExifOrientation,
+            ColorManagementMode.DoNotColorManage);
+        var pixels = pixelData.DetachPixelData();
+        var width = (int)decoder.PixelWidth;
+        var height = (int)decoder.PixelHeight;
+        if (width <= 0 || height <= 0)
+        {
+            throw new InvalidOperationException("Signature image is empty.");
+        }
+
+        var fieldW = Math.Max(1, field.Bounds.Width);
+        var fieldH = Math.Max(1, field.Bounds.Height);
+        var aspect = height / (double)width;
+        var targetWidth = fieldW;
+        var targetHeight = targetWidth * aspect;
+        if (targetHeight > fieldH)
+        {
+            targetHeight = fieldH;
+            targetWidth = targetHeight / aspect;
+        }
+
+        var left = field.Bounds.Left + ((fieldW - targetWidth) / 2);
+        var bottom = field.Bounds.Bottom + ((fieldH - targetHeight) / 2);
+        var bounds = new PdfRect(left, bottom, left + targetWidth, bottom + targetHeight);
+
+        await _annotations.AddStampAsync(
+            _document,
+            field.PageIndex,
+            bounds,
+            pixels,
+            width,
+            height);
+
+        _cache.ClearDocument(_documentKey);
+        _cache.ClearDocument(_thumbnailKey);
+        await RenderVisibleAsync();
+        await RenderThumbnailsAsync();
+        await RefreshAnnotationSidebarAsync();
+        _status.Text = $"Signed form field '{field.Name}' with '{entry.Name}'.";
+    }
+
+    /// <summary>
     /// Opens the appropriate edit UI for one field. Returns true when the document was modified.
     /// </summary>
     private async Task<bool> TryEditFormFieldAsync(PdfFormFieldInfo field)
@@ -6515,6 +6668,11 @@ public sealed class PdfDocumentView : UserControl
         if (field.Kind == PdfFormFieldKind.PushButton)
         {
             return await ActivatePushButtonAsync(field);
+        }
+
+        if (field.Kind == PdfFormFieldKind.Signature)
+        {
+            return await FillFormSignatureFieldAsync(field);
         }
 
         if (field.Kind == PdfFormFieldKind.RadioButton)
