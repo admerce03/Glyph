@@ -20,6 +20,7 @@ public sealed class ImageDocumentView : UserControl
     private readonly IImageProcessor _processor;
     private readonly IImageEncoder _encoder;
     private readonly IOcrEngine? _ocr;
+    private readonly IImageDecoder? _decoder;
     private readonly DocumentViewState _viewState;
     private readonly Func<string, Task>? _openSibling;
     private readonly ScrollViewer _scrollViewer;
@@ -42,6 +43,7 @@ public sealed class ImageDocumentView : UserControl
     private readonly TextBox _ocrSearchBox;
     private readonly Button _ocrFindButton;
     private readonly Button _ocrFindNextButton;
+    private readonly Button _ocrFolderButton;
     private IReadOnlyList<int> _ocrSearchHits = [];
     private int _ocrSearchHitIndex = -1;
     private IReadOnlyList<string> _siblings = Array.Empty<string>();
@@ -65,7 +67,8 @@ public sealed class ImageDocumentView : UserControl
         IImageEncoder encoder,
         DocumentViewState? viewState = null,
         Func<string, Task>? openSibling = null,
-        IOcrEngine? ocr = null)
+        IOcrEngine? ocr = null,
+        IImageDecoder? decoder = null)
     {
         _document = document;
         _processor = processor;
@@ -73,6 +76,7 @@ public sealed class ImageDocumentView : UserControl
         _viewState = viewState ?? new DocumentViewState();
         _openSibling = openSibling;
         _ocr = ocr;
+        _decoder = decoder;
         _zoom = _viewState.Zoom <= 0 ? 1.0 : _viewState.Zoom;
 
         _image = new Image
@@ -150,6 +154,7 @@ public sealed class ImageDocumentView : UserControl
         };
         _ocrFindButton = new Button { Content = "Find OCR", Visibility = Visibility.Collapsed };
         _ocrFindNextButton = new Button { Content = "Next OCR", Visibility = Visibility.Collapsed };
+        _ocrFolderButton = new Button { Content = "OCR folder" };
         var rotate180 = new Button { Content = "180°" };
         var orient = new Button { Content = "Orient" };
         var fullscreen = new Button { Content = "Fullscreen" };
@@ -172,6 +177,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(_ocrSearchBox, "Search recognized OCR text");
         ToolTipService.SetToolTip(_ocrFindButton, "Highlight OCR words matching the query");
         ToolTipService.SetToolTip(_ocrFindNextButton, "Jump to next OCR search hit");
+        ToolTipService.SetToolTip(_ocrFolderButton, "Run offline OCR on images in this folder (up to 20)");
         ToolTipService.SetToolTip(rotate180, "Rotate 180°");
         ToolTipService.SetToolTip(orient, "Apply EXIF orientation into pixels");
         ToolTipService.SetToolTip(fullscreen, "Toggle window fullscreen");
@@ -200,6 +206,7 @@ public sealed class ImageDocumentView : UserControl
         adjust.Click += async (_, _) => await AdjustAsync();
         meta.Click += async (_, _) => await ShowMetadataAsync();
         ocrButton.Click += async (_, _) => await RunOcrAsync();
+        _ocrFolderButton.Click += async (_, _) => await RunOcrFolderAsync();
         _copyOcrButton.Click += (_, _) => CopySelectedOcrText();
         _ocrEntitiesButton.Click += async (_, _) => await ShowOcrEntitiesAsync();
         _clearOcrButton.Click += (_, _) => ClearOcrOverlay();
@@ -233,7 +240,7 @@ public sealed class ImageDocumentView : UserControl
             Children =
             {
                 _prevButton, _nextButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
-                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, _copyOcrButton, _ocrEntitiesButton, _ocrSearchBox, _ocrFindButton, _ocrFindNextButton, _clearOcrButton, save, exportPng, exportJpeg, convert, _status,
+                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, _ocrFolderButton, _copyOcrButton, _ocrEntitiesButton, _ocrSearchBox, _ocrFindButton, _ocrFindNextButton, _clearOcrButton, save, exportPng, exportJpeg, convert, _status,
             },
         };
 
@@ -1009,6 +1016,102 @@ public sealed class ImageDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "OCR failed: " + ex.Message;
+        }
+    }
+
+    private async Task RunOcrFolderAsync()
+    {
+        if (_ocr is null)
+        {
+            _status.Text = "OCR engine unavailable.";
+            return;
+        }
+
+        if (_decoder is null)
+        {
+            _status.Text = "Image decoder unavailable for folder OCR.";
+            return;
+        }
+
+        if (_siblings.Count == 0)
+        {
+            _status.Text = "No folder siblings to OCR.";
+            return;
+        }
+
+        const int maxImages = 20;
+        var paths = _siblings.Take(maxImages).ToList();
+        try
+        {
+            var sections = new List<string>(paths.Count);
+            var totalLines = 0;
+            for (var i = 0; i < paths.Count; i++)
+            {
+                var path = paths[i];
+                var name = System.IO.Path.GetFileName(path);
+                _status.Text = $"OCR folder {i + 1}/{paths.Count}: {name}…";
+
+                await using var image = await _decoder.OpenAsync(path);
+                var buffer = await image.GetPixelsAsync(maxEdge: 2048);
+                var result = await _ocr.RecognizeAsync(
+                    new OcrRequest(buffer.Width, buffer.Height, buffer.BgraPixels));
+                totalLines += result.Lines.Count;
+                var body = string.IsNullOrWhiteSpace(result.Text) ? "(no text recognized)" : result.Text.Trim();
+                sections.Add($"--- {name} ---\n{body}");
+            }
+
+            var combined = string.Join("\n\n", sections);
+            var box = new TextBox
+            {
+                Text = combined,
+                IsReadOnly = true,
+                AcceptsReturn = true,
+                TextWrapping = TextWrapping.Wrap,
+                Width = 520,
+                Height = 360,
+            };
+            var copy = new Button { Content = "Copy text", Margin = new Thickness(0, 8, 0, 0) };
+            copy.Click += (_, _) =>
+            {
+                var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                package.SetText(combined);
+                Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+                _status.Text = "Folder OCR text copied.";
+            };
+
+            var truncated = _siblings.Count > maxImages
+                ? $" (first {maxImages} of {_siblings.Count})"
+                : string.Empty;
+            var panel = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = $"{paths.Count} image(s){truncated} · {totalLines} line(s)",
+                        Opacity = 0.75,
+                    },
+                    box,
+                    copy,
+                },
+            };
+
+            var dialog = new ContentDialog
+            {
+                Title = "Folder OCR results",
+                Content = panel,
+                CloseButtonText = "Close",
+                XamlRoot = XamlRoot,
+            };
+            await dialog.ShowAsync();
+            _status.Text = totalLines == 0
+                ? $"Folder OCR — no text across {paths.Count} image(s)."
+                : $"Folder OCR — {paths.Count} image(s), {totalLines} line(s).";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Folder OCR failed: " + ex.Message;
         }
     }
 
