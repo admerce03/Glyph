@@ -192,7 +192,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Annotation sidebar lists text markup; click jumps to page; Delete removes selected markup.
 - Sticky notes: `AddStickyNoteAsync` + Note toolbar dialog; Contents/color/move APIs; notes appear in sidebar.
 - Freehand ink: `AddInkAsync` + Ink draw mode on page surface; listed in annotation sidebar.
-- Shapes: `AddShapeAsync` for rectangle/ellipse (Square/Circle) and line (2-point ink); Rect/Ellipse/Line draw modes.
+- Shapes: `AddShapeAsync` for rectangle/ellipse (Square/Circle), line, and arrow (ink strokes; arrow adds head wings); Rect/Ellipse/Line/Arrow draw modes.
 - Text boxes: `AddTextBoxAsync` FreeText with Contents + DA; TextBox toolbar dialog; listed in sidebar.
 - Flatten: `FlattenAsync` via `FPDFPage_Flatten` + Flatten toolbar (confirm dialog); editable annots removed after bake.
 - Signatures: `AddStampAsync` (BGRA stamp image) + local `FileSignatureLibrary`; Sign toolbar Draw (mouse stroke → PNG/library/stamp) or Import image.

@@ -229,7 +229,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-03 | PDF annotations | Strikethrough | M4 | Tested | `AddTextMarkupAsync(StrikeOut)` + toolbar |
 | F13-04 | PDF annotations | Freehand ink | M4 | Tested | `AddInkAsync` + Ink draw mode |
 | F13-05 | PDF annotations | Lines | M4 | Tested | `AddShapeAsync(Line)` via 2-point ink (no PDFium SetLine) |
-| F13-06 | PDF annotations | Arrows | M4 | Not Started |  |
+| F13-06 | PDF annotations | Arrows | M4 | Tested | `AddShapeAsync(Arrow)` ink shaft + head |
 | F13-07 | PDF annotations | Rectangles | M4 | Tested | `AddShapeAsync(Rectangle)` + Rect draw mode |
 | F13-08 | PDF annotations | Rounded rectangles | M4 | Not Started |  |
 | F13-09 | PDF annotations | Ellipses | M4 | Tested | `AddShapeAsync(Ellipse)` + Ellipse draw mode |
@@ -302,7 +302,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F16-16 | Text boxes and callouts | Callout pointer. | M4 | Not Started |  |
 | F16-17 | Text boxes and callouts | Move pointer separately from text box. | M4 | Not Started |  |
 | F17-01 | Shapes | line | M4 | Not Started |  |
-| F17-02 | Shapes | arrow | M4 | Not Started |  |
+| F17-02 | Shapes | arrow | M4 | Tested | Same as F13-06 Arrow draw mode |
 | F17-03 | Shapes | rectangle | M4 | Not Started |  |
 | F17-04 | Shapes | rounded rectangle | M4 | Not Started |  |
 | F17-05 | Shapes | ellipse | M4 | Not Started |  |

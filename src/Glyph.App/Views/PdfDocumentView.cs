@@ -97,6 +97,7 @@ public sealed class PdfDocumentView : UserControl
     private Button? _rectButton;
     private Button? _ellipseButton;
     private Button? _lineButton;
+    private Button? _arrowButton;
     private bool _dragSelecting;
     private Windows.Foundation.Point _dragStart;
     private int _dragPageIndex = -1;
@@ -321,11 +322,13 @@ public sealed class PdfDocumentView : UserControl
         var rect = new Button { Content = "Rect" };
         var ellipse = new Button { Content = "Ellipse" };
         var line = new Button { Content = "Line" };
+        var arrow = new Button { Content = "Arrow" };
         _signButton = sign;
         _inkButton = ink;
         _rectButton = rect;
         _ellipseButton = ellipse;
         _lineButton = line;
+        _arrowButton = arrow;
         var undoEdit = new Button { Content = "Undo" };
         var redoEdit = new Button { Content = "Redo" };
         ToolTipService.SetToolTip(rotateLeft, "Rotate selected pages left");
@@ -351,6 +354,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(rect, "Draw a rectangle annotation");
         ToolTipService.SetToolTip(ellipse, "Draw an ellipse annotation");
         ToolTipService.SetToolTip(line, "Draw a line (stored as a 2-point ink stroke)");
+        ToolTipService.SetToolTip(arrow, "Draw an arrow (ink shaft + arrowhead)");
         ToolTipService.SetToolTip(undoEdit, "Undo last page edit (Ctrl+Z)");
         ToolTipService.SetToolTip(redoEdit, "Redo page edit (Ctrl+Y)");
 
@@ -405,6 +409,7 @@ public sealed class PdfDocumentView : UserControl
         rect.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Rectangle);
         ellipse.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Ellipse);
         line.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Line);
+        arrow.Click += (_, _) => ToggleShapeMode(PdfShapeKind.Arrow);
         undoEdit.Click += async (_, _) => await UndoPageEditAsync();
         redoEdit.Click += async (_, _) => await RedoPageEditAsync();
 
@@ -419,7 +424,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, flatten, sign, formFill, ink, rect, ellipse, line,
+                highlight, underline, strikeout, stickyNote, textBox, flatten, sign, formFill, ink, rect, ellipse, line, arrow,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -2146,6 +2151,7 @@ public sealed class PdfDocumentView : UserControl
                 PdfShapeKind.Rectangle => "Rect",
                 PdfShapeKind.Ellipse => "Ellipse",
                 PdfShapeKind.Line => "Line",
+                PdfShapeKind.Arrow => "Arrow",
                 _ => "Shape",
             };
             return $"{shapeName} · p.{info.PageIndex + 1}";
@@ -2218,6 +2224,7 @@ public sealed class PdfDocumentView : UserControl
         {
             PdfShapeKind.Rectangle => "Rectangle mode — drag on the page.",
             PdfShapeKind.Ellipse => "Ellipse mode — drag on the page.",
+            PdfShapeKind.Arrow => "Arrow mode — drag from tail to tip.",
             _ => "Line mode — drag on the page.",
         };
     }
@@ -2266,6 +2273,11 @@ public sealed class PdfDocumentView : UserControl
         {
             _lineButton.Background = _shapeMode == PdfShapeKind.Line ? active : null;
         }
+
+        if (_arrowButton is not null)
+        {
+            _arrowButton.Background = _shapeMode == PdfShapeKind.Arrow ? active : null;
+        }
     }
 
     private void BeginShapeDrag(Border border, int pageIndex, PointerRoutedEventArgs e)
@@ -2308,15 +2320,11 @@ public sealed class PdfDocumentView : UserControl
                 StrokeThickness = 2,
                 Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 30, 144, 255)),
             },
-            PdfShapeKind.Line => new Microsoft.UI.Xaml.Shapes.Line
-            {
-                X1 = _shapeStart.X,
-                Y1 = _shapeStart.Y,
-                X2 = current.X,
-                Y2 = current.Y,
-                Stroke = stroke,
-                StrokeThickness = 2,
-            },
+            PdfShapeKind.Line or PdfShapeKind.Arrow => CreateLineOrArrowPreview(
+                _shapeMode.Value,
+                _shapeStart,
+                current,
+                stroke),
             _ => new Microsoft.UI.Xaml.Shapes.Rectangle
             {
                 Width = Math.Max(1, width),
@@ -2327,7 +2335,7 @@ public sealed class PdfDocumentView : UserControl
             },
         };
 
-        if (preview is not Microsoft.UI.Xaml.Shapes.Line)
+        if (preview is not Microsoft.UI.Xaml.Shapes.Line and not Microsoft.UI.Xaml.Shapes.Polyline)
         {
             Canvas.SetLeft(preview, left);
             Canvas.SetTop(preview, top);
@@ -2358,7 +2366,7 @@ public sealed class PdfDocumentView : UserControl
         double ToPdfY(double y) => page.HeightPoints - (y / _scale);
 
         PdfRect bounds;
-        if (kind == PdfShapeKind.Line)
+        if (kind is PdfShapeKind.Line or PdfShapeKind.Arrow)
         {
             bounds = new PdfRect(
                 ToPdfX(start.X),
@@ -2384,7 +2392,7 @@ public sealed class PdfDocumentView : UserControl
                 kind.Value,
                 bounds,
                 new PdfAnnotationColor(30, 144, 255),
-                fillColor: kind == PdfShapeKind.Line
+                fillColor: kind is PdfShapeKind.Line or PdfShapeKind.Arrow
                     ? null
                     : new PdfAnnotationColor(30, 144, 255, 40));
             _cache.ClearDocument(_documentKey);
@@ -2396,6 +2404,7 @@ public sealed class PdfDocumentView : UserControl
             {
                 PdfShapeKind.Rectangle => "Rectangle added.",
                 PdfShapeKind.Ellipse => "Ellipse added.",
+                PdfShapeKind.Arrow => "Arrow added.",
                 _ => "Line added.",
             };
         }
@@ -2403,6 +2412,72 @@ public sealed class PdfDocumentView : UserControl
         {
             _status.Text = "Shape failed: " + ex.Message;
         }
+    }
+
+    private static FrameworkElement CreateLineOrArrowPreview(
+        PdfShapeKind kind,
+        Windows.Foundation.Point start,
+        Windows.Foundation.Point end,
+        SolidColorBrush stroke)
+    {
+        if (kind == PdfShapeKind.Line)
+        {
+            return new Microsoft.UI.Xaml.Shapes.Line
+            {
+                X1 = start.X,
+                Y1 = start.Y,
+                X2 = end.X,
+                Y2 = end.Y,
+                Stroke = stroke,
+                StrokeThickness = 2,
+            };
+        }
+
+        var dx = end.X - start.X;
+        var dy = end.Y - start.Y;
+        var length = Math.Sqrt((dx * dx) + (dy * dy));
+        if (length < 1)
+        {
+            return new Microsoft.UI.Xaml.Shapes.Line
+            {
+                X1 = start.X,
+                Y1 = start.Y,
+                X2 = end.X,
+                Y2 = end.Y,
+                Stroke = stroke,
+                StrokeThickness = 2,
+            };
+        }
+
+        var ux = dx / length;
+        var uy = dy / length;
+        var head = Math.Clamp(length * 0.22, 10.0, 28.0);
+        const double wingRadians = Math.PI / 7;
+        var cos = Math.Cos(wingRadians);
+        var sin = Math.Sin(wingRadians);
+        var backX = -ux * head;
+        var backY = -uy * head;
+        var wing1 = new Windows.Foundation.Point(
+            end.X + (backX * cos) - (backY * sin),
+            end.Y + (backX * sin) + (backY * cos));
+        var wing2 = new Windows.Foundation.Point(
+            end.X + (backX * cos) + (backY * sin),
+            end.Y + (-backX * sin) + (backY * cos));
+
+        return new Microsoft.UI.Xaml.Shapes.Polyline
+        {
+            Points =
+            [
+                start,
+                end,
+                wing1,
+                end,
+                wing2,
+            ],
+            Stroke = stroke,
+            StrokeThickness = 2,
+            Fill = null,
+        };
     }
 
     private void CancelShapeDrag()
