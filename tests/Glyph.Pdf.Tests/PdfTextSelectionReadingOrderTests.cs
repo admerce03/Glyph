@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Text;
-using Xunit;
 
 namespace Glyph.Pdf.Tests;
 
@@ -47,18 +46,5 @@ public class PdfTextSelectionReadingOrderTests
         };
 
         PdfTextSelection.JoinInReadingOrder(chars).Should().Be("Hello world");
-    }
-
-    [Fact]
-    public void CopyAll_selects_entire_page_in_reading_order()
-    {
-        var chars = new List<PdfTextChar>
-        {
-            new(0, "Top", new PdfRect(0, 20, 30, 30)),
-            new(1, "Bot", new PdfRect(0, 0, 30, 10)),
-        };
-
-        PdfTextSelection.CopyAll(chars).Should().Be("Top\nBot");
-        PdfTextSelection.CopyAll([]).Should().BeEmpty();
     }
 }

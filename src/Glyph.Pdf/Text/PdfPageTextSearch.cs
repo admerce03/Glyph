@@ -40,7 +40,7 @@ public static class PdfPageTextSearch
 
                 hits.Add(new PdfSearchHit(
                     pageIndex,
-                    PdfSearchSnippet.Build(text, index, trimmed.Length),
+                    BuildSnippet(text, index, trimmed.Length),
                     index,
                     trimmed.Length));
                 start = index + Math.Max(1, trimmed.Length);
@@ -50,40 +50,22 @@ public static class PdfPageTextSearch
         return hits;
     }
 
-    /// <summary>
-    /// Merges native extract hits with OCR-cache hits, ordered by page/offset and
-    /// deduped on (page, start, length) so overlapping OCR/native matches collapse.
-    /// </summary>
-    public static IReadOnlyList<PdfSearchHit> Merge(
-        IReadOnlyList<PdfSearchHit> nativeHits,
-        IReadOnlyList<PdfSearchHit> ocrHits)
+    private static string BuildSnippet(string text, int matchStart, int matchLength)
     {
-        ArgumentNullException.ThrowIfNull(nativeHits);
-        ArgumentNullException.ThrowIfNull(ocrHits);
-
-        if (ocrHits.Count == 0)
+        const int pad = 28;
+        var from = Math.Max(0, matchStart - pad);
+        var to = Math.Min(text.Length, matchStart + matchLength + pad);
+        var snippet = text[from..to].Replace('\r', ' ').Replace('\n', ' ').Trim();
+        if (from > 0)
         {
-            return nativeHits;
+            snippet = "…" + snippet;
         }
 
-        if (nativeHits.Count == 0)
+        if (to < text.Length)
         {
-            return ocrHits;
+            snippet += "…";
         }
 
-        var seen = new HashSet<(int Page, int Start, int Length)>();
-        var merged = new List<PdfSearchHit>(nativeHits.Count + ocrHits.Count);
-        foreach (var hit in nativeHits.Concat(ocrHits).OrderBy(h => h.PageIndex).ThenBy(h => h.MatchStart))
-        {
-            var key = (hit.PageIndex, hit.MatchStart, hit.MatchLength);
-            if (!seen.Add(key))
-            {
-                continue;
-            }
-
-            merged.Add(hit);
-        }
-
-        return merged;
+        return snippet;
     }
 }

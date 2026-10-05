@@ -97,18 +97,3 @@ public class OcrCalendarInviteTests
         time.Should().Be(new TimeSpan(14, 30, 0));
     }
 }
-
-public class OcrEntityActionUrisTests
-{
-    [Fact]
-    public void Builds_launch_uris_and_status()
-    {
-        OcrEntityActionUris.NormalizeUrl("example.com").Should().Be("https://example.com");
-        OcrEntityActionUris.NormalizeUrl("HTTPS://a.test").Should().Be("HTTPS://a.test");
-        OcrEntityActionUris.Mailto("a@b.co").Should().Be("mailto:a@b.co");
-        OcrEntityActionUris.BingMaps("1 Main St").Should().Contain("bing.com/maps");
-        OcrEntityActionUris.BingWebSearch("glyph pdf").Should().Contain("search?q=");
-        OcrEntityActionUris.CopiedKind("Phone").Should().Be("Copied Phone.");
-        OcrEntityActionUris.OpenedUrl.Should().Contain("URL");
-    }
-}

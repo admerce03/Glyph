@@ -253,21 +253,23 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 ### Progress notes
 
 - `IOcrEngine` / `OcrRequest` / `OcrResult` abstractions in `Glyph.Ocr`
-- `WindowsOcrEngine` (Windows.Media.Ocr) registered in App DI; **OCR** toolbar on `ImageDocumentView` with result dialog + copy
-- `UnsupportedOcrEngine` + Fake engine coverage in `Glyph.Ocr.Tests` (Linux)
+- `WindowsOcrEngine` (Windows.Media.Ocr) registered in App DI; **OCR** toolbar on `ImageDocumentView` with Live Text word-box overlay (click/Ctrl+click select + Copy OCR)
+- `UnsupportedOcrEngine` + Fake engine + overlay mapper + entity detector + text search coverage in `Glyph.Ocr.Tests` (Linux)
 - PDF **OCR** current/selected/entire document on `PdfDocumentView` (chooser → render → BGRA → engine + result dialog)
 - **Cancel OCR** + `n/m` status progress for multi-page PDF recognition
 - Document **Find** merges session OCR page text (`PdfPageTextSearch`) when OCR has been run
 - Find on image-only PDFs offers OCR-current-page fallback; **Find sel** searches the text selection
+- Image **Find OCR** / **Next OCR** over recognized word boxes (`OcrTextSearch`)
+- **OCR folder** batch-recognizes sibling images (capped at 20) with combined copy dialog
+- **Search web** for selected OCR text / entities (Bing via default browser)
 - PDF **Live Text** word-box overlay after OCR (click/Ctrl+click select + **Copy OCR**)
 - **OCR→PDF** exports OCR'd pages as a searchable PDF (image + invisible text via `OcrSearchablePdfWriter`)
-- **Entities** dialog on PDF OCR text (URL/email/phone/address/date/time + maps/calendar/search web)
+- **Entities** dialog on PDF + image OCR text (URL/email/phone/address/date/time + maps/calendar/search web)
+- **Cancel OCR** + status progress for single-image and folder OCR (`CancellationToken`)
 - Right-click selected text → Copy / Find selection / Search web / Copy region as image
 - Multi-line drag selects across lines in reading order; Alt/wide drag keeps column rect selection
 - Drag selected text out of the page (OLE/text drag) when a selection exists
 - **Find in all open PDFs** (Edit menu / Ctrl+Shift+F) aggregates PdfPig hits across tabs
-- Image-folder OCR / Live Text image overlays still on parallel entities/live-text stack
-- **Blocked on GitHub Actions spending limit** (empty-step CI ~2s): do not push/merge until billing restores; stacked PRs #62–#66 + m7 #67 ready locally/remotely as applicable
 ---
 
 ## Milestone 7 — Redaction, PDF security, optimization, metadata

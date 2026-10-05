@@ -2,7 +2,6 @@ using System.IO.Compression;
 using FluentAssertions;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Text;
-using Xunit;
 
 namespace Glyph.Pdf.Tests;
 
