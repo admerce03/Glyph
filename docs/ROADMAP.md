@@ -389,7 +389,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 ### Remaining to close M9 (external)
 
 1. **ADR-015** — Accept Option A (PdfSharp MIT write-encrypt), C (commercial), or D (defer). Until Accepted, F23-02–07 / F45-09 stay **Blocked**.
-2. **Windows interactive** — follow [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md) + [`docs/proof/`](proof/README.md): `install-msix-test.ps1` (`-VerifyOnly` / `-ProbeUserDefaults` / `-OpenDefaultApps`) + Explorer defaults (F01-06/07); M1/M2 screenshots; M3 §11 DnD recording.
+2. **Windows interactive** — on a Developer Mode host run [`scripts/interactive-verify.ps1`](../scripts/interactive-verify.ps1) (`-DownloadArtifact` / `-PublishIfMissing` / `-StatusOnly`), then complete [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md) + [`docs/proof/`](proof/README.md): Explorer defaults (F01-06/07); M1/M2 screenshots; M3 §11 DnD recording.
 3. **Production / Store signing** — distribution decision (test cert is CI/Developer Mode only); options catalogued in [`PACKAGING.md`](PACKAGING.md) / [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md).
 
 ### Progress notes
@@ -399,7 +399,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - CI: push + PR for the same branch share a concurrency group (`head_ref || ref_name`) so Windows runners are not double-queued
 - MSIX: Windows CI produces test-signed `Glyph.App_*.msix` + `Glyph.CI.TestSign.cer` for **win-x64** and **win-arm64**, enables AppModelUnlock sideloading on the x64 runner, and runs `install-msix-test.ps1 -Force -ProbeUserDefaults` (manifest association probe). Operator guide: [`PACKAGING.md`](PACKAGING.md). F01-06/07 remain Deferred until Explorer UserChoice / double-click verification (ADR-012). **Blocked:** ADR-015 password-write (Needs approval, prefer Option A PdfSharp).
 - Interactive proof kit (#107): `docs/proof/README.md` + `InteractiveVerifyArtifacts` path helpers; sideload script dumps HKCU UserChoice ProgIds and can open Default apps Settings
-- Matrix audit (2026-10-05 tip through #110): 881 rows — 862 Tested / 12 Deferred / 7 Blocked (all Blocked = ADR-015 password-write); zero Not Started / In Progress / Implemented
+- Interactive verify orchestrator: `scripts/interactive-verify.ps1` downloads CI MSIX (or publishes locally), sideloads, probes UserChoice, opens Default apps, and reports `docs/proof` status
+- Matrix audit (2026-10-05 tip through #111): 881 rows — 862 Tested / 12 Deferred / 7 Blocked (all Blocked = ADR-015 password-write); zero Not Started / In Progress / Implemented
 - Interactive proof debt: Explorer UserChoice defaults, M1 shell screenshot, M2 viewer screenshots, M3 §11 cross-doc DnD recording — checklist in [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md) / [`docs/proof/`](proof/README.md)
 - Deferred catalogs unit-tested (`PackagingDeferredPolicy`, `PdfOptimizeDeferredPolicy`, `ImageAdvancedDeferredPolicy`, …)
 
