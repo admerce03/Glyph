@@ -363,7 +363,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | PDF search | §6 | M2, M6 | Implemented |
 | PDF text interaction | §7 | M2, M6 | Implemented |
 | OCR / Live Text | §8 | M6 | In Progress |
-| User bookmarks | §9 | M2/M4 | Not Started |
+| User bookmarks | §9 | M2/M4 | Implemented (app-local view-state; PDF outline export deferred) |
 | PDF page manipulation | §10–12 | M3 | Implemented |
 | PDF annotations/markup | §13–19 | M4 | In Progress |
 | PDF forms | §20 | M4 | In Progress |

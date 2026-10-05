@@ -42,6 +42,14 @@ public sealed class JsonDocumentViewStateStore : IDocumentViewStateStore
                 Zoom = entry.Zoom,
                 PageLayout = entry.PageLayout,
                 CurrentPageIndex = Math.Max(0, entry.CurrentPageIndex),
+                Bookmarks = entry.Bookmarks?
+                    .Select(b => new UserBookmark
+                    {
+                        Id = string.IsNullOrWhiteSpace(b.Id) ? Guid.NewGuid().ToString("N") : b.Id,
+                        Title = b.Title ?? string.Empty,
+                        PageIndex = Math.Max(0, b.PageIndex),
+                    })
+                    .ToList() ?? [],
             };
         }
         finally
@@ -66,6 +74,14 @@ public sealed class JsonDocumentViewStateStore : IDocumentViewStateStore
                 Zoom = state.Zoom,
                 PageLayout = state.PageLayout,
                 CurrentPageIndex = Math.Max(0, state.CurrentPageIndex),
+                Bookmarks = state.Bookmarks
+                    .Select(b => new UserBookmark
+                    {
+                        Id = b.Id,
+                        Title = b.Title,
+                        PageIndex = b.PageIndex,
+                    })
+                    .ToList(),
                 UpdatedAtUtc = DateTimeOffset.UtcNow,
             };
 

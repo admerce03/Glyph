@@ -62,7 +62,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-01 | Sidebar modes | Page thumbnails | M2-M5 | Implemented | Thumbnail strip in PDF viewer sidebar |
 | F03-02 | Sidebar modes | Table of contents | M2-M5 | Implemented | Outline TreeView when bookmarks present |
 | F03-03 | Sidebar modes | Search results | M2-M5 | Implemented | Find hits list under Search header |
-| F03-04 | Sidebar modes | Bookmarks | M2-M5 | Not Started |  |
+| F03-04 | Sidebar modes | Bookmarks | M2-M5 | Implemented | PDF sidebar Bookmarks list (user bookmarks) |
 | F03-05 | Sidebar modes | Highlights and annotations | M2-M5 | Not Started |  |
 | F03-06 | Sidebar modes | Image list | M2-M5 | Not Started |  |
 | F03-07 | Sidebar modes | Contact sheet | M2-M5 | Not Started |  |
@@ -173,14 +173,14 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F08-22 | OCR / Live Text equivalent | Create calendar event through appropriate Windows/system mechanism where feasible. | M6 | Implemented | Entities → temp `.ics` via `OcrCalendarInvite` |
 | F08-23 | OCR / Live Text equivalent | Search web. | M6 | Implemented | Entities dialog → Bing |
 | F08-24 | OCR / Live Text equivalent | Copy recognized value. | M6 | Implemented | Entities → Copy value |
-| F09-01 | PDF bookmarks | Add bookmark at current page/location. | M2/M4 | Not Started |  |
-| F09-02 | PDF bookmarks | Rename bookmark. | M2/M4 | Not Started |  |
-| F09-03 | PDF bookmarks | Delete bookmark. | M2/M4 | Not Started |  |
-| F09-04 | PDF bookmarks | List bookmarks in sidebar. | M2/M4 | Not Started |  |
-| F09-05 | PDF bookmarks | Reorder bookmarks where feasible. | M2/M4 | Not Started |  |
-| F09-06 | PDF bookmarks | Click to navigate. | M2/M4 | Not Started |  |
-| F09-07 | PDF bookmarks | Preserve bookmarks when saving. | M2/M4 | Not Started |  |
-| F09-08 | PDF bookmarks | Export them as standard PDF bookmarks where compatible. | M2/M4 | Not Started |  |
+| F09-01 | PDF bookmarks | Add bookmark at current page/location. | M2/M4 | Implemented | Sidebar Bookmarks + |
+| F09-02 | PDF bookmarks | Rename bookmark. | M2/M4 | Implemented | Sidebar Rename |
+| F09-03 | PDF bookmarks | Delete bookmark. | M2/M4 | Implemented | Sidebar Del |
+| F09-04 | PDF bookmarks | List bookmarks in sidebar. | M2/M4 | Implemented | Bookmarks list under Contents |
+| F09-05 | PDF bookmarks | Reorder bookmarks where feasible. | M2/M4 | Implemented | ↑/↓ buttons |
+| F09-06 | PDF bookmarks | Click to navigate. | M2/M4 | Implemented | ItemClick → GoToPage |
+| F09-07 | PDF bookmarks | Preserve bookmarks when saving. | M2/M4 | Implemented | Persisted in view-state.json per path |
+| F09-08 | PDF bookmarks | Export them as standard PDF bookmarks where compatible. | M2/M4 | Deferred | No PDFium outline-write API yet; app-local store only |
 | F10-01 | PDF page manipulation | Select page thumbnails. | M3 | Implemented | Click thumbnails; chrome shows selection |
 | F10-02 | PDF page manipulation | Multi-select pages. | M3 | Tested | Ctrl+click / Ctrl+A via `PageSelection` |
 | F10-03 | PDF page manipulation | Select ranges. | M3 | Tested | Shift+click / Shift+↑↓ via `PageSelection` |

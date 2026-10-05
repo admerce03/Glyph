@@ -84,6 +84,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly StackPanel _thumbnailHost;
     private readonly ScrollViewer _thumbnailScroll;
     private readonly TreeView _outlineTree;
+    private readonly ListView _bookmarkList;
     private readonly ListView _searchResults;
     private readonly ListView _annotationList;
     private readonly TextBox _searchBox;
@@ -349,11 +350,13 @@ public sealed class PdfDocumentView : UserControl
                 new RowDefinition { Height = GridLength.Auto },
                 new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
                 new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(80) },
+                new RowDefinition { Height = GridLength.Auto },
                 new RowDefinition { Height = new GridLength(100) },
                 new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(110) },
+                new RowDefinition { Height = new GridLength(100) },
                 new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(140) },
+                new RowDefinition { Height = new GridLength(120) },
             },
         };
         sidePanel.Children.Add(new TextBlock { Text = "Pages", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(8, 8, 8, 4) });
@@ -364,10 +367,69 @@ public sealed class PdfDocumentView : UserControl
         sidePanel.Children.Add(tocHeader);
         Grid.SetRow(_outlineTree, 3);
         sidePanel.Children.Add(_outlineTree);
+
+        _bookmarkList = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            IsItemClickEnabled = true,
+            Height = 100,
+        };
+        _bookmarkList.ItemClick += async (_, args) =>
+        {
+            if (args.ClickedItem is BookmarkListItem item)
+            {
+                await GoToPageAsync(item.PageIndex, recordHistory: true);
+            }
+        };
+        var bookmarkHeader = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            Margin = new Thickness(8, 8, 8, 4),
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = "Bookmarks",
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+            },
+        };
+        var addBookmark = new Button { Content = "+", Width = 28, Padding = new Thickness(0) };
+        ToolTipService.SetToolTip(addBookmark, "Add bookmark at current page");
+        AutomationProperties.SetName(addBookmark, "Add bookmark at current page");
+        addBookmark.Click += async (_, _) => await AddBookmarkAsync();
+        var renameBookmark = new Button { Content = "Rename", Padding = new Thickness(4, 2, 4, 2) };
+        ToolTipService.SetToolTip(renameBookmark, "Rename selected bookmark");
+        AutomationProperties.SetName(renameBookmark, "Rename selected bookmark");
+        renameBookmark.Click += async (_, _) => await RenameSelectedBookmarkAsync();
+        var deleteBookmark = new Button { Content = "Del", Padding = new Thickness(4, 2, 4, 2) };
+        ToolTipService.SetToolTip(deleteBookmark, "Delete selected bookmark");
+        AutomationProperties.SetName(deleteBookmark, "Delete selected bookmark");
+        deleteBookmark.Click += (_, _) => DeleteSelectedBookmark();
+        var upBookmark = new Button { Content = "↑", Width = 28, Padding = new Thickness(0) };
+        ToolTipService.SetToolTip(upBookmark, "Move bookmark up");
+        AutomationProperties.SetName(upBookmark, "Move bookmark up");
+        upBookmark.Click += (_, _) => MoveSelectedBookmark(-1);
+        var downBookmark = new Button { Content = "↓", Width = 28, Padding = new Thickness(0) };
+        ToolTipService.SetToolTip(downBookmark, "Move bookmark down");
+        AutomationProperties.SetName(downBookmark, "Move bookmark down");
+        downBookmark.Click += (_, _) => MoveSelectedBookmark(1);
+        bookmarkHeader.Children.Add(addBookmark);
+        bookmarkHeader.Children.Add(renameBookmark);
+        bookmarkHeader.Children.Add(deleteBookmark);
+        bookmarkHeader.Children.Add(upBookmark);
+        bookmarkHeader.Children.Add(downBookmark);
+        Grid.SetRow(bookmarkHeader, 4);
+        sidePanel.Children.Add(bookmarkHeader);
+        Grid.SetRow(_bookmarkList, 5);
+        sidePanel.Children.Add(_bookmarkList);
+
         var searchHeader = new TextBlock { Text = "Search", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(8, 8, 8, 4) };
-        Grid.SetRow(searchHeader, 4);
+        Grid.SetRow(searchHeader, 6);
         sidePanel.Children.Add(searchHeader);
-        Grid.SetRow(_searchResults, 5);
+        Grid.SetRow(_searchResults, 7);
         sidePanel.Children.Add(_searchResults);
         var annotHeaderRow = new StackPanel
         {
@@ -460,9 +522,9 @@ public sealed class PdfDocumentView : UserControl
         rotateAnnot.Click += async (_, _) => await RotateSelectedAnnotationAsync();
         annotHeaderRow.Children.Add(rotateAnnot);
         annotHeaderRow.Children.Add(removeAnnot);
-        Grid.SetRow(annotHeaderRow, 6);
+        Grid.SetRow(annotHeaderRow, 8);
         sidePanel.Children.Add(annotHeaderRow);
-        Grid.SetRow(_annotationList, 7);
+        Grid.SetRow(_annotationList, 9);
         sidePanel.Children.Add(_annotationList);
 
         _status = new TextBlock { Opacity = 0.75, FontSize = 12, Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
@@ -760,6 +822,7 @@ public sealed class PdfDocumentView : UserControl
         await RenderVisibleAsync();
         _ = RenderThumbnailsAsync();
         _ = LoadOutlineAsync();
+        RefreshBookmarkList();
         _ = RefreshAnnotationSidebarAsync();
     }
 
@@ -10348,6 +10411,138 @@ public sealed class PdfDocumentView : UserControl
         _viewState.Zoom = _scale;
         _viewState.CurrentPageIndex = CurrentPageIndex;
         _viewState.PageLayout = _layoutMode;
+        // Bookmarks list is mutated in place on _viewState.Bookmarks.
+    }
+
+    private void RefreshBookmarkList()
+    {
+        var selectedId = (_bookmarkList.SelectedItem as BookmarkListItem)?.Id;
+        _bookmarkList.ItemsSource = _viewState.Bookmarks
+            .Select(b => new BookmarkListItem(b.Id, $"{b.Title} · p.{b.PageIndex + 1}", b.PageIndex))
+            .ToList();
+        if (selectedId is not null)
+        {
+            _bookmarkList.SelectedItem = _bookmarkList.Items
+                .OfType<BookmarkListItem>()
+                .FirstOrDefault(i => i.Id == selectedId);
+        }
+    }
+
+    private async Task AddBookmarkAsync()
+    {
+        var page = CurrentPageIndex;
+        var box = new TextBox
+        {
+            Header = "Bookmark title",
+            Text = $"Page {page + 1}",
+            Width = 280,
+        };
+        var dialog = new ContentDialog
+        {
+            Title = "Add bookmark",
+            Content = box,
+            PrimaryButtonText = "Add",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var title = string.IsNullOrWhiteSpace(box.Text) ? $"Page {page + 1}" : box.Text.Trim();
+        _viewState.Bookmarks.Add(new Glyph.Core.Documents.UserBookmark
+        {
+            Title = title,
+            PageIndex = page,
+        });
+        RefreshBookmarkList();
+        SyncViewState();
+        _status.Text = $"Bookmarked “{title}”.";
+    }
+
+    private async Task RenameSelectedBookmarkAsync()
+    {
+        if (_bookmarkList.SelectedItem is not BookmarkListItem item)
+        {
+            _status.Text = "Select a bookmark to rename.";
+            return;
+        }
+
+        var bookmark = _viewState.Bookmarks.FirstOrDefault(b => b.Id == item.Id);
+        if (bookmark is null)
+        {
+            return;
+        }
+
+        var box = new TextBox { Header = "Title", Text = bookmark.Title, Width = 280 };
+        var dialog = new ContentDialog
+        {
+            Title = "Rename bookmark",
+            Content = box,
+            PrimaryButtonText = "Save",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        bookmark.Title = string.IsNullOrWhiteSpace(box.Text) ? bookmark.Title : box.Text.Trim();
+        RefreshBookmarkList();
+        SyncViewState();
+        _status.Text = "Bookmark renamed.";
+    }
+
+    private void DeleteSelectedBookmark()
+    {
+        if (_bookmarkList.SelectedItem is not BookmarkListItem item)
+        {
+            _status.Text = "Select a bookmark to delete.";
+            return;
+        }
+
+        var removed = _viewState.Bookmarks.RemoveAll(b => b.Id == item.Id);
+        if (removed > 0)
+        {
+            RefreshBookmarkList();
+            SyncViewState();
+            _status.Text = "Bookmark deleted.";
+        }
+    }
+
+    private void MoveSelectedBookmark(int delta)
+    {
+        if (_bookmarkList.SelectedItem is not BookmarkListItem item)
+        {
+            return;
+        }
+
+        var index = _viewState.Bookmarks.FindIndex(b => b.Id == item.Id);
+        if (index < 0)
+        {
+            return;
+        }
+
+        var target = index + delta;
+        if (target < 0 || target >= _viewState.Bookmarks.Count)
+        {
+            return;
+        }
+
+        var bookmark = _viewState.Bookmarks[index];
+        _viewState.Bookmarks.RemoveAt(index);
+        _viewState.Bookmarks.Insert(target, bookmark);
+        RefreshBookmarkList();
+        SyncViewState();
+    }
+
+    private sealed record BookmarkListItem(string Id, string Display, int PageIndex)
+    {
+        public override string ToString() => Display;
     }
 
     private void UpdateStatus()

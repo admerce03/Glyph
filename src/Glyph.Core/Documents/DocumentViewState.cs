@@ -19,4 +19,7 @@ public sealed class DocumentViewState
     /// Session-only: continues folder slideshow across sibling image opens (not persisted).
     /// </summary>
     public bool IsSlideshowActive { get; set; }
+
+    /// <summary>User bookmarks for the associated PDF (persisted with view state).</summary>
+    public List<UserBookmark> Bookmarks { get; set; } = [];
 }
