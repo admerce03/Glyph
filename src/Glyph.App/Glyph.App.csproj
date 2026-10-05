@@ -6,7 +6,11 @@
     <UseWinUI>true</UseWinUI>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationTitle>Glyph</ApplicationTitle>
-    <WindowsPackageType>None</WindowsPackageType>
+    <!-- Default unpackaged (ADR-006). Pass -p:GlyphPackage=MSIX (see scripts/publish-msix.ps1). -->
+    <WindowsPackageType Condition="'$(GlyphPackage)' == ''">None</WindowsPackageType>
+    <WindowsPackageType Condition="'$(GlyphPackage)' == 'MSIX'">MSIX</WindowsPackageType>
+    <EnableMsixTooling Condition="'$(GlyphPackage)' == 'MSIX'">true</EnableMsixTooling>
+    <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
     <Platforms>x64;ARM64</Platforms>
     <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
@@ -14,6 +18,11 @@
     <!-- Trimming is unsafe for WinUI XAML reflection. -->
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(GlyphPackage)' == 'MSIX'">
+    <AppxManifest Include="Package.appxmanifest" />
+    <Content Include="Assets\**" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" />
