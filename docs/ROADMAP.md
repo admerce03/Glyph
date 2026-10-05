@@ -350,7 +350,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Redaction | §21 | M7 | In Progress (mark/preview/apply content removal) |
 | Flattening | §22 | M4 | Not Started |
 | PDF security | §23 | M7 | In Progress (open + info/permissions; write-protect blocked on ADR-015) |
-| Optimization | §24 | M7 | Not Started |
+| Optimization | §24 | M7 | In Progress (presets + image downsample + estimate; JPEG/metadata later) |
 | PDF metadata | §25 | M7 | In Progress (read-only Info: meta, version, page size, encryption) |
 | Image viewing/editing | §26–35 | M5 | In Progress |
 | Batch images | §36 | M8 | Not Started |

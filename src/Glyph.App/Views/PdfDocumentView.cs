@@ -42,6 +42,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfAnnotationService _annotations;
     private readonly IPdfRedactionService _redaction;
     private readonly IPdfDocumentInfoService _documentInfo;
+    private readonly IPdfOptimizeService _optimize;
     private readonly ISignatureLibrary _signatures;
     private readonly IPdfFormStore _forms;
     private readonly IPdfDocumentFactory _documentFactory;
@@ -176,6 +177,7 @@ public sealed class PdfDocumentView : UserControl
         IPdfAnnotationService annotations,
         IPdfRedactionService redaction,
         IPdfDocumentInfoService documentInfo,
+        IPdfOptimizeService optimize,
         ISignatureLibrary signatures,
         IPdfFormStore forms,
         IPdfDocumentFactory documentFactory,
@@ -194,6 +196,7 @@ public sealed class PdfDocumentView : UserControl
         _annotations = annotations;
         _redaction = redaction;
         _documentInfo = documentInfo;
+        _optimize = optimize;
         _signatures = signatures;
         _forms = forms;
         _documentFactory = documentFactory;
@@ -399,6 +402,7 @@ public sealed class PdfDocumentView : UserControl
         var flatten = new Button { Content = "Flatten" };
         var redact = new Button { Content = "Redact" };
         var info = new Button { Content = "Info" };
+        var optimize = new Button { Content = "Optimize" };
         var sign = new Button { Content = "Sign" };
         var formFill = new Button { Content = "Form" };
         var ink = new Button { Content = "Ink" };
@@ -440,6 +444,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(flatten, "Flatten annotations into page content (permanent)");
         ToolTipService.SetToolTip(redact, "Mark areas/text for redaction; apply permanently removes content");
         ToolTipService.SetToolTip(info, "Document metadata, encryption, and permissions");
+        ToolTipService.SetToolTip(optimize, "Downsample images / shrink PDF (presets)");
         ToolTipService.SetToolTip(sign, "Signature: draw with mouse or import PNG/JPEG (saved to library)");
         ToolTipService.SetToolTip(formFill, "Form fill: overlay mode or field list (Tab order)");
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
@@ -499,6 +504,7 @@ public sealed class PdfDocumentView : UserControl
         flatten.Click += async (_, _) => await FlattenAnnotationsAsync();
         redact.Click += async (_, _) => await OnRedactButtonClickAsync();
         info.Click += async (_, _) => await ShowDocumentInfoAsync();
+        optimize.Click += async (_, _) => await ShowOptimizeDialogAsync();
         sign.Click += async (_, _) => await BeginSignatureAsync();
         formFill.Click += async (_, _) => await OnFormButtonClickAsync();
         ink.Click += async (_, _) => await ToggleInkModeAsync();
@@ -521,7 +527,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, sign, formFill, ink, freeform, rect, ellipse, line, arrow,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, sign, formFill, ink, freeform, rect, ellipse, line, arrow,
                 _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -7241,6 +7247,113 @@ public sealed class PdfDocumentView : UserControl
         var encrypted = _document.IsEncrypted ? "    Encrypted" : string.Empty;
         _status.Text =
             $"Page {CurrentPageIndex + 1} / {_document.PageCount}    Zoom {(int)Math.Round(_scale * 100)}%    {_layoutMode}{encrypted}";
+    }
+
+    private async Task ShowOptimizeDialogAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for optimize.");
+
+        var presetBox = new ComboBox
+        {
+            Width = 220,
+            SelectedIndex = 2,
+            Items =
+            {
+                "Lossless (re-save only)",
+                "High quality (200 DPI)",
+                "Balanced (150 DPI)",
+                "Small file (96 DPI + strip attachments)",
+            },
+        };
+
+        var estimateText = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 420,
+            Text = "Choose a preset, then Estimate or Apply. Image downsample uses PDFium bitmaps (JPEG quality rewrite deferred).",
+        };
+
+        PdfOptimizePreset SelectedPreset() => presetBox.SelectedIndex switch
+        {
+            0 => PdfOptimizePreset.Lossless,
+            1 => PdfOptimizePreset.HighQuality,
+            3 => PdfOptimizePreset.SmallFile,
+            _ => PdfOptimizePreset.Balanced,
+        };
+
+        var estimateButton = new Button { Content = "Estimate", Margin = new Thickness(0, 8, 8, 0) };
+        estimateButton.Click += (_, _) =>
+        {
+            try
+            {
+                var estimate = _optimize.Estimate(_document, PdfOptimizeOptions.FromPreset(SelectedPreset()));
+                estimateText.Text =
+                    $"Current: {FormatBytes(estimate.CurrentBytes)} · Estimated: {FormatBytes(estimate.EstimatedBytes)} · "
+                    + $"{estimate.ImagesEligibleForDownsample} image(s) above DPI threshold · "
+                    + $"{estimate.AttachmentCount} embedded file(s).";
+            }
+            catch (Exception ex)
+            {
+                estimateText.Text = "Estimate failed: " + ex.Message;
+            }
+        };
+
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock { Text = "Preset" },
+                presetBox,
+                estimateButton,
+                estimateText,
+            },
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = "Optimize PDF",
+            Content = panel,
+            PrimaryButtonText = "Apply",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            _status.Text = "Optimize cancelled.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Optimizing…";
+            var result = await _optimize.OptimizeAsync(
+                _document,
+                PdfOptimizeOptions.FromPreset(SelectedPreset()));
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            _status.Text =
+                $"Optimized: {result.ImagesDownsampled} image(s) downsampled, "
+                + $"{result.AttachmentsRemoved} attachment(s) removed; "
+                + $"{FormatBytes(result.BytesBefore)} → {FormatBytes(result.BytesAfter)}. Save to keep.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Optimize failed: " + ex.Message;
+        }
+
+        static string FormatBytes(long size) =>
+            size < 1024
+                ? $"{size} B"
+                : size < 1024 * 1024
+                    ? $"{size / 1024.0:0.#} KB"
+                    : $"{size / (1024.0 * 1024.0):0.##} MB";
     }
 
     private async Task ShowDocumentInfoAsync()

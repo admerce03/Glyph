@@ -45,6 +45,7 @@ public sealed partial class MainWindow : Window
     private readonly IPdfAnnotationService _pdfAnnotations;
     private readonly IPdfRedactionService _pdfRedaction;
     private readonly IPdfDocumentInfoService _pdfInfo;
+    private readonly IPdfOptimizeService _pdfOptimize;
     private readonly ISignatureLibrary _signatures;
     private readonly IPdfFormStore _pdfForms;
     private readonly IImageDecoder _imageDecoder;
@@ -70,6 +71,7 @@ public sealed partial class MainWindow : Window
         IPdfAnnotationService pdfAnnotations,
         IPdfRedactionService pdfRedaction,
         IPdfDocumentInfoService pdfInfo,
+        IPdfOptimizeService pdfOptimize,
         ISignatureLibrary signatures,
         IPdfFormStore pdfForms,
         IImageDecoder imageDecoder,
@@ -93,6 +95,7 @@ public sealed partial class MainWindow : Window
         _pdfAnnotations = pdfAnnotations;
         _pdfRedaction = pdfRedaction;
         _pdfInfo = pdfInfo;
+        _pdfOptimize = pdfOptimize;
         _signatures = signatures;
         _pdfForms = pdfForms;
         _imageDecoder = imageDecoder;
@@ -625,6 +628,7 @@ public sealed partial class MainWindow : Window
                 _pdfAnnotations,
                 _pdfRedaction,
                 _pdfInfo,
+                _pdfOptimize,
                 _signatures,
                 _pdfForms,
                 _pdfFactory,

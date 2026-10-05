@@ -388,22 +388,22 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F23-07 | PDF security | Remove protection when authorized. | M7 | Blocked | Needs ADR-015 |
 | F23-08 | PDF security | Display encryption information. | M7 | Implemented | Info dialog + status "Encrypted"; `IPdfDocumentInfoService` permissions||
 | F23-09 | PDF security | Warn about limitations of PDF permission enforcement. | M7 | Implemented | Info dialog notes PDF permission flags are advisory||
-| F24-01 | PDF optimization and compression | Lossless | M7 | Not Started |  |
-| F24-02 | PDF optimization and compression | High quality | M7 | Not Started |  |
-| F24-03 | PDF optimization and compression | Balanced | M7 | Not Started |  |
-| F24-04 | PDF optimization and compression | Small file | M7 | Not Started |  |
-| F24-05 | PDF optimization and compression | Custom | M7 | Not Started |  |
-| F24-06 | PDF optimization and compression | downsample images above selected DPI | M7 | Not Started |  |
-| F24-07 | PDF optimization and compression | target DPI | M7 | Not Started |  |
-| F24-08 | PDF optimization and compression | JPEG quality | M7 | Not Started |  |
-| F24-09 | PDF optimization and compression | preserve monochrome content | M7 | Not Started |  |
-| F24-10 | PDF optimization and compression | compress streams | M7 | Not Started |  |
+| F24-01 | PDF optimization and compression | Lossless | M7 | Implemented | Optimize dialog preset — re-save / no downsample |
+| F24-02 | PDF optimization and compression | High quality | M7 | Implemented | Optimize preset → 200 DPI target when above 300 |
+| F24-03 | PDF optimization and compression | Balanced | M7 | Tested | Optimize preset → 150 DPI; service tests |
+| F24-04 | PDF optimization and compression | Small file | M7 | Tested | Optimize preset → 96 DPI + strip attachments |
+| F24-05 | PDF optimization and compression | Custom | M7 | Implemented | `PdfOptimizeOptions` Custom fields (API; dialog uses presets) |
+| F24-06 | PDF optimization and compression | downsample images above selected DPI | M7 | Tested | `DownsampleAboveDpi` + PDFium bitmap resize (`SetBitmap`; size shrink needs JPEG rewrite) |
+| F24-07 | PDF optimization and compression | target DPI | M7 | Tested | `TargetDpi` on presets |
+| F24-08 | PDF optimization and compression | JPEG quality | M7 | Not Started | SetBitmap path only; JPEG rewrite deferred |
+| F24-09 | PDF optimization and compression | preserve monochrome content | M7 | Implemented | Skip 1-bpp images when PreserveMonochrome |
+| F24-10 | PDF optimization and compression | compress streams | M7 | Not Started | Relies on PDFium SaveAsCopy |
 | F24-11 | PDF optimization and compression | subset fonts where appropriate | M7 | Not Started |  |
 | F24-12 | PDF optimization and compression | remove unused objects | M7 | Not Started |  |
 | F24-13 | PDF optimization and compression | optimize object structure | M7 | Not Started |  |
 | F24-14 | PDF optimization and compression | linearize / Fast Web View | M7 | Not Started |  |
-| F24-15 | PDF optimization and compression | remove metadata optionally | M7 | Not Started |  |
-| F24-16 | PDF optimization and compression | estimate output size before saving where feasible | M7 | Not Started |  |
+| F24-15 | PDF optimization and compression | remove metadata optionally | M7 | Blocked | No PDFium SetMetaText (same gap as ADR-015 / F25 edit) |
+| F24-16 | PDF optimization and compression | estimate output size before saving where feasible | M7 | Tested | Optimize → Estimate via SaveToBytes + eligible image heuristic |
 | F25-01 | PDF metadata | title | M7 | Implemented | Info dialog Title from `FPDF_GetMetaText`||
 | F25-02 | PDF metadata | author | M7 | Implemented | Info dialog Author||
 | F25-03 | PDF metadata | subject | M7 | Implemented | Info dialog Subject||
