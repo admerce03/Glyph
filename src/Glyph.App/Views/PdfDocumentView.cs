@@ -2749,9 +2749,10 @@ public sealed class PdfDocumentView : UserControl
         var hasText = !string.IsNullOrWhiteSpace(_selectedText)
             && _selectionPageIndex >= 0
             && _selectionQuads.Count > 0;
-        var hasRegion = _regionCopyPageIndex >= 0
-            && _regionCopyDisplayRect.Width >= 4
-            && _regionCopyDisplayRect.Height >= 4;
+        var hasRegion = PdfRegionCopyPolicy.HasValidRegion(
+            _regionCopyPageIndex,
+            _regionCopyDisplayRect.Width,
+            _regionCopyDisplayRect.Height);
         var hasAnnot = TryGetSelectedAnnotation(out _);
         var pageIndex = target is Border { Tag: int taggedPage }
             ? taggedPage
@@ -2849,7 +2850,7 @@ public sealed class PdfDocumentView : UserControl
 
     private void PageBorder_DragStarting(UIElement sender, DragStartingEventArgs args)
     {
-        if (string.IsNullOrWhiteSpace(_selectedText))
+        if (!PdfTextDragPolicy.CanStartTextDrag(_selectedText))
         {
             args.Cancel = true;
             return;
@@ -2857,7 +2858,7 @@ public sealed class PdfDocumentView : UserControl
 
         args.Data.SetText(_selectedText);
         args.Data.RequestedOperation = DataPackageOperation.Copy;
-        _status.Text = "Dragging selected text…";
+        _status.Text = PdfTextDragPolicy.DraggingStatus;
     }
 
     private void PageBorder_PointerMoved(object sender, PointerRoutedEventArgs e)
@@ -3997,9 +3998,10 @@ public sealed class PdfDocumentView : UserControl
 
     private async Task CopyRegionAsBitmapAsync()
     {
-        if (_regionCopyPageIndex < 0
-            || _regionCopyDisplayRect.Width < 4
-            || _regionCopyDisplayRect.Height < 4)
+        if (!PdfRegionCopyPolicy.HasValidRegion(
+                _regionCopyPageIndex,
+                _regionCopyDisplayRect.Width,
+                _regionCopyDisplayRect.Height))
         {
             _status.Text = "Drag a region on the page first.";
             return;
@@ -4135,13 +4137,15 @@ public sealed class PdfDocumentView : UserControl
         else if (status == PdfSearchStatus.NoExtractableText && _ocrPageTexts.Count == 0)
         {
             message = result.Message ?? "OCR required.";
-            if (_ocr is not null && !string.IsNullOrWhiteSpace(query))
+            if (_ocr is not null
+                && !string.IsNullOrWhiteSpace(query)
+                && FindOcrFallbackPolicy.ShouldOfferOcr(message))
             {
                 var offer = new ContentDialog
                 {
-                    Title = "OCR required",
-                    Content = "This PDF has no extractable text. Run OCR on the current page so Find can search recognized text?",
-                    PrimaryButtonText = "OCR page",
+                    Title = FindOcrFallbackPolicy.DialogTitle,
+                    Content = FindOcrFallbackPolicy.DialogMessage,
+                    PrimaryButtonText = FindOcrFallbackPolicy.PrimaryButton,
                     CloseButtonText = "Not now",
                     DefaultButton = ContentDialogButton.Primary,
                     XamlRoot = XamlRoot,
@@ -8572,9 +8576,10 @@ public sealed class PdfDocumentView : UserControl
         var hasSelection = !string.IsNullOrWhiteSpace(_selectedText)
             && _selectionPageIndex >= 0
             && _selectionQuads.Count > 0;
-        var hasRegion = _regionCopyPageIndex >= 0
-            && _regionCopyDisplayRect.Width >= 4
-            && _regionCopyDisplayRect.Height >= 4;
+        var hasRegion = PdfRegionCopyPolicy.HasValidRegion(
+            _regionCopyPageIndex,
+            _regionCopyDisplayRect.Width,
+            _regionCopyDisplayRect.Height);
         var hasFindMatches = !string.IsNullOrWhiteSpace(_searchQuery) && _hits.Count > 0;
 
         if (_redactionMode)
@@ -8847,9 +8852,10 @@ public sealed class PdfDocumentView : UserControl
 
     private void MarkRegionForRedaction()
     {
-        if (_regionCopyPageIndex < 0
-            || _regionCopyDisplayRect.Width < 4
-            || _regionCopyDisplayRect.Height < 4)
+        if (!PdfRegionCopyPolicy.HasValidRegion(
+                _regionCopyPageIndex,
+                _regionCopyDisplayRect.Width,
+                _regionCopyDisplayRect.Height))
         {
             _status.Text = "Drag a region first.";
             return;

@@ -35,7 +35,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-25 | Application and file handling | Crash-recovery copy. | M1/M9 | Tested | `FileCrashRecoveryStore` SaveSnapshot/List/Discard unit tests |
 | F01-26 | Application and file handling | Undo/redo history. | M1/M9 | Tested | Per-doc stacks: `PdfPageEditHistory`, AnnotationUndoStack, Magick checkpoints (unified app-wide later) |
 | F01-27 | Application and file handling | Do not silently overwrite originals by default. | M1/M9 | Tested | Autosave-to-original opt-in off by default (prefs default unit test) |
-| F02-01 | Main window and interface | Standard Windows title bar. | M1/M9 | Implemented | WinUI AppWindow system title bar |
+| F02-01 | Main window and interface | Standard Windows title bar. | M1/M9 | Tested | WinUI AppWindow system title bar; `SystemTitleBarPolicy` unit tests |
 | F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | Tested | MenuBar File/Edit/View/Window; `ShellMenuCatalog` unit tests |
 | F02-03 | Main window and interface | Customizable toolbar. | M1/M9 | Tested | ToolbarCommands catalog + `ToolbarHiddenCommands` prefs unit tests (F54) |
 | F02-04 | Main window and interface | Optional compact toolbar. | M1/M9 | Tested | `CompactToolbar` prefs round-trip unit test |
@@ -55,7 +55,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-18 | Main window and interface | High-DPI scaling. | M1/M9 | Tested | `DpiAwarenessDeclaration` asserts PerMonitorV2 in app.manifest |
 | F02-19 | Main window and interface | Multi-monitor support. | M1/M9 | Tested | OS multi-monitor + Window → Move to Next Monitor; `MonitorCyclePolicy` unit tests |
 | F02-20 | Main window and interface | Per-monitor DPI awareness. | M1/M9 | Tested | Same `DpiAwarenessDeclaration` / app.manifest PerMonitorV2 check |
-| F02-21 | Main window and interface | Mouse support. | M1/M9 | Implemented | Pointer input throughout document and chrome UI |
+| F02-21 | Main window and interface | Mouse support. | M1/M9 | Tested | Pointer input throughout; `PointerInputPolicy` unit tests |
 | F02-22 | Main window and interface | Precision touchpad gesture support where useful. | M1/M9 | Tested | Ctrl+wheel + Manipulation Scale; `PdfZoomCalculator`/`ImageZoomCalculator` ApplyWheelZoom/ApplyManipulationScale unit tests |
 | F02-23 | Main window and interface | Keyboard-first operation. | M1/M9 | Tested | Menu accelerators + document Ctrl shortcuts; `ShellKeyboardShortcuts` catalog unit tests |
 | F02-24 | Main window and interface | Accessibility through Windows UI Automation. | M1/M9 | Tested | AutomationProperties.Name on chrome; `ChromeAutomationNames` unit tests |
@@ -78,10 +78,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F03-17 | Sidebar modes | Context menus. | M2-M5 | Tested | Thumbnail / annotations / bookmarks / search menus; `ThumbnailContextMenu` unit tests |
 | F03-18 | Sidebar modes | Sidebar selection controls the scope of many editing commands. | M2-M5 | Tested | Rotate/delete/dup/extract/crop/move use `_pageSelection`; `SelectedOrFallback`/`ResolveTargets` unit-tested |
 | F04-01 | PDF viewing | Open standard PDF files quickly. | M2 | Tested | PDFium open+render wired in shell |
-| F04-02 | PDF viewing | Render vector content accurately. | M2 | Implemented | PDFium vector render path |
-| F04-03 | PDF viewing | Render embedded images. | M2 | Implemented | Via PDFium rasterization |
-| F04-04 | PDF viewing | Render embedded fonts. | M2 | Implemented | Via PDFium rasterization |
-| F04-05 | PDF viewing | Support transparency. | M2 | Implemented | Via PDFium rasterization |
+| F04-02 | PDF viewing | Render vector content accurately. | M2 | Tested | PDFium vector render; `PdfRenderCapabilities` contract unit tests |
+| F04-03 | PDF viewing | Render embedded images. | M2 | Tested | Via PDFium; `PdfRenderCapabilities.EmbeddedImages` |
+| F04-04 | PDF viewing | Render embedded fonts. | M2 | Tested | Via PDFium; `PdfRenderCapabilities.EmbeddedFonts` |
+| F04-05 | PDF viewing | Support transparency. | M2 | Tested | Via PDFium; `PdfRenderCapabilities.Transparency` |
 | F04-06 | PDF viewing | Support rotated pages. | M2 | Tested | `FPDFPageGetRotation` + size swap; Pdf.Tests cover /Rotate 90 |
 | F04-07 | PDF viewing | Support PDFs containing different page sizes. | M2 | Tested | Per-page size from PDFium; `PdfPageSizeSet.HasMixedSizes` unit tests |
 | F04-08 | PDF viewing | Password-protected PDF opening. | M2 | Tested | `PdfPasswordRequiredException` + ContentDialog prompt |
@@ -144,11 +144,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F07-06 | PDF text interaction | Right-click selected text. | M2/M6 | Tested | Context menu; `PdfTextInteractionUi` labels unit tests |
 | F07-07 | PDF text interaction | Copy. | M2/M6 | Tested | Clipboard text package; `PdfTextInteractionUi.CopiedCharacters` |
 | F07-08 | PDF text interaction | Search selected text. | M2/M6 | Tested | Find selection; `PdfTextInteractionUi.FindSelection` |
-| F07-09 | PDF text interaction | OCR fallback on scanned PDFs. | M2/M6 | Implemented | Find on image-only PDF offers OCR current page then re-searches |
+| F07-09 | PDF text interaction | OCR fallback on scanned PDFs. | M2/M6 | Tested | Find offers OCR; `FindOcrFallbackPolicy` unit tests |
 | F07-10 | PDF text interaction | Preserve reasonable reading order during copy. | M2/M6 | Tested | `PdfTextSelection` top-to-bottom/LTR; `PdfTextSelectionReadingOrderTests` |
 | F07-11 | PDF text interaction | Rectangular selection for copying a region as an image. | M2/M6 | Tested | Drag region + `PdfTextInteractionUi.CopyRegionAsImage` |
-| F07-12 | PDF text interaction | Copy selected PDF region to clipboard as bitmap. | M2/M6 | Implemented | Renders page crop to PNG bitmap on clipboard |
-| F07-13 | PDF text interaction | Drag selected text where supported. | M2/M6 | Implemented | Page CanDrag exports selected text via DragStarting |
+| F07-12 | PDF text interaction | Copy selected PDF region to clipboard as bitmap. | M2/M6 | Tested | Region crop → PNG clipboard; `PdfRegionCopyPolicy` unit tests |
+| F07-13 | PDF text interaction | Drag selected text where supported. | M2/M6 | Tested | Page CanDrag; `PdfTextDragPolicy` unit tests |
 | F08-01 | OCR / Live Text equivalent | Detect text automatically or on demand. | M6 | Implemented | Image + PDF page OCR toolbar → Windows.Media.Ocr |
 | F08-02 | OCR / Live Text equivalent | Select detected text directly over the image. | M6 | Implemented | PDF OCR word-box overlay (click/Ctrl+click) + Copy OCR; image overlay on Live Text PR |
 | F08-03 | OCR / Live Text equivalent | Copy text. | M6 | Implemented | OCR result dialog Copy text |
@@ -798,7 +798,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F56-05 | Accessibility | High-contrast mode. | M9 | Implemented | WinUI ThemeResources follow system high-contrast |
 | F56-06 | Accessibility | Windows text scaling. | M9 | Implemented | WinUI layout scales with system text size / XamlRoot |
 | F56-07 | Accessibility | Logical tab order. | M9 | Implemented | Menu → sidebar → tabs TabIndex; document views IsTabStop |
-| F56-08 | Accessibility | Descriptive names for toolbar icons. | M9 | Implemented | PDF/image toolbars set AutomationProperties.Name |
+| F56-08 | Accessibility | Descriptive names for toolbar icons. | M9 | Tested | PDF/image toolbars; `ViewerToolbarAutomationNames` unit tests |
 | F56-09 | Accessibility | Custom description/alt text for images where PDF/image format supports it. | M9 | Implemented | IPTC/EXIF description → AutomationProperties.Name on image |
 | F56-10 | Accessibility | Signature descriptions. | M9 | Implemented | Library Description + stamp `/Contents` for a11y |
 | F56-11 | Accessibility | Zoom without breaking UI layout. | M9 | Implemented | Document zoom scales page bitmaps; chrome uses layout panels |
