@@ -43,4 +43,23 @@ public class PdfZoomCalculatorTests
         PdfZoomCalculator.Clamp(0.01).Should().Be(PdfZoomCalculator.MinScale);
         PdfZoomCalculator.Clamp(50).Should().Be(PdfZoomCalculator.MaxScale);
     }
+
+    [Fact]
+    public void ZoomToArea_scales_selection_to_fill_viewport()
+    {
+        // Selection 200×100 at 1.0 → fit into 800×600 with 16 padding → factor = min(784/200, 584/100) = 3.92 → clamp to MaxScale 4
+        var scale = PdfZoomCalculator.ZoomToArea(
+            currentScale: 1.0,
+            selectionWidthDip: 200,
+            selectionHeightDip: 100,
+            viewportWidthDip: 800,
+            viewportHeightDip: 600);
+        scale.Should().BeApproximately(3.92, 0.001);
+    }
+
+    [Fact]
+    public void ZoomToArea_ignores_tiny_selections()
+    {
+        PdfZoomCalculator.ZoomToArea(1.5, 2, 2, 800, 600).Should().Be(1.5);
+    }
 }

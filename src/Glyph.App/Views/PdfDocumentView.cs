@@ -213,6 +213,8 @@ public sealed class PdfDocumentView : UserControl
     private string _searchQuery = string.Empty;
     private bool _searchCaseSensitive;
     private bool _cropMode;
+    private bool _zoomAreaMode;
+    private Button? _zoomAreaButton;
     private int _cropPageIndex = -1;
     private double _cropMarginLeftPt;
     private double _cropMarginTopPt;
@@ -736,6 +738,9 @@ public sealed class PdfDocumentView : UserControl
         var fitWidth = new Button { Content = "Fit width" };
         var fitPage = new Button { Content = "Fit page" };
         var actual = new Button { Content = "100%" };
+        _zoomAreaButton = new Button { Content = "Zoom ▭" };
+        ToolTipService.SetToolTip(_zoomAreaButton, "Rectangular zoom-to-area: drag on a page to zoom into that region");
+        AutomationProperties.SetName(_zoomAreaButton, "Zoom to area");
         var copy = new Button { Content = "Copy" };
         ToolTipService.SetToolTip(copy, "Copy selected text, or the current page text if nothing is selected");
         var rotateLeft = new Button { Content = "⟲" };
@@ -857,7 +862,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(_layoutBox, "Page layout mode");
         ToolTipService.SetToolTip(_gotoBox, "Go to page number");
         ApplyToolbarAccessibleNames(
-            first, prev, next, last, back, forward, zoomOut, zoomIn, fitWidth, fitPage, actual, copy,
+            first, prev, next, last, back, forward, zoomOut, zoomIn, fitWidth, fitPage, actual, _zoomAreaButton, copy,
             rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract,
             merge, split, crop, highlight, underline, strikeout, stickyNote, textBox, callout, flatten,
             redact, info, optimize, export, print, share, sidebarToggle, camera, sign, formFill, ink, freeform, eraser, rect,
@@ -896,6 +901,7 @@ public sealed class PdfDocumentView : UserControl
         fitWidth.Click += async (_, _) => await FitWidthAsync();
         fitPage.Click += async (_, _) => await FitPageAsync();
         actual.Click += async (_, _) => await SetScaleAsync(PdfZoomCalculator.ActualSize());
+        _zoomAreaButton.Click += (_, _) => ToggleZoomAreaMode();
         copy.Click += async (_, _) => await CopyTextAsync();
         rotateLeft.Click += async (_, _) => await RotateSelectedAsync(-90);
         rotateRight.Click += async (_, _) => await RotateSelectedAsync(90);
@@ -970,7 +976,7 @@ public sealed class PdfDocumentView : UserControl
             Children =
             {
                 sidebarToggle, first, prev, _gotoBox, next, last, back, forward,
-                zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
+                zoomOut, zoomIn, fitWidth, fitPage, actual, _zoomAreaButton, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
                 highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, print, share, camera, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, fullscreen,
@@ -985,6 +991,7 @@ public sealed class PdfDocumentView : UserControl
         TagToolbarCommand(zoomIn, ToolbarCommands.Zoom);
         TagToolbarCommand(fitPage, ToolbarCommands.FitPage);
         TagToolbarCommand(fitWidth, ToolbarCommands.FitWidth);
+        TagToolbarCommand(_zoomAreaButton, ToolbarCommands.Zoom);
         TagToolbarCommand(_searchBox, ToolbarCommands.Search);
         TagToolbarCommand(_caseSensitiveBox, ToolbarCommands.Search);
         TagToolbarCommand(searchButton, ToolbarCommands.Search);
@@ -1975,6 +1982,13 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (_zoomAreaMode && e.Key == VirtualKey.Escape)
+        {
+            ClearZoomAreaMode();
+            e.Handled = true;
+            return;
+        }
+
         if (_highlightMode && e.Key == VirtualKey.Escape)
         {
             ClearHighlightMode();
@@ -2550,6 +2564,16 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (_zoomAreaMode)
+        {
+            _dragSelecting = true;
+            _dragPageIndex = pageIndex;
+            _dragStart = e.GetCurrentPoint(border).Position;
+            border.CapturePointer(e.Pointer);
+            e.Handled = true;
+            return;
+        }
+
         if (_redactionMode)
         {
             BeginRedactionDrag(border, pageIndex, e);
@@ -2949,8 +2973,35 @@ public sealed class PdfDocumentView : UserControl
         var page = _document.GetPage(pageIndex);
         var wasDragging = _dragSelecting;
         var dragStart = _dragStart;
+        var zoomAreaActive = _zoomAreaMode;
         _dragSelecting = false;
         border.ReleasePointerCapture(e.Pointer);
+
+        var dragDistance = Math.Abs(point.Position.X - dragStart.X) + Math.Abs(point.Position.Y - dragStart.Y);
+        if (zoomAreaActive)
+        {
+            if (wasDragging && dragDistance >= 8)
+            {
+                var leftUi = Math.Min(dragStart.X, point.Position.X);
+                var topUi = Math.Min(dragStart.Y, point.Position.Y);
+                var widthUi = Math.Max(1, Math.Abs(point.Position.X - dragStart.X));
+                var heightUi = Math.Max(1, Math.Abs(point.Position.Y - dragStart.Y));
+                await ZoomToDisplayAreaAsync(pageIndex, leftUi, topUi, widthUi, heightUi);
+            }
+            else
+            {
+                ClearZoomAreaMode();
+                _status.Text = "Zoom area cancelled — drag a larger rectangle.";
+            }
+
+            if (_pageOverlays.TryGetValue(pageIndex, out var zoomOverlay))
+            {
+                zoomOverlay.Children.Clear();
+            }
+
+            e.Handled = true;
+            return;
+        }
 
         var pdfX = point.Position.X / _scale;
         var pdfY = page.HeightPoints - (point.Position.Y / _scale);
@@ -2960,7 +3011,6 @@ public sealed class PdfDocumentView : UserControl
             _pageLinks[pageIndex] = await _linkService.GetPageLinksAsync(_document, pageIndex);
         }
 
-        var dragDistance = Math.Abs(point.Position.X - dragStart.X) + Math.Abs(point.Position.Y - dragStart.Y);
         if (!wasDragging || dragDistance < 4)
         {
             var link = _pageLinks[pageIndex].FirstOrDefault(l => l.Bounds.ContainsPoint(pdfX, pdfY));
@@ -4169,6 +4219,78 @@ public sealed class PdfDocumentView : UserControl
         SyncViewState();
         UpdateStatus();
         await RenderVisibleAsync();
+    }
+
+    private void ToggleZoomAreaMode()
+    {
+        if (_zoomAreaMode)
+        {
+            ClearZoomAreaMode();
+            return;
+        }
+
+        _zoomAreaMode = true;
+        if (_zoomAreaButton is not null)
+        {
+            _zoomAreaButton.Background = new SolidColorBrush(Colors.DodgerBlue);
+        }
+
+        _status.Text = "Zoom area — drag a rectangle on a page (Esc to cancel).";
+    }
+
+    private void ClearZoomAreaMode()
+    {
+        _zoomAreaMode = false;
+        if (_zoomAreaButton is not null)
+        {
+            _zoomAreaButton.Background = null;
+        }
+    }
+
+    private async Task ZoomToDisplayAreaAsync(int pageIndex, double leftUi, double topUi, double widthUi, double heightUi)
+    {
+        var pdfLeft = leftUi / _scale;
+        var pdfTopFromTop = topUi / _scale;
+        var pdfWidth = widthUi / _scale;
+        var pdfHeight = heightUi / _scale;
+
+        var newScale = PdfZoomCalculator.ZoomToArea(
+            _scale,
+            widthUi,
+            heightUi,
+            _scrollViewer.ViewportWidth,
+            _scrollViewer.ViewportHeight);
+
+        ClearZoomAreaMode();
+        await SetScaleAsync(newScale);
+        await GoToPageAsync(pageIndex, recordHistory: true);
+
+        // After rebuild, scroll so the selected region is centered in the viewport.
+        await Task.Yield();
+        var pageEl = _continuousHost.Children.OfType<FrameworkElement>()
+                .FirstOrDefault(fe => fe.Tag is int tag && tag == pageIndex)
+            ?? _spreadHost.Children.OfType<FrameworkElement>()
+                .FirstOrDefault(fe => fe.Tag is int tag && tag == pageIndex);
+        if (pageEl is null || _scrollViewer.Content is not UIElement scrollContent)
+        {
+            _status.Text = $"Zoomed to {newScale * 100:0}%.";
+            return;
+        }
+
+        try
+        {
+            var origin = pageEl.TransformToVisual(scrollContent).TransformPoint(new Windows.Foundation.Point(0, 0));
+            var targetLeft = origin.X + pdfLeft * newScale;
+            var targetTop = origin.Y + pdfTopFromTop * newScale;
+            var centerX = targetLeft + (pdfWidth * newScale) / 2 - _scrollViewer.ViewportWidth / 2;
+            var centerY = targetTop + (pdfHeight * newScale) / 2 - _scrollViewer.ViewportHeight / 2;
+            _scrollViewer.ChangeView(Math.Max(0, centerX), Math.Max(0, centerY), null, disableAnimation: false);
+            _status.Text = $"Zoomed to area at {newScale * 100:0}%.";
+        }
+        catch
+        {
+            _status.Text = $"Zoomed to {newScale * 100:0}%.";
+        }
     }
 
     private async Task FitWidthAsync()

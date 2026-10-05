@@ -105,7 +105,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-26 | PDF viewing | Zoom in/out. | M2 | Implemented | Zoom +/- controls |
 | F04-27 | PDF viewing | Ctrl+mouse wheel zoom. | M2 | Implemented | Ctrl+wheel → zoom steps |
 | F04-28 | PDF viewing | Pinch-to-zoom on supported precision touchpads. | M2 | Implemented | Ctrl+wheel + Manipulation Scale pinch |
-| F04-29 | PDF viewing | Rectangular zoom-to-area. | M2 | Deferred | ADR-014: post-core polish; not required for M2 minimum viewer |
+| F04-29 | PDF viewing | Rectangular zoom-to-area. | M2 | Implemented | Zoom ▭ toolbar: drag rectangle on page; Esc cancels |
 | F04-30 | PDF viewing | Magnifier/loupe tool. | M2 | Deferred | ADR-014: post-core polish; not required for M2 minimum viewer |
 | F04-31 | PDF viewing | Presentation/slideshow mode. | M2 | Deferred | ADR-014: post-core polish; not required for M2 minimum viewer |
 | F04-32 | PDF viewing | Remember last viewed page, optionally. | M2 | Tested | `IDocumentViewStateStore` persists page on close/reopen |
