@@ -34,15 +34,29 @@ public class JsonFormValueHistoryTests
     }
 
     [Fact]
-    public async Task Empty_and_whitespace_values_are_ignored()
+    public async Task Remember_trims_to_per_field_and_global_capacity()
     {
-        var path = Path.Combine(Path.GetTempPath(), "glyph-form-hist-" + Guid.NewGuid().ToString("N") + ".json");
+        var path = Path.Combine(Path.GetTempPath(), "glyph-form-hist-cap-" + Guid.NewGuid().ToString("N") + ".json");
         try
         {
-            var store = new JsonFormValueHistory(path);
-            await store.RememberAsync("City", "   ");
-            await store.RememberAsync("City", "");
-            store.GetSuggestions("City").Should().BeEmpty();
+            var store = new JsonFormValueHistory(path, perFieldCapacity: 2, globalCapacity: 3);
+            await store.RememberAsync("City", "Paris");
+            await store.RememberAsync("City", "London");
+            await store.RememberAsync("City", "Tokyo");
+            await store.RememberAsync("City", "Berlin");
+
+            // Field bucket is capped at 2; GetSuggestions then appends globals, so
+            // the first two City hits must be the newest field values.
+            var city = store.GetSuggestions("City", limit: 10);
+            city.Take(2).Should().Equal("Berlin", "Tokyo");
+            city.Should().NotContain("Paris");
+
+            await store.RememberAsync("A", "one");
+            await store.RememberAsync("B", "two");
+            await store.RememberAsync("C", "three");
+            await store.RememberAsync("D", "four");
+            // Unknown field → globals only, capped at 3 newest.
+            store.GetSuggestions("Other", limit: 10).Should().Equal("four", "three", "two");
         }
         finally
         {

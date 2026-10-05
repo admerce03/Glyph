@@ -9,6 +9,7 @@ using Glyph.Infrastructure.Settings;
 using Glyph.Ocr.Abstractions;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Editing;
+using Glyph.Pdf.Forms;
 using Glyph.Pdf.Rendering;
 using Glyph.Pdf.Text;
 using Microsoft.Extensions.DependencyInjection;
@@ -142,7 +143,7 @@ public sealed class PdfDocumentView : UserControl
     /// <summary>Recent ink/freeform/polygon strokes for F18-06 stroke undo (Ctrl+Z prefers this).</summary>
     private readonly Stack<PdfAnnotationInfo> _strokeUndoStack = new();
     /// <summary>Previous form field values for F49-11 Ctrl+Z undo.</summary>
-    private readonly Stack<(int PageIndex, int AnnotIndex, PdfFormFieldKind Kind, string PreviousValue)> _formUndoStack = new();
+    private readonly FormFillUndoStack _formUndoStack = new();
     /// <summary>Previous Info dictionary fields for F49-10 Ctrl+Z undo after Edit document info.</summary>
     private readonly Stack<PdfDocumentInfoUpdate> _infoUndoStack = new();
     private PdfAnnotationColor _drawStrokeColor = PdfAnnotationColor.InkRed;
@@ -6953,17 +6954,16 @@ public sealed class PdfDocumentView : UserControl
     private void RememberAnnotationForUndo(PdfAnnotationInfo created) => _strokeUndoStack.Push(created);
 
     private void RememberFormValueForUndo(PdfFormFieldInfo field) =>
-        _formUndoStack.Push((field.PageIndex, field.AnnotIndex, field.Kind, field.Value ?? string.Empty));
+        _formUndoStack.Push(field);
 
     private async Task UndoLastFormFillAsync()
     {
-        if (_formUndoStack.Count == 0)
+        if (!_formUndoStack.TryPop(out var entry))
         {
             _status.Text = "No form change to undo.";
             return;
         }
 
-        var entry = _formUndoStack.Pop();
         try
         {
             switch (entry.Kind)
