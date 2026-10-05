@@ -420,6 +420,13 @@ public class PdfiumAnnotationServiceTests
                 note.Contents.Should().Be("Edited note");
                 note.Bounds.Left.Should().BeApproximately(100, 0.5);
 
+                // Resize via MoveAsync (same path as UI resize handles).
+                await annots.MoveAsync(document, 0, note.AnnotIndex, new PdfRect(100, 640, 160, 700));
+                listed = await annots.ListAsync(document, 0);
+                note = listed.Should().ContainSingle(a => a.IsStickyNote).Subject;
+                note.Bounds.Width.Should().BeApproximately(60, 0.5);
+                note.Bounds.Height.Should().BeApproximately(60, 0.5);
+
                 await editor.SaveAsync(document, outPath);
             }
 
