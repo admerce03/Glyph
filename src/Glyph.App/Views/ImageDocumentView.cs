@@ -1704,13 +1704,7 @@ public sealed class ImageDocumentView : UserControl
         try
         {
             var name = App.Services.GetService<ISettingsStore>()?.Current.DefaultInterpolation;
-            return name switch
-            {
-                "NearestNeighbor" => 1,
-                "Bilinear" => 2,
-                "Bicubic" => 3,
-                _ => 0,
-            };
+            return ImageResizeDialogMath.ComboIndexFromPreferenceName(name);
         }
         catch
         {
@@ -2641,7 +2635,7 @@ public sealed class ImageDocumentView : UserControl
         };
         var preview = new TextBlock
         {
-            Text = $"Result: {srcW}×{srcH} px · ~{EstimateRawMb(srcW, srcH):0.##} MB raw",
+            Text = $"Result: {srcW}×{srcH} px · ~{ImageResizeDialogMath.EstimateRawBgraMegabytes(srcW, srcH):0.##} MB raw",
             Opacity = 0.8,
             Margin = new Thickness(0, 8, 0, 0),
             TextWrapping = TextWrapping.Wrap,
@@ -2678,7 +2672,7 @@ public sealed class ImageDocumentView : UserControl
                 return;
             }
 
-            preview.Text = $"Result: {w}×{h} px @ {ActiveDpi():0.#} DPI · ~{EstimateRawMb(w, h):0.##} MB raw BGRA";
+            preview.Text = $"Result: {w}×{h} px @ {ActiveDpi():0.#} DPI · ~{ImageResizeDialogMath.EstimateRawBgraMegabytes(w, h):0.##} MB raw BGRA";
         }
 
         void WritePhysicalFromPixels(int pxW, int pxH)
@@ -2843,7 +2837,7 @@ public sealed class ImageDocumentView : UserControl
             return;
         }
 
-        var filter = (ImageResizeFilter)Math.Clamp(filterBox.SelectedIndex, 0, 3);
+        var filter = ImageResizeDialogMath.FilterFromComboIndex(filterBox.SelectedIndex);
         var options = new ImageResizeOptions(Filter: filter, DensityDpi: ActiveDpi());
         await MutateAsync(
             () => _processor.ResizeAsync(_document, width, height, options),
@@ -3432,9 +3426,6 @@ public sealed class ImageDocumentView : UserControl
 
         return updated;
     }
-
-    private static double EstimateRawMb(int width, int height) =>
-        width * (double)height * 4.0 / (1024.0 * 1024.0);
 
     private async Task BackgroundToolsAsync()
     {
