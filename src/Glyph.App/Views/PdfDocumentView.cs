@@ -89,6 +89,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly StackPanel _spreadHost;
     private readonly StackPanel _thumbnailHost;
     private readonly ScrollViewer _thumbnailScroll;
+    private Grid? _sidePanel;
     private readonly TreeView _outlineTree;
     private readonly ListView _bookmarkList;
     private readonly ListView _searchResults;
@@ -9498,6 +9499,11 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _cache.ClearDocument(_thumbnailKey);
+        if (_sidePanel is not null)
+        {
+            _sidePanel.Width = Math.Max(180, _thumbnailWidth + 48);
+        }
+
         BuildThumbnailPlaceholders();
         RefreshThumbnailSelectionChrome();
         _ = RenderThumbnailsAsync();
