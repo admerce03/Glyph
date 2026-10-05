@@ -4555,10 +4555,12 @@ public sealed class ImageDocumentView : UserControl
                     },
                     new TextBlock
                     {
-                        Text = BuildDescriptiveSummary(info),
+                        Text = ImageDescriptiveMetadataSummary.Format(info),
                         Opacity = 0.8,
                         TextWrapping = TextWrapping.Wrap,
-                        Visibility = HasDescriptiveMetadata(info) ? Visibility.Visible : Visibility.Collapsed,
+                        Visibility = ImageDescriptiveMetadataSummary.HasAny(info)
+                            ? Visibility.Visible
+                            : Visibility.Collapsed,
                     },
                     list,
                     colorPanel,
@@ -4699,56 +4701,6 @@ public sealed class ImageDocumentView : UserControl
         await MutateAsync(
             () => _processor.SetDescriptiveMetadataAsync(_document, metadata),
             "Descriptive metadata updated (IPTC).");
-    }
-
-    private static bool HasDescriptiveMetadata(ImageMetadataInfo info) =>
-        !string.IsNullOrWhiteSpace(info.Title)
-        || !string.IsNullOrWhiteSpace(info.Description)
-        || !string.IsNullOrWhiteSpace(info.Keywords)
-        || !string.IsNullOrWhiteSpace(info.Copyright)
-        || info.Rating is not null
-        || info.HasIptc
-        || info.HasXmp;
-
-    private static string BuildDescriptiveSummary(ImageMetadataInfo info)
-    {
-        var parts = new List<string>();
-        if (!string.IsNullOrWhiteSpace(info.Title))
-        {
-            parts.Add("Title: " + info.Title);
-        }
-
-        if (!string.IsNullOrWhiteSpace(info.Description))
-        {
-            parts.Add("Description: " + info.Description);
-        }
-
-        if (!string.IsNullOrWhiteSpace(info.Keywords))
-        {
-            parts.Add("Keywords: " + info.Keywords);
-        }
-
-        if (!string.IsNullOrWhiteSpace(info.Copyright))
-        {
-            parts.Add("© " + info.Copyright);
-        }
-
-        if (info.Rating is int rating)
-        {
-            parts.Add("Rating: " + rating);
-        }
-
-        if (info.HasIptc)
-        {
-            parts.Add("IPTC");
-        }
-
-        if (info.HasXmp)
-        {
-            parts.Add("XMP");
-        }
-
-        return string.Join(" · ", parts);
     }
 
     private async Task RunOcrAsync()
