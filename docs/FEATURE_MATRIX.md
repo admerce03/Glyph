@@ -141,13 +141,13 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F07-03 | PDF text interaction | Select across lines. | M2/M6 | Not Started |  |
 | F07-04 | PDF text interaction | Select columns where practical. | M2/M6 | Not Started |  |
 | F07-05 | PDF text interaction | Select all text on page/document. | M2/M6 | In Progress | Copy falls back to full page text |
-| F07-06 | PDF text interaction | Right-click selected text. | M2/M6 | Implemented | Context menu: Copy / Find selection / Search web |
+| F07-06 | PDF text interaction | Right-click selected text. | M2/M6 | Implemented | Context menu: Copy / Find selection / Search web / Copy region as image |
 | F07-07 | PDF text interaction | Copy. | M2/M6 | Implemented | Clipboard text package |
 | F07-08 | PDF text interaction | Search selected text. | M2/M6 | Implemented | Find sel toolbar uses current text selection as query |
 | F07-09 | PDF text interaction | OCR fallback on scanned PDFs. | M2/M6 | Implemented | Find on image-only PDF offers OCR current page then re-searches |
 | F07-10 | PDF text interaction | Preserve reasonable reading order during copy. | M2/M6 | Not Started |  |
-| F07-11 | PDF text interaction | Rectangular selection for copying a region as an image. | M2/M6 | Not Started |  |
-| F07-12 | PDF text interaction | Copy selected PDF region to clipboard as bitmap. | M2/M6 | Not Started |  |
+| F07-11 | PDF text interaction | Rectangular selection for copying a region as an image. | M2/M6 | Implemented | Drag region + right-click Copy region as image |
+| F07-12 | PDF text interaction | Copy selected PDF region to clipboard as bitmap. | M2/M6 | Implemented | Renders page crop to PNG bitmap on clipboard |
 | F07-13 | PDF text interaction | Drag selected text where supported. | M2/M6 | Not Started |  |
 | F08-01 | OCR / Live Text equivalent | Detect text automatically or on demand. | M6 | Implemented | Image + PDF page OCR toolbar → Windows.Media.Ocr |
 | F08-02 | OCR / Live Text equivalent | Select detected text directly over the image. | M6 | Implemented | PDF OCR word-box overlay (click/Ctrl+click) + Copy OCR; image overlay on Live Text PR |

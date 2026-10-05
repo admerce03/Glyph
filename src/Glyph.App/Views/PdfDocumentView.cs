@@ -129,6 +129,8 @@ public sealed class PdfDocumentView : UserControl
     private bool _dragSelecting;
     private Windows.Foundation.Point _dragStart;
     private int _dragPageIndex = -1;
+    private int _regionCopyPageIndex = -1;
+    private Windows.Foundation.Rect _regionCopyDisplayRect;
     private PdfAnnotationInfo? _selectedAnnot;
     private bool _annotDragging;
     private PdfRect _annotDragOriginBounds;
@@ -1527,22 +1529,42 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(_selectedText))
+        var hasText = !string.IsNullOrWhiteSpace(_selectedText);
+        var hasRegion = _regionCopyPageIndex >= 0
+            && _regionCopyDisplayRect.Width >= 4
+            && _regionCopyDisplayRect.Height >= 4;
+        if (!hasText && !hasRegion)
         {
-            _status.Text = "Select text first, then right-click for actions.";
+            _status.Text = "Select text or drag a region, then right-click for actions.";
             return;
         }
 
         var flyout = new MenuFlyout();
-        var copyItem = new MenuFlyoutItem { Text = "Copy" };
-        copyItem.Click += async (_, _) => await CopyTextAsync();
-        var findItem = new MenuFlyoutItem { Text = "Find selection" };
-        findItem.Click += async (_, _) => await SearchSelectedTextAsync();
-        var webItem = new MenuFlyoutItem { Text = "Search web" };
-        webItem.Click += async (_, _) => await SearchWebAsync(_selectedText);
-        flyout.Items.Add(copyItem);
-        flyout.Items.Add(findItem);
-        flyout.Items.Add(webItem);
+        if (hasText)
+        {
+            var copyItem = new MenuFlyoutItem { Text = "Copy" };
+            copyItem.Click += async (_, _) => await CopyTextAsync();
+            var findItem = new MenuFlyoutItem { Text = "Find selection" };
+            findItem.Click += async (_, _) => await SearchSelectedTextAsync();
+            var webItem = new MenuFlyoutItem { Text = "Search web" };
+            webItem.Click += async (_, _) => await SearchWebAsync(_selectedText);
+            flyout.Items.Add(copyItem);
+            flyout.Items.Add(findItem);
+            flyout.Items.Add(webItem);
+        }
+
+        if (hasRegion)
+        {
+            if (flyout.Items.Count > 0)
+            {
+                flyout.Items.Add(new MenuFlyoutSeparator());
+            }
+
+            var imageItem = new MenuFlyoutItem { Text = "Copy region as image" };
+            imageItem.Click += async (_, _) => await CopyRegionAsBitmapAsync();
+            flyout.Items.Add(imageItem);
+        }
+
         flyout.ShowAt(target, e.GetPosition(target));
         e.Handled = true;
     }
@@ -1739,10 +1761,19 @@ public sealed class PdfDocumentView : UserControl
         var chars = _pageChars[pageIndex];
         if (wasDragging && dragDistance >= 4)
         {
-            var left = Math.Min(dragStart.X, point.Position.X) / _scale;
-            var right = Math.Max(dragStart.X, point.Position.X) / _scale;
+            var leftUi = Math.Min(dragStart.X, point.Position.X);
             var topUi = Math.Min(dragStart.Y, point.Position.Y);
+            var rightUi = Math.Max(dragStart.X, point.Position.X);
             var bottomUi = Math.Max(dragStart.Y, point.Position.Y);
+            _regionCopyPageIndex = pageIndex;
+            _regionCopyDisplayRect = new Windows.Foundation.Rect(
+                leftUi,
+                topUi,
+                Math.Max(1, rightUi - leftUi),
+                Math.Max(1, bottomUi - topUi));
+
+            var left = leftUi / _scale;
+            var right = rightUi / _scale;
             var top = page.HeightPoints - (bottomUi / _scale);
             var bottom = page.HeightPoints - (topUi / _scale);
             var selection = new PdfRect(left, bottom, right, top);
@@ -1758,7 +1789,7 @@ public sealed class PdfDocumentView : UserControl
             }
 
             _status.Text = string.IsNullOrEmpty(_selectedText)
-                ? "No text in selection."
+                ? "Region selected — right-click to copy as image."
                 : $"Selected “{TrimForStatus(_selectedText)}”";
             return;
         }
@@ -2553,6 +2584,64 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Search web failed: " + ex.Message;
+        }
+    }
+
+    private async Task CopyRegionAsBitmapAsync()
+    {
+        if (_regionCopyPageIndex < 0
+            || _regionCopyDisplayRect.Width < 4
+            || _regionCopyDisplayRect.Height < 4)
+        {
+            _status.Text = "Drag a region on the page first.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Copying region…";
+            using var rendered = await _renderer.RenderPageAsync(
+                _document,
+                _regionCopyPageIndex,
+                new PdfRenderRequest(_scale));
+
+            var page = _document.GetPage(_regionCopyPageIndex);
+            var scaleX = rendered.Width / Math.Max(1.0, page.WidthPoints * _scale);
+            var scaleY = rendered.Height / Math.Max(1.0, page.HeightPoints * _scale);
+            var srcX = (int)Math.Floor(_regionCopyDisplayRect.X * scaleX);
+            var srcY = (int)Math.Floor(_regionCopyDisplayRect.Y * scaleY);
+            var srcW = (int)Math.Ceiling(_regionCopyDisplayRect.Width * scaleX);
+            var srcH = (int)Math.Ceiling(_regionCopyDisplayRect.Height * scaleY);
+            srcX = Math.Clamp(srcX, 0, Math.Max(0, rendered.Width - 1));
+            srcY = Math.Clamp(srcY, 0, Math.Max(0, rendered.Height - 1));
+            srcW = Math.Clamp(srcW, 1, rendered.Width - srcX);
+            srcH = Math.Clamp(srcH, 1, rendered.Height - srcY);
+
+            var full = rendered.Pixels.ToArray();
+            var cropped = new byte[srcW * srcH * 4];
+            for (var y = 0; y < srcH; y++)
+            {
+                var srcOffset = ((srcY + y) * rendered.Width + srcX) * 4;
+                var dstOffset = y * srcW * 4;
+                Buffer.BlockCopy(full, srcOffset, cropped, dstOffset, srcW * 4);
+            }
+
+            var png = await EncodeBgraPngAsync(cropped, srcW, srcH);
+            var stream = new Windows.Storage.Streams.InMemoryRandomAccessStream();
+            var writer = new Windows.Storage.Streams.DataWriter(stream);
+            writer.WriteBytes(png);
+            await writer.StoreAsync();
+            await writer.FlushAsync();
+            writer.DetachStream();
+            stream.Seek(0);
+            var package = new DataPackage();
+            package.SetBitmap(Windows.Storage.Streams.RandomAccessStreamReference.CreateFromStream(stream));
+            Clipboard.SetContent(package);
+            _status.Text = $"Copied region ({srcW}×{srcH}) to clipboard.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Copy region failed: " + ex.Message;
         }
     }
 
