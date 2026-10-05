@@ -158,9 +158,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F08-07 | OCR / Live Text equivalent | OCR selected pages. | M6 | Implemented | Multi-select thumbnails → OCR concatenates page sections |
 | F08-08 | OCR / Live Text equivalent | OCR entire PDF. | M6 | Implemented | OCR chooser Secondary = entire document page range |
 | F08-09 | OCR / Live Text equivalent | OCR multiple images. | M6 | Implemented | Image OCR → Folder (N) runs siblings via batch progress dialog |
-| F08-10 | OCR / Live Text equivalent | Optionally embed OCR text layer into PDF. | M6 | Implemented | OCR→PDF export via `OcrSearchablePdfWriter` invisible text |
+| F08-10 | OCR / Live Text equivalent | Optionally embed OCR text layer into PDF. | M6 | Tested | OCR→PDF export via `OcrSearchablePdfWriter`; Ocr.Tests |
 | F08-11 | OCR / Live Text equivalent | Preserve image underneath the OCR layer. | M6 | Implemented | Full-bleed page render under invisible text layer |
-| F08-12 | OCR / Live Text equivalent | URLs | M6 | Implemented | `OcrEntityDetector` + Entities dialog Open |
+| F08-12 | OCR / Live Text equivalent | URLs | M6 | Tested | `OcrEntityDetector` + Entities dialog Open; Ocr.Tests |
 | F08-13 | OCR / Live Text equivalent | email addresses | M6 | Implemented | `OcrEntityDetector` + mailto launch |
 | F08-14 | OCR / Live Text equivalent | phone numbers | M6 | Implemented | `OcrEntityDetector` + Copy value |
 | F08-15 | OCR / Live Text equivalent | physical addresses | M6 | Implemented | `OcrEntityDetector` street + city/ST/ZIP |
@@ -289,10 +289,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F16-03 | Text boxes and callouts | Move it. | M4 | Tested | `MoveAsync` API |
 | F16-04 | Text boxes and callouts | Resize it. | M4 | Tested | `MoveAsync` with new bounds |
 | F16-05 | Text boxes and callouts | Rotate where appropriate. | M4 | Tested | Sidebar Rotate → `RotateAsync` swaps FreeText bounds around center |
-| F16-06 | Text boxes and callouts | Font family. | M4 | Implemented | Helvetica/Times/Courier via DA (`PdfFreeTextFont`) |
+| F16-06 | Text boxes and callouts | Font family. | M4 | Tested | Helvetica/Times/Courier via DA (`PdfFreeTextFont` unit tests) |
 | F16-07 | Text boxes and callouts | Font size. | M4 | Implemented | `fontSizePoints` + TextBox/Callout dialog NumberBox |
-| F16-08 | Text boxes and callouts | Bold. | M4 | Implemented | Dialog Bold → HeBo/TiBo/CoBo in DA |
-| F16-09 | Text boxes and callouts | Italic. | M4 | Implemented | Dialog Italic → HeOb/TiIt/CoOb in DA |
+| F16-08 | Text boxes and callouts | Bold. | M4 | Tested | Dialog Bold → HeBo/TiBo/CoBo in DA; `PdfFreeTextFontTests` |
+| F16-09 | Text boxes and callouts | Italic. | M4 | Tested | Dialog Italic → HeOb/TiIt/CoOb in DA; `PdfFreeTextFontTests` |
 | F16-10 | Text boxes and callouts | Underline. | M4 | Tested | `SetUnderlineAsync` + `GlyphUnderline` + companion ink stroke; TextBox/Callout checkbox |
 | F16-11 | Text boxes and callouts | Text color. | M4 | Implemented | DA RGB from `textColor` + TextBox/Callout picker |
 | F16-12 | Text boxes and callouts | Background/fill color. | M4 | Implemented | `fillColor` → InteriorColor; TextBox dialog picker |

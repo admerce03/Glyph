@@ -4169,16 +4169,7 @@ public sealed class PdfDocumentView : UserControl
             })
             .ToList();
 
-        _status.Text = status switch
-        {
-            PdfSearchStatus.EmptyQuery => message ?? "Enter search text.",
-            PdfSearchStatus.NoMatches => message ?? "No matches.",
-            PdfSearchStatus.NoExtractableText => message ?? "OCR required.",
-            PdfSearchStatus.DocumentEncrypted => message ?? "Password required.",
-            PdfSearchStatus.Failed => message ?? "Search failed.",
-            PdfSearchStatus.Success => message ?? $"{_hits.Count} match{(_hits.Count == 1 ? string.Empty : "es")}",
-            _ => message ?? _status.Text,
-        };
+        _status.Text = PdfSearchStatusText.Format(status, _hits.Count, message);
 
         if (_activeHitIndex >= 0)
         {
