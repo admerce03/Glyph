@@ -16,6 +16,10 @@ public static class PrintPageScopeChooser
     public static string FormatPreparing(int pageCount) =>
         $"Preparing {pageCount} page(s) for print…";
 
+    public static string FormatPrintUiShown(int pageCount, int pagesPerSheet) =>
+        $"Print UI shown · {pageCount} page(s)"
+        + (pagesPerSheet > 1 ? $" · {pagesPerSheet}-up." : ".");
+
     public static IReadOnlyList<string> Labels { get; } =
     [
         CurrentPage,
