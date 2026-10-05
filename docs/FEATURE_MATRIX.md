@@ -22,11 +22,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-12 | Application and file handling | Read-only file detection. | M1/M9 | Tested | Sets session.IsReadOnly; Execute blocked (DocumentSession unit test) |
 | F01-13 | Application and file handling | Warn when attempting to overwrite a read-only file. | M1/M9 | Tested | Save → Save As prompt; `ReadOnlySavePolicy` + `PathUtilities.IsPathReadOnly` unit tests |
 | F01-14 | Application and file handling | File → New from Clipboard. | M1/M9 | Implemented | Menu + Ctrl+Shift+N; clipboard → temp PNG image tab |
-| F01-15 | Application and file handling | File → Duplicate. | M1/M9 | Implemented | File → Duplicate / Ctrl+Shift+D copies on disk and opens |
+| F01-15 | Application and file handling | File → Duplicate. | M1/M9 | Tested | File → Duplicate / Ctrl+Shift+D; `DocumentFileNamePolicy.SuggestDuplicatePath` unit tests |
 | F01-16 | Application and file handling | File → Save. | M1/M9 | Implemented | File → Save / Ctrl+S (PDF + image) |
 | F01-17 | Application and file handling | File → Save As. | M1/M9 | Tested | File → Save As / Ctrl+Shift+S; `ImageEncodeFormatResolver` maps AVIF/JP2/HEIC |
 | F01-18 | Application and file handling | File → Export. | M1/M9 | Implemented | PDF Export toolbar; image Convert/Export |
-| F01-19 | Application and file handling | File → Rename. | M1/M9 | Implemented | File → Rename… same-folder rename |
+| F01-19 | Application and file handling | File → Rename. | M1/M9 | Tested | File → Rename…; `DocumentFileNamePolicy.EvaluateRename` unit tests |
 | F01-20 | Application and file handling | File → Move. | M1/M9 | Implemented | File → Move… FolderPicker + File.Move |
 | F01-21 | Application and file handling | File → Properties. | M1/M9 | Implemented | File → Properties / Ctrl+I → PDF Info or image Meta |
 | F01-22 | Application and file handling | Close: | M1/M9 | Tested | Close Tab / Close All; `DocumentClosePolicy` dirty-prompt unit tests |

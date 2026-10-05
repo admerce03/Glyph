@@ -1292,16 +1292,7 @@ public sealed partial class MainWindow : Window
             }
 
             var source = active.Path!;
-            var dir = System.IO.Path.GetDirectoryName(source) ?? ".";
-            var name = System.IO.Path.GetFileNameWithoutExtension(source);
-            var ext = System.IO.Path.GetExtension(source);
-            var candidate = System.IO.Path.Combine(dir, name + " copy" + ext);
-            var n = 2;
-            while (File.Exists(candidate))
-            {
-                candidate = System.IO.Path.Combine(dir, $"{name} copy {n}{ext}");
-                n++;
-            }
+            var candidate = DocumentFileNamePolicy.SuggestDuplicatePath(source);
 
             File.Copy(source, candidate);
             await OpenPathAsync(candidate);
@@ -1346,29 +1337,26 @@ public sealed partial class MainWindow : Window
             }
 
             var newName = (box.Text ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(newName)
-                || newName.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) >= 0
-                || newName.Contains('/')
-                || newName.Contains('\\'))
+            var rename = DocumentFileNamePolicy.EvaluateRename(active.Path!, newName);
+            if (rename.Status == RenamePathStatus.Invalid)
             {
                 StatusText.Text = "Invalid file name.";
                 return;
             }
 
-            if (string.Equals(newName, currentName, StringComparison.OrdinalIgnoreCase))
+            if (rename.Status == RenamePathStatus.Unchanged)
             {
                 StatusText.Text = "Name unchanged.";
                 return;
             }
 
-            var dir = System.IO.Path.GetDirectoryName(active.Path!) ?? ".";
-            var dest = System.IO.Path.Combine(dir, newName);
-            if (File.Exists(dest))
+            if (rename.Status == RenamePathStatus.Conflict)
             {
                 StatusText.Text = "A file with that name already exists.";
                 return;
             }
 
+            var dest = rename.DestinationPath!;
             if (active.IsDirty)
             {
                 await SaveActiveDocumentAsync(saveAs: false);
