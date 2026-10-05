@@ -279,6 +279,63 @@ public class PdfiumOptimizeServiceTests
     }
 
     [Fact]
+    public void Custom_options_preserve_explicit_fields()
+    {
+        var opts = new PdfOptimizeOptions(
+            Preset: PdfOptimizePreset.Custom,
+            DownsampleImages: true,
+            DownsampleAboveDpi: 400,
+            TargetDpi: 120,
+            JpegQuality: 42,
+            PreserveMonochrome: false,
+            RemoveEmbeddedAttachments: true,
+            RemoveMetadata: true);
+
+        opts.Preset.Should().Be(PdfOptimizePreset.Custom);
+        opts.DownsampleAboveDpi.Should().Be(400);
+        opts.TargetDpi.Should().Be(120);
+        opts.JpegQuality.Should().Be(42);
+        opts.PreserveMonochrome.Should().BeFalse();
+        opts.RemoveEmbeddedAttachments.Should().BeTrue();
+        opts.RemoveMetadata.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Custom_RemoveMetadata_clears_info_fields()
+    {
+        var path = CreateInfoPdf();
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var optimize = new PdfiumOptimizeService();
+            var infoService = new PdfiumDocumentInfoService();
+            await using var document = await factory.OpenAsync(path);
+
+            infoService.GetInfo(document).Title.Should().Be("Glyph Title");
+
+            var result = await optimize.OptimizeAsync(
+                document,
+                new PdfOptimizeOptions(
+                    Preset: PdfOptimizePreset.Custom,
+                    DownsampleImages: false,
+                    RemoveMetadata: true));
+            result.BytesBefore.Should().BeGreaterThan(0);
+
+            var after = infoService.GetInfo(document);
+            after.Title.Should().BeNullOrEmpty();
+            after.Author.Should().BeNullOrEmpty();
+            after.Creator.Should().BeNullOrEmpty();
+            after.Producer.Should().BeNullOrEmpty();
+            after.CreationDate.Should().BeNullOrEmpty();
+            after.ModificationDate.Should().BeNullOrEmpty();
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task HighQuality_downsamples_images_above_300dpi()
     {
         var path = CreateBlankPdf();
@@ -490,6 +547,21 @@ public class PdfiumOptimizeServiceTests
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-opt-" + Guid.NewGuid().ToString("N") + ".pdf");
         var builder = new PdfDocumentBuilder();
+        builder.AddPage(PageSize.Letter);
+        File.WriteAllBytes(path, builder.Build());
+        return path;
+    }
+
+    private static string CreateInfoPdf()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-opt-info-" + Guid.NewGuid().ToString("N") + ".pdf");
+        var builder = new PdfDocumentBuilder();
+        builder.DocumentInformation.Title = "Glyph Title";
+        builder.DocumentInformation.Author = "Glyph Author";
+        builder.DocumentInformation.Subject = "Glyph Subject";
+        builder.DocumentInformation.Keywords = "glyph, test";
+        builder.DocumentInformation.Creator = "Glyph Creator";
+        builder.DocumentInformation.Producer = "Glyph Producer";
         builder.AddPage(PageSize.Letter);
         File.WriteAllBytes(path, builder.Build());
         return path;

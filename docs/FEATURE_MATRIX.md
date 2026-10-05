@@ -392,12 +392,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F24-02 | PDF optimization and compression | High quality | M7 | Tested | FromPreset 300→200 DPI + `HighQuality_downsamples_images_above_300dpi` |
 | F24-03 | PDF optimization and compression | Balanced | M7 | Tested | Optimize preset → 150 DPI; service tests |
 | F24-04 | PDF optimization and compression | Small file | M7 | Tested | Optimize preset → 96 DPI + strip attachments |
-| F24-05 | PDF optimization and compression | Custom | M7 | Implemented | Optimize dialog Custom: above/target DPI, JPEG quality, strip attachments, preserve mono |
+| F24-05 | PDF optimization and compression | Custom | M7 | Tested | Custom options fields + `Custom_RemoveMetadata_clears_info_fields` + dialog UI |
 | F24-06 | PDF optimization and compression | downsample images above selected DPI | M7 | Tested | `DownsampleAboveDpi` + PDFium `SetBitmap` resize |
 | F24-07 | PDF optimization and compression | target DPI | M7 | Tested | `TargetDpi` on presets |
 | F24-08 | PDF optimization and compression | JPEG quality | M7 | Tested | Magick encoder + zeroed FILEACCESS `LoadJpegFileInline`; Custom dialog NumberBox; SetBitmap fallback |
 | F24-09 | PDF optimization and compression | preserve monochrome content | M7 | Tested | Skip 1-bpp when PreserveMonochrome; color path covered with flag false |
-| F24-10 | PDF optimization and compression | compress streams | M7 | Implemented | Optimize measures/saves with `FPDF_NO_INCREMENTAL` full rewrite |
+| F24-10 | PDF optimization and compression | compress streams | M7 | Tested | Optimize measures/saves with `FPDF_NO_INCREMENTAL` full rewrite (Lossless/Balanced tests) |
 | F24-11 | PDF optimization and compression | subset fonts where appropriate | M7 | Deferred | ADR-016 — no PDFium font-subset API |
 | F24-12 | PDF optimization and compression | remove unused objects | M7 | Implemented | Best-effort via `FPDF_NO_INCREMENTAL` full rewrite after edits (ADR-016) |
 | F24-13 | PDF optimization and compression | optimize object structure | M7 | Implemented | Same full-rewrite path as F24-12 (ADR-016) |

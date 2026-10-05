@@ -282,6 +282,10 @@ public class PdfiumRedactionServiceTests
             after.Author.Should().BeNullOrEmpty();
             after.Subject.Should().BeNullOrEmpty();
             after.Keywords.Should().BeNullOrEmpty();
+            after.Creator.Should().BeNullOrEmpty();
+            after.Producer.Should().BeNullOrEmpty();
+            after.CreationDate.Should().BeNullOrEmpty();
+            after.ModificationDate.Should().BeNullOrEmpty();
         }
         finally
         {
