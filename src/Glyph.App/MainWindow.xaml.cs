@@ -170,6 +170,7 @@ public sealed partial class MainWindow : Window
         ApplyThemePreference(_settingsStore.Current.Theme);
         ApplySidebarVisibility(_settingsStore.Current.SidebarVisible);
         ToggleToolbarMenuItem.Text = ToolbarVisibilityLabel.For(_settingsStore.Current.ToolbarVisible);
+        ApplyShellKeyboardShortcuts();
         RefreshRecentList();
         UpdateEmptyState();
         StatusText.Text = AppShellStatus.FormatReady(OpenEntryPoints.Catalog[0]);
@@ -3156,6 +3157,8 @@ public sealed partial class MainWindow : Window
             ("Paste", PasteMenuItem),
             ("Find in all open PDFs", FindAllPdfsMenuItem),
             ("Full Screen", FullscreenMenuItem),
+            ("Toggle Sidebar", ToggleSidebarMenuItem),
+            ("Toggle Toolbar", ToggleToolbarMenuItem),
             ("Preferences", PreferencesMenuItem),
             ("Next Tab", NextTabMenuItem),
             ("Previous Tab", PreviousTabMenuItem),

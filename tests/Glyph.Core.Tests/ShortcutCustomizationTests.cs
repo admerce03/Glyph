@@ -81,6 +81,8 @@ public class ShortcutCustomizationPolicyTests
     {
         ShortcutCustomizationPolicy.DefaultCatalog.Should().Contain(c => c.Command == "Open");
         ShortcutCustomizationPolicy.DefaultCatalog.Should().Contain(c => c.Command == "Find");
+        ShortcutCustomizationPolicy.DefaultCatalog.Should().Contain(c => c.Command == "Toggle Toolbar");
+        ShortcutCustomizationPolicy.DefaultCatalog.Should().Contain(c => c.Command == "Toggle Sidebar");
         ShortcutCustomizationPolicy.DefaultCatalog.Select(c => c.Command)
             .Should().OnlyHaveUniqueItems();
     }

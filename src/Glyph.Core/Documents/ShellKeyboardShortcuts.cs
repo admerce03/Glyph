@@ -19,6 +19,8 @@ public static class ShellKeyboardShortcuts
         ("Paste", "Ctrl+V"),
         ("Find in all open PDFs", "Ctrl+Shift+F"),
         ("Full Screen", "F11"),
+        ("Toggle Sidebar", "Ctrl+Shift+B"),
+        ("Toggle Toolbar", "Ctrl+Shift+U"),
         ("Preferences", "Ctrl+OemComma"),
         ("Next Tab", "Ctrl+Tab"),
         ("Previous Tab", "Ctrl+Shift+Tab"),
