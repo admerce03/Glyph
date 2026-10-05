@@ -171,7 +171,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F08-20 | OCR / Live Text equivalent | Copy phone number. | M6 | Implemented | Entities → Copy value |
 | F08-21 | OCR / Live Text equivalent | Open address in user's default mapping/web service. | M6 | Implemented | Entities → Bing Maps query |
 | F08-22 | OCR / Live Text equivalent | Create calendar event through appropriate Windows/system mechanism where feasible. | M6 | Implemented | Entities → temp `.ics` via `OcrCalendarInvite` |
-| F08-23 | OCR / Live Text equivalent | Search web. | M6 | Implemented | Entities dialog → Bing |
+| F08-23 | OCR / Live Text equivalent | Search web. | M6 | Implemented | Search web toolbar + Entities dialog → Bing |
 | F08-24 | OCR / Live Text equivalent | Copy recognized value. | M6 | Implemented | Entities → Copy value |
 | F09-01 | PDF bookmarks | Add bookmark at current page/location. | M2/M4 | Not Started |  |
 | F09-02 | PDF bookmarks | Rename bookmark. | M2/M4 | Not Started |  |

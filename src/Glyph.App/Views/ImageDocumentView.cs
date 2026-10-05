@@ -44,6 +44,7 @@ public sealed class ImageDocumentView : UserControl
     private readonly Button _ocrFindButton;
     private readonly Button _ocrFindNextButton;
     private readonly Button _ocrFolderButton;
+    private readonly Button _ocrSearchWebButton;
     private IReadOnlyList<int> _ocrSearchHits = [];
     private int _ocrSearchHitIndex = -1;
     private IReadOnlyList<string> _siblings = Array.Empty<string>();
@@ -155,6 +156,7 @@ public sealed class ImageDocumentView : UserControl
         _ocrFindButton = new Button { Content = "Find OCR", Visibility = Visibility.Collapsed };
         _ocrFindNextButton = new Button { Content = "Next OCR", Visibility = Visibility.Collapsed };
         _ocrFolderButton = new Button { Content = "OCR folder" };
+        _ocrSearchWebButton = new Button { Content = "Search web", Visibility = Visibility.Collapsed };
         var rotate180 = new Button { Content = "180°" };
         var orient = new Button { Content = "Orient" };
         var fullscreen = new Button { Content = "Fullscreen" };
@@ -178,6 +180,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(_ocrFindButton, "Highlight OCR words matching the query");
         ToolTipService.SetToolTip(_ocrFindNextButton, "Jump to next OCR search hit");
         ToolTipService.SetToolTip(_ocrFolderButton, "Run offline OCR on images in this folder (up to 20)");
+        ToolTipService.SetToolTip(_ocrSearchWebButton, "Search the web for selected OCR text");
         ToolTipService.SetToolTip(rotate180, "Rotate 180°");
         ToolTipService.SetToolTip(orient, "Apply EXIF orientation into pixels");
         ToolTipService.SetToolTip(fullscreen, "Toggle window fullscreen");
@@ -207,6 +210,7 @@ public sealed class ImageDocumentView : UserControl
         meta.Click += async (_, _) => await ShowMetadataAsync();
         ocrButton.Click += async (_, _) => await RunOcrAsync();
         _ocrFolderButton.Click += async (_, _) => await RunOcrFolderAsync();
+        _ocrSearchWebButton.Click += async (_, _) => await SearchWebSelectedOcrAsync();
         _copyOcrButton.Click += (_, _) => CopySelectedOcrText();
         _ocrEntitiesButton.Click += async (_, _) => await ShowOcrEntitiesAsync();
         _clearOcrButton.Click += (_, _) => ClearOcrOverlay();
@@ -240,7 +244,7 @@ public sealed class ImageDocumentView : UserControl
             Children =
             {
                 _prevButton, _nextButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
-                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, _ocrFolderButton, _copyOcrButton, _ocrEntitiesButton, _ocrSearchBox, _ocrFindButton, _ocrFindNextButton, _clearOcrButton, save, exportPng, exportJpeg, convert, _status,
+                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, _ocrFolderButton, _copyOcrButton, _ocrSearchWebButton, _ocrEntitiesButton, _ocrSearchBox, _ocrFindButton, _ocrFindNextButton, _clearOcrButton, save, exportPng, exportJpeg, convert, _status,
             },
         };
 
@@ -1128,6 +1132,7 @@ public sealed class ImageDocumentView : UserControl
         {
             _ocrOverlay.IsHitTestVisible = false;
             _copyOcrButton.Visibility = Visibility.Collapsed;
+            _ocrSearchWebButton.Visibility = Visibility.Collapsed;
             _ocrEntitiesButton.Visibility = Visibility.Collapsed;
             _ocrSearchBox.Visibility = Visibility.Collapsed;
             _ocrFindButton.Visibility = Visibility.Collapsed;
@@ -1176,6 +1181,7 @@ public sealed class ImageDocumentView : UserControl
         var hasWords = _ocrVisuals.Count > 0;
         _ocrOverlay.IsHitTestVisible = hasWords && !_cropMode;
         _copyOcrButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
+        _ocrSearchWebButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
         _ocrEntitiesButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
         _ocrSearchBox.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
         _ocrFindButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
@@ -1362,7 +1368,8 @@ public sealed class ImageDocumentView : UserControl
         };
 
         var copy = new Button { Content = "Copy value", Margin = new Thickness(0, 8, 8, 0) };
-        var open = new Button { Content = "Open / mail", Margin = new Thickness(0, 8, 0, 0) };
+        var open = new Button { Content = "Open / mail", Margin = new Thickness(0, 8, 8, 0) };
+        var searchWeb = new Button { Content = "Search web", Margin = new Thickness(0, 8, 0, 0) };
         copy.Click += (_, _) =>
         {
             if (list.SelectedIndex < 0 || list.SelectedIndex >= entities.Count)
@@ -1385,6 +1392,15 @@ public sealed class ImageDocumentView : UserControl
 
             await ActOnOcrEntityAsync(entities[list.SelectedIndex]);
         };
+        searchWeb.Click += async (_, _) =>
+        {
+            if (list.SelectedIndex < 0 || list.SelectedIndex >= entities.Count)
+            {
+                return;
+            }
+
+            await SearchWebAsync(entities[list.SelectedIndex].Value);
+        };
 
         var panel = new StackPanel
         {
@@ -1400,7 +1416,7 @@ public sealed class ImageDocumentView : UserControl
                 new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
-                    Children = { copy, open },
+                    Children = { copy, open, searchWeb },
                 },
             },
         };
@@ -1413,6 +1429,45 @@ public sealed class ImageDocumentView : UserControl
             XamlRoot = XamlRoot,
         };
         await dialog.ShowAsync();
+    }
+
+    private async Task SearchWebSelectedOcrAsync()
+    {
+        string text;
+        if (_selectedOcrIndices.Count > 0)
+        {
+            text = string.Join(
+                ' ',
+                _selectedOcrIndices.OrderBy(i => i)
+                    .Where(i => i >= 0 && i < _ocrVisuals.Count)
+                    .Select(i => _ocrVisuals[i].Word.Text));
+        }
+        else
+        {
+            text = _ocrResult?.Text ?? string.Empty;
+        }
+
+        await SearchWebAsync(text);
+    }
+
+    private async Task SearchWebAsync(string? query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            _status.Text = "Nothing to search.";
+            return;
+        }
+
+        try
+        {
+            var url = "https://www.bing.com/search?q=" + Uri.EscapeDataString(query.Trim());
+            await Windows.System.Launcher.LaunchUriAsync(new Uri(url));
+            _status.Text = "Opened web search.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Search web failed: " + ex.Message;
+        }
     }
 
     private async Task ActOnOcrEntityAsync(OcrEntity entity)

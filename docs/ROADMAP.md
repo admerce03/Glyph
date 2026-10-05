@@ -251,6 +251,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 - `IOcrEngine` / `OcrRequest` / `OcrResult` abstractions in `Glyph.Ocr`
 - `WindowsOcrEngine` (Windows.Media.Ocr) registered in App DI; **OCR** toolbar on `ImageDocumentView` with Live Text word-box overlay (click/Ctrl+click select + Copy OCR)
+- `WindowsOcrEngine` (Windows.Media.Ocr) registered in App DI; **OCR** toolbar on `ImageDocumentView` with Live Text word-box overlay (click/Ctrl+click select + Copy OCR)
 - `UnsupportedOcrEngine` + Fake engine + overlay mapper + entity detector + text search coverage in `Glyph.Ocr.Tests` (Linux)
 - PDF **OCR** current/selected/entire document on `PdfDocumentView` (chooser → render → BGRA → engine + result dialog)
 - **Cancel OCR** + `n/m` status progress for multi-page PDF recognition
@@ -258,6 +259,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Find on image-only PDFs offers OCR-current-page fallback; **Find sel** searches the text selection
 - Image **Find OCR** / **Next OCR** over recognized word boxes (`OcrTextSearch`)
 - **OCR folder** batch-recognizes sibling images (capped at 20) with combined copy dialog
+- **Search web** for selected OCR text / entities (Bing via default browser)
 - PDF **Live Text** word-box overlay after OCR (click/Ctrl+click select + **Copy OCR**)
 - **OCR→PDF** exports OCR'd pages as a searchable PDF (image + invisible text via `OcrSearchablePdfWriter`)
 - **Entities** dialog on PDF + image OCR text (URL/email/phone/address/date/time + maps/calendar/search web)
