@@ -14,4 +14,5 @@ public enum PdfShapeKind
     HighlightRectangle = 6,
     Star = 7,
     Polygon = 8,
+    SpeechBubble = 9,
 }

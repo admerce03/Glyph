@@ -466,6 +466,16 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             return AddStarAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, cancellationToken);
         }
 
+        if (kind == PdfShapeKind.SpeechBubble)
+        {
+            if (bounds.Width < 1 || bounds.Height < 1)
+            {
+                throw new ArgumentException("Speech bubble bounds must have positive width and height.", nameof(bounds));
+            }
+
+            return AddSpeechBubbleAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, cancellationToken);
+        }
+
         if (bounds.Width < 1 || bounds.Height < 1)
         {
             throw new ArgumentException("Shape bounds must have positive width and height.", nameof(bounds));
@@ -1807,6 +1817,26 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         return created with { ShapeKind = PdfShapeKind.Star, IsInk = true };
     }
 
+    private async Task<PdfAnnotationInfo> AddSpeechBubbleAsInkAsync(
+        IPdfDocument document,
+        int pageIndex,
+        PdfRect bounds,
+        PdfAnnotationColor borderColor,
+        float borderWidthPoints,
+        CancellationToken cancellationToken)
+    {
+        var points = PdfSpeechBubbleGeometry.BuildPoints(bounds);
+        var created = await AddLabeledInkAsync(
+            document,
+            pageIndex,
+            [points],
+            borderColor,
+            borderWidthPoints,
+            contents: "SpeechBubble",
+            cancellationToken);
+        return created with { ShapeKind = PdfShapeKind.SpeechBubble, IsInk = true };
+    }
+
     private async Task<PdfAnnotationInfo> AddArrowAsInkAsync(
         IPdfDocument document,
         int pageIndex,
@@ -2092,6 +2122,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             "Freeform" => PdfShapeKind.Freeform,
             "Star" => PdfShapeKind.Star,
             "Polygon" => PdfShapeKind.Polygon,
+            "SpeechBubble" => PdfShapeKind.SpeechBubble,
             _ => null,
         };
 

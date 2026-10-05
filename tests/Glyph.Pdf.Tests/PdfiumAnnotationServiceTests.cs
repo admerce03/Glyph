@@ -536,6 +536,16 @@ public class PdfiumAnnotationServiceTests
                 star.IsInk.Should().BeTrue();
                 star.Contents.Should().Be("Star");
 
+                var bubble = await annots.AddShapeAsync(
+                    document,
+                    0,
+                    PdfShapeKind.SpeechBubble,
+                    new PdfRect(360, 380, 500, 500),
+                    new PdfAnnotationColor(30, 144, 255));
+                bubble.ShapeKind.Should().Be(PdfShapeKind.SpeechBubble);
+                bubble.IsInk.Should().BeTrue();
+                bubble.Contents.Should().Be("SpeechBubble");
+
                 await editor.SaveAsync(document, outPath);
             }
 
@@ -549,6 +559,7 @@ public class PdfiumAnnotationServiceTests
                 listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.RoundedRectangle);
                 listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.HighlightRectangle);
                 listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Star && a.IsInk && a.Contents == "Star");
+                listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.SpeechBubble && a.IsInk && a.Contents == "SpeechBubble");
             }
         }
         finally

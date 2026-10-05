@@ -142,6 +142,7 @@ public sealed class PdfDocumentView : UserControl
     private Button? _lineButton;
     private Button? _arrowButton;
     private Button? _starButton;
+    private Button? _bubbleButton;
     private Button? _calloutButton;
     private Button? _redactButton;
     private bool _calloutMode;
@@ -457,6 +458,7 @@ public sealed class PdfDocumentView : UserControl
         var line = new Button { Content = "Line" };
         var arrow = new Button { Content = "Arrow" };
         var star = new Button { Content = "Star" };
+        var bubble = new Button { Content = "Bubble" };
         _signButton = sign;
         _inkButton = ink;
         _freeformButton = freeform;
@@ -471,6 +473,7 @@ public sealed class PdfDocumentView : UserControl
         _lineButton = line;
         _arrowButton = arrow;
         _starButton = star;
+        _bubbleButton = bubble;
         _calloutButton = callout;
         _redactButton = redact;
         var undoEdit = new Button { Content = "Undo" };
@@ -574,6 +577,7 @@ public sealed class PdfDocumentView : UserControl
         line.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Line);
         arrow.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Arrow);
         star.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Star);
+        bubble.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.SpeechBubble);
         undoEdit.Click += async (_, _) =>
         {
             if (_strokeUndoStack.Count > 0)
@@ -598,7 +602,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star, bubble,
                 _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -3762,6 +3766,7 @@ public sealed class PdfDocumentView : UserControl
                 PdfShapeKind.Freeform => "Freeform",
                 PdfShapeKind.Star => "Star",
                 PdfShapeKind.Polygon => "Polygon",
+                PdfShapeKind.SpeechBubble => "Bubble",
                 _ => "Shape",
             };
             return $"{shapeName} · p.{info.PageIndex + 1}";
@@ -4432,6 +4437,7 @@ public sealed class PdfDocumentView : UserControl
             PdfShapeKind.Ellipse => "Ellipse mode — drag on the page.",
             PdfShapeKind.Arrow => "Arrow mode — drag from tail to tip.",
             PdfShapeKind.Star => "Star mode — drag a bounding box for a 5-point star.",
+            PdfShapeKind.SpeechBubble => "Bubble mode — drag a speech-bubble outline.",
             _ => "Line mode — drag on the page.",
         };
     }
@@ -4595,6 +4601,11 @@ public sealed class PdfDocumentView : UserControl
             _starButton.Background = _shapeMode == PdfShapeKind.Star ? active : null;
         }
 
+        if (_bubbleButton is not null)
+        {
+            _bubbleButton.Background = _shapeMode == PdfShapeKind.SpeechBubble ? active : null;
+        }
+
         if (_calloutButton is not null)
         {
             _calloutButton.Background = _calloutMode ? active : null;
@@ -4683,6 +4694,13 @@ public sealed class PdfDocumentView : UserControl
                     height,
                     stroke,
                     strokeThickness),
+                PdfShapeKind.SpeechBubble => CreateSpeechBubblePreview(
+                    left,
+                    top,
+                    width,
+                    height,
+                    stroke,
+                    strokeThickness),
                 _ => new Microsoft.UI.Xaml.Shapes.Rectangle
                 {
                     Width = Math.Max(1, width),
@@ -4752,6 +4770,7 @@ public sealed class PdfDocumentView : UserControl
                 bounds,
                 _drawStrokeColor,
                 fillColor: kind is PdfShapeKind.Line or PdfShapeKind.Arrow or PdfShapeKind.Star
+                    or PdfShapeKind.SpeechBubble
                     or PdfShapeKind.HighlightRectangle
                     ? null
                     : new PdfAnnotationColor(
@@ -4773,6 +4792,7 @@ public sealed class PdfDocumentView : UserControl
                 PdfShapeKind.Ellipse => "Ellipse added.",
                 PdfShapeKind.Arrow => "Arrow added.",
                 PdfShapeKind.Star => "Star added.",
+                PdfShapeKind.SpeechBubble => "Speech bubble added.",
                 _ => "Line added.",
             };
         }
@@ -4780,6 +4800,32 @@ public sealed class PdfDocumentView : UserControl
         {
             _status.Text = "Shape failed: " + ex.Message;
         }
+    }
+
+    private static FrameworkElement CreateSpeechBubblePreview(
+        double left,
+        double top,
+        double width,
+        double height,
+        SolidColorBrush stroke,
+        double strokeThickness)
+    {
+        // Map PDF bubble geometry (Y-up) into UI space (Y-down) within the drag rect.
+        var pdfBounds = new PdfRect(0, 0, Math.Max(width, 1), Math.Max(height, 1));
+        var pdfPoints = PdfSpeechBubbleGeometry.BuildPoints(pdfBounds);
+        var points = new PointCollection();
+        foreach (var p in pdfPoints)
+        {
+            points.Add(new Windows.Foundation.Point(left + p.X, top + (height - p.Y)));
+        }
+
+        return new Microsoft.UI.Xaml.Shapes.Polyline
+        {
+            Points = points,
+            Stroke = stroke,
+            StrokeThickness = strokeThickness,
+            Fill = null,
+        };
     }
 
     private static FrameworkElement CreateStarPreview(
