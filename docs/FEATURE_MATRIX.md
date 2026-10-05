@@ -345,7 +345,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F19-11 | PDF signatures | resize | M4 | Tested | Bounds on insert / `MoveAsync` |
 | F19-12 | PDF signatures | move | M4 | Tested | `MoveAsync` |
 | F19-13 | PDF signatures | rotate where appropriate | M4 | Not Started |  |
-| F19-14 | PDF signatures | duplicate | M4 | Not Started |  |
+| F19-14 | PDF signatures | duplicate | M4 | Tested | Sidebar Dup / `DuplicateAsync` clones stamp image + offset bounds |
 | F19-15 | PDF signatures | delete | M4 | Implemented | Sidebar Delete |
 | F19-16 | PDF signatures | preserve transparency | M4 | Tested | BGRA alpha channel |
 | F20-01 | PDF forms | text fields | M4 | Tested | `IPdfFormStore.SetTextValueAsync` + Form toolbar |

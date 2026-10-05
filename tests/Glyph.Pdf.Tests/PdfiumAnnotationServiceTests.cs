@@ -163,15 +163,20 @@ public class PdfiumAnnotationServiceTests
                     h);
                 created.IsStamp.Should().BeTrue();
 
+                var copy = await annots.DuplicateAsync(document, 0, created.AnnotIndex);
+                copy.IsStamp.Should().BeTrue();
+                copy.Bounds.Left.Should().BeApproximately(created.Bounds.Left + 12, 0.5);
+                copy.Bounds.Bottom.Should().BeApproximately(created.Bounds.Bottom - 12, 0.5);
+
                 var listed = await annots.ListAsync(document, 0);
-                listed.Should().Contain(a => a.IsStamp);
+                listed.Count(a => a.IsStamp).Should().Be(2);
                 await editor.SaveAsync(document, outPath);
             }
 
             await using (var reopened = await factory.OpenAsync(outPath))
             {
                 var listed = await annots.ListAsync(reopened, 0);
-                listed.Should().Contain(a => a.IsStamp);
+                listed.Count(a => a.IsStamp).Should().Be(2);
             }
         }
         finally

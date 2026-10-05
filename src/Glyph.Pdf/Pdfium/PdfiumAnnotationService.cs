@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Glyph.Pdf.Abstractions;
 using PDFiumCore;
 
@@ -1104,12 +1105,15 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         int subtype;
         PdfRect bounds;
         PdfAnnotationColor color = new(0, 0, 0);
-        string contents;
+        string contents = string.Empty;
         string? author = null;
-        PdfTextMarkupKind? markupKind;
-        PdfShapeKind? shapeKind;
+        PdfTextMarkupKind? markupKind = null;
+        PdfShapeKind? shapeKind = null;
         List<PdfQuad> quads = [];
         List<List<PdfPagePoint>> inkStrokes = [];
+        byte[]? stampPixels = null;
+        var stampPixelWidth = 0;
+        var stampPixelHeight = 0;
 
         lock (PdfiumSync.Gate)
         {
@@ -1131,11 +1135,6 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                 try
                 {
                     subtype = fpdf_annot.FPDFAnnotGetSubtype(annot);
-                    if (subtype == PdfiumAnnotSubtypes.Stamp)
-                    {
-                        throw new NotSupportedException(
-                            "Duplicating stamp/signature annotations is not supported yet.");
-                    }
 
                     using var rect = new FS_RECTF_();
                     if (fpdf_annot.FPDFAnnotGetRect(annot, rect) == 0)
@@ -1149,6 +1148,17 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                         rect.Right + offset,
                         rect.Top - offset);
 
+                    if (subtype == PdfiumAnnotSubtypes.Stamp)
+                    {
+                        stampPixels = TryExtractStampBgra(annot, out stampPixelWidth, out stampPixelHeight);
+                        if (stampPixels is null || stampPixelWidth <= 0 || stampPixelHeight <= 0)
+                        {
+                            throw new InvalidOperationException(
+                                "Failed to extract stamp image pixels for duplicate.");
+                        }
+                    }
+                    else
+                    {
                     uint r = 0, g = 0, b = 0, a = 255;
                     if (fpdf_annot.FPDFAnnotGetColor(
                             annot,
@@ -1262,6 +1272,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                             }
                         }
                     }
+                    } // end non-stamp clone extract
                 }
                 finally
                 {
@@ -1272,6 +1283,18 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             {
                 fpdfview.FPDF_ClosePage(page);
             }
+        }
+
+        if (stampPixels is not null)
+        {
+            return await AddStampAsync(
+                document,
+                pageIndex,
+                bounds,
+                stampPixels,
+                stampPixelWidth,
+                stampPixelHeight,
+                cancellationToken);
         }
 
         if (markupKind is { } mk)
@@ -1912,6 +1935,111 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                 }
             },
             cancellationToken);
+    }
+
+    private const int PageObjImage = 3;
+
+    private static byte[]? TryExtractStampBgra(
+        FpdfAnnotationT annot,
+        out int pixelWidth,
+        out int pixelHeight)
+    {
+        pixelWidth = 0;
+        pixelHeight = 0;
+        var count = fpdf_annot.FPDFAnnotGetObjectCount(annot);
+        for (var i = 0; i < count; i++)
+        {
+            var obj = fpdf_annot.FPDFAnnotGetObject(annot, i);
+            if (obj is null || fpdf_edit.FPDFPageObjGetType(obj) != PageObjImage)
+            {
+                continue;
+            }
+
+            var bmp = fpdf_edit.FPDFImageObjGetBitmap(obj);
+            if (bmp is null)
+            {
+                continue;
+            }
+
+            try
+            {
+                var width = fpdfview.FPDFBitmapGetWidth(bmp);
+                var height = fpdfview.FPDFBitmapGetHeight(bmp);
+                var stride = fpdfview.FPDFBitmapGetStride(bmp);
+                var format = fpdfview.FPDFBitmapGetFormat(bmp);
+                var buffer = fpdfview.FPDFBitmapGetBuffer(bmp);
+                if (buffer == IntPtr.Zero || width <= 0 || height <= 0 || stride <= 0)
+                {
+                    continue;
+                }
+
+                var src = new byte[stride * height];
+                Marshal.Copy(buffer, src, 0, src.Length);
+                pixelWidth = width;
+                pixelHeight = height;
+                return StampBitmapToBgra(src, width, height, stride, format);
+            }
+            finally
+            {
+                fpdfview.FPDFBitmapDestroy(bmp);
+            }
+        }
+
+        return null;
+    }
+
+    private static byte[] StampBitmapToBgra(byte[] src, int width, int height, int stride, int format)
+    {
+        var dst = new byte[width * height * 4];
+        for (var y = 0; y < height; y++)
+        {
+            var srcRow = y * stride;
+            var dstRow = y * width * 4;
+            for (var x = 0; x < width; x++)
+            {
+                var di = dstRow + (x * 4);
+                switch (format)
+                {
+                    case PdfiumBitmapFormats.Bgra:
+                    case PdfiumBitmapFormats.Bgrx:
+                        {
+                            var si = srcRow + (x * 4);
+                            dst[di] = src[si];
+                            dst[di + 1] = src[si + 1];
+                            dst[di + 2] = src[si + 2];
+                            dst[di + 3] = format == PdfiumBitmapFormats.Bgra ? src[si + 3] : (byte)255;
+                            break;
+                        }
+
+                    case PdfiumBitmapFormats.Bgr:
+                        {
+                            var si = srcRow + (x * 3);
+                            dst[di] = src[si];
+                            dst[di + 1] = src[si + 1];
+                            dst[di + 2] = src[si + 2];
+                            dst[di + 3] = 255;
+                            break;
+                        }
+
+                    case PdfiumBitmapFormats.Gray:
+                        {
+                            var g = src[srcRow + x];
+                            dst[di] = g;
+                            dst[di + 1] = g;
+                            dst[di + 2] = g;
+                            dst[di + 3] = 255;
+                            break;
+                        }
+
+                    default:
+                        dst[di] = dst[di + 1] = dst[di + 2] = 0;
+                        dst[di + 3] = 255;
+                        break;
+                }
+            }
+        }
+
+        return dst;
     }
 
     private static PdfShapeKind? FromShapeSubtype(int subtype) =>
