@@ -77,5 +77,10 @@ public sealed class AppSettings
     /// </summary>
     public bool LocalOnlyOcr { get; set; } = true;
 
+    /// <summary>
+    /// Preferred Windows OCR BCP-47 language tag (F55-11). Empty = user profile languages.
+    /// </summary>
+    public string OcrLanguageTag { get; set; } = string.Empty;
+
     public bool SidebarVisible { get; set; } = true;
 }

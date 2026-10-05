@@ -155,6 +155,7 @@ public sealed class JsonSettingsStore : ISettingsStore
 
         // OCR is always on-device; keep the flag true so prefs stay honest.
         settings.LocalOnlyOcr = true;
+        settings.OcrLanguageTag = (settings.OcrLanguageTag ?? string.Empty).Trim();
     }
 
     private static string NormalizePageLayoutName(string? name) => name?.Trim() switch
@@ -190,6 +191,7 @@ public sealed class JsonSettingsStore : ISettingsStore
         DefaultInterpolation = settings.DefaultInterpolation ?? "Auto",
         ColorManagedDisplayDefault = settings.ColorManagedDisplayDefault,
         LocalOnlyOcr = true,
+        OcrLanguageTag = settings.OcrLanguageTag ?? string.Empty,
         SidebarVisible = settings.SidebarVisible,
     };
 }

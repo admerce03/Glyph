@@ -4654,8 +4654,18 @@ public sealed class ImageDocumentView : UserControl
         {
             _status.Text = "Running OCR…";
             var buffer = await _document.GetPixelsAsync(maxEdge: 4096);
+            string? languageTag = null;
+            try
+            {
+                languageTag = App.Services.GetService<ISettingsStore>()?.Current.OcrLanguageTag;
+            }
+            catch
+            {
+                // DI may be unavailable.
+            }
+
             var result = await _ocr.RecognizeAsync(
-                new OcrRequest(buffer.Width, buffer.Height, buffer.BgraPixels));
+                new OcrRequest(buffer.Width, buffer.Height, buffer.BgraPixels, LanguageTag: languageTag));
 
             var text = string.IsNullOrWhiteSpace(result.Text) ? "(no text recognized)" : result.Text;
             var box = new TextBox

@@ -125,6 +125,8 @@ public sealed class PdfDocumentView : UserControl
     private Microsoft.UI.Xaml.Shapes.Polyline? _polygonPreview;
     /// <summary>Recent ink/freeform/polygon strokes for F18-06 stroke undo (Ctrl+Z prefers this).</summary>
     private readonly Stack<PdfAnnotationInfo> _strokeUndoStack = new();
+    /// <summary>Previous form field values for F49-11 Ctrl+Z undo.</summary>
+    private readonly Stack<(int PageIndex, int AnnotIndex, PdfFormFieldKind Kind, string PreviousValue)> _formUndoStack = new();
     private PdfAnnotationColor _drawStrokeColor = PdfAnnotationColor.InkRed;
     private float _drawStrokeWidth = 2f;
     private PdfInkLineStyle _drawInkLineStyle = PdfInkLineStyle.Solid;
@@ -2596,7 +2598,11 @@ public sealed class PdfDocumentView : UserControl
                 token.ThrowIfCancellationRequested();
                 var pixels = rendered.Pixels.ToArray();
                 var result = await _ocr.RecognizeAsync(
-                    new OcrRequest(rendered.Width, rendered.Height, pixels),
+                    new OcrRequest(
+                        rendered.Width,
+                        rendered.Height,
+                        pixels,
+                        LanguageTag: TryGetSettings()?.OcrLanguageTag),
                     token);
 
                 totalLines += result.Lines.Count;
@@ -5750,6 +5756,81 @@ public sealed class PdfDocumentView : UserControl
 
     private void RememberAnnotationForUndo(PdfAnnotationInfo created) => _strokeUndoStack.Push(created);
 
+    private void RememberFormValueForUndo(PdfFormFieldInfo field) =>
+        _formUndoStack.Push((field.PageIndex, field.AnnotIndex, field.Kind, field.Value ?? string.Empty));
+
+    private async Task UndoLastFormFillAsync()
+    {
+        if (_formUndoStack.Count == 0)
+        {
+            _status.Text = "No form change to undo.";
+            return;
+        }
+
+        var entry = _formUndoStack.Pop();
+        try
+        {
+            switch (entry.Kind)
+            {
+                case PdfFormFieldKind.CheckBox:
+                {
+                    var wasOn = !string.Equals(entry.PreviousValue, "Off", StringComparison.OrdinalIgnoreCase)
+                        && !string.IsNullOrEmpty(entry.PreviousValue);
+                    await _forms.SetCheckBoxAsync(
+                        _document,
+                        entry.PageIndex,
+                        entry.AnnotIndex,
+                        isChecked: wasOn);
+                    break;
+                }
+                case PdfFormFieldKind.RadioButton:
+                    // Best-effort: re-select if previous was on; otherwise leave as-is after annot undo path.
+                    if (!string.Equals(entry.PreviousValue, "Off", StringComparison.OrdinalIgnoreCase)
+                        && !string.IsNullOrEmpty(entry.PreviousValue))
+                    {
+                        await _forms.SetRadioButtonAsync(
+                            _document,
+                            entry.PageIndex,
+                            entry.AnnotIndex);
+                    }
+                    else
+                    {
+                        // Cannot cleanly turn off a radio without a sibling; restore text state if API allows.
+                        await _forms.SetTextValueAsync(
+                            _document,
+                            entry.PageIndex,
+                            entry.AnnotIndex,
+                            "Off",
+                            autoFontSize: false);
+                    }
+
+                    break;
+                default:
+                    await _forms.SetTextValueAsync(
+                        _document,
+                        entry.PageIndex,
+                        entry.AnnotIndex,
+                        entry.PreviousValue);
+                    break;
+            }
+
+            NotifyEdited();
+            _cache.ClearDocument(_documentKey);
+            await RenderVisibleAsync();
+            if (_formOverlayMode)
+            {
+                _formOverlayFields = await _forms.ListFieldsAsync(_document);
+                DrawFormOverlays();
+            }
+
+            _status.Text = "Undid form field change.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Undo form fill failed: " + ex.Message;
+        }
+    }
+
     private void CancelInkStroke()
     {
         if (_inkPreview is not null &&
@@ -6622,6 +6703,7 @@ public sealed class PdfDocumentView : UserControl
 
             try
             {
+                RememberFormValueForUndo(field);
                 await _forms.SetTextValueAsync(_document, field.PageIndex, field.AnnotIndex, value);
                 await _formValueHistory.RememberAsync(field.Name, value);
                 filled++;
@@ -7220,10 +7302,12 @@ public sealed class PdfDocumentView : UserControl
 
             try
             {
+                RememberFormValueForUndo(field);
                 await _forms.SetRadioButtonAsync(
                     _document,
                     field.PageIndex,
                     field.AnnotIndex);
+                NotifyEdited();
                 _status.Text = $"Selected radio {field.Name}.";
                 return true;
             }
@@ -7255,11 +7339,13 @@ public sealed class PdfDocumentView : UserControl
 
             try
             {
+                RememberFormValueForUndo(field);
                 await _forms.SetCheckBoxAsync(
                     _document,
                     field.PageIndex,
                     field.AnnotIndex,
                     isChecked: !currentlyOn);
+                NotifyEdited();
                 _status.Text = $"Updated {field.Name}.";
                 return true;
             }
@@ -7301,12 +7387,14 @@ public sealed class PdfDocumentView : UserControl
                 var choice = choiceList.SelectedItem as string ?? field.Value;
                 try
                 {
+                    RememberFormValueForUndo(field);
                     await _forms.SetTextValueAsync(
                         _document,
                         field.PageIndex,
                         field.AnnotIndex,
                         choice);
                     await _formValueHistory.RememberAsync(field.Name, choice);
+                    NotifyEdited();
                     _status.Text = $"Updated {field.Name}.";
                     return true;
                 }
@@ -7386,12 +7474,14 @@ public sealed class PdfDocumentView : UserControl
         try
         {
             var value = box.Text ?? string.Empty;
+            RememberFormValueForUndo(field);
             await _forms.SetTextValueAsync(
                 _document,
                 field.PageIndex,
                 field.AnnotIndex,
                 value);
             await _formValueHistory.RememberAsync(field.Name, value);
+            NotifyEdited();
             _status.Text = $"Updated {field.Name}.";
             return true;
         }
@@ -9788,6 +9878,12 @@ public sealed class PdfDocumentView : UserControl
         if (_strokeUndoStack.Count > 0)
         {
             await UndoLastStrokeAsync();
+            return;
+        }
+
+        if (_formUndoStack.Count > 0)
+        {
+            await UndoLastFormFillAsync();
             return;
         }
 

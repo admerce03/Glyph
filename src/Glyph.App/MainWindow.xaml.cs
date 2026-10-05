@@ -2602,6 +2602,13 @@ public sealed partial class MainWindow : Window
             TextWrapping = TextWrapping.WrapWholeWords,
             MaxWidth = 360,
         };
+        var ocrLanguageBox = new TextBox
+        {
+            Header = "OCR language tag (empty = Windows profile languages)",
+            Text = settings.OcrLanguageTag,
+            PlaceholderText = "e.g. en-US, de-DE, ja",
+            Width = 280,
+        };
 
         var clearRecentButton = new Button
         {
@@ -2658,7 +2665,7 @@ public sealed partial class MainWindow : Window
                 separateWindowsBox, authorBox, compactToolbarBox,
                 highlightColorBox, strokeColorBox, stickyColorBox, strokeWidthBox,
                 animationAutoplayBox, stripMetadataBox, layoutBox, defaultZoomBox,
-                zoom100Box, interpolationBox, colorManagedBox, localOcrNote,
+                zoom100Box, interpolationBox, colorManagedBox, localOcrNote, ocrLanguageBox,
                 privacyHeader, clearRecentButton, clearSignaturesButton,
             },
         };
@@ -2709,6 +2716,7 @@ public sealed partial class MainWindow : Window
         };
         settings.ColorManagedDisplayDefault = colorManagedBox.IsChecked == true;
         settings.LocalOnlyOcr = true;
+        settings.OcrLanguageTag = ocrLanguageBox.Text?.Trim() ?? string.Empty;
         await _settingsStore.SaveAsync(settings);
         ConfigureRecoveryTimer();
         await PersistSessionAsync();

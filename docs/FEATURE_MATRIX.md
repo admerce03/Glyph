@@ -703,11 +703,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F49-07 | Undo and redo | crop | M1-M4 | Implemented | PDF crop via page-edit history; image crop undo stack |
 | F49-08 | Undo and redo | resizing | M1-M4 | Implemented | Image resize undo checkpoints |
 | F49-09 | Undo and redo | image adjustments | M1-M4 | Implemented | Image adjust undo checkpoints |
-| F49-10 | Undo and redo | metadata editing | M1-M4 | Not Started |  |
-| F49-11 | Undo and redo | form filling | M1-M4 | Not Started |  |
+| F49-10 | Undo and redo | metadata editing | M1-M4 | Implemented | Image IPTC/GPS edits via `MutateAsync` checkpoint stack |
+| F49-11 | Undo and redo | form filling | M1-M4 | Implemented | Ctrl+Z restores prior AcroForm field value |
 | F49-12 | Undo and redo | signature placement | M1-M4 | Implemented | Signature stamps push onto annot undo stack (Ctrl+Z) |
 | F49-13 | Undo and redo | redaction before permanent application | M1-M4 | Implemented | Ctrl+Z / Undo undoes last pending redaction mark |
-| F49-14 | Undo and redo | Ctrl+Z | M1-M4 | Implemented | PDF: pending redaction → stroke → page edit; image undo |
+| F49-14 | Undo and redo | Ctrl+Z | M1-M4 | Implemented | PDF: redaction → annot → form → page edit; image undo |
 | F49-15 | Undo and redo | Ctrl+Y / Ctrl+Shift+Z | M1-M4 | Implemented | PDF page-edit redo (Ctrl+Y) |
 | F50-01 | Autosave and recovery | edits remain in memory until Save. | M1/M9 | Implemented | Default; AutoSaveToOriginal opt-in |
 | F50-02 | Autosave and recovery | periodic crash-recovery snapshot. | M1/M9 | Implemented | DispatcherTimer → `FileCrashRecoveryStore` |
@@ -776,7 +776,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-08 | Preferences | remember zoom | M1/M9 | Implemented | View-state zoom restored on open |
 | F55-09 | Preferences | open PDF in tabs/windows | M1/M9 | Implemented | Preferences → Open each file in a separate window |
 | F55-10 | Preferences | annotation author | M1/M9 | Implemented | Preferences + PDF Author button; persisted |
-| F55-11 | Preferences | OCR behavior | M1/M9 | Not Started |  |
+| F55-11 | Preferences | OCR behavior | M1/M9 | Implemented | Preferred BCP-47 language tag (empty = profile langs) |
 | F55-12 | Preferences | autosave behavior | M1/M9 | Implemented | Auto-save to original checkbox |
 | F55-13 | Preferences | open multiple images in same window or separate windows | M1/M9 | Implemented | Same as F55-09 — Open each file in a separate window |
 | F55-14 | Preferences | 100% zoom meaning | M1/M9 | Implemented | Pixels vs print-size (image DPI) combo |

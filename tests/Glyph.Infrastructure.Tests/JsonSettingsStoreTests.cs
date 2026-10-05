@@ -55,6 +55,27 @@ public class JsonSettingsStoreTests
     }
 
     [Fact]
+    public async Task Save_and_load_round_trips_ocr_language()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-ocr-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings { OcrLanguageTag = "de-DE" });
+            var settings = await new JsonSettingsStore(path).LoadAsync();
+            settings.OcrLanguageTag.Should().Be("de-DE");
+            settings.LocalOnlyOcr.Should().BeTrue();
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Save_and_load_round_trips_pdf_open_defaults()
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-settings-pdf-" + Guid.NewGuid().ToString("N") + ".json");
