@@ -666,7 +666,8 @@ public sealed partial class MainWindow : Window
                 session.ViewState,
                 openSibling: OpenImageSiblingAsync,
                 ocr: _ocr,
-                signatures: _signatures);
+                signatures: _signatures,
+                decoder: _imageDecoder);
         }
 
         return CreatePlaceholderContent(session);

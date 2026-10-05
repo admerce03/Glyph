@@ -8,6 +8,44 @@ namespace Glyph.Imaging.Tests;
 public class MagickImageProcessorTests
 {
     [Fact]
+    public async Task Batch_resize_percent_round_trip_on_disk()
+    {
+        var a = CreateSolidPng(80, 60);
+        var b = CreateSolidPng(100, 50);
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            var encoder = new MagickImageEncoder();
+            foreach (var path in new[] { a, b })
+            {
+                await using var document = await decoder.OpenAsync(path);
+                var w = Math.Max(1, (int)Math.Round(document.PixelWidth * 0.5));
+                var h = Math.Max(1, (int)Math.Round(document.PixelHeight * 0.5));
+                await processor.ResizeAsync(document, w, h);
+                await encoder.SaveAsync(document, path);
+            }
+
+            await using (var ra = await decoder.OpenAsync(a))
+            {
+                ra.PixelWidth.Should().Be(40);
+                ra.PixelHeight.Should().Be(30);
+            }
+
+            await using (var rb = await decoder.OpenAsync(b))
+            {
+                rb.PixelWidth.Should().Be(50);
+                rb.PixelHeight.Should().Be(25);
+            }
+        }
+        finally
+        {
+            File.Delete(a);
+            File.Delete(b);
+        }
+    }
+
+    [Fact]
     public async Task Probe_and_open_report_dimensions_without_requiring_full_ui_decode()
     {
         var path = CreateSolidPng(120, 80);

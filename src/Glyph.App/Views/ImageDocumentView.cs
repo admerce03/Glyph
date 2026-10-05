@@ -20,6 +20,7 @@ public sealed class ImageDocumentView : UserControl
     private readonly IImageDocument _document;
     private readonly IImageProcessor _processor;
     private readonly IImageEncoder _encoder;
+    private readonly IImageDecoder? _decoder;
     private readonly IOcrEngine? _ocr;
     private readonly ISignatureLibrary? _signatures;
     private readonly DocumentViewState _viewState;
@@ -101,11 +102,13 @@ public sealed class ImageDocumentView : UserControl
         DocumentViewState? viewState = null,
         Func<string, Task>? openSibling = null,
         IOcrEngine? ocr = null,
-        ISignatureLibrary? signatures = null)
+        ISignatureLibrary? signatures = null,
+        IImageDecoder? decoder = null)
     {
         _document = document;
         _processor = processor;
         _encoder = encoder;
+        _decoder = decoder;
         _viewState = viewState ?? new DocumentViewState();
         _openSibling = openSibling;
         _ocr = ocr;
@@ -2039,6 +2042,18 @@ public sealed class ImageDocumentView : UserControl
             }
         };
 
+        var batchFolder = new CheckBox
+        {
+            Content = _siblings.Count > 1
+                ? $"Also resize all {_siblings.Count} images in folder (scale %)"
+                : "Also resize folder images",
+            IsChecked = false,
+            IsEnabled = _siblings.Count > 1 && _decoder is not null,
+        };
+        ToolTipService.SetToolTip(
+            batchFolder,
+            "Applies Scale % to every image in this folder (overwrites files on disk). Current image is resized in memory until Save.");
+
         var panel = new StackPanel
         {
             Spacing = 8,
@@ -2052,6 +2067,7 @@ public sealed class ImageDocumentView : UserControl
                 percentBox,
                 lockAspect,
                 filterBox,
+                batchFolder,
                 preview,
             },
         };
@@ -2083,6 +2099,62 @@ public sealed class ImageDocumentView : UserControl
         await MutateAsync(
             () => _processor.ResizeAsync(_document, width, height, options),
             $"Resized to {width}×{height} @ {ActiveDpi():0.#} DPI.");
+
+        if (batchFolder.IsChecked == true && _decoder is not null && _siblings.Count > 1)
+        {
+            if (!double.TryParse(percentBox.Text, out var pct) || pct <= 0)
+            {
+                _status.Text = "Batch resize needs a positive Scale %.";
+                return;
+            }
+
+            var batchCount = await BatchResizeFolderAsync(
+                pct,
+                lockAspect.IsChecked == true,
+                options);
+            _status.Text =
+                $"Resized current to {width}×{height}; batch-updated {batchCount} folder image(s) at {pct:0.#}%.";
+        }
+    }
+
+    private async Task<int> BatchResizeFolderAsync(
+        double percent,
+        bool lockAspect,
+        ImageResizeOptions options)
+    {
+        if (_decoder is null || string.IsNullOrWhiteSpace(_document.Path))
+        {
+            return 0;
+        }
+
+        var current = System.IO.Path.GetFullPath(_document.Path);
+        var updated = 0;
+        foreach (var sibling in _siblings)
+        {
+            var full = System.IO.Path.GetFullPath(sibling);
+            if (string.Equals(full, current, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            try
+            {
+                await using var doc = await _decoder.OpenAsync(sibling);
+                var w = Math.Max(1, (int)Math.Round(doc.PixelWidth * percent / 100.0));
+                var h = lockAspect
+                    ? Math.Max(1, (int)Math.Round(w * (doc.PixelHeight / (double)Math.Max(1, doc.PixelWidth))))
+                    : Math.Max(1, (int)Math.Round(doc.PixelHeight * percent / 100.0));
+                await _processor.ResizeAsync(doc, w, h, options);
+                await _encoder.SaveAsync(doc, sibling);
+                updated++;
+            }
+            catch (Exception ex)
+            {
+                _status.Text = $"Batch resize skipped {System.IO.Path.GetFileName(sibling)}: {ex.Message}";
+            }
+        }
+
+        return updated;
     }
 
     private static double EstimateRawMb(int width, int height) =>

@@ -502,7 +502,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F31-10 | Image resizing | Preserve aspect ratio. | M5 | Implemented | Same as lock aspect |
 | F31-11 | Image resizing | Estimated resulting dimensions. | M5 | Implemented | Live result preview in dialog |
 | F31-12 | Image resizing | Estimated file size. | M5 | Implemented | Preview shows ~raw BGRA MB estimate |
-| F31-13 | Image resizing | Batch resize selected images. | M5 | Not Started |  |
+| F31-13 | Image resizing | Batch resize selected images. | M5 | Implemented | Resize dialog → Also resize all N images in folder (scale %) |
 | F32-01 | Image orientation | Rotate left 90°. | M5 | Tested | MagickImageProcessor.RotateAsync |
 | F32-02 | Image orientation | Rotate right 90°. | M5 | Tested | ImageDocumentView ⟳ + RotateAsync(90) |
 | F32-03 | Image orientation | Rotate 180°. | M5 | Tested | ImageDocumentView 180° + RotateAsync(180) |
