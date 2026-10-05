@@ -1953,9 +1953,9 @@ public sealed partial class MainWindow : Window
 
         if (session.Kind == DocumentKind.Image && session.Path is not null)
         {
-            var image = await _imageDecoder.OpenAsync(session.Path);
-            image.ColorManagedDisplay = _settingsStore.Current.ColorManagedDisplayDefault;
             var settings = _settingsStore.Current;
+            var image = await _imageDecoder.OpenAsync(session.Path);
+            image.ColorManagedDisplay = settings.ColorManagedDisplayDefault;
             var saved = await _viewStateStore.TryLoadAsync(session.Path);
             DocumentViewRestorePolicy.ApplyImage(
                 session.ViewState,
