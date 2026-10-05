@@ -25,7 +25,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-15 | Application and file handling | File → Duplicate. | M1/M9 | Tested | File → Duplicate / Ctrl+Shift+D; `DocumentFileNamePolicy.SuggestDuplicatePath` unit tests |
 | F01-16 | Application and file handling | File → Save. | M1/M9 | Tested | File → Save / Ctrl+S; `DocumentSaveStatus` unit tests |
 | F01-17 | Application and file handling | File → Save As. | M1/M9 | Tested | File → Save As / Ctrl+Shift+S; `ImageEncodeFormatResolver` maps AVIF/JP2/HEIC |
-| F01-18 | Application and file handling | File → Export. | M1/M9 | Implemented | PDF Export toolbar; image Convert/Export |
+| F01-18 | Application and file handling | File → Export. | M1/M9 | Tested | PDF Export toolbar; `DocumentExportFormats` + `ImageEncodeFormatResolver` unit tests |
 | F01-19 | Application and file handling | File → Rename. | M1/M9 | Tested | File → Rename…; `DocumentFileNamePolicy.EvaluateRename` unit tests |
 | F01-20 | Application and file handling | File → Move. | M1/M9 | Tested | File → Move… FolderPicker; `DocumentMovePolicy` same-folder/overwrite unit tests |
 | F01-21 | Application and file handling | File → Properties. | M1/M9 | Tested | File → Properties / Ctrl+I; `DocumentPropertiesRouting` PDF Info vs image Meta |
@@ -58,7 +58,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-21 | Main window and interface | Mouse support. | M1/M9 | Implemented | Pointer input throughout document and chrome UI |
 | F02-22 | Main window and interface | Precision touchpad gesture support where useful. | M1/M9 | Tested | Ctrl+wheel + Manipulation Scale; `PdfZoomCalculator`/`ImageZoomCalculator` ApplyWheelZoom/ApplyManipulationScale unit tests |
 | F02-23 | Main window and interface | Keyboard-first operation. | M1/M9 | Tested | Menu accelerators + document Ctrl shortcuts; `ShellKeyboardShortcuts` catalog unit tests |
-| F02-24 | Main window and interface | Accessibility through Windows UI Automation. | M1/M9 | Implemented | AutomationProperties.Name on chrome and tools |
+| F02-24 | Main window and interface | Accessibility through Windows UI Automation. | M1/M9 | Tested | AutomationProperties.Name on chrome; `ChromeAutomationNames` unit tests |
 | F03-01 | Sidebar modes | Page thumbnails | M2-M5 | Tested | Thumbnail strip; `ThumbnailWidthConstraints` clamp unit tests |
 | F03-02 | Sidebar modes | Table of contents | M2-M5 | Implemented | Outline TreeView when bookmarks present |
 | F03-03 | Sidebar modes | Search results | M2-M5 | Implemented | Find hits list under Search header |
@@ -791,7 +791,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-23 | Preferences | clear recent files | M1/M9 | Tested | File → Clear Recent; `ClearAsync_empties_persisted_list` |
 | F55-24 | Preferences | clear saved signatures | M1/M9 | Tested | Preferences → Clear saved signatures (`ClearAllAsync` unit test) |
 | F55-25 | Preferences | strip metadata defaults | M1/M9 | Tested | Preferences toggle; settings round-trip |
-| F56-01 | Accessibility | Windows UI Automation. | M9 | Implemented | WinUI Automation tree; toolbar `AutomationProperties.Name` |
+| F56-01 | Accessibility | Windows UI Automation. | M9 | Tested | WinUI Automation tree; `ChromeAutomationNames` + toolbar Names |
 | F56-02 | Accessibility | Keyboard-accessible controls. | M9 | Implemented | Menus/accelerators; document tools keyboard paths |
 | F56-03 | Accessibility | Visible focus indicators. | M9 | Implemented | WinUI default focus visuals |
 | F56-04 | Accessibility | Screen-reader labels. | M9 | Implemented | Toolbar/search/annot/signature controls mirror ToolTips as Name |

@@ -12483,8 +12483,12 @@ public sealed class PdfDocumentView : UserControl
         {
             Width = 180,
             SelectedIndex = 0,
-            Items = { "PNG", "JPEG", "WebP", "TIFF", "BMP", "GIF", "AVIF", "JPEG 2000" },
         };
+        foreach (var name in DocumentExportFormats.PageImageFormatNames)
+        {
+            formatBox.Items.Add(name);
+        }
+
         var dpiBox = new TextBox { Width = 80, Text = "144" };
         var qualityBox = new Slider
         {
@@ -12521,22 +12525,13 @@ public sealed class PdfDocumentView : UserControl
 
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
         {
-            _status.Text = "Export cancelled.";
+            _status.Text = DocumentExportFormats.CancelledStatus;
             return;
         }
 
         var formatName = formatBox.SelectedItem as string ?? "PNG";
-        var (format, extension) = formatName switch
-        {
-            "JPEG" => (ImageEncodeFormat.Jpeg, ".jpg"),
-            "WebP" => (ImageEncodeFormat.Webp, ".webp"),
-            "TIFF" => (ImageEncodeFormat.Tiff, ".tif"),
-            "BMP" => (ImageEncodeFormat.Bmp, ".bmp"),
-            "GIF" => (ImageEncodeFormat.Gif, ".gif"),
-            "AVIF" => (ImageEncodeFormat.Avif, ".avif"),
-            "JPEG 2000" => (ImageEncodeFormat.Jpeg2000, ".jp2"),
-            _ => (ImageEncodeFormat.Png, ".png"),
-        };
+        var extension = DocumentExportFormats.ExtensionForDisplayName(formatName);
+        var format = ImageEncodeFormatResolver.FromExtension(extension);
 
         if (!double.TryParse(dpiBox.Text, out var dpi) || dpi < 36 || dpi > 600)
         {
