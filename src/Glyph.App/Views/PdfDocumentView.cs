@@ -12401,8 +12401,7 @@ public sealed class PdfDocumentView : UserControl
                 autoRotate: autoRotate.IsChecked == true,
                 pagesPerSheet: pagesPerSheet);
             await helper.PrintAsync(bitmaps);
-            _status.Text = $"Print UI shown · {bitmaps.Count} page(s)"
-                + (pagesPerSheet > 1 ? $" · {pagesPerSheet}-up." : ".");
+            _status.Text = PrintPageScopeChooser.FormatPrintUiShown(bitmaps.Count, pagesPerSheet);
         }
         catch (Exception ex)
         {

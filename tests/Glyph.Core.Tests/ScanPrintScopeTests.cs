@@ -25,5 +25,7 @@ public class PrintPageScopeChooserTests
         PrintPageScopeChooser.FromComboIndex(0).Should().Be(PrintPageScopeChooser.Scope.CurrentPage);
         PrintPageScopeChooser.FromComboIndex(3).Should().Be(PrintPageScopeChooser.Scope.AllPages);
         PrintPageScopeChooser.CancelledStatus.Should().Contain("cancelled");
+        PrintPageScopeChooser.FormatPrintUiShown(3, 1).Should().Contain("3 page");
+        PrintPageScopeChooser.FormatPrintUiShown(3, 2).Should().Contain("2-up");
     }
 }
