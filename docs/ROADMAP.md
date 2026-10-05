@@ -206,7 +206,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 5 — Image viewer/editor
 
-**Status:** In Progress · Depends on M1
+**Status:** Near Complete · Depends on M1
 
 ### Scope (`FEATURES.md` §26–35, §37–38, §61 image parts)
 
@@ -225,9 +225,10 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Progress notes
 
-- Magick.NET adapter: `MagickImageDecoder` / `Document` / `Processor` / `Encoder` (open with EXIF AutoOrient, rotate, flip, crop, resize, color adjust including brightness/contrast/saturation/highlights/shadows/levels/gamma/temperature/tint/auto-levels/sharpness/sepia, metadata/EXIF/IPTC/XMP/GPS, selection extract/clear/paste/move, freehand markup flatten, export PNG/JPEG/WebP/TIFF/BMP/GIF/AVIF/JP2/HEIC with quality/alpha/metadata/TIFF-compression/sRGB options).
+- Magick.NET adapter: `MagickImageDecoder` / `Document` / `Processor` / `Encoder` (open with EXIF AutoOrient, rotate, flip, crop, resize, color adjust including brightness/contrast/saturation/highlights/shadows/levels/gamma/temperature/tint/auto-levels/sharpness/sepia, metadata/EXIF/IPTC/XMP/GPS, selection extract/clear/move, freehand markup flatten, export PNG/JPEG/WebP/TIFF/BMP/GIF/AVIF/JP2/HEIC with quality/alpha/metadata/TIFF-compression/sRGB options).
 - `ImageDocumentView`: zoom/fit, fullscreen, rotate L/R/180, Orient (normalize EXIF), Batch… folder rotate/flip/orient, flip H/V, numeric crop, interactive drag-crop (Crop… + aspect presets), rectangular/elliptical/freeform/smart-lasso pixel selection with invert (copy/cut/paste/delete/crop-to/move via drag or arrow keys), Draw markup overlay (freehand/rect/ellipse/line/arrow/text/callout; non-destructive until Flatten/Save), Stamp from signature library, clipboard Copy/Paste (whole image or selection), resize dialog (px/%/in/cm/mm, DPI, resampling, size estimate, optional batch folder scale %), Adjust dialog with live preview + luminance histogram + per-slider reset (brightness/contrast/highlights/shadows/levels/gamma/saturation/temperature/tint/sharpness/auto-levels/sepia), Meta (EXIF/IPTC/XMP/GPS copy/map/strip + Edit… for IPTC title/caption/keywords/copyright), Convert dialog (WebP/AVIF/JP2/HEIC quality/lossless + TIFF compression + preserve alpha/metadata + embed sRGB), JPEG quality export, folder prev/next + Slideshow (3s loop) + swipe nav + image list sidebar (in-place tab reuse when clean), edit undo (Ctrl+Z), save/export; Open picker includes HEIF/AVIF/JP2; wired from MainWindow for image kinds.
-- Imaging.Tests cover processor round-trips including rotate-right/180, resize+DPI/filter, AdjustAsync (incl. shadows/highlights/levels/gamma/temp/tint), MoveRectAsync, elliptical/freeform extract/clear/move, inverted extract/clear, FlattenMarkupAsync, IPTC read/write title/description/keywords/copyright, metadata strip on convert, TIFF LZW SaveAs, multi-format SaveAs, JPEG quality sizing, WebP lossless, AVIF/JP2 decode, EXIF read/orientation, GPS strip, folder sibling navigation, and crop display→pixel mapping.
+- Imaging.Tests cover processor round-trips including rotate-right/180, resize+DPI/filter, AdjustAsync (incl. shadows/highlights/levels/gamma/temp/tint), MoveRectAsync, elliptical/freeform/smart extract/clear/move, inverted extract/clear, FlattenMarkupAsync, IPTC read/write title/description/keywords/copyright, metadata strip on convert, TIFF LZW SaveAs, multi-format SaveAs, JPEG quality sizing, WebP lossless, AVIF/JP2 decode, EXIF read/orientation, GPS strip, folder sibling navigation, and crop display→pixel mapping.
+- Deferred: HDR display (F26-24) and color-managed display (F26-25) → M8 §39 color management / WinUI HDR pipeline.
 ---
 
 ## Milestone 6 — OCR and scanned-document capabilities

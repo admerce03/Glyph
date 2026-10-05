@@ -446,8 +446,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-21 | Image viewing | drag-and-drop navigation | M5 | Implemented | Shell drop opens images (`DropHost`); horizontal swipe on image → prev/next in folder |
 | F26-22 | Image viewing | high-resolution image support | M5 | Implemented | Same maxEdge progressive decode; zoom re-decodes up to 8192 edge |
 | F26-23 | Image viewing | alpha transparency | M5 | Implemented | BGRA32 decode via Magick → WriteableBitmap |
-| F26-24 | Image viewing | HDR display where Windows/display stack supports it | M5 | Not Started |  |
-| F26-25 | Image viewing | color-managed display | M5 | Not Started |  |
+| F26-24 | Image viewing | HDR display where Windows/display stack supports it | M5 | Deferred | Needs WinUI HDR display pipeline; revisit with F39 |
+| F26-25 | Image viewing | color-managed display | M5 | Deferred | Covered by M8 §39 color management |
 | F27-01 | Animated images | play | M8 | Not Started |  |
 | F27-02 | Animated images | pause | M8 | Not Started |  |
 | F27-03 | Animated images | restart | M8 | Not Started |  |
