@@ -25,6 +25,9 @@ public class AppShellStatusTests
         FindAllOpenPdfsStatus.DialogTitle.Should().Contain("Find");
         ScanDialogUi.NoScannersDialogTitle.Should().Be("No scanners");
         WebcamCaptureUi.CaptureDialogTitle.Should().Be("Camera capture");
+        WebcamCaptureUi.CaptureFromCameraTitle.Should().Contain("camera");
+        AppShellStatus.FormatOpenedPdf("a.pdf").Should().Contain("a.pdf");
+        AppShellStatus.FormatOpenedImage("b.png").Should().Contain("b.png");
     }
 
     [Fact]

@@ -756,8 +756,8 @@ public sealed partial class MainWindow : Window
             StatusText.Text = WebcamCaptureUi.StartingCamera;
             var captured = await WebcamCaptureHelper.CaptureAsync(
                 root,
-                title: "Capture from camera",
-                hint: "Frame the document or photo, then Capture. Use Crop after open if needed.");
+                title: WebcamCaptureUi.CaptureFromCameraTitle,
+                hint: WebcamCaptureUi.CaptureFromCameraHint);
             if (captured is null)
             {
                 StatusText.Text = WebcamCaptureUi.CaptureCancelledOrUnavailable;
@@ -802,7 +802,7 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Camera capture failed");
+            _logger.LogError(ex, WebcamCaptureUi.CaptureFailedLog);
             StatusText.Text = WebcamCaptureUi.FormatCaptureFailed(ex.Message);
         }
     }
@@ -1640,8 +1640,8 @@ public sealed partial class MainWindow : Window
             var openedLabel = existing is null
                 ? kind switch
                 {
-                    DocumentKind.Pdf => $"Opened PDF: {displayName}",
-                    DocumentKind.Image => $"Opened image: {displayName}",
+                    DocumentKind.Pdf => AppShellStatus.FormatOpenedPdf(displayName),
+                    DocumentKind.Image => AppShellStatus.FormatOpenedImage(displayName),
                     _ => $"Opened {displayName}",
                 }
                 : $"Activated {displayName}";

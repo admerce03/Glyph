@@ -61,6 +61,9 @@ public static class AppShellStatus
     public static string FormatOpenedImage(string displayName) =>
         $"Opened image: {displayName}";
 
+    public static string FormatOpenedPdf(string displayName) =>
+        $"Opened PDF: {displayName}";
+
     public static string FormatTheme(string preference) =>
         $"Theme: {preference}";
 

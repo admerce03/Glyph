@@ -17,6 +17,10 @@ public static class WebcamCaptureUi
     public const string CaptureDialogTitle = "Camera capture";
     public const string CaptureDialogBody =
         "Open the photo now. Use Crop… in the image toolbar if you want to trim it.";
+    public const string CaptureFromCameraTitle = "Capture from camera";
+    public const string CaptureFromCameraHint =
+        "Frame the document or photo, then Capture. Use Crop after open if needed.";
+    public const string CaptureFailedLog = "Camera capture failed";
     public const string OpenNowButton = "Open";
     public const string DiscardButton = "Discard";
     public const string CaptureFailedPrefix = "Camera capture failed: ";
