@@ -858,35 +858,35 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F62-08 | Supported output formats | AVIF | M5/M7 | Tested | Image Convert + PDF page Export |
 | F62-09 | Supported output formats | GIF | M5/M7 | Tested | Image Convert + PDF page Export |
 | F62-10 | Supported output formats | JPEG 2000 | M5/M7 | Tested | Image Convert + PDF page Export |
-| F63-01 | Explicit exclusions | all touchscreen-specific interaction | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-02 | Explicit exclusions | all stylus/pen interaction | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-03 | Explicit exclusions | Windows Ink | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-04 | Explicit exclusions | pressure-sensitive pen input | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-05 | Explicit exclusions | touch-display pinch/pan gestures | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-06 | Explicit exclusions | Force Touch-specific drawing | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-07 | Explicit exclusions | Vision Pro integration | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-08 | Explicit exclusions | Spatial Preview | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-09 | Explicit exclusions | macOS Continuity Camera protocol | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-10 | Explicit exclusions | AirDrop | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-11 | Explicit exclusions | FaceTime | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-12 | Explicit exclusions | Apple Maps dependency | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-13 | Explicit exclusions | Apple Mail integration | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-14 | Explicit exclusions | iCloud signature synchronization | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-15 | Explicit exclusions | macOS document-versioning UI | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-16 | Explicit exclusions | macOS file-locking behavior | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-17 | Explicit exclusions | Quartz Filters as a named system | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-18 | Explicit exclusions | ColorSync-specific UI | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-19 | Explicit exclusions | macOS title-bar document proxy menu | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-20 | Explicit exclusions | direct camera memory-card photo importer, at least initially | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-21 | Explicit exclusions | full 3D scene editor | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-22 | Explicit exclusions | USD scene hierarchy | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-23 | Explicit exclusions | USDZ authoring | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-24 | Explicit exclusions | GLTF/STL/OBJ editing | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-25 | Explicit exclusions | cameras/lights/materials | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-26 | Explicit exclusions | 3D animation | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-27 | Explicit exclusions | ray tracing | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-28 | Explicit exclusions | Gaussian splat editing | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
-| F63-29 | Explicit exclusions | Vision Pro spatial export workflows | n/a | Deferred | Intentionally out of scope per FEATURES.md §63 |
+| F63-01 | Explicit exclusions | all touchscreen-specific interaction | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-02 | Explicit exclusions | all stylus/pen interaction | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-03 | Explicit exclusions | Windows Ink | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-04 | Explicit exclusions | pressure-sensitive pen input | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-05 | Explicit exclusions | touch-display pinch/pan gestures | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-06 | Explicit exclusions | Force Touch-specific drawing | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-07 | Explicit exclusions | Vision Pro integration | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-08 | Explicit exclusions | Spatial Preview | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-09 | Explicit exclusions | macOS Continuity Camera protocol | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-10 | Explicit exclusions | AirDrop | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-11 | Explicit exclusions | FaceTime | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-12 | Explicit exclusions | Apple Maps dependency | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-13 | Explicit exclusions | Apple Mail integration | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-14 | Explicit exclusions | iCloud signature synchronization | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-15 | Explicit exclusions | macOS document-versioning UI | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-16 | Explicit exclusions | macOS file-locking behavior | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-17 | Explicit exclusions | Quartz Filters as a named system | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-18 | Explicit exclusions | ColorSync-specific UI | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-19 | Explicit exclusions | macOS title-bar document proxy menu | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-20 | Explicit exclusions | direct camera memory-card photo importer, at least initially | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-21 | Explicit exclusions | full 3D scene editor | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-22 | Explicit exclusions | USD scene hierarchy | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-23 | Explicit exclusions | USDZ authoring | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-24 | Explicit exclusions | GLTF/STL/OBJ editing | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-25 | Explicit exclusions | cameras/lights/materials | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-26 | Explicit exclusions | 3D animation | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-27 | Explicit exclusions | ray tracing | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-28 | Explicit exclusions | Gaussian splat editing | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
+| F63-29 | Explicit exclusions | Vision Pro spatial export workflows | n/a | Tested | Intentionally out of scope; `ExplicitExclusionPolicy` unit tests |
 | F64-00 | Resulting application scope | Overall product framing (six integrated tools + low-friction workflows) | all | Implemented | Charter embodied by FEATURES/ROADMAP/matrix; not a discrete shippable checkbox |
 
 _Generated from FEATURES.md top-level bullets. Total tracked rows: 879._

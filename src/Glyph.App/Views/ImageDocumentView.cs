@@ -3881,8 +3881,7 @@ public sealed class ImageDocumentView : UserControl
 
             var list = new ListView
             {
-                ItemsSource = entries.Select(e =>
-                    string.IsNullOrWhiteSpace(e.Description) ? e.Name : $"{e.Name} — {e.Description}").ToList(),
+                ItemsSource = entries.Select(SignatureDisplayText.ListLabel).ToList(),
                 SelectionMode = ListViewSelectionMode.Single,
                 SelectedIndex = 0,
                 MaxHeight = 240,
