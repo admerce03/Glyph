@@ -266,7 +266,8 @@ public sealed class PdfDocumentView : UserControl
 
         ApplyAnnotationDefaults(settings);
 
-        _scale = PdfZoomCalculator.Clamp(_viewState.Zoom <= 0 ? 1.25 : _viewState.Zoom);
+        var defaultZoom = settings?.DefaultZoom > 0 ? settings.DefaultZoom : 1.25;
+        _scale = PdfZoomCalculator.Clamp(_viewState.Zoom <= 0 ? defaultZoom : _viewState.Zoom);
         _layoutMode = _viewState.PageLayout;
         CurrentPageIndex = Math.Clamp(_viewState.CurrentPageIndex, 0, Math.Max(0, document.PageCount - 1));
         _pageSelection.SelectOnly(CurrentPageIndex);

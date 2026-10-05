@@ -770,8 +770,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-02 | Preferences | restore previous session | M1/M9 | Implemented | View → Preferences toggle |
 | F55-03 | Preferences | recent file count | M1/M9 | Implemented | View → Preferences NumberBox |
 | F55-04 | Preferences | check for updates | M1/M9 | Not Started |  |
-| F55-05 | Preferences | default page layout | M1/M9 | Not Started |  |
-| F55-06 | Preferences | default zoom | M1/M9 | Not Started |  |
+| F55-05 | Preferences | default page layout | M1/M9 | Implemented | Preferences combo; applied when no per-file view state |
+| F55-06 | Preferences | default zoom | M1/M9 | Implemented | Preferences NumberBox; applied when no per-file view state |
 | F55-07 | Preferences | remember last page | M1/M9 | Implemented | `JsonDocumentViewStateStore` per-path page index |
 | F55-08 | Preferences | remember zoom | M1/M9 | Implemented | View-state zoom restored on open |
 | F55-09 | Preferences | open PDF in tabs/windows | M1/M9 | Implemented | Preferences → Open each file in a separate window |

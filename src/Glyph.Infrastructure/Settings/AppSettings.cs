@@ -54,5 +54,11 @@ public sealed class AppSettings
     /// </summary>
     public bool StripMetadataByDefault { get; set; }
 
+    /// <summary>Default PDF page layout when no per-file view state exists (F55-05).</summary>
+    public string DefaultPageLayout { get; set; } = "Continuous";
+
+    /// <summary>Default PDF zoom scale when no per-file view state exists (F55-06).</summary>
+    public double DefaultZoom { get; set; } = 1.25;
+
     public bool SidebarVisible { get; set; } = true;
 }

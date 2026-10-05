@@ -55,6 +55,32 @@ public class JsonSettingsStoreTests
     }
 
     [Fact]
+    public async Task Save_and_load_round_trips_pdf_open_defaults()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-pdf-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings
+            {
+                DefaultPageLayout = "TwoPageWithCover",
+                DefaultZoom = 1.5,
+            });
+
+            var settings = await new JsonSettingsStore(path).LoadAsync();
+            settings.DefaultPageLayout.Should().Be("TwoPageWithCover");
+            settings.DefaultZoom.Should().Be(1.5);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Load_returns_defaults_for_missing_file()
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-settings-missing-" + Guid.NewGuid().ToString("N") + ".json");

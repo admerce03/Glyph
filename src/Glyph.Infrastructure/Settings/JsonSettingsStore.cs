@@ -129,7 +129,26 @@ public sealed class JsonSettingsStore : ISettingsStore
         settings.DefaultStickyNoteColor = string.IsNullOrWhiteSpace(settings.DefaultStickyNoteColor)
             ? "Yellow"
             : settings.DefaultStickyNoteColor.Trim();
+
+        if (double.IsNaN(settings.DefaultZoom) || settings.DefaultZoom < 0.1)
+        {
+            settings.DefaultZoom = 0.1;
+        }
+        else if (settings.DefaultZoom > 8)
+        {
+            settings.DefaultZoom = 8;
+        }
+
+        settings.DefaultPageLayout = NormalizePageLayoutName(settings.DefaultPageLayout);
     }
+
+    private static string NormalizePageLayoutName(string? name) => name?.Trim() switch
+    {
+        "Single" or "SinglePage" => "Single",
+        "TwoPage" or "Two-up" or "Two page" => "TwoPage",
+        "TwoPageWithCover" or "Two-up cover" or "Two page with cover" => "TwoPageWithCover",
+        _ => "Continuous",
+    };
 
     private static AppSettings Clone(AppSettings settings) => new()
     {
@@ -150,6 +169,8 @@ public sealed class JsonSettingsStore : ISettingsStore
         DefaultStrokeWidthPoints = settings.DefaultStrokeWidthPoints,
         AnimationAutoplay = settings.AnimationAutoplay,
         StripMetadataByDefault = settings.StripMetadataByDefault,
+        DefaultPageLayout = settings.DefaultPageLayout ?? "Continuous",
+        DefaultZoom = settings.DefaultZoom,
         SidebarVisible = settings.SidebarVisible,
     };
 }

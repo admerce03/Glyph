@@ -1674,6 +1674,10 @@ public sealed partial class MainWindow : Window
                     0,
                     Math.Max(0, pdf.PageCount - 1));
             }
+            else
+            {
+                ApplyPdfOpenDefaults(session.ViewState);
+            }
 
             _openEngines[session.Id] = pdf;
             SidebarStatus.Text = $"{pdf.PageCount} pages — thumbnails and search in the document pane.";
@@ -2416,6 +2420,19 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void ApplyPdfOpenDefaults(DocumentViewState viewState)
+    {
+        var settings = _settingsStore.Current;
+        viewState.Zoom = settings.DefaultZoom > 0 ? settings.DefaultZoom : 1.25;
+        viewState.PageLayout = settings.DefaultPageLayout switch
+        {
+            "Single" => PageLayoutMode.SinglePage,
+            "TwoPage" => PageLayoutMode.TwoPage,
+            "TwoPageWithCover" => PageLayoutMode.TwoPageWithCover,
+            _ => PageLayoutMode.Continuous,
+        };
+    }
+
     private async Task ShowPreferencesAsync()
     {
         var settings = _settingsStore.Current;
@@ -2531,6 +2548,26 @@ public sealed partial class MainWindow : Window
             Content = "Strip metadata by default when converting images",
             IsChecked = settings.StripMetadataByDefault,
         };
+        var layoutNames = new[] { "Continuous", "Single", "TwoPage", "TwoPageWithCover" };
+        var layoutLabels = new[] { "Continuous", "Single page", "Two-up", "Two-up with cover" };
+        var layoutBox = new ComboBox
+        {
+            Header = "Default PDF page layout",
+            Width = 280,
+            ItemsSource = layoutLabels.ToList(),
+            SelectedIndex = Math.Max(0, Array.IndexOf(layoutNames, settings.DefaultPageLayout)),
+        };
+        var defaultZoomBox = new NumberBox
+        {
+            Header = "Default PDF zoom (scale, e.g. 1.25 = 125%)",
+            Value = settings.DefaultZoom,
+            Minimum = 0.1,
+            Maximum = 8,
+            SmallChange = 0.25,
+            LargeChange = 0.5,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
+            Width = 280,
+        };
 
         var clearRecentButton = new Button
         {
@@ -2586,7 +2623,7 @@ public sealed partial class MainWindow : Window
                 restoreBox, autoSaveBox, intervalBox, recentBox, snapshotsBox, snapshotCapBox,
                 separateWindowsBox, authorBox, compactToolbarBox,
                 highlightColorBox, strokeColorBox, stickyColorBox, strokeWidthBox,
-                animationAutoplayBox, stripMetadataBox,
+                animationAutoplayBox, stripMetadataBox, layoutBox, defaultZoomBox,
                 privacyHeader, clearRecentButton, clearSignaturesButton,
             },
         };
@@ -2619,6 +2656,14 @@ public sealed partial class MainWindow : Window
         settings.DefaultStrokeWidthPoints = Math.Clamp(strokeWidthBox.Value, 0.5, 12);
         settings.AnimationAutoplay = animationAutoplayBox.IsChecked == true;
         settings.StripMetadataByDefault = stripMetadataBox.IsChecked == true;
+        settings.DefaultPageLayout = layoutBox.SelectedIndex switch
+        {
+            1 => "Single",
+            2 => "TwoPage",
+            3 => "TwoPageWithCover",
+            _ => "Continuous",
+        };
+        settings.DefaultZoom = Math.Clamp(defaultZoomBox.Value, 0.1, 8);
         await _settingsStore.SaveAsync(settings);
         ConfigureRecoveryTimer();
         await PersistSessionAsync();
