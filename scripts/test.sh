@@ -18,6 +18,8 @@ if [[ "$CORE_ONLY" -eq 1 ]]; then
   dotnet test ./tests/Glyph.Core.Tests/Glyph.Core.Tests.csproj -c "$CONFIGURATION"
   dotnet test ./tests/Glyph.Infrastructure.Tests/Glyph.Infrastructure.Tests.csproj -c "$CONFIGURATION"
   dotnet test ./tests/Glyph.Pdf.Tests/Glyph.Pdf.Tests.csproj -c "$CONFIGURATION"
+  dotnet test ./tests/Glyph.Imaging.Tests/Glyph.Imaging.Tests.csproj -c "$CONFIGURATION"
+  dotnet test ./tests/Glyph.Ocr.Tests/Glyph.Ocr.Tests.csproj -c "$CONFIGURATION"
 else
   echo "Running all tests in Glyph.sln ($CONFIGURATION)..."
   dotnet test ./Glyph.sln -c "$CONFIGURATION"

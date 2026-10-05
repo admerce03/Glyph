@@ -5,6 +5,9 @@ using Glyph.Infrastructure.RecentFiles;
 using Glyph.Infrastructure.Settings;
 using Glyph.Imaging.Abstractions;
 using Glyph.Imaging.Magick;
+using Glyph.Ocr.Abstractions;
+using Glyph.Ocr.Pdf;
+using Glyph.Ocr.Tesseract;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Pdfium;
 using Glyph.Pdf.Rendering;
@@ -46,6 +49,8 @@ internal static class AppServices
         services.AddSingleton<IImageDecoder, MagickImageDecoder>();
         services.AddSingleton<IImageEncoder, MagickImageEncoder>();
         services.AddSingleton<IImageProcessor, MagickImageProcessor>();
+        services.AddSingleton<IOcrEngine, TesseractCliOcrEngine>();
+        services.AddSingleton<PdfPageOcrService>();
         services.AddSingleton<PageRenderCache>(_ => new PageRenderCache(capacity: 48));
         services.AddSingleton<MainWindow>();
 

@@ -23,7 +23,9 @@ if [[ "$CORE_ONLY" -eq 1 ]]; then
     src/Glyph.Ocr/Glyph.Ocr.csproj \
     tests/Glyph.Core.Tests/Glyph.Core.Tests.csproj \
     tests/Glyph.Infrastructure.Tests/Glyph.Infrastructure.Tests.csproj \
-    tests/Glyph.Pdf.Tests/Glyph.Pdf.Tests.csproj
+    tests/Glyph.Pdf.Tests/Glyph.Pdf.Tests.csproj \
+    tests/Glyph.Imaging.Tests/Glyph.Imaging.Tests.csproj \
+    tests/Glyph.Ocr.Tests/Glyph.Ocr.Tests.csproj
   do
     dotnet build "$proj" -c "$CONFIGURATION"
   done

@@ -1,5 +1,7 @@
 using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.Core.Documents;
+using Glyph.Ocr.Abstractions;
+using Glyph.Ocr.Pdf;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Annotations;
 using Glyph.Pdf.Editing;
@@ -36,6 +38,8 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfPageEditor _pageEditor;
     private readonly IPdfAnnotationStore _annotationStore;
     private readonly IPdfDocumentFactory _documentFactory;
+    private readonly PdfPageOcrService? _pdfOcr;
+    private string _ocrText = string.Empty;
     private readonly DocumentViewState _viewState;
     private readonly DocumentNavigationHistory _history = new();
     private readonly PdfPageEditHistory _editHistory = new();
@@ -95,6 +99,7 @@ public sealed class PdfDocumentView : UserControl
         IPdfPageEditor pageEditor,
         IPdfAnnotationStore annotationStore,
         IPdfDocumentFactory documentFactory,
+        PdfPageOcrService? pdfOcr = null,
         DocumentViewState? viewState = null)
     {
         _document = document;
@@ -107,6 +112,7 @@ public sealed class PdfDocumentView : UserControl
         _pageEditor = pageEditor;
         _annotationStore = annotationStore;
         _documentFactory = documentFactory;
+        _pdfOcr = pdfOcr;
         _viewState = viewState ?? new DocumentViewState();
         _scale = PdfZoomCalculator.Clamp(_viewState.Zoom <= 0 ? 1.25 : _viewState.Zoom);
         _layoutMode = _viewState.PageLayout;
@@ -254,6 +260,7 @@ public sealed class PdfDocumentView : UserControl
         var removeMarkup = new Button { Content = "Unmark" };
         var recolor = new Button { Content = "Recolor" };
         var saveDoc = new Button { Content = "Save" };
+        var ocrPage = new Button { Content = "OCR" };
         var undoEdit = new Button { Content = "Undo" };
         var redoEdit = new Button { Content = "Redo" };
         _markupColorBox = new ComboBox
@@ -291,6 +298,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(removeMarkup, "Delete selected annotation from sidebar");
         ToolTipService.SetToolTip(recolor, "Apply selected color to sidebar annotation");
         ToolTipService.SetToolTip(saveDoc, "Save PDF including markup");
+        ToolTipService.SetToolTip(ocrPage, "Offline OCR of the current page (scanned PDFs)");
         ToolTipService.SetToolTip(_markupColorBox, "Markup color");
         ToolTipService.SetToolTip(_drawToolBox, "Drawing tool for shapes, ink, and text boxes");
         ToolTipService.SetToolTip(_persistentHighlightBox, "Persistent highlight mode: every text selection is highlighted");
@@ -343,6 +351,7 @@ public sealed class PdfDocumentView : UserControl
         removeMarkup.Click += async (_, _) => await DeleteSelectedAnnotationAsync();
         recolor.Click += async (_, _) => await RecolorSelectedAnnotationAsync();
         saveDoc.Click += async (_, _) => await SaveDocumentAsync();
+        ocrPage.Click += async (_, _) => await RunPageOcrAsync();
         undoEdit.Click += async (_, _) => await UndoPageEditAsync();
         redoEdit.Click += async (_, _) => await RedoPageEditAsync();
 
@@ -354,7 +363,7 @@ public sealed class PdfDocumentView : UserControl
             Children =
             {
                 first, prev, _gotoBox, next, last, back, forward,
-                zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy, saveDoc,
+                zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy, saveDoc, ocrPage,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
                 highlight, underline, strike, note, removeMarkup, recolor, _markupColorBox, _drawToolBox, _persistentHighlightBox,
@@ -2137,6 +2146,43 @@ public sealed class PdfDocumentView : UserControl
         4 => PdfAnnotationColor.Red,
         _ => PdfAnnotationColor.Yellow,
     };
+
+    private async Task RunPageOcrAsync()
+    {
+        if (_pdfOcr is null)
+        {
+            _status.Text = "OCR service unavailable.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Running page OCR…";
+            var progress = new Progress<OcrProgress>(p => _status.Text = $"OCR {p.Fraction:P0}: {p.Status}");
+            var result = await _pdfOcr.RecognizePageAsync(
+                _document,
+                CurrentPageIndex,
+                scale: 2.0,
+                progress: progress);
+            _ocrText = result.Text;
+            var entitySummary = result.Entities.Count == 0
+                ? "no entities"
+                : string.Join(", ", result.Entities.Take(3).Select(e => $"{e.Kind}:{e.Value}"));
+            var preview = string.IsNullOrWhiteSpace(result.Text)
+                ? "(no text)"
+                : (result.Text.Length > 70 ? result.Text[..70] + "…" : result.Text.Replace('\n', ' '));
+            _status.Text = $"OCR p{CurrentPageIndex + 1}: {preview} · {entitySummary}";
+            if (!string.IsNullOrWhiteSpace(_ocrText) && !string.IsNullOrWhiteSpace(_searchQuery)
+                && _ocrText.Contains(_searchQuery, _searchCaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase))
+            {
+                _status.Text += " · matches Find query";
+            }
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "OCR failed: " + ex.Message;
+        }
+    }
 
     private static PdfUserPoint UiToPdfPoint(IPdfPage page, Windows.Foundation.Point ui, double scale) =>
         new(ui.X / scale, page.HeightPoints - (ui.Y / scale));

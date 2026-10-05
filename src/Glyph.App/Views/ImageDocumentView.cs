@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.Core.Documents;
 using Glyph.Imaging.Abstractions;
+using Glyph.Ocr.Abstractions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -15,6 +16,7 @@ public sealed class ImageDocumentView : UserControl
     private readonly IImageDocument _document;
     private readonly IImageProcessor _processor;
     private readonly IImageEncoder _encoder;
+    private readonly IOcrEngine _ocr;
     private readonly DocumentViewState _viewState;
     private readonly ScrollViewer _scrollViewer;
     private readonly Image _image;
@@ -27,11 +29,13 @@ public sealed class ImageDocumentView : UserControl
         IImageDocument document,
         IImageProcessor processor,
         IImageEncoder encoder,
+        IOcrEngine ocr,
         DocumentViewState? viewState = null)
     {
         _document = document;
         _processor = processor;
         _encoder = encoder;
+        _ocr = ocr;
         _viewState = viewState ?? new DocumentViewState();
         _zoom = _viewState.Zoom <= 0 ? 1.0 : _viewState.Zoom;
 
@@ -67,10 +71,12 @@ public sealed class ImageDocumentView : UserControl
         var save = new Button { Content = "Save" };
         var exportPng = new Button { Content = "→PNG" };
         var exportJpeg = new Button { Content = "→JPEG" };
+        var ocr = new Button { Content = "OCR" };
 
         ToolTipService.SetToolTip(crop, "Crop using x,y,w,h pixels (origin top-left)");
         ToolTipService.SetToolTip(exportPng, "Export as PNG");
         ToolTipService.SetToolTip(exportJpeg, "Export as JPEG");
+        ToolTipService.SetToolTip(ocr, "Offline OCR of the current image");
 
         zoomOut.Click += async (_, _) => await SetZoomAsync(_zoom / 1.25);
         zoomIn.Click += async (_, _) => await SetZoomAsync(_zoom * 1.25);
@@ -84,6 +90,7 @@ public sealed class ImageDocumentView : UserControl
         save.Click += async (_, _) => await SaveAsync();
         exportPng.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Png, ".png");
         exportJpeg.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Jpeg, ".jpg");
+        ocr.Click += async (_, _) => await RunOcrAsync();
 
         var toolbar = new StackPanel
         {
@@ -93,7 +100,7 @@ public sealed class ImageDocumentView : UserControl
             Children =
             {
                 zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, flipH, flipV,
-                _cropBox, crop, save, exportPng, exportJpeg, _status,
+                _cropBox, crop, save, exportPng, exportJpeg, ocr, _status,
             },
         };
 
@@ -235,6 +242,35 @@ public sealed class ImageDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Edit failed: " + ex.Message;
+        }
+    }
+
+    private async Task RunOcrAsync()
+    {
+        if (!_ocr.IsAvailable)
+        {
+            _status.Text = "OCR engine unavailable (install tesseract).";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Running OCR…";
+            var progress = new Progress<OcrProgress>(p => _status.Text = $"OCR {p.Fraction:P0}: {p.Status}");
+            var buffer = await _document.GetPixelsAsync(maxEdge: 2400);
+            var result = await _ocr.RecognizeAsync(
+                new OcrRequest(buffer.Width, buffer.Height, buffer.BgraPixels, Progress: progress));
+            var entitySummary = result.Entities.Count == 0
+                ? "no entities"
+                : string.Join(", ", result.Entities.Take(4).Select(e => $"{e.Kind}:{e.Value}"));
+            var preview = string.IsNullOrWhiteSpace(result.Text)
+                ? "(no text)"
+                : (result.Text.Length > 80 ? result.Text[..80] + "…" : result.Text.Replace('\n', ' '));
+            _status.Text = $"OCR: {preview} · {entitySummary}";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "OCR failed: " + ex.Message;
         }
     }
 

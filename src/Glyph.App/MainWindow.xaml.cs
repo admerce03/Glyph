@@ -6,6 +6,8 @@ using Glyph.Infrastructure.Documents;
 using Glyph.Infrastructure.RecentFiles;
 using Glyph.Infrastructure.Settings;
 using Glyph.Imaging.Abstractions;
+using Glyph.Ocr.Abstractions;
+using Glyph.Ocr.Pdf;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Rendering;
 using Glyph.Pdf.Text;
@@ -44,6 +46,8 @@ public sealed partial class MainWindow : Window
     private readonly IImageDecoder _imageDecoder;
     private readonly IImageEncoder _imageEncoder;
     private readonly IImageProcessor _imageProcessor;
+    private readonly IOcrEngine _ocrEngine;
+    private readonly PdfPageOcrService _pdfOcr;
     private readonly PageRenderCache _pageCache;
     private readonly ILogger<MainWindow> _logger;
     private readonly Dictionary<DocumentId, IAsyncDisposable> _openEngines = new();
@@ -64,6 +68,8 @@ public sealed partial class MainWindow : Window
         IImageDecoder imageDecoder,
         IImageEncoder imageEncoder,
         IImageProcessor imageProcessor,
+        IOcrEngine ocrEngine,
+        PdfPageOcrService pdfOcr,
         PageRenderCache pageCache,
         ILogger<MainWindow> logger)
     {
@@ -82,6 +88,8 @@ public sealed partial class MainWindow : Window
         _imageDecoder = imageDecoder;
         _imageEncoder = imageEncoder;
         _imageProcessor = imageProcessor;
+        _ocrEngine = ocrEngine;
+        _pdfOcr = pdfOcr;
         _pageCache = pageCache;
         _logger = logger;
 
@@ -426,6 +434,7 @@ public sealed partial class MainWindow : Window
                 _pdfPageEditor,
                 _pdfAnnotations,
                 _pdfFactory,
+                _pdfOcr,
                 session.ViewState);
         }
 
@@ -440,7 +449,7 @@ public sealed partial class MainWindow : Window
 
             _openEngines[session.Id] = image;
             SidebarStatus.Text = $"{image.FormatName} · {image.PixelWidth}×{image.PixelHeight}";
-            return new ImageDocumentView(image, _imageProcessor, _imageEncoder, session.ViewState);
+            return new ImageDocumentView(image, _imageProcessor, _imageEncoder, _ocrEngine, session.ViewState);
         }
 
         return CreatePlaceholderContent(session);
