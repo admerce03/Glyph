@@ -3,6 +3,7 @@ using Glyph.Core.Documents;
 using Glyph.Core.IO;
 using Glyph.Core.Signatures;
 using Glyph.Core.Workspace;
+using Glyph.Imaging.Abstractions;
 using Glyph.Infrastructure.Documents;
 using Glyph.Infrastructure.RecentFiles;
 using Glyph.Infrastructure.Settings;
@@ -43,6 +44,9 @@ public sealed partial class MainWindow : Window
     private readonly IPdfAnnotationService _pdfAnnotations;
     private readonly ISignatureLibrary _signatures;
     private readonly IPdfFormStore _pdfForms;
+    private readonly IImageDecoder _imageDecoder;
+    private readonly IImageEncoder _imageEncoder;
+    private readonly IImageProcessor _imageProcessor;
     private readonly PageRenderCache _pageCache;
     private readonly ILogger<MainWindow> _logger;
     private readonly Dictionary<DocumentId, IAsyncDisposable> _openEngines = new();
@@ -62,6 +66,9 @@ public sealed partial class MainWindow : Window
         IPdfAnnotationService pdfAnnotations,
         ISignatureLibrary signatures,
         IPdfFormStore pdfForms,
+        IImageDecoder imageDecoder,
+        IImageEncoder imageEncoder,
+        IImageProcessor imageProcessor,
         PageRenderCache pageCache,
         ILogger<MainWindow> logger)
     {
@@ -79,6 +86,9 @@ public sealed partial class MainWindow : Window
         _pdfAnnotations = pdfAnnotations;
         _signatures = signatures;
         _pdfForms = pdfForms;
+        _imageDecoder = imageDecoder;
+        _imageEncoder = imageEncoder;
+        _imageProcessor = imageProcessor;
         _pageCache = pageCache;
         _logger = logger;
 
@@ -377,7 +387,7 @@ public sealed partial class MainWindow : Window
                 ? kind switch
                 {
                     DocumentKind.Pdf => $"Opened PDF: {displayName}",
-                    DocumentKind.Image => $"Opened image (viewer arrives in Milestone 5): {displayName}",
+                    DocumentKind.Image => $"Opened image: {displayName}",
                     _ => $"Opened {displayName}",
                 }
                 : $"Activated {displayName}";
@@ -429,6 +439,20 @@ public sealed partial class MainWindow : Window
                 _pdfFactory,
                 session.ViewState,
                 ownerWindow: this);
+        }
+
+        if (session.Kind == DocumentKind.Image && session.Path is not null)
+        {
+            var image = await _imageDecoder.OpenAsync(session.Path);
+            var saved = await _viewStateStore.TryLoadAsync(session.Path);
+            if (saved is not null && saved.Zoom > 0)
+            {
+                session.ViewState.Zoom = saved.Zoom;
+            }
+
+            _openEngines[session.Id] = image;
+            SidebarStatus.Text = $"{image.FormatName} · {image.PixelWidth}×{image.PixelHeight}";
+            return new ImageDocumentView(image, _imageProcessor, _imageEncoder, session.ViewState);
         }
 
         return CreatePlaceholderContent(session);
@@ -523,7 +547,7 @@ public sealed partial class MainWindow : Window
                 {
                     Text = session.Kind == DocumentKind.Pdf
                         ? "PDF document session ready."
-                        : "Image document session ready. Viewing/editing lands in Milestone 5.",
+                        : "Image document session ready.",
                     Opacity = 0.75,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     TextWrapping = TextWrapping.WrapWholeWords,
