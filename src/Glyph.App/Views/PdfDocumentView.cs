@@ -54,6 +54,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly Button _copyOcrButton;
     private readonly Button _clearOcrOverlayButton;
     private readonly Button _ocrSavePdfButton;
+    private readonly Button _ocrEntitiesButton;
     private readonly Window? _ownerWindow;
     private readonly DocumentViewState _viewState;
     private readonly DocumentNavigationHistory _history = new();
@@ -250,6 +251,9 @@ public sealed class PdfDocumentView : UserControl
         _ocrSavePdfButton = new Button { Content = "OCR→PDF", Visibility = Visibility.Collapsed };
         _ocrSavePdfButton.Click += async (_, _) => await SaveSearchableOcrPdfAsync();
         ToolTipService.SetToolTip(_ocrSavePdfButton, "Export OCR'd pages as a searchable PDF with invisible text");
+        _ocrEntitiesButton = new Button { Content = "Entities", Visibility = Visibility.Collapsed };
+        _ocrEntitiesButton.Click += async (_, _) => await ShowOcrEntitiesAsync();
+        ToolTipService.SetToolTip(_ocrEntitiesButton, "Review detected URLs, emails, phones, addresses, dates, and times in OCR text");
         var clearSearch = new Button { Content = "Clear" };
         ToolTipService.SetToolTip(clearSearch, "Clear search results");
         clearSearch.Click += async (_, _) => await ClearSearchAsync();
@@ -496,7 +500,7 @@ public sealed class PdfDocumentView : UserControl
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
                 highlight, underline, strikeout, stickyNote, textBox, callout, flatten, sign, formFill, ink, freeform, rect, ellipse, line, arrow,
-                _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, clearSearch, prevMatch, nextMatch, _status,
+                _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
 
@@ -2202,6 +2206,7 @@ public sealed class PdfDocumentView : UserControl
         _copyOcrButton.Visibility = hasOverlay ? Visibility.Visible : Visibility.Collapsed;
         _clearOcrOverlayButton.Visibility = hasOverlay ? Visibility.Visible : Visibility.Collapsed;
         _ocrSavePdfButton.Visibility = hasOverlay ? Visibility.Visible : Visibility.Collapsed;
+        _ocrEntitiesButton.Visibility = hasOverlay ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private async Task SaveSearchableOcrPdfAsync()
@@ -2339,7 +2344,182 @@ public sealed class PdfDocumentView : UserControl
         _copyOcrButton.Visibility = _ocrPageData.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         _clearOcrOverlayButton.Visibility = Visibility.Collapsed;
         _ocrSavePdfButton.Visibility = _ocrPageData.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        _ocrEntitiesButton.Visibility = _ocrPageData.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         _status.Text = "OCR overlays cleared.";
+    }
+
+    private async Task ShowOcrEntitiesAsync()
+    {
+        var text = string.Join("\n", _ocrPageTexts.OrderBy(kv => kv.Key).Select(kv => kv.Value));
+        var entities = OcrEntityDetector.Detect(text);
+        if (entities.Count == 0)
+        {
+            _status.Text = "No URLs, emails, phones, addresses, dates, or times detected.";
+            return;
+        }
+
+        var list = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            Width = 440,
+            MaxHeight = 320,
+            ItemsSource = entities.Select(e => $"{e.Kind}: {e.Value}").ToList(),
+        };
+        var copy = new Button { Content = "Copy value", Margin = new Thickness(0, 8, 8, 0) };
+        var open = new Button { Content = "Open / act", Margin = new Thickness(0, 8, 8, 0) };
+        var searchWeb = new Button { Content = "Search web", Margin = new Thickness(0, 8, 0, 0) };
+        copy.Click += (_, _) =>
+        {
+            if (list.SelectedIndex < 0 || list.SelectedIndex >= entities.Count)
+            {
+                return;
+            }
+
+            var package = new DataPackage();
+            package.SetText(entities[list.SelectedIndex].Value);
+            Clipboard.SetContent(package);
+            _status.Text = $"Copied {entities[list.SelectedIndex].Kind}.";
+        };
+        open.Click += async (_, _) =>
+        {
+            if (list.SelectedIndex < 0 || list.SelectedIndex >= entities.Count)
+            {
+                return;
+            }
+
+            await ActOnOcrEntityAsync(entities[list.SelectedIndex]);
+        };
+        searchWeb.Click += async (_, _) =>
+        {
+            if (list.SelectedIndex < 0 || list.SelectedIndex >= entities.Count)
+            {
+                return;
+            }
+
+            await SearchWebAsync(entities[list.SelectedIndex].Value);
+        };
+
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock { Text = $"{entities.Count} entity(ies) in OCR text", Opacity = 0.75 },
+                list,
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Children = { copy, open, searchWeb },
+                },
+            },
+        };
+        var dialog = new ContentDialog
+        {
+            Title = "OCR entities",
+            Content = panel,
+            CloseButtonText = "Close",
+            XamlRoot = XamlRoot,
+        };
+        await dialog.ShowAsync();
+    }
+
+    private async Task ActOnOcrEntityAsync(OcrEntity entity)
+    {
+        try
+        {
+            switch (entity.Kind)
+            {
+                case OcrEntityKind.Url:
+                {
+                    var href = entity.Value.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                        ? entity.Value
+                        : "https://" + entity.Value;
+                    await Launcher.LaunchUriAsync(new Uri(href));
+                    _status.Text = "Opened URL.";
+                    break;
+                }
+                case OcrEntityKind.Email:
+                    await Launcher.LaunchUriAsync(new Uri("mailto:" + entity.Value));
+                    _status.Text = "Opened mail compose.";
+                    break;
+                case OcrEntityKind.Address:
+                {
+                    var maps = "https://www.bing.com/maps?q=" + Uri.EscapeDataString(entity.Value);
+                    await Launcher.LaunchUriAsync(new Uri(maps));
+                    _status.Text = "Opened address in Maps.";
+                    break;
+                }
+                case OcrEntityKind.Date:
+                case OcrEntityKind.Time:
+                    await CreateCalendarFromOcrAsync(entity);
+                    break;
+                case OcrEntityKind.Phone:
+                default:
+                {
+                    var package = new DataPackage();
+                    package.SetText(entity.Value);
+                    Clipboard.SetContent(package);
+                    _status.Text = $"Copied {entity.Kind}.";
+                    break;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Entity action failed: " + ex.Message;
+        }
+    }
+
+    private async Task CreateCalendarFromOcrAsync(OcrEntity entity)
+    {
+        string ics;
+        if (entity.Kind == OcrEntityKind.Date
+            && OcrCalendarInvite.TryParseDate(entity.Value, out var date))
+        {
+            ics = OcrCalendarInvite.BuildAllDayEvent(date, "Glyph OCR: " + entity.Value);
+        }
+        else if (entity.Kind == OcrEntityKind.Time
+            && OcrCalendarInvite.TryParseTime(entity.Value, out var time))
+        {
+            var start = DateTime.Today.Add(time);
+            ics = OcrCalendarInvite.BuildTimedEvent(start, TimeSpan.FromHours(1), "Glyph OCR: " + entity.Value);
+        }
+        else
+        {
+            var package = new DataPackage();
+            package.SetText(entity.Value);
+            Clipboard.SetContent(package);
+            _status.Text = $"Copied {entity.Kind} (could not parse for calendar).";
+            return;
+        }
+
+        var path = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(),
+            "glyph-ocr-" + Guid.NewGuid().ToString("N") + ".ics");
+        await System.IO.File.WriteAllTextAsync(path, ics);
+        var file = await StorageFile.GetFileFromPathAsync(path);
+        await Launcher.LaunchFileAsync(file);
+        _status.Text = "Opened calendar invite.";
+    }
+
+    private async Task SearchWebAsync(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            _status.Text = "Nothing to search.";
+            return;
+        }
+
+        try
+        {
+            var url = "https://www.bing.com/search?q=" + Uri.EscapeDataString(query.Trim());
+            await Launcher.LaunchUriAsync(new Uri(url));
+            _status.Text = "Opened web search.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Search web failed: " + ex.Message;
+        }
     }
 
     private async Task SearchSelectedTextAsync()
