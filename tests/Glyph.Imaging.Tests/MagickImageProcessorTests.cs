@@ -96,6 +96,32 @@ public class MagickImageProcessorTests
     }
 
     [Fact]
+    public async Task Assign_and_convert_color_profile_sets_icc()
+    {
+        var path = CreateSolidPng(24, 18);
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            await using var document = await decoder.OpenAsync(path);
+
+            await processor.AssignColorProfileAsync(document, ImageColorProfileKind.Srgb);
+            var assigned = await document.GetMetadataAsync();
+            assigned.HasIccProfile.Should().BeTrue();
+
+            await processor.ConvertColorProfileAsync(document, ImageColorProfileKind.AdobeRgb);
+            var converted = await document.GetMetadataAsync();
+            converted.HasIccProfile.Should().BeTrue();
+            document.PixelWidth.Should().Be(24);
+            document.PixelHeight.Should().Be(18);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Probe_and_open_report_dimensions_without_requiring_full_ui_decode()
     {
         var path = CreateSolidPng(120, 80);

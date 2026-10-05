@@ -2279,7 +2279,7 @@ public sealed class ImageDocumentView : UserControl
         {
             Header = "Category",
             Width = 260,
-            ItemsSource = new[] { "Orientation", "Convert / export", "Strip metadata" },
+            ItemsSource = new[] { "Orientation", "Convert / export", "Strip metadata", "Rename", "Color profile" },
             SelectedIndex = 0,
         };
         var opBox = new ComboBox
@@ -2315,6 +2315,21 @@ public sealed class ImageDocumentView : UserControl
             Width = 260,
             Visibility = Visibility.Collapsed,
         };
+        var renamePattern = new TextBox
+        {
+            Header = "Rename pattern ({n}=1-based index, {name}=base name)",
+            Text = "{name}-{n:000}",
+            Width = 260,
+            Visibility = Visibility.Collapsed,
+        };
+        var profileBox = new ComboBox
+        {
+            Header = "Color profile",
+            Width = 260,
+            Visibility = Visibility.Collapsed,
+            ItemsSource = new[] { "Assign sRGB", "Convert → sRGB", "Assign Adobe RGB", "Convert → Adobe RGB" },
+            SelectedIndex = 1,
+        };
         var includeCurrent = new CheckBox
         {
             Content = "Also apply to the open image file",
@@ -2330,7 +2345,9 @@ public sealed class ImageDocumentView : UserControl
             quality.Visibility = cat == 1 && fmt is "JPEG" or "WebP" or "AVIF"
                 ? Visibility.Visible
                 : Visibility.Collapsed;
-            includeCurrent.Visibility = cat == 1 ? Visibility.Collapsed : Visibility.Visible;
+            renamePattern.Visibility = cat == 3 ? Visibility.Visible : Visibility.Collapsed;
+            profileBox.Visibility = cat == 4 ? Visibility.Visible : Visibility.Collapsed;
+            includeCurrent.Visibility = cat is 1 or 3 ? Visibility.Collapsed : Visibility.Visible;
         }
 
         categoryBox.SelectionChanged += (_, _) => SyncCategory();
@@ -2347,7 +2364,7 @@ public sealed class ImageDocumentView : UserControl
                 {
                     new TextBlock
                     {
-                        Text = $"Applies to {_siblings.Count} images in this folder. Convert writes sibling files with a new extension; orientation/strip overwrite originals.",
+                        Text = $"Applies to {_siblings.Count} images in this folder. Convert/rename write new files; orientation/strip/profile overwrite originals.",
                         Opacity = 0.75,
                         TextWrapping = TextWrapping.Wrap,
                         MaxWidth = 360,
@@ -2356,6 +2373,8 @@ public sealed class ImageDocumentView : UserControl
                     opBox,
                     formatBox,
                     quality,
+                    renamePattern,
+                    profileBox,
                     includeCurrent,
                 },
             },
@@ -2396,6 +2415,38 @@ public sealed class ImageDocumentView : UserControl
         {
             var strippedCount = await BatchStripMetadataFolderAsync(includeCurrent: includeCurrent.IsChecked == true);
             _status.Text = $"Batch strip metadata: updated {strippedCount} folder image(s).";
+            return;
+        }
+
+        if (categoryBox.SelectedIndex == 3)
+        {
+            var renamed = await BatchRenameFolderAsync(renamePattern.Text ?? "{name}-{n:000}");
+            _status.Text = $"Batch rename: renamed {renamed} file(s).";
+            RefreshSiblingList();
+            return;
+        }
+
+        if (categoryBox.SelectedIndex == 4)
+        {
+            var (kind, convert) = profileBox.SelectedIndex switch
+            {
+                0 => (ImageColorProfileKind.Srgb, false),
+                1 => (ImageColorProfileKind.Srgb, true),
+                2 => (ImageColorProfileKind.AdobeRgb, false),
+                _ => (ImageColorProfileKind.AdobeRgb, true),
+            };
+            if (includeCurrent.IsChecked == true)
+            {
+                await MutateAsync(
+                    () => convert
+                        ? _processor.ConvertColorProfileAsync(_document, kind)
+                        : _processor.AssignColorProfileAsync(_document, kind),
+                    convert ? $"Converted current image → {kind}." : $"Assigned {kind} profile to current image.");
+            }
+
+            var profiled = await BatchColorProfileFolderAsync(kind, convert, includeCurrent.IsChecked == true);
+            _status.Text = $"Batch color profile: updated {profiled} folder image(s)"
+                + (includeCurrent.IsChecked == true ? " (+ current)." : ".");
             return;
         }
 
@@ -2534,6 +2585,129 @@ public sealed class ImageDocumentView : UserControl
             catch (Exception ex)
             {
                 _status.Text = $"Batch strip skipped {System.IO.Path.GetFileName(sibling)}: {ex.Message}";
+            }
+        }
+
+        return updated;
+    }
+
+    private async Task<int> BatchRenameFolderAsync(string pattern)
+    {
+        if (string.IsNullOrWhiteSpace(_document.Path) || _siblings.Count == 0)
+        {
+            return 0;
+        }
+
+        var dir = System.IO.Path.GetDirectoryName(_document.Path);
+        if (string.IsNullOrWhiteSpace(dir))
+        {
+            return 0;
+        }
+
+        var renamed = 0;
+        for (var i = 0; i < _siblings.Count; i++)
+        {
+            var sibling = _siblings[i];
+            try
+            {
+                var baseName = System.IO.Path.GetFileNameWithoutExtension(sibling);
+                var ext = System.IO.Path.GetExtension(sibling);
+                var n = i + 1;
+                var stem = pattern
+                    .Replace("{name}", baseName, StringComparison.OrdinalIgnoreCase)
+                    .Replace("{n:000}", n.ToString("000"), StringComparison.OrdinalIgnoreCase)
+                    .Replace("{n:00}", n.ToString("00"), StringComparison.OrdinalIgnoreCase)
+                    .Replace("{n}", n.ToString(), StringComparison.OrdinalIgnoreCase);
+                foreach (var c in System.IO.Path.GetInvalidFileNameChars())
+                {
+                    stem = stem.Replace(c, '_');
+                }
+
+                if (string.IsNullOrWhiteSpace(stem))
+                {
+                    continue;
+                }
+
+                var dest = System.IO.Path.Combine(dir, stem + ext);
+                if (string.Equals(
+                        System.IO.Path.GetFullPath(sibling),
+                        System.IO.Path.GetFullPath(dest),
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (System.IO.File.Exists(dest))
+                {
+                    dest = System.IO.Path.Combine(dir, stem + "-" + Guid.NewGuid().ToString("N")[..6] + ext);
+                }
+
+                System.IO.File.Move(sibling, dest);
+                if (string.Equals(
+                        System.IO.Path.GetFullPath(sibling),
+                        System.IO.Path.GetFullPath(_document.Path!),
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    _document.Path = dest;
+                }
+
+                renamed++;
+            }
+            catch (Exception ex)
+            {
+                _status.Text = $"Batch rename skipped {System.IO.Path.GetFileName(sibling)}: {ex.Message}";
+            }
+        }
+
+        return renamed;
+    }
+
+    private async Task<int> BatchColorProfileFolderAsync(
+        ImageColorProfileKind kind,
+        bool convert,
+        bool includeCurrent)
+    {
+        if (_decoder is null || string.IsNullOrWhiteSpace(_document.Path))
+        {
+            return 0;
+        }
+
+        var current = System.IO.Path.GetFullPath(_document.Path);
+        var updated = 0;
+        foreach (var sibling in _siblings)
+        {
+            var full = System.IO.Path.GetFullPath(sibling);
+            if (!includeCurrent
+                && string.Equals(full, current, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            // Current image already mutated in-memory when includeCurrent; skip re-open overwrite of dirty buffer.
+            if (includeCurrent
+                && string.Equals(full, current, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            try
+            {
+                await using var doc = await _decoder.OpenAsync(sibling);
+                if (convert)
+                {
+                    await _processor.ConvertColorProfileAsync(doc, kind);
+                }
+                else
+                {
+                    await _processor.AssignColorProfileAsync(doc, kind);
+                }
+
+                await _encoder.SaveAsync(doc, sibling);
+                updated++;
+            }
+            catch (Exception ex)
+            {
+                _status.Text = $"Batch profile skipped {System.IO.Path.GetFileName(sibling)}: {ex.Message}";
             }
         }
 
@@ -3117,6 +3291,22 @@ public sealed class ImageDocumentView : UserControl
             };
 
             var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            var assignSrgb = new Button { Content = "Assign sRGB" };
+            assignSrgb.Click += async (_, _) =>
+            {
+                await MutateAsync(
+                    () => _processor.AssignColorProfileAsync(_document, ImageColorProfileKind.Srgb),
+                    "Assigned sRGB ICC profile.");
+            };
+            var convertSrgb = new Button { Content = "Convert → sRGB" };
+            convertSrgb.Click += async (_, _) =>
+            {
+                await MutateAsync(
+                    () => _processor.ConvertColorProfileAsync(_document, ImageColorProfileKind.Srgb),
+                    "Converted pixels to sRGB.");
+            };
+            actions.Children.Add(assignSrgb);
+            actions.Children.Add(convertSrgb);
             if (info.GpsLatitude is double lat && info.GpsLongitude is double lon)
             {
                 var coords = $"{lat:0.######}, {lon:0.######}";
@@ -3160,7 +3350,9 @@ public sealed class ImageDocumentView : UserControl
                     new TextBlock
                     {
                         Text = $"{info.FormatName} · {info.PixelWidth}×{info.PixelHeight}"
-                            + (info.Make is null ? string.Empty : $" · {info.Make} {info.Model}".TrimEnd()),
+                            + (info.Make is null ? string.Empty : $" · {info.Make} {info.Model}".TrimEnd())
+                            + (info.ColorSpace is null ? string.Empty : $" · {info.ColorSpace}")
+                            + (info.HasIccProfile ? " · ICC" : " · no ICC"),
                         TextWrapping = TextWrapping.Wrap,
                     },
                     new TextBlock

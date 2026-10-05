@@ -318,8 +318,9 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Progress notes
 
-- Folder Batch… covers rotate/flip/orient, convert/export (PNG/JPEG/WebP/TIFF/BMP/GIF/AVIF/JP2), and strip metadata; Resize dialog can scale all folder siblings.
-- Webcam signature capture already shipped in M4; HDR/color-managed display deferred from M5 into §39.
+- Folder Batch… covers rotate/flip/orient, convert/export (PNG/JPEG/WebP/TIFF/BMP/GIF/AVIF/JP2), strip metadata, rename (`{name}-{n:000}`), and color profile assign/convert (sRGB/Adobe RGB); Resize dialog can scale all folder siblings.
+- Color management: detect ICC (`HasIccProfile`), assign/convert via Magick `SetProfile` / `TransformColorSpace`; Meta dialog Assign sRGB / Convert → sRGB.
+- Webcam signature capture already shipped in M4; HDR/color-managed display deferred from M5 into §39 (F39-02 still open).
 
 ## Milestone 9 — Performance, polish, accessibility, installer, audit
 

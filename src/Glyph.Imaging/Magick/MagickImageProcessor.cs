@@ -259,6 +259,51 @@ public sealed class MagickImageProcessor : IImageProcessor
             cancellationToken);
     }
 
+    public Task AssignColorProfileAsync(
+        IImageDocument document,
+        ImageColorProfileKind profile,
+        CancellationToken cancellationToken = default)
+    {
+        var magick = RequireMagick(document);
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                magick.Native.SetProfile(ResolveColorProfile(profile));
+            },
+            cancellationToken);
+    }
+
+    public Task ConvertColorProfileAsync(
+        IImageDocument document,
+        ImageColorProfileKind profile,
+        CancellationToken cancellationToken = default)
+    {
+        var magick = RequireMagick(document);
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var destination = ResolveColorProfile(profile);
+                var source = magick.Native.GetColorProfile();
+                if (source is null)
+                {
+                    magick.Native.SetProfile(ColorProfiles.SRGB);
+                    source = magick.Native.GetColorProfile() ?? ColorProfiles.SRGB;
+                }
+
+                magick.Native.TransformColorSpace(source, destination);
+            },
+            cancellationToken);
+    }
+
+    private static IColorProfile ResolveColorProfile(ImageColorProfileKind profile) =>
+        profile switch
+        {
+            ImageColorProfileKind.AdobeRgb => ColorProfiles.AdobeRGB1998,
+            _ => ColorProfiles.SRGB,
+        };
+
     private static void SetOrClearIptc(IIptcProfile iptc, IptcTag tag, string? value)
     {
         if (string.IsNullOrWhiteSpace(value))

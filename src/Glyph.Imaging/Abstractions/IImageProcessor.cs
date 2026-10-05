@@ -33,6 +33,22 @@ public interface IImageProcessor
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Assigns an ICC profile without converting pixel values (tags the image).
+    /// </summary>
+    Task AssignColorProfileAsync(
+        IImageDocument document,
+        ImageColorProfileKind profile,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Converts pixel values into the destination ICC profile (and embeds that profile).
+    /// </summary>
+    Task ConvertColorProfileAsync(
+        IImageDocument document,
+        ImageColorProfileKind profile,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Applies EXIF orientation into pixel data and resets the orientation tag.
     /// </summary>
     Task NormalizeOrientationAsync(IImageDocument document, CancellationToken cancellationToken = default);
@@ -166,3 +182,10 @@ public sealed record ImageDescriptiveMetadata(
     string? Description = null,
     string? Keywords = null,
     string? Copyright = null);
+
+/// <summary>Built-in ICC profiles available for assign/convert.</summary>
+public enum ImageColorProfileKind
+{
+    Srgb = 0,
+    AdobeRgb = 1,
+}

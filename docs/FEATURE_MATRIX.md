@@ -561,8 +561,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F36-04 | Batch image operations | convert format | M8 | Implemented | Batch… → Convert/export folder to PNG/JPEG/WebP/… |
 | F36-05 | Batch image operations | export | M8 | Implemented | Same Batch… Convert/export path |
 | F36-06 | Batch image operations | strip metadata | M8 | Implemented | Batch… → Strip metadata (re-save PreserveMetadata=false) |
-| F36-07 | Batch image operations | change color profile | M8 | Not Started |  |
-| F36-08 | Batch image operations | rename, optionally | M8 | Not Started |  |
+| F36-07 | Batch image operations | change color profile | M8 | Implemented | Batch… → Color profile assign/convert sRGB/Adobe RGB |
+| F36-08 | Batch image operations | rename, optionally | M8 | Implemented | Batch… → Rename pattern `{name}-{n:000}` |
 | F37-01 | Image metadata | dimensions | M5 | Tested | GetMetadataAsync PixelWidth/Height |
 | F37-02 | Image metadata | pixel count | M5 | Implemented | Derived from dimensions |
 | F37-03 | Image metadata | DPI | M5 | Tested | Density → DpiX/DpiY |
@@ -594,10 +594,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F38-03 | GPS metadata | Open in default/browser mapping service. | M5/M8 | Implemented | Open map → OpenStreetMap |
 | F38-04 | GPS metadata | Remove GPS metadata. | M5/M8 | Tested | RemoveGpsMetadataAsync |
 | F38-05 | GPS metadata | Optional embedded map later. | M5/M8 | Not Started |  |
-| F39-01 | Color management | Detect embedded ICC profile. | M8 | Not Started |  |
+| F39-01 | Color management | Detect embedded ICC profile. | M8 | Tested | `HasIccProfile` via Magick `GetColorProfile`; Meta shows ICC |
 | F39-02 | Color management | Honor embedded profile while displaying. | M8 | Not Started |  |
-| F39-03 | Color management | Assign ICC profile. | M8 | Not Started |  |
-| F39-04 | Color management | Convert between profiles. | M8 | Not Started |  |
+| F39-03 | Color management | Assign ICC profile. | M8 | Tested | Meta → Assign sRGB; `AssignColorProfileAsync` |
+| F39-04 | Color management | Convert between profiles. | M8 | Tested | Meta → Convert → sRGB; `ConvertColorProfileAsync` (sRGB/Adobe RGB) |
 | F39-05 | Color management | Use monitor profile. | M8 | Not Started |  |
 | F39-06 | Color management | Soft-proof through another ICC profile. | M8 | Not Started |  |
 | F39-07 | Color management | Toggle soft proof. | M8 | Not Started |  |
