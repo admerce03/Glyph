@@ -146,6 +146,7 @@ public sealed class MagickImageProcessor : IImageProcessor
                     var gGain = 1.0 + (0.12 * tint);
                     var bGain = 1.0 - (0.18 * temp);
                     magick.Native.ColorMatrix(new MagickColorMatrix(
+                        5,
                         rGain, 0, 0, 0, 0,
                         0, gGain, 0, 0, 0,
                         0, 0, bGain, 0, 0,
