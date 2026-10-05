@@ -2668,42 +2668,93 @@ public sealed partial class MainWindow : Window
         var toolbarHidden = new HashSet<string>(
             settings.ToolbarHiddenCommands ?? [],
             StringComparer.OrdinalIgnoreCase);
-        var toolbarChecks = ToolbarCommands.Catalog
-            .Select(c => new CheckBox
-            {
-                Content = c.Label,
-                Tag = c.Id,
-                IsChecked = !toolbarHidden.Contains(c.Id),
-                Margin = new Thickness(0, 2, 0, 2),
-            })
-            .ToList();
+        var toolbarOrder = ToolbarOrderPolicy.Normalize(settings.ToolbarCommandOrder).ToList();
+        var toolbarChecks = new List<CheckBox>();
+        var toolbarPanel = new StackPanel { Spacing = 2 };
         var toolbarReset = new Button { Content = PreferencesDialogUi.ResetToolbar, Margin = new Thickness(0, 4, 0, 0) };
-        toolbarReset.Click += (_, _) =>
+
+        void SyncHiddenFromChecks()
         {
+            toolbarHidden.Clear();
             foreach (var box in toolbarChecks)
             {
-                box.IsChecked = true;
-            }
-        };
-        var toolbarPanel = new StackPanel
-        {
-            Spacing = 2,
-            Children =
-            {
-                new TextBlock
+                if (box.IsChecked != true && box.Tag is string id)
                 {
-                    Text = PreferencesDialogUi.ToolbarCommandsHeader,
-                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-                    Margin = new Thickness(0, 8, 0, 4),
-                },
-            },
-        };
-        foreach (var box in toolbarChecks)
-        {
-            toolbarPanel.Children.Add(box);
+                    toolbarHidden.Add(id);
+                }
+            }
         }
 
-        toolbarPanel.Children.Add(toolbarReset);
+        void RebuildToolbarRows()
+        {
+            toolbarPanel.Children.Clear();
+            toolbarPanel.Children.Add(new TextBlock
+            {
+                Text = PreferencesDialogUi.ToolbarCommandsHeader,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Margin = new Thickness(0, 8, 0, 4),
+                TextWrapping = TextWrapping.WrapWholeWords,
+                MaxWidth = 360,
+            });
+            toolbarChecks.Clear();
+            foreach (var id in toolbarOrder)
+            {
+                var label = ToolbarCommands.Catalog.First(c => c.Id == id).Label;
+                var box = new CheckBox
+                {
+                    Content = label,
+                    Tag = id,
+                    IsChecked = !toolbarHidden.Contains(id),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    MinWidth = 200,
+                };
+                var up = new Button
+                {
+                    Content = PreferencesDialogUi.MoveToolbarCommandUp,
+                    Tag = id,
+                    Width = 36,
+                    Padding = new Thickness(4, 0, 4, 0),
+                };
+                var down = new Button
+                {
+                    Content = PreferencesDialogUi.MoveToolbarCommandDown,
+                    Tag = id,
+                    Width = 36,
+                    Padding = new Thickness(4, 0, 4, 0),
+                };
+                up.Click += (_, _) =>
+                {
+                    SyncHiddenFromChecks();
+                    toolbarOrder = ToolbarOrderPolicy.Move(toolbarOrder, id, -1).ToList();
+                    RebuildToolbarRows();
+                };
+                down.Click += (_, _) =>
+                {
+                    SyncHiddenFromChecks();
+                    toolbarOrder = ToolbarOrderPolicy.Move(toolbarOrder, id, 1).ToList();
+                    RebuildToolbarRows();
+                };
+                var row = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 6,
+                    Margin = new Thickness(0, 2, 0, 2),
+                    Children = { box, up, down },
+                };
+                toolbarChecks.Add(box);
+                toolbarPanel.Children.Add(row);
+            }
+
+            toolbarPanel.Children.Add(toolbarReset);
+        }
+
+        toolbarReset.Click += (_, _) =>
+        {
+            toolbarHidden.Clear();
+            toolbarOrder = ToolbarOrderPolicy.Normalize(null).ToList();
+            RebuildToolbarRows();
+        };
+        RebuildToolbarRows();
 
         var shortcutBoxes = new List<(string Command, TextBox Box)>();
         var shortcutPanel = new StackPanel { Spacing = 4 };
@@ -2967,6 +3018,9 @@ public sealed partial class MainWindow : Window
             .Where(b => b.IsChecked != true && b.Tag is string id)
             .Select(b => (string)b.Tag!)
             .ToList();
+        settings.ToolbarCommandOrder = ToolbarOrderPolicy.IsDefault(toolbarOrder)
+            ? []
+            : toolbarOrder.ToList();
         settings.ShortcutOverrides = ShortcutCustomizationPolicy.NormalizeOverrides(shortcutDraft);
         settings.DefaultHighlightColor = highlightColorBox.SelectedItem as string ?? "Yellow";
         settings.DefaultStrokeColor = strokeColorBox.SelectedItem as string ?? "Red";

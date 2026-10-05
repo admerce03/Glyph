@@ -19,6 +19,9 @@ public class PreferencesDialogUiTests
         PreferencesDialogUi.ClearSavedSignatures.Should().Contain("signatures");
         PreferencesDialogUi.PrivacyHeader.Should().Be("Privacy");
         PreferencesDialogUi.CheckForUpdates.Should().Contain("updates");
+        PreferencesDialogUi.ToolbarCommandsHeader.Should().Contain("reorder");
+        PreferencesDialogUi.MoveToolbarCommandUp.Should().Be("↑");
+        PreferencesDialogUi.MoveToolbarCommandDown.Should().Be("↓");
         PreferencesDialogUi.ShortcutsHeader.Should().Contain("shortcuts");
         PreferencesDialogUi.ResetShortcuts.Should().Contain("Reset");
     }

@@ -207,6 +207,41 @@ public class JsonSettingsStoreTests
             settings.CompactToolbar.Should().BeTrue();
             settings.ToolbarHiddenCommands.Should().BeEquivalentTo(
                 [ToolbarCommands.Share, ToolbarCommands.Ocr, ToolbarCommands.Print]);
+            settings.ToolbarCommandOrder.Should().BeEmpty();
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Save_and_load_round_trips_toolbar_command_order()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-toolbar-order-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings
+            {
+                ToolbarCommandOrder =
+                [
+                    ToolbarCommands.Ocr,
+                    ToolbarCommands.Share,
+                    "UNKNOWN",
+                    ToolbarCommands.Print,
+                ],
+            });
+
+            var settings = await new JsonSettingsStore(path).LoadAsync();
+            settings.ToolbarCommandOrder[0].Should().Be(ToolbarCommands.Ocr);
+            settings.ToolbarCommandOrder[1].Should().Be(ToolbarCommands.Share);
+            settings.ToolbarCommandOrder[2].Should().Be(ToolbarCommands.Print);
+            settings.ToolbarCommandOrder.Should().Contain(ToolbarCommands.Sidebar);
+            settings.ToolbarCommandOrder.Should().HaveCount(ToolbarCommands.Catalog.Count);
         }
         finally
         {

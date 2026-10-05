@@ -374,7 +374,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Startup and large-doc performance pass — background Find index (F57-05/F58-06) shipped
 - Accessibility (UIA, keyboard, high contrast, text scaling) — toolbar icon Names started (F56-01/04/08)
 - Shortcut customization — Preferences overrides for shell + PDF/image shortcuts (F52-23)
-- Toolbar customization polish
+- Toolbar customization polish — hide + ↑↓ reorder (`ToolbarCommandOrder` / `ToolbarOrderPolicy`)
 - Installer / MSIX / file associations finalize — test-sign + sideload helper; Explorer verify pending
 - Complete feature-spec audit against `FEATURE_MATRIX.md`
 - No silent drops: every requirement Tested or Deferred/Blocked with reason

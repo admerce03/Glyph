@@ -43,6 +43,11 @@ public sealed class AppSettings
     public List<string> ToolbarHiddenCommands { get; set; } = [];
 
     /// <summary>
+    /// Toolbar command display order (F54 reorder). Empty = <see cref="ToolbarCommands.Catalog"/> order.
+    /// </summary>
+    public List<string> ToolbarCommandOrder { get; set; } = [];
+
+    /// <summary>
     /// Keyboard shortcut overrides (F52 configurable). Key = command name from
     /// <c>ShortcutCustomizationPolicy.DefaultCatalog</c>; value = gesture string.
     /// Empty = defaults.

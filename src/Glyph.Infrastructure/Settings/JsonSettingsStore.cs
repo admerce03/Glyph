@@ -176,6 +176,10 @@ public sealed class JsonSettingsStore : ISettingsStore
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        settings.ToolbarCommandOrder = ToolbarOrderPolicy.IsDefault(settings.ToolbarCommandOrder)
+            ? []
+            : ToolbarOrderPolicy.Normalize(settings.ToolbarCommandOrder).ToList();
+
         settings.ShortcutOverrides = ShortcutCustomizationPolicy.NormalizeOverrides(settings.ShortcutOverrides);
     }
 
@@ -202,6 +206,7 @@ public sealed class JsonSettingsStore : ISettingsStore
         AnnotationAuthor = settings.AnnotationAuthor ?? string.Empty,
         CompactToolbar = settings.CompactToolbar,
         ToolbarHiddenCommands = settings.ToolbarHiddenCommands?.ToList() ?? [],
+        ToolbarCommandOrder = settings.ToolbarCommandOrder?.ToList() ?? [],
         ShortcutOverrides = settings.ShortcutOverrides is null
             ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             : new Dictionary<string, string>(settings.ShortcutOverrides, StringComparer.OrdinalIgnoreCase),

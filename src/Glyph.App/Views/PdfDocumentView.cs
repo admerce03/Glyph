@@ -1141,18 +1141,33 @@ public sealed class PdfDocumentView : UserControl
         var hidden = new HashSet<string>(
             settings?.ToolbarHiddenCommands ?? [],
             StringComparer.OrdinalIgnoreCase);
-        if (hidden.Count == 0)
+        if (hidden.Count > 0)
+        {
+            for (var i = toolbar.Children.Count - 1; i >= 0; i--)
+            {
+                if (toolbar.Children[i] is FrameworkElement { Tag: string id }
+                    && hidden.Contains(id))
+                {
+                    toolbar.Children.RemoveAt(i);
+                }
+            }
+        }
+
+        var order = settings?.ToolbarCommandOrder;
+        if (order is null || order.Count == 0)
         {
             return;
         }
 
-        for (var i = toolbar.Children.Count - 1; i >= 0; i--)
+        var children = toolbar.Children.Cast<UIElement>().ToList();
+        var reordered = ToolbarOrderPolicy.ApplyOrderToItems(
+            children,
+            element => element is FrameworkElement { Tag: string id } ? id : null,
+            order);
+        toolbar.Children.Clear();
+        foreach (var child in reordered)
         {
-            if (toolbar.Children[i] is FrameworkElement { Tag: string id }
-                && hidden.Contains(id))
-            {
-                toolbar.Children.RemoveAt(i);
-            }
+            toolbar.Children.Add(child);
         }
     }
 
