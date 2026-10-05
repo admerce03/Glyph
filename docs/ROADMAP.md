@@ -26,7 +26,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M6 | OCR and scanned-document capabilities | **In Progress** (PRs #62–#66 stacked; Actions billing blocks CI/merge) | M2, M5 |
 | M7 | Redaction, PDF security, optimization, metadata | **In Progress** (redact/optimize/metadata Tested; password-write → ADR-015) | M2–M4 |
 | M8 | Batch ops, scanner, color management, advanced | **Implemented** (hardware validation TBD; ML subject deferred) | M5–M7 |
-| M9 | Performance, polish, a11y, installer, audit | **In Progress** (prefs/a11y/perf/session; MSIX → ADR-012) | M1–M8 core paths |
+| M9 | Performance, polish, a11y, installer, audit | **In Progress** (matrix a11y/perf/share Tested; MSIX → ADR-012) | M1–M8 core paths |
 
 M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behind separate interfaces. M3 remains the highest-priority Preview-differentiator after viewing works.
 
@@ -297,7 +297,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - FreeText Align / `/Q` quadding via post-save dict patch (F13-38 / F16-15)
 - Bookmarks → PDF `/Outlines` export (F09-08)
 - Password-protect write blocked on ADR-015 (Needs approval)
-- Local polish (+164 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
+- Local polish (+165 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
+- FEATURE_MATRIX: only F64-00 remains Implemented (charter); password-write / MSIX / HDR / ML still Blocked or Deferred
 - Print N-up/scale/rotate/center extracted to `PrintSheetLayout`; scroll throttle + presentation defaults unit-tested
 - Search result snippets unified via `PdfSearchSnippet` (F06-10)
 - Page drop accept/copy helpers + ink dash preview pattern extracted
@@ -421,12 +422,12 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Color management | §39 | M8 | Implemented (display ICC→sRGB + soft-proof; monitor ICC deferred) |
 | Clipboard/screenshots | §40–41 | M1, M5 | Implemented (region/annot/image clipboard + Snipping Tool Ctrl+V) |
 | Scanner/webcam | §42–43 | M8 | Implemented (webcam + scanner WinRT; hardware validation TBD) |
-| Printing | §44 | M8 | Tested (system Print UI + `PrintSheetLayout` 1/2/4-up / scale / rotate / center) |
-| Export/share/integration | §45–48 | M5–M9 | Implemented (PDF security export → ADR-015) |
-| Undo/autosave/snapshots | §49–51 | M1–M4, M9 | Implemented (per-doc stacks + F50/F51; unified app-wide later) |
-| Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Implemented (update check → ADR-012) |
-| Accessibility | §56 | M9 | Implemented |
-| Performance/large docs | §57–58 | M2+, M9 | Implemented (bg index / GPU deferred) |
+| Printing | §44 | M8 | Tested (system Print UI + `PrintPageScopeChooser` / `PrintSheetLayout` / `PrintSystemCapabilities`) |
+| Export/share/integration | §45–48 | M5–M9 | Tested (matrix F45–F47; PDF security export → ADR-015) |
+| Undo/autosave/snapshots | §49–51 | M1–M4, M9 | Tested (per-doc stacks + F50 crash-recovery UI; unified app-wide later) |
+| Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Tested (F52–F53 catalogs; update check → ADR-012) |
+| Accessibility | §56 | M9 | Tested (`AccessibilityPolicy` + chrome automation names) |
+| Performance/large docs | §57–58 | M2+, M9 | Tested (`PerformanceBehaviorPolicy` / `ContinuousPageWindow`; bg index / GPU deferred) |
 | Multi-doc workflows | §59–60 | M1, M3 | Tested (tabs/windows/page+image DnD/clipboard/registry; interactive DnD demo pending) |
 | Non-destructive editing | §61 | M3–M5 | Implemented (CropBox + in-memory image edits until Save) |
 | Output formats | §62 | M5, M7 | Implemented (HEIF deferred) |
