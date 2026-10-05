@@ -33,6 +33,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfOutlineService _outlineService;
     private readonly IPdfLinkService _linkService;
     private readonly IPdfPageEditor _pageEditor;
+    private readonly IPdfAnnotationService _annotations;
     private readonly IPdfDocumentFactory _documentFactory;
     private readonly Window? _ownerWindow;
     private readonly DocumentViewState _viewState;
@@ -57,6 +58,8 @@ public sealed class PdfDocumentView : UserControl
     private readonly Dictionary<int, IReadOnlyList<PdfTextChar>> _pageChars = new();
     private readonly Dictionary<int, IReadOnlyList<PdfLink>> _pageLinks = new();
     private string _selectedText = string.Empty;
+    private int _selectionPageIndex = -1;
+    private IReadOnlyList<PdfQuad> _selectionQuads = [];
     private readonly Dictionary<int, Image> _pageImages = new();
     private readonly Dictionary<int, Canvas> _pageOverlays = new();
     private readonly Dictionary<int, Image> _thumbnailImages = new();
@@ -98,6 +101,7 @@ public sealed class PdfDocumentView : UserControl
         IPdfOutlineService outlineService,
         IPdfLinkService linkService,
         IPdfPageEditor pageEditor,
+        IPdfAnnotationService annotations,
         IPdfDocumentFactory documentFactory,
         DocumentViewState? viewState = null,
         Window? ownerWindow = null)
@@ -110,6 +114,7 @@ public sealed class PdfDocumentView : UserControl
         _outlineService = outlineService;
         _linkService = linkService;
         _pageEditor = pageEditor;
+        _annotations = annotations;
         _documentFactory = documentFactory;
         _ownerWindow = ownerWindow;
         _viewState = viewState ?? new DocumentViewState();
@@ -239,6 +244,9 @@ public sealed class PdfDocumentView : UserControl
         var merge = new Button { Content = "Merge" };
         var split = new Button { Content = "Split" };
         var crop = new Button { Content = "Crop" };
+        var highlight = new Button { Content = "Highlight" };
+        var underline = new Button { Content = "Underline" };
+        var strikeout = new Button { Content = "Strike" };
         var undoEdit = new Button { Content = "Undo" };
         var redoEdit = new Button { Content = "Redo" };
         ToolTipService.SetToolTip(rotateLeft, "Rotate selected pages left");
@@ -252,6 +260,9 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(merge, "Merge other PDF files into this document");
         ToolTipService.SetToolTip(split, "Split document before each selected page");
         ToolTipService.SetToolTip(crop, "Interactive CropBox crop (visual handles; numeric via Crop → Numeric)");
+        ToolTipService.SetToolTip(highlight, "Highlight selected text");
+        ToolTipService.SetToolTip(underline, "Underline selected text");
+        ToolTipService.SetToolTip(strikeout, "Strike through selected text");
         ToolTipService.SetToolTip(undoEdit, "Undo last page edit (Ctrl+Z)");
         ToolTipService.SetToolTip(redoEdit, "Redo page edit (Ctrl+Y)");
 
@@ -294,6 +305,9 @@ public sealed class PdfDocumentView : UserControl
         merge.Click += async (_, _) => await MergePdfsAsync();
         split.Click += async (_, _) => await SplitDocumentAsync();
         crop.Click += async (_, _) => await BeginCropModeAsync();
+        highlight.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.Highlight);
+        underline.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.Underline);
+        strikeout.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.StrikeOut);
         undoEdit.Click += async (_, _) => await UndoPageEditAsync();
         redoEdit.Click += async (_, _) => await RedoPageEditAsync();
 
@@ -308,6 +322,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
+                highlight, underline, strikeout,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -1326,6 +1341,8 @@ public sealed class PdfDocumentView : UserControl
             var bottom = page.HeightPoints - (topUi / _scale);
             var selection = new PdfRect(left, bottom, right, top);
             _selectedText = PdfTextSelection.CopyCharsInRect(chars, selection);
+            _selectionPageIndex = pageIndex;
+            _selectionQuads = PdfTextMarkupQuads.FromSelectionRect(chars, selection);
             await RefreshSearchHighlightsAsync();
             DrawSelectionOverlay(pageIndex, chars, selection);
             _status.Text = string.IsNullOrEmpty(_selectedText)
@@ -1357,6 +1374,8 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _selectedText = PdfTextSelection.CopyText(chars, start, end);
+        _selectionPageIndex = pageIndex;
+        _selectionQuads = PdfTextMarkupQuads.FromIndexRange(chars, start, end);
         await RefreshSearchHighlightsAsync();
         if (start <= end)
         {
@@ -1832,6 +1851,55 @@ public sealed class PdfDocumentView : UserControl
         await RunPageEditAsync(() => _pageEditor.DuplicatePagesAsync(_document, indexes));
         await ReloadAfterPageEditAsync();
         _status.Text = $"Duplicated {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")}.";
+    }
+
+    private async Task ApplyTextMarkupAsync(PdfTextMarkupKind kind)
+    {
+        if (_selectionPageIndex < 0 || _selectionQuads.Count == 0 || string.IsNullOrEmpty(_selectedText))
+        {
+            _status.Text = "Select text first, then apply markup.";
+            return;
+        }
+
+        var color = kind switch
+        {
+            PdfTextMarkupKind.Highlight => PdfAnnotationColor.YellowHighlight,
+            PdfTextMarkupKind.Underline => PdfAnnotationColor.UnderlineBlue,
+            PdfTextMarkupKind.StrikeOut => PdfAnnotationColor.StrikeOutRed,
+            _ => PdfAnnotationColor.YellowHighlight,
+        };
+
+        try
+        {
+            _status.Text = kind switch
+            {
+                PdfTextMarkupKind.Highlight => "Highlighting…",
+                PdfTextMarkupKind.Underline => "Underlining…",
+                _ => "Striking through…",
+            };
+
+            await _annotations.AddTextMarkupAsync(
+                _document,
+                _selectionPageIndex,
+                kind,
+                _selectionQuads,
+                color);
+
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            _status.Text = kind switch
+            {
+                PdfTextMarkupKind.Highlight => "Highlight added.",
+                PdfTextMarkupKind.Underline => "Underline added.",
+                _ => "Strikethrough added.",
+            };
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Markup failed: " + ex.Message;
+        }
     }
 
     private async Task RunPageEditAsync(Func<Task> mutation)
