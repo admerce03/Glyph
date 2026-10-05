@@ -2219,15 +2219,30 @@ public sealed class ImageDocumentView : UserControl
         }
 
         var op = opBox.SelectedIndex;
-        async Task ApplyAsync(IImageDocument doc) => op switch
+        async Task ApplyAsync(IImageDocument doc)
         {
-            0 => await _processor.RotateAsync(doc, -90),
-            1 => await _processor.RotateAsync(doc, 90),
-            2 => await _processor.RotateAsync(doc, 180),
-            3 => await _processor.FlipHorizontalAsync(doc),
-            4 => await _processor.FlipVerticalAsync(doc),
-            _ => await _processor.NormalizeOrientationAsync(doc),
-        };
+            switch (op)
+            {
+                case 0:
+                    await _processor.RotateAsync(doc, -90);
+                    break;
+                case 1:
+                    await _processor.RotateAsync(doc, 90);
+                    break;
+                case 2:
+                    await _processor.RotateAsync(doc, 180);
+                    break;
+                case 3:
+                    await _processor.FlipHorizontalAsync(doc);
+                    break;
+                case 4:
+                    await _processor.FlipVerticalAsync(doc);
+                    break;
+                default:
+                    await _processor.NormalizeOrientationAsync(doc);
+                    break;
+            }
+        }
 
         var label = opBox.SelectedItem?.ToString() ?? "orientation";
         if (includeCurrent.IsChecked == true)
