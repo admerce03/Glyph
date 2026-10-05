@@ -102,6 +102,7 @@ public sealed class PdfDocumentView : UserControl
     private IReadOnlyList<PdfAnnotationInfo> _annotationItems = [];
     private bool _suppressAnnotationNav;
     private bool _inkMode;
+    private bool _eraserMode;
     private bool _freeformMode;
     private PdfAnnotationColor _drawStrokeColor = PdfAnnotationColor.InkRed;
     private float _drawStrokeWidth = 2f;
@@ -123,6 +124,7 @@ public sealed class PdfDocumentView : UserControl
     private FrameworkElement? _shapePreview;
     private Button? _inkButton;
     private Button? _freeformButton;
+    private Button? _eraserButton;
     private Button? _highlightButton;
     private Button? _formButton;
     private Button? _signButton;
@@ -434,6 +436,7 @@ public sealed class PdfDocumentView : UserControl
         var formFill = new Button { Content = "Form" };
         var ink = new Button { Content = "Ink" };
         var freeform = new Button { Content = "Freeform" };
+        var eraser = new Button { Content = "Eraser" };
         var rect = new Button { Content = "Rect" };
         var roundRect = new Button { Content = "Round" };
         var hiRect = new Button { Content = "Area" };
@@ -443,6 +446,7 @@ public sealed class PdfDocumentView : UserControl
         _signButton = sign;
         _inkButton = ink;
         _freeformButton = freeform;
+        _eraserButton = eraser;
         _highlightButton = highlight;
         _formButton = formFill;
         _rectButton = rect;
@@ -481,6 +485,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(formFill, "Form fill: overlay mode or field list (Tab order)");
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
         ToolTipService.SetToolTip(freeform, "Draw a closed freeform shape (auto-closes path)");
+        ToolTipService.SetToolTip(eraser, "Erase annotations by clicking them (ink preferred)");
         ToolTipService.SetToolTip(rect, "Draw a rectangle annotation");
         ToolTipService.SetToolTip(roundRect, "Draw a rounded rectangle annotation");
         ToolTipService.SetToolTip(hiRect, "Draw a translucent highlight rectangle area");
@@ -544,6 +549,7 @@ public sealed class PdfDocumentView : UserControl
         formFill.Click += async (_, _) => await OnFormButtonClickAsync();
         ink.Click += async (_, _) => await ToggleInkModeAsync();
         freeform.Click += async (_, _) => await ToggleFreeformModeAsync();
+        eraser.Click += (_, _) => ToggleEraserMode();
         rect.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.Rectangle);
         roundRect.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.RoundedRectangle);
         hiRect.Click += async (_, _) => await ToggleShapeModeAsync(PdfShapeKind.HighlightRectangle);
@@ -564,7 +570,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, sign, formFill, ink, freeform, rect, roundRect, hiRect, ellipse, line, arrow,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, sign, formFill, ink, freeform, eraser, rect, roundRect, hiRect, ellipse, line, arrow,
                 _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -1247,6 +1253,15 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (_eraserMode && e.Key == VirtualKey.Escape)
+        {
+            ClearEraserMode();
+            RefreshToolButtonChrome();
+            _status.Text = "Eraser off.";
+            e.Handled = true;
+            return;
+        }
+
         if (_formOverlayMode && e.Key == VirtualKey.Tab)
         {
             var shiftDownTab = Microsoft.UI.Input.InputKeyboardSource
@@ -1551,7 +1566,7 @@ public sealed class PdfDocumentView : UserControl
         }
     }
 
-    private void PageBorder_PointerPressed(object sender, PointerRoutedEventArgs e)
+    private async void PageBorder_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
         if (sender is not Border { Tag: int pageIndex } border)
         {
@@ -1603,6 +1618,13 @@ public sealed class PdfDocumentView : UserControl
         if (_inkMode || _freeformMode || _signatureMode)
         {
             BeginInkStroke(border, pageIndex, e);
+            e.Handled = true;
+            return;
+        }
+
+        if (_eraserMode)
+        {
+            await EraseAnnotationAtAsync(border, pageIndex, e);
             e.Handled = true;
             return;
         }
@@ -3822,6 +3844,7 @@ public sealed class PdfDocumentView : UserControl
         ClearHighlightMode();
         ClearCalloutMode();
         ClearFreeformMode();
+        ClearEraserMode();
         if (_formOverlayMode)
         {
             ClearFormOverlayMode();
@@ -3855,6 +3878,123 @@ public sealed class PdfDocumentView : UserControl
         _status.Text = "Ink mode on — draw on the page.";
     }
 
+    private void ToggleEraserMode()
+    {
+        ClearRedactionMode();
+        ClearShapeMode();
+        ClearSignatureMode();
+        ClearHighlightMode();
+        ClearCalloutMode();
+        ClearFreeformMode();
+        if (_inkMode)
+        {
+            _inkMode = false;
+            CancelInkStroke();
+        }
+
+        if (_formOverlayMode)
+        {
+            ClearFormOverlayMode();
+        }
+
+        if (_eraserMode)
+        {
+            ClearEraserMode();
+            _status.Text = "Eraser off.";
+            RefreshToolButtonChrome();
+            return;
+        }
+
+        if (_cropMode)
+        {
+            CancelCropMode();
+        }
+
+        _eraserMode = true;
+        ClearAnnotSelectionVisual();
+        _selectedAnnot = null;
+        RefreshToolButtonChrome();
+        _status.Text = "Eraser on — click an annotation to remove it (Esc to exit).";
+    }
+
+    private void ClearEraserMode()
+    {
+        _eraserMode = false;
+    }
+
+    private async Task EraseAnnotationAtAsync(Border border, int pageIndex, PointerRoutedEventArgs e)
+    {
+        var pressPoint = e.GetCurrentPoint(border).Position;
+        var page = _document.GetPage(pageIndex);
+        var pdfX = pressPoint.X / _scale;
+        var pdfY = page.HeightPoints - (pressPoint.Y / _scale);
+        const double pad = 8.0;
+
+        var onPage = _annotationItems.Where(a => a.PageIndex == pageIndex).ToList();
+        // Prefer ink strokes (F18-05), then any annotation under/near the cursor.
+        var hit = HitWithPad(onPage.Where(a => a.IsInk), pdfX, pdfY, pad)
+            ?? HitWithPad(onPage, pdfX, pdfY, pad);
+
+        if (hit is null)
+        {
+            _status.Text = "Eraser: no annotation under cursor.";
+            return;
+        }
+
+        try
+        {
+            await _annotations.RemoveAsync(_document, hit.PageIndex, hit.AnnotIndex);
+            if (_annotClipboard is { } clip
+                && clip.PageIndex == hit.PageIndex
+                && clip.AnnotIndex == hit.AnnotIndex)
+            {
+                _annotClipboard = null;
+                _annotClipboardIsCut = false;
+            }
+
+            ClearAnnotSelectionVisual();
+            _selectedAnnot = null;
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = $"Erased {FormatAnnotationLabel(hit)}.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Eraser failed: " + ex.Message;
+        }
+    }
+
+    private static PdfAnnotationInfo? HitWithPad(
+        IEnumerable<PdfAnnotationInfo> annotations,
+        double xPoints,
+        double yPoints,
+        double pad)
+    {
+        PdfAnnotationInfo? hit = null;
+        foreach (var annot in annotations)
+        {
+            var b = annot.Bounds;
+            var left = Math.Min(b.Left, b.Right) - pad;
+            var right = Math.Max(b.Left, b.Right) + pad;
+            var bottom = Math.Min(b.Bottom, b.Top) - pad;
+            var top = Math.Max(b.Bottom, b.Top) + pad;
+            if (xPoints < left || xPoints > right || yPoints < bottom || yPoints > top)
+            {
+                continue;
+            }
+
+            if (hit is null || annot.AnnotIndex >= hit.AnnotIndex)
+            {
+                hit = annot;
+            }
+        }
+
+        return hit;
+    }
+
     private async Task ToggleFreeformModeAsync()
     {
         ClearRedactionMode();
@@ -3862,6 +4002,7 @@ public sealed class PdfDocumentView : UserControl
         ClearSignatureMode();
         ClearHighlightMode();
         ClearCalloutMode();
+        ClearEraserMode();
         if (_inkMode)
         {
             _inkMode = false;
@@ -3924,6 +4065,7 @@ public sealed class PdfDocumentView : UserControl
         ClearSignatureMode();
         ClearHighlightMode();
         ClearCalloutMode();
+        ClearEraserMode();
         if (_formOverlayMode)
         {
             ClearFormOverlayMode();
@@ -4078,6 +4220,11 @@ public sealed class PdfDocumentView : UserControl
         if (_freeformButton is not null)
         {
             _freeformButton.Background = _freeformMode ? active : null;
+        }
+
+        if (_eraserButton is not null)
+        {
+            _eraserButton.Background = _eraserMode ? active : null;
         }
 
         if (_highlightButton is not null)
