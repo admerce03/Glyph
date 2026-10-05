@@ -462,9 +462,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F28-02 | Image selection tools | Elliptical selection. | M5 | Tested | Select → Ellipse shape; extract/clear/move use oval mask |
 | F28-03 | Image selection tools | Freeform lasso. | M5 | Tested | Select → Lasso drag polyline; extract/clear/move use polygon mask |
 | F28-04 | Image selection tools | Smart lasso. | M5 | Implemented | Select → Smart; edge-snapping polyline (Sobel), polygon mask |
-| F28-05 | Image selection tools | Select all. | M5 | Implemented | Select → All / Ctrl+A |
+| F28-05 | Image selection tools | Select all. | M5 | Tested | Select → All / Ctrl+A; `ImagePixelSelectionPolicy` unit tests |
 | F28-06 | Image selection tools | Invert selection. | M5 | Tested | Select → Invert; extract/clear apply outside mask |
-| F28-07 | Image selection tools | Deselect. | M5 | Implemented | Deselect / Esc |
+| F28-07 | Image selection tools | Deselect. | M5 | Tested | Deselect / Esc; `ImagePixelSelectionPolicy` unit tests |
 | F28-08 | Image selection tools | Move selected pixels. | M5 | Tested | Drag inside selection / arrow keys → `MoveRectAsync` |
 | F28-09 | Image selection tools | Copy. | M5 | Implemented | Copy sel / Ctrl+C → clipboard PNG via `ExtractRectAsync` |
 | F28-10 | Image selection tools | Cut. | M5 | Implemented | Cut sel / Ctrl+X → copy + `ClearRectAsync` |

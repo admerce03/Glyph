@@ -983,7 +983,7 @@ public sealed class ImageDocumentView : UserControl
             if (_selectionMode)
             {
                 ExitSelectionMode(keepSelection: false);
-                _status.Text = "Selection mode off.";
+                _status.Text = ImagePixelSelectionPolicy.ModeOff;
                 e.Handled = true;
                 return;
             }
@@ -1781,7 +1781,7 @@ public sealed class ImageDocumentView : UserControl
         if (_selectionMode)
         {
             ExitSelectionMode(keepSelection: false);
-            _status.Text = "Selection mode off.";
+            _status.Text = ImagePixelSelectionPolicy.ModeOff;
             return;
         }
 
@@ -1813,7 +1813,7 @@ public sealed class ImageDocumentView : UserControl
         _pixelSelection = null;
         _selectionInverted = false;
         ApplySelectionChrome();
-        _status.Text = "Selection mode — drag a shape; drag inside to move (arrow keys nudge; Esc exits).";
+        _status.Text = ImagePixelSelectionPolicy.ModeOn;
     }
 
     private void ExitSelectionMode(bool keepSelection)
@@ -1893,9 +1893,9 @@ public sealed class ImageDocumentView : UserControl
             _selectionKindBox.SelectedIndex = 0;
         }
 
-        SetPixelSelection(new ImageRect(0, 0, _document.PixelWidth, _document.PixelHeight));
+        SetPixelSelection(ImagePixelSelectionPolicy.FullImageRect(_document.PixelWidth, _document.PixelHeight));
         ApplySelectionChrome();
-        _status.Text = $"Selected all {_document.PixelWidth}×{_document.PixelHeight}.";
+        _status.Text = ImagePixelSelectionPolicy.SelectedAll(_document.PixelWidth, _document.PixelHeight);
     }
 
     private void ImageSurface_RightTapped(object sender, RightTappedRoutedEventArgs e)
@@ -1915,13 +1915,13 @@ public sealed class ImageDocumentView : UserControl
             var cutItem = new MenuFlyoutItem { Text = "Cut selection" };
             cutItem.Click += async (_, _) => await CutSelectionAsync();
             flyout.Items.Add(cutItem);
-            var deselectItem = new MenuFlyoutItem { Text = "Deselect" };
+            var deselectItem = new MenuFlyoutItem { Text = ImagePixelSelectionPolicy.MenuDeselect };
             deselectItem.Click += (_, _) => ClearPixelSelection();
             flyout.Items.Add(deselectItem);
         }
         else
         {
-            var selectAllItem = new MenuFlyoutItem { Text = "Select all" };
+            var selectAllItem = new MenuFlyoutItem { Text = ImagePixelSelectionPolicy.MenuSelectAll };
             selectAllItem.Click += (_, _) => SelectAllPixels();
             flyout.Items.Add(selectAllItem);
         }
@@ -2086,7 +2086,7 @@ public sealed class ImageDocumentView : UserControl
         ApplySelectionChrome();
         if (_selectionMode)
         {
-            _status.Text = "Selection cleared.";
+            _status.Text = ImagePixelSelectionPolicy.Cleared;
         }
     }
 
