@@ -13257,6 +13257,8 @@ public sealed class PdfDocumentView : UserControl
         var authorBox = new TextBox { Text = current.Author ?? string.Empty, Width = 320 };
         var subjectBox = new TextBox { Text = current.Subject ?? string.Empty, Width = 320 };
         var keywordsBox = new TextBox { Text = current.Keywords ?? string.Empty, Width = 320 };
+        var creatorBox = new TextBox { Text = current.Creator ?? string.Empty, Width = 320 };
+        var producerBox = new TextBox { Text = current.Producer ?? string.Empty, Width = 320 };
 
         var panel = new StackPanel
         {
@@ -13271,6 +13273,10 @@ public sealed class PdfDocumentView : UserControl
                 subjectBox,
                 new TextBlock { Text = "Keywords" },
                 keywordsBox,
+                new TextBlock { Text = "Creator" },
+                creatorBox,
+                new TextBlock { Text = "Producer" },
+                producerBox,
             },
         };
 
@@ -13298,7 +13304,9 @@ public sealed class PdfDocumentView : UserControl
                     Title: titleBox.Text,
                     Author: authorBox.Text,
                     Subject: subjectBox.Text,
-                    Keywords: keywordsBox.Text));
+                    Keywords: keywordsBox.Text,
+                    Creator: creatorBox.Text,
+                    Producer: producerBox.Text));
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();

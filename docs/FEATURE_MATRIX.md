@@ -408,8 +408,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F25-02 | PDF metadata | author | M7 | Implemented | Info dialog Author||
 | F25-03 | PDF metadata | subject | M7 | Implemented | Info dialog Subject||
 | F25-04 | PDF metadata | keywords | M7 | Implemented | Info dialog Keywords||
-| F25-05 | PDF metadata | creator | M7 | Implemented | Info dialog Creator||
-| F25-06 | PDF metadata | producer | M7 | Implemented | Info dialog Producer||
+| F25-05 | PDF metadata | creator | M7 | Tested | Info dialog + Edit… `/Creator` via Info patch |
+| F25-06 | PDF metadata | producer | M7 | Tested | Info dialog + Edit… `/Producer` via Info patch |
 | F25-07 | PDF metadata | created date | M7 | Implemented | Info dialog CreationDate||
 | F25-08 | PDF metadata | modified date | M7 | Implemented | Info dialog ModDate||
 | F25-09 | PDF metadata | page count | M7 | Implemented | Info dialog page count||

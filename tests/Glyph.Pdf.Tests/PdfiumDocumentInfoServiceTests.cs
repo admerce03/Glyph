@@ -29,6 +29,8 @@ public class PdfiumDocumentInfoServiceTests
             info.Author.Should().Be("Glyph Author");
             info.Subject.Should().Be("Glyph Subject");
             info.Keywords.Should().Be("glyph, test");
+            info.Creator.Should().Be("Glyph Creator");
+            info.Producer.Should().Be("Glyph Producer");
             info.PageCount.Should().Be(1);
             info.IsEncrypted.Should().BeFalse();
             info.SecurityHandlerRevision.Should().Be(-1);
@@ -65,7 +67,7 @@ public class PdfiumDocumentInfoServiceTests
     }
 
     [Fact]
-    public async Task SetInfo_updates_title_author_subject_keywords()
+    public async Task SetInfo_updates_title_author_subject_keywords_creator_producer()
     {
         var path = CreateInfoPdf();
         try
@@ -80,13 +82,46 @@ public class PdfiumDocumentInfoServiceTests
                     Title: "New Title",
                     Author: "New Author",
                     Subject: "New Subject",
-                    Keywords: "alpha, beta"));
+                    Keywords: "alpha, beta",
+                    Creator: "New Creator",
+                    Producer: "New Producer"));
 
             var info = infoService.GetInfo(document);
             info.Title.Should().Be("New Title");
             info.Author.Should().Be("New Author");
             info.Subject.Should().Be("New Subject");
             info.Keywords.Should().Be("alpha, beta");
+            info.Creator.Should().Be("New Creator");
+            info.Producer.Should().Be("New Producer");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task SetInfo_preserves_creator_producer_when_omitted()
+    {
+        var path = CreateInfoPdf();
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var infoService = new PdfiumDocumentInfoService();
+            await using var document = await factory.OpenAsync(path);
+
+            var before = infoService.GetInfo(document);
+            before.Creator.Should().Be("Glyph Creator");
+            before.Producer.Should().Be("Glyph Producer");
+
+            infoService.SetInfo(
+                document,
+                new PdfDocumentInfoUpdate(Title: "Only Title"));
+
+            var info = infoService.GetInfo(document);
+            info.Title.Should().Be("Only Title");
+            info.Creator.Should().Be("Glyph Creator");
+            info.Producer.Should().Be("Glyph Producer");
         }
         finally
         {
@@ -110,6 +145,8 @@ public class PdfiumDocumentInfoServiceTests
             info.Author.Should().BeNullOrEmpty();
             info.Subject.Should().BeNullOrEmpty();
             info.Keywords.Should().BeNullOrEmpty();
+            info.Creator.Should().BeNullOrEmpty();
+            info.Producer.Should().BeNullOrEmpty();
         }
         finally
         {
@@ -177,6 +214,8 @@ public class PdfiumDocumentInfoServiceTests
         builder.DocumentInformation.Author = "Glyph Author";
         builder.DocumentInformation.Subject = "Glyph Subject";
         builder.DocumentInformation.Keywords = "glyph, test";
+        builder.DocumentInformation.Creator = "Glyph Creator";
+        builder.DocumentInformation.Producer = "Glyph Producer";
 
         var font = builder.AddStandard14Font(Standard14Font.Helvetica);
         var page = builder.AddPage(PageSize.Letter);

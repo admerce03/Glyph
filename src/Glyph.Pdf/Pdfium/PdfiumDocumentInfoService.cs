@@ -60,8 +60,8 @@ public sealed class PdfiumDocumentInfoService : IPdfDocumentInfoService
                     Author: update.Author ?? current.Author ?? string.Empty,
                     Subject: update.Subject ?? current.Subject ?? string.Empty,
                     Keywords: update.Keywords ?? current.Keywords ?? string.Empty,
-                    Creator: current.Creator,
-                    Producer: current.Producer);
+                    Creator: update.Creator ?? current.Creator ?? string.Empty,
+                    Producer: update.Producer ?? current.Producer ?? string.Empty);
 
             // Full rewrite first so trailer/startxref parsing is stable, then append Info update.
             var baseBytes = PdfiumDocumentSaver.SaveToBytes(pdfium.Handle, flags: 2);
