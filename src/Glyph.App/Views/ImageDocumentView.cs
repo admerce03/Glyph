@@ -2,6 +2,8 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.Core.Documents;
 using Glyph.Imaging.Abstractions;
 using Glyph.Ocr.Abstractions;
+using Glyph.Pdf.Abstractions;
+using Glyph.Pdf.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -45,6 +47,7 @@ public sealed class ImageDocumentView : UserControl
     private readonly Button _ocrFindNextButton;
     private readonly Button _ocrFolderButton;
     private readonly Button _ocrSearchWebButton;
+    private readonly Button _ocrSavePdfButton;
     private IReadOnlyList<int> _ocrSearchHits = [];
     private int _ocrSearchHitIndex = -1;
     private IReadOnlyList<string> _siblings = Array.Empty<string>();
@@ -157,6 +160,7 @@ public sealed class ImageDocumentView : UserControl
         _ocrFindNextButton = new Button { Content = "Next OCR", Visibility = Visibility.Collapsed };
         _ocrFolderButton = new Button { Content = "OCR folder" };
         _ocrSearchWebButton = new Button { Content = "Search web", Visibility = Visibility.Collapsed };
+        _ocrSavePdfButton = new Button { Content = "OCR→PDF", Visibility = Visibility.Collapsed };
         var rotate180 = new Button { Content = "180°" };
         var orient = new Button { Content = "Orient" };
         var fullscreen = new Button { Content = "Fullscreen" };
@@ -181,6 +185,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(_ocrFindNextButton, "Jump to next OCR search hit");
         ToolTipService.SetToolTip(_ocrFolderButton, "Run offline OCR on images in this folder (up to 20)");
         ToolTipService.SetToolTip(_ocrSearchWebButton, "Search the web for selected OCR text");
+        ToolTipService.SetToolTip(_ocrSavePdfButton, "Export a searchable PDF with this image and an invisible OCR text layer");
         ToolTipService.SetToolTip(rotate180, "Rotate 180°");
         ToolTipService.SetToolTip(orient, "Apply EXIF orientation into pixels");
         ToolTipService.SetToolTip(fullscreen, "Toggle window fullscreen");
@@ -211,6 +216,7 @@ public sealed class ImageDocumentView : UserControl
         ocrButton.Click += async (_, _) => await RunOcrAsync();
         _ocrFolderButton.Click += async (_, _) => await RunOcrFolderAsync();
         _ocrSearchWebButton.Click += async (_, _) => await SearchWebSelectedOcrAsync();
+        _ocrSavePdfButton.Click += async (_, _) => await SaveSearchablePdfAsync();
         _copyOcrButton.Click += (_, _) => CopySelectedOcrText();
         _ocrEntitiesButton.Click += async (_, _) => await ShowOcrEntitiesAsync();
         _clearOcrButton.Click += (_, _) => ClearOcrOverlay();
@@ -244,7 +250,7 @@ public sealed class ImageDocumentView : UserControl
             Children =
             {
                 _prevButton, _nextButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
-                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, _ocrFolderButton, _copyOcrButton, _ocrSearchWebButton, _ocrEntitiesButton, _ocrSearchBox, _ocrFindButton, _ocrFindNextButton, _clearOcrButton, save, exportPng, exportJpeg, convert, _status,
+                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, _ocrFolderButton, _copyOcrButton, _ocrSearchWebButton, _ocrSavePdfButton, _ocrEntitiesButton, _ocrSearchBox, _ocrFindButton, _ocrFindNextButton, _clearOcrButton, save, exportPng, exportJpeg, convert, _status,
             },
         };
 
@@ -1133,6 +1139,7 @@ public sealed class ImageDocumentView : UserControl
             _ocrOverlay.IsHitTestVisible = false;
             _copyOcrButton.Visibility = Visibility.Collapsed;
             _ocrSearchWebButton.Visibility = Visibility.Collapsed;
+            _ocrSavePdfButton.Visibility = Visibility.Collapsed;
             _ocrEntitiesButton.Visibility = Visibility.Collapsed;
             _ocrSearchBox.Visibility = Visibility.Collapsed;
             _ocrFindButton.Visibility = Visibility.Collapsed;
@@ -1182,6 +1189,7 @@ public sealed class ImageDocumentView : UserControl
         _ocrOverlay.IsHitTestVisible = hasWords && !_cropMode;
         _copyOcrButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
         _ocrSearchWebButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
+        _ocrSavePdfButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
         _ocrEntitiesButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
         _ocrSearchBox.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
         _ocrFindButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
@@ -1448,6 +1456,71 @@ public sealed class ImageDocumentView : UserControl
         }
 
         await SearchWebAsync(text);
+    }
+
+    private async Task SaveSearchablePdfAsync()
+    {
+        if (_ocrResult is null || _ocrSourceWidth <= 0 || _ocrSourceHeight <= 0)
+        {
+            _status.Text = "Run OCR before exporting a searchable PDF.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Building searchable PDF…";
+            var tempPng = Path.Combine(Path.GetTempPath(), "glyph-ocr-" + Guid.NewGuid().ToString("N") + ".png");
+            try
+            {
+                await _encoder.SaveAsAsync(_document, tempPng, ImageEncodeFormat.Png);
+                var pngBytes = await File.ReadAllBytesAsync(tempPng);
+                var scaleX = _document.PixelWidth / (double)_ocrSourceWidth;
+                var scaleY = _document.PixelHeight / (double)_ocrSourceHeight;
+                var words = OcrTextSearch.FlattenWords(_ocrResult)
+                    .Select(w => new SearchablePdfWord(
+                        w.Text,
+                        w.X * scaleX,
+                        w.Y * scaleY,
+                        Math.Max(1, w.Width * scaleX),
+                        Math.Max(1, w.Height * scaleY)))
+                    .ToList();
+
+                var pdfBytes = OcrSearchablePdfWriter.BuildFromPng(
+                    pngBytes,
+                    _document.PixelWidth,
+                    _document.PixelHeight,
+                    words);
+
+                var window = App.CurrentApp.MainWindowInstance
+                    ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+                var picker = new Windows.Storage.Pickers.FileSavePicker();
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+                picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+                picker.FileTypeChoices.Add("PDF", [".pdf"]);
+                picker.SuggestedFileName = "ocr-searchable.pdf";
+                var file = await picker.PickSaveFileAsync();
+                if (file is null)
+                {
+                    _status.Text = "Searchable PDF export cancelled.";
+                    return;
+                }
+
+                await File.WriteAllBytesAsync(file.Path, pdfBytes);
+                _status.Text = "Saved searchable PDF " + file.Name;
+            }
+            finally
+            {
+                if (File.Exists(tempPng))
+                {
+                    File.Delete(tempPng);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Searchable PDF failed: " + ex.Message;
+        }
     }
 
     private async Task SearchWebAsync(string? query)
