@@ -153,11 +153,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F08-02 | OCR / Live Text equivalent | Select detected text directly over the image. | M6 | Implemented | Image + PDF OCR word-box overlay; click/Ctrl+click select + Copy OCR |
 | F08-03 | OCR / Live Text equivalent | Copy text. | M6 | Implemented | OCR result dialog Copy text |
 | F08-04 | OCR / Live Text equivalent | Copy all recognized text. | M6 | Implemented | Same as copy full result text |
-| F08-05 | OCR / Live Text equivalent | Search recognized text. | M6 | Implemented | Find merges session OCR cache; OCR word overlays after page OCR |
+| F08-05 | OCR / Live Text equivalent | Search recognized text. | M6 | Implemented | Find merges session OCR cache; image Find OCR / Next OCR word boxes |
 | F08-06 | OCR / Live Text equivalent | OCR current page. | M6 | Implemented | PdfDocumentView OCR uses selected-or-current pages |
 | F08-07 | OCR / Live Text equivalent | OCR selected pages. | M6 | Implemented | Multi-select thumbnails → OCR concatenates page sections |
 | F08-08 | OCR / Live Text equivalent | OCR entire PDF. | M6 | Implemented | OCR chooser Secondary = entire document page range |
-| F08-09 | OCR / Live Text equivalent | OCR multiple images. | M6 | Not Started |  |
+| F08-09 | OCR / Live Text equivalent | OCR multiple images. | M6 | Implemented | OCR folder toolbar — up to 20 sibling images |
 | F08-10 | OCR / Live Text equivalent | Optionally embed OCR text layer into PDF. | M6 | Implemented | OCR→PDF export via `OcrSearchablePdfWriter` invisible text |
 | F08-11 | OCR / Live Text equivalent | Preserve image underneath the OCR layer. | M6 | Implemented | Full-bleed page render under invisible text layer |
 | F08-12 | OCR / Live Text equivalent | URLs | M6 | Implemented | `OcrEntityDetector` + Entities dialog Open |
@@ -171,7 +171,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F08-20 | OCR / Live Text equivalent | Copy phone number. | M6 | Implemented | Entities → Copy value |
 | F08-21 | OCR / Live Text equivalent | Open address in user's default mapping/web service. | M6 | Implemented | Entities → Bing Maps query |
 | F08-22 | OCR / Live Text equivalent | Create calendar event through appropriate Windows/system mechanism where feasible. | M6 | Implemented | Entities → temp `.ics` via `OcrCalendarInvite` |
-| F08-23 | OCR / Live Text equivalent | Search web. | M6 | Implemented | Entities dialog → Bing |
+| F08-23 | OCR / Live Text equivalent | Search web. | M6 | Implemented | Search web toolbar + Entities dialog → Bing |
 | F08-24 | OCR / Live Text equivalent | Copy recognized value. | M6 | Implemented | Entities → Copy value |
 | F09-01 | PDF bookmarks | Add bookmark at current page/location. | M2/M4 | Not Started |  |
 | F09-02 | PDF bookmarks | Rename bookmark. | M2/M4 | Not Started |  |
@@ -812,8 +812,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F57-09 | Performance behavior | large-document virtualization | M2+/M9 | Not Started |  |
 | F57-10 | Performance behavior | low memory usage | M2+/M9 | Not Started |  |
 | F57-11 | Performance behavior | unload distant PDF pages | M2+/M9 | Not Started |  |
-| F57-12 | Performance behavior | cancel long-running operations | M2+/M9 | In Progress | PDF OCR Cancel OCR + `CancellationToken`; PDF search cancel |
-| F57-13 | Performance behavior | progress indicator for: | M2+/M9 | Not Started |  |
+| F57-12 | Performance behavior | cancel long-running operations | M2+/M9 | In Progress | PDF/image OCR Cancel OCR + `CancellationToken`; PDF search cancel |
+| F57-13 | Performance behavior | progress indicator for: | M2+/M9 | In Progress | OCR status `n/m` + Cancel OCR (PDF + images); PDF search has progress |
 | F58-01 | Large-document handling | PDFs with thousands of pages. | M2+/M9 | In Progress | Page virtualization via on-demand render + cache |
 | F58-02 | Large-document handling | Very large raster images. | M2+/M9 | Not Started |  |
 | F58-03 | Large-document handling | Progressive rendering. | M2+/M9 | Not Started |  |

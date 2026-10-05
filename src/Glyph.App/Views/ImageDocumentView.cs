@@ -2,6 +2,8 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.Core.Documents;
 using Glyph.Imaging.Abstractions;
 using Glyph.Ocr.Abstractions;
+using Glyph.Pdf.Abstractions;
+using Glyph.Pdf.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -20,6 +22,7 @@ public sealed class ImageDocumentView : UserControl
     private readonly IImageProcessor _processor;
     private readonly IImageEncoder _encoder;
     private readonly IOcrEngine? _ocr;
+    private readonly IImageDecoder? _decoder;
     private readonly DocumentViewState _viewState;
     private readonly Func<string, Task>? _openSibling;
     private readonly ScrollViewer _scrollViewer;
@@ -37,7 +40,18 @@ public sealed class ImageDocumentView : UserControl
     private readonly Button _applyCropButton;
     private readonly Button _cancelCropButton;
     private readonly Button _copyOcrButton;
+    private readonly Button _ocrEntitiesButton;
     private readonly Button _clearOcrButton;
+    private readonly TextBox _ocrSearchBox;
+    private readonly Button _ocrFindButton;
+    private readonly Button _ocrFindNextButton;
+    private readonly Button _ocrFolderButton;
+    private readonly Button _ocrCancelButton;
+    private readonly Button _ocrSearchWebButton;
+    private readonly Button _ocrSavePdfButton;
+    private CancellationTokenSource? _ocrCts;
+    private IReadOnlyList<int> _ocrSearchHits = [];
+    private int _ocrSearchHitIndex = -1;
     private IReadOnlyList<string> _siblings = Array.Empty<string>();
     private double _zoom = 1.0;
     private bool _loaded;
@@ -59,7 +73,8 @@ public sealed class ImageDocumentView : UserControl
         IImageEncoder encoder,
         DocumentViewState? viewState = null,
         Func<string, Task>? openSibling = null,
-        IOcrEngine? ocr = null)
+        IOcrEngine? ocr = null,
+        IImageDecoder? decoder = null)
     {
         _document = document;
         _processor = processor;
@@ -67,6 +82,7 @@ public sealed class ImageDocumentView : UserControl
         _viewState = viewState ?? new DocumentViewState();
         _openSibling = openSibling;
         _ocr = ocr;
+        _decoder = decoder;
         _zoom = _viewState.Zoom <= 0 ? 1.0 : _viewState.Zoom;
 
         _image = new Image
@@ -134,7 +150,20 @@ public sealed class ImageDocumentView : UserControl
         var meta = new Button { Content = "Meta" };
         var ocrButton = new Button { Content = "OCR" };
         _copyOcrButton = new Button { Content = "Copy OCR", Visibility = Visibility.Collapsed };
+        _ocrEntitiesButton = new Button { Content = "Entities", Visibility = Visibility.Collapsed };
         _clearOcrButton = new Button { Content = "Clear OCR", Visibility = Visibility.Collapsed };
+        _ocrSearchBox = new TextBox
+        {
+            PlaceholderText = "Find in OCR",
+            Width = 120,
+            Visibility = Visibility.Collapsed,
+        };
+        _ocrFindButton = new Button { Content = "Find OCR", Visibility = Visibility.Collapsed };
+        _ocrFindNextButton = new Button { Content = "Next OCR", Visibility = Visibility.Collapsed };
+        _ocrFolderButton = new Button { Content = "OCR folder" };
+        _ocrCancelButton = new Button { Content = "Cancel OCR", Visibility = Visibility.Collapsed };
+        _ocrSearchWebButton = new Button { Content = "Search web", Visibility = Visibility.Collapsed };
+        _ocrSavePdfButton = new Button { Content = "OCR→PDF", Visibility = Visibility.Collapsed };
         var rotate180 = new Button { Content = "180°" };
         var orient = new Button { Content = "Orient" };
         var fullscreen = new Button { Content = "Fullscreen" };
@@ -152,7 +181,15 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(meta, "Image metadata, EXIF, and GPS");
         ToolTipService.SetToolTip(ocrButton, "Run offline OCR and select text over the image");
         ToolTipService.SetToolTip(_copyOcrButton, "Copy selected OCR words (or all recognized text)");
+        ToolTipService.SetToolTip(_ocrEntitiesButton, "Review detected URLs, emails, phones, addresses, dates, and times");
         ToolTipService.SetToolTip(_clearOcrButton, "Hide OCR word overlays");
+        ToolTipService.SetToolTip(_ocrSearchBox, "Search recognized OCR text");
+        ToolTipService.SetToolTip(_ocrFindButton, "Highlight OCR words matching the query");
+        ToolTipService.SetToolTip(_ocrFindNextButton, "Jump to next OCR search hit");
+        ToolTipService.SetToolTip(_ocrFolderButton, "Run offline OCR on images in this folder (up to 20)");
+        ToolTipService.SetToolTip(_ocrCancelButton, "Cancel the in-flight OCR job");
+        ToolTipService.SetToolTip(_ocrSearchWebButton, "Search the web for selected OCR text");
+        ToolTipService.SetToolTip(_ocrSavePdfButton, "Export a searchable PDF with this image and an invisible OCR text layer");
         ToolTipService.SetToolTip(rotate180, "Rotate 180°");
         ToolTipService.SetToolTip(orient, "Apply EXIF orientation into pixels");
         ToolTipService.SetToolTip(fullscreen, "Toggle window fullscreen");
@@ -181,8 +218,23 @@ public sealed class ImageDocumentView : UserControl
         adjust.Click += async (_, _) => await AdjustAsync();
         meta.Click += async (_, _) => await ShowMetadataAsync();
         ocrButton.Click += async (_, _) => await RunOcrAsync();
+        _ocrFolderButton.Click += async (_, _) => await RunOcrFolderAsync();
+        _ocrCancelButton.Click += (_, _) => CancelOcr();
+        _ocrSearchWebButton.Click += async (_, _) => await SearchWebSelectedOcrAsync();
+        _ocrSavePdfButton.Click += async (_, _) => await SaveSearchablePdfAsync();
         _copyOcrButton.Click += (_, _) => CopySelectedOcrText();
+        _ocrEntitiesButton.Click += async (_, _) => await ShowOcrEntitiesAsync();
         _clearOcrButton.Click += (_, _) => ClearOcrOverlay();
+        _ocrFindButton.Click += (_, _) => RunOcrSearch();
+        _ocrFindNextButton.Click += (_, _) => FocusNextOcrSearchHit();
+        _ocrSearchBox.KeyDown += (s, e) =>
+        {
+            if (e.Key == Windows.System.VirtualKey.Enter)
+            {
+                RunOcrSearch();
+                e.Handled = true;
+            }
+        };
         save.Click += async (_, _) => await SaveAsync();
         exportPng.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Png, ".png");
         exportJpeg.Click += async (_, _) => await ExportJpegAsync();
@@ -203,7 +255,7 @@ public sealed class ImageDocumentView : UserControl
             Children =
             {
                 _prevButton, _nextButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
-                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, _copyOcrButton, _clearOcrButton, save, exportPng, exportJpeg, convert, _status,
+                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, _ocrFolderButton, _ocrCancelButton, _copyOcrButton, _ocrSearchWebButton, _ocrSavePdfButton, _ocrEntitiesButton, _ocrSearchBox, _ocrFindButton, _ocrFindNextButton, _clearOcrButton, save, exportPng, exportJpeg, convert, _status,
             },
         };
 
@@ -946,6 +998,32 @@ public sealed class ImageDocumentView : UserControl
         }
     }
 
+    private void CancelOcr()
+    {
+        if (_ocrCts is null)
+        {
+            return;
+        }
+
+        _ocrCts.Cancel();
+        _status.Text = "Cancelling OCR…";
+    }
+
+    private void BeginOcrJob()
+    {
+        _ocrCts?.Cancel();
+        _ocrCts?.Dispose();
+        _ocrCts = new CancellationTokenSource();
+        _ocrCancelButton.Visibility = Visibility.Visible;
+    }
+
+    private void EndOcrJob()
+    {
+        _ocrCancelButton.Visibility = Visibility.Collapsed;
+        _ocrCts?.Dispose();
+        _ocrCts = null;
+    }
+
     private async Task RunOcrAsync()
     {
         if (_ocr is null)
@@ -954,12 +1032,16 @@ public sealed class ImageDocumentView : UserControl
             return;
         }
 
+        BeginOcrJob();
+        var token = _ocrCts!.Token;
         try
         {
-            _status.Text = "Running OCR…";
-            var buffer = await _document.GetPixelsAsync(maxEdge: 4096);
+            _status.Text = "Running OCR… (1/1)";
+            var buffer = await _document.GetPixelsAsync(maxEdge: 4096, token);
+            token.ThrowIfCancellationRequested();
             var result = await _ocr.RecognizeAsync(
-                new OcrRequest(buffer.Width, buffer.Height, buffer.BgraPixels));
+                new OcrRequest(buffer.Width, buffer.Height, buffer.BgraPixels),
+                token);
 
             _ocrResult = result;
             _ocrSourceWidth = buffer.Width;
@@ -976,9 +1058,125 @@ public sealed class ImageDocumentView : UserControl
 
             _status.Text = $"OCR ready — click words to select ({wordCount} word(s)).";
         }
+        catch (OperationCanceledException)
+        {
+            _status.Text = "OCR cancelled.";
+        }
         catch (Exception ex)
         {
             _status.Text = "OCR failed: " + ex.Message;
+        }
+        finally
+        {
+            EndOcrJob();
+        }
+    }
+
+    private async Task RunOcrFolderAsync()
+    {
+        if (_ocr is null)
+        {
+            _status.Text = "OCR engine unavailable.";
+            return;
+        }
+
+        if (_decoder is null)
+        {
+            _status.Text = "Image decoder unavailable for folder OCR.";
+            return;
+        }
+
+        if (_siblings.Count == 0)
+        {
+            _status.Text = "No folder siblings to OCR.";
+            return;
+        }
+
+        const int maxImages = 20;
+        var paths = _siblings.Take(maxImages).ToList();
+        BeginOcrJob();
+        var token = _ocrCts!.Token;
+        try
+        {
+            var sections = new List<string>(paths.Count);
+            var totalLines = 0;
+            for (var i = 0; i < paths.Count; i++)
+            {
+                token.ThrowIfCancellationRequested();
+                var path = paths[i];
+                var name = System.IO.Path.GetFileName(path);
+                _status.Text = $"OCR folder {i + 1}/{paths.Count}: {name}…";
+
+                await using var image = await _decoder.OpenAsync(path, token);
+                var buffer = await image.GetPixelsAsync(maxEdge: 2048, token);
+                var result = await _ocr.RecognizeAsync(
+                    new OcrRequest(buffer.Width, buffer.Height, buffer.BgraPixels),
+                    token);
+                totalLines += result.Lines.Count;
+                var body = string.IsNullOrWhiteSpace(result.Text) ? "(no text recognized)" : result.Text.Trim();
+                sections.Add($"--- {name} ---\n{body}");
+            }
+
+            var combined = string.Join("\n\n", sections);
+            var box = new TextBox
+            {
+                Text = combined,
+                IsReadOnly = true,
+                AcceptsReturn = true,
+                TextWrapping = TextWrapping.Wrap,
+                Width = 520,
+                Height = 360,
+            };
+            var copy = new Button { Content = "Copy text", Margin = new Thickness(0, 8, 0, 0) };
+            copy.Click += (_, _) =>
+            {
+                var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                package.SetText(combined);
+                Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+                _status.Text = "Folder OCR text copied.";
+            };
+
+            var truncated = _siblings.Count > maxImages
+                ? $" (first {maxImages} of {_siblings.Count})"
+                : string.Empty;
+            var panel = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = $"{paths.Count} image(s){truncated} · {totalLines} line(s)",
+                        Opacity = 0.75,
+                    },
+                    box,
+                    copy,
+                },
+            };
+
+            var dialog = new ContentDialog
+            {
+                Title = "Folder OCR results",
+                Content = panel,
+                CloseButtonText = "Close",
+                XamlRoot = XamlRoot,
+            };
+            await dialog.ShowAsync();
+            _status.Text = totalLines == 0
+                ? $"Folder OCR — no text across {paths.Count} image(s)."
+                : $"Folder OCR — {paths.Count} image(s), {totalLines} line(s).";
+        }
+        catch (OperationCanceledException)
+        {
+            _status.Text = "Folder OCR cancelled.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Folder OCR failed: " + ex.Message;
+        }
+        finally
+        {
+            EndOcrJob();
         }
     }
 
@@ -995,6 +1193,12 @@ public sealed class ImageDocumentView : UserControl
         {
             _ocrOverlay.IsHitTestVisible = false;
             _copyOcrButton.Visibility = Visibility.Collapsed;
+            _ocrSearchWebButton.Visibility = Visibility.Collapsed;
+            _ocrSavePdfButton.Visibility = Visibility.Collapsed;
+            _ocrEntitiesButton.Visibility = Visibility.Collapsed;
+            _ocrSearchBox.Visibility = Visibility.Collapsed;
+            _ocrFindButton.Visibility = Visibility.Collapsed;
+            _ocrFindNextButton.Visibility = Visibility.Collapsed;
             _clearOcrButton.Visibility = Visibility.Collapsed;
             return;
         }
@@ -1039,7 +1243,83 @@ public sealed class ImageDocumentView : UserControl
         var hasWords = _ocrVisuals.Count > 0;
         _ocrOverlay.IsHitTestVisible = hasWords && !_cropMode;
         _copyOcrButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
+        _ocrSearchWebButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
+        _ocrSavePdfButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
+        _ocrEntitiesButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
+        _ocrSearchBox.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
+        _ocrFindButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
+        _ocrFindNextButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
         _clearOcrButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void RunOcrSearch()
+    {
+        if (_ocrResult is null || _ocrVisuals.Count == 0)
+        {
+            _status.Text = "Run OCR before searching.";
+            return;
+        }
+
+        var query = _ocrSearchBox.Text ?? string.Empty;
+        _ocrSearchHits = OcrTextSearch.FindWordIndexes(OcrTextSearch.FlattenWords(_ocrResult), query);
+        _ocrSearchHitIndex = _ocrSearchHits.Count > 0 ? 0 : -1;
+
+        _selectedOcrIndices.Clear();
+        for (var i = 0; i < _ocrVisuals.Count; i++)
+        {
+            ApplyOcrSelectionChrome(i, selected: false);
+        }
+
+        foreach (var hit in _ocrSearchHits)
+        {
+            _selectedOcrIndices.Add(hit);
+            ApplyOcrSelectionChrome(hit, selected: true);
+        }
+
+        if (_ocrSearchHits.Count == 0)
+        {
+            _status.Text = "No OCR matches.";
+            return;
+        }
+
+        FocusOcrSearchHit(_ocrSearchHitIndex);
+        _status.Text = $"OCR find: {_ocrSearchHits.Count} match(es).";
+    }
+
+    private void FocusNextOcrSearchHit()
+    {
+        if (_ocrSearchHits.Count == 0)
+        {
+            RunOcrSearch();
+            return;
+        }
+
+        _ocrSearchHitIndex = (_ocrSearchHitIndex + 1) % _ocrSearchHits.Count;
+        FocusOcrSearchHit(_ocrSearchHitIndex);
+    }
+
+    private void FocusOcrSearchHit(int hitListIndex)
+    {
+        if (hitListIndex < 0 || hitListIndex >= _ocrSearchHits.Count)
+        {
+            return;
+        }
+
+        var wordIndex = _ocrSearchHits[hitListIndex];
+        if (wordIndex < 0 || wordIndex >= _ocrVisuals.Count)
+        {
+            return;
+        }
+
+        var rect = _ocrVisuals[wordIndex].Visual;
+        var left = Canvas.GetLeft(rect);
+        var top = Canvas.GetTop(rect);
+        _scrollViewer.ChangeView(
+            Math.Max(0, left - 40),
+            Math.Max(0, top - 40),
+            null,
+            disableAnimation: false);
+        _status.Text = $"OCR match {hitListIndex + 1}/{_ocrSearchHits.Count}: {_ocrVisuals[wordIndex].Word.Text}";
     }
 
     private void OcrWord_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -1125,12 +1405,288 @@ public sealed class ImageDocumentView : UserControl
             : $"Copied {_selectedOcrIndices.Count} OCR word(s).";
     }
 
+    private async Task ShowOcrEntitiesAsync()
+    {
+        if (_ocrResult is null)
+        {
+            _status.Text = "Run OCR first.";
+            return;
+        }
+
+        var entities = OcrEntityDetector.Detect(_ocrResult.Text);
+        if (entities.Count == 0)
+        {
+            _status.Text = "No URLs, emails, phones, addresses, dates, or times detected.";
+            return;
+        }
+
+        var list = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            Width = 440,
+            MaxHeight = 320,
+            ItemsSource = entities
+                .Select(e => $"{e.Kind}: {e.Value}")
+                .ToList(),
+        };
+
+        var copy = new Button { Content = "Copy value", Margin = new Thickness(0, 8, 8, 0) };
+        var open = new Button { Content = "Open / act", Margin = new Thickness(0, 8, 8, 0) };
+        var searchWeb = new Button { Content = "Search web", Margin = new Thickness(0, 8, 0, 0) };
+        copy.Click += (_, _) =>
+        {
+            if (list.SelectedIndex < 0 || list.SelectedIndex >= entities.Count)
+            {
+                return;
+            }
+
+            var entity = entities[list.SelectedIndex];
+            var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            package.SetText(entity.Value);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+            _status.Text = $"Copied {entity.Kind}.";
+        };
+        open.Click += async (_, _) =>
+        {
+            if (list.SelectedIndex < 0 || list.SelectedIndex >= entities.Count)
+            {
+                return;
+            }
+
+            await ActOnOcrEntityAsync(entities[list.SelectedIndex]);
+        };
+        searchWeb.Click += async (_, _) =>
+        {
+            if (list.SelectedIndex < 0 || list.SelectedIndex >= entities.Count)
+            {
+                return;
+            }
+
+            await SearchWebAsync(entities[list.SelectedIndex].Value);
+        };
+
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = $"{entities.Count} entity(ies) in OCR text",
+                    Opacity = 0.75,
+                },
+                list,
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Children = { copy, open, searchWeb },
+                },
+            },
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = "OCR entities",
+            Content = panel,
+            CloseButtonText = "Close",
+            XamlRoot = XamlRoot,
+        };
+        await dialog.ShowAsync();
+    }
+
+    private async Task SearchWebSelectedOcrAsync()
+    {
+        string text;
+        if (_selectedOcrIndices.Count > 0)
+        {
+            text = string.Join(
+                ' ',
+                _selectedOcrIndices.OrderBy(i => i)
+                    .Where(i => i >= 0 && i < _ocrVisuals.Count)
+                    .Select(i => _ocrVisuals[i].Word.Text));
+        }
+        else
+        {
+            text = _ocrResult?.Text ?? string.Empty;
+        }
+
+        await SearchWebAsync(text);
+    }
+
+    private async Task SaveSearchablePdfAsync()
+    {
+        if (_ocrResult is null || _ocrSourceWidth <= 0 || _ocrSourceHeight <= 0)
+        {
+            _status.Text = "Run OCR before exporting a searchable PDF.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Building searchable PDF…";
+            var tempPng = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "glyph-ocr-" + Guid.NewGuid().ToString("N") + ".png");
+            try
+            {
+                await _encoder.SaveAsAsync(_document, tempPng, ImageEncodeFormat.Png);
+                var pngBytes = await File.ReadAllBytesAsync(tempPng);
+                var scaleX = _document.PixelWidth / (double)_ocrSourceWidth;
+                var scaleY = _document.PixelHeight / (double)_ocrSourceHeight;
+                var words = OcrTextSearch.FlattenWords(_ocrResult)
+                    .Select(w => new SearchablePdfWord(
+                        w.Text,
+                        w.X * scaleX,
+                        w.Y * scaleY,
+                        Math.Max(1, w.Width * scaleX),
+                        Math.Max(1, w.Height * scaleY)))
+                    .ToList();
+
+                var pdfBytes = OcrSearchablePdfWriter.BuildFromPng(
+                    pngBytes,
+                    _document.PixelWidth,
+                    _document.PixelHeight,
+                    words);
+
+                var window = App.CurrentApp.MainWindowInstance
+                    ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+                var picker = new Windows.Storage.Pickers.FileSavePicker();
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+                picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+                picker.FileTypeChoices.Add("PDF", [".pdf"]);
+                picker.SuggestedFileName = "ocr-searchable.pdf";
+                var file = await picker.PickSaveFileAsync();
+                if (file is null)
+                {
+                    _status.Text = "Searchable PDF export cancelled.";
+                    return;
+                }
+
+                await File.WriteAllBytesAsync(file.Path, pdfBytes);
+                _status.Text = "Saved searchable PDF " + file.Name;
+            }
+            finally
+            {
+                if (File.Exists(tempPng))
+                {
+                    File.Delete(tempPng);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Searchable PDF failed: " + ex.Message;
+        }
+    }
+
+    private async Task SearchWebAsync(string? query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            _status.Text = "Nothing to search.";
+            return;
+        }
+
+        try
+        {
+            var url = "https://www.bing.com/search?q=" + Uri.EscapeDataString(query.Trim());
+            await Windows.System.Launcher.LaunchUriAsync(new Uri(url));
+            _status.Text = "Opened web search.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Search web failed: " + ex.Message;
+        }
+    }
+
+    private async Task ActOnOcrEntityAsync(OcrEntity entity)
+    {
+        try
+        {
+            switch (entity.Kind)
+            {
+                case OcrEntityKind.Url:
+                {
+                    var href = entity.Value.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                        ? entity.Value
+                        : "https://" + entity.Value;
+                    await Windows.System.Launcher.LaunchUriAsync(new Uri(href));
+                    _status.Text = "Opened URL.";
+                    break;
+                }
+                case OcrEntityKind.Email:
+                    await Windows.System.Launcher.LaunchUriAsync(new Uri("mailto:" + entity.Value));
+                    _status.Text = "Opened mail compose.";
+                    break;
+                case OcrEntityKind.Address:
+                {
+                    var maps = "https://www.bing.com/maps?q=" + Uri.EscapeDataString(entity.Value);
+                    await Windows.System.Launcher.LaunchUriAsync(new Uri(maps));
+                    _status.Text = "Opened address in Maps.";
+                    break;
+                }
+                case OcrEntityKind.Date:
+                    await CreateCalendarFromOcrAsync(entity);
+                    break;
+                case OcrEntityKind.Time:
+                    await CreateCalendarFromOcrAsync(entity);
+                    break;
+                case OcrEntityKind.Phone:
+                default:
+                {
+                    var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                    package.SetText(entity.Value);
+                    Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+                    _status.Text = $"Copied {entity.Kind}.";
+                    break;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Entity action failed: " + ex.Message;
+        }
+    }
+
+    private async Task CreateCalendarFromOcrAsync(OcrEntity entity)
+    {
+        string ics;
+        if (entity.Kind == OcrEntityKind.Date
+            && OcrCalendarInvite.TryParseDate(entity.Value, out var date))
+        {
+            ics = OcrCalendarInvite.BuildAllDayEvent(date, "Glyph OCR: " + entity.Value);
+        }
+        else if (entity.Kind == OcrEntityKind.Time
+            && OcrCalendarInvite.TryParseTime(entity.Value, out var time))
+        {
+            var start = DateTime.Today.Add(time);
+            ics = OcrCalendarInvite.BuildTimedEvent(start, TimeSpan.FromHours(1), "Glyph OCR: " + entity.Value);
+        }
+        else
+        {
+            var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            package.SetText(entity.Value);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+            _status.Text = $"Copied {entity.Kind} (could not parse for calendar).";
+            return;
+        }
+
+        var path = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(),
+            "glyph-ocr-" + Guid.NewGuid().ToString("N") + ".ics");
+        await System.IO.File.WriteAllTextAsync(path, ics);
+        var file = await Windows.Storage.StorageFile.GetFileFromPathAsync(path);
+        await Windows.System.Launcher.LaunchFileAsync(file);
+        _status.Text = "Opened calendar invite.";
+    }
+
     private void ClearOcrOverlay()
     {
         _ocrResult = null;
         _ocrSourceWidth = 0;
         _ocrSourceHeight = 0;
         _selectedOcrIndices.Clear();
+        _ocrSearchHits = [];
+        _ocrSearchHitIndex = -1;
         RebuildOcrOverlay();
         _status.Text = "OCR overlay cleared.";
     }
