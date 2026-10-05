@@ -447,7 +447,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-22 | Image viewing | high-resolution image support | M5 | Implemented | Same maxEdge progressive decode; zoom re-decodes up to 8192 edge |
 | F26-23 | Image viewing | alpha transparency | M5 | Implemented | BGRA32 decode via Magick → WriteableBitmap |
 | F26-24 | Image viewing | HDR display where Windows/display stack supports it | M5 | Deferred | Needs WinUI HDR display pipeline; revisit with F39 |
-| F26-25 | Image viewing | color-managed display | M5 | Deferred | Covered by M8 §39 color management |
+| F26-25 | Image viewing | color-managed display | M5 | Implemented | Via M8 F39-02: GetPixelsAsync ICC→sRGB (Meta toggle) |
 | F27-01 | Animated images | play | M8 | Implemented | Image toolbar Play/Pause uses frame delays |
 | F27-02 | Animated images | pause | M8 | Implemented | Pause + Esc stops playback |
 | F27-03 | Animated images | restart | M8 | Implemented | Restart → frame 0 + play |
