@@ -694,7 +694,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F48-11 | File properties and inspector | EXIF | M5/M9 | Implemented | Image Meta EXIF group |
 | F48-12 | File properties and inspector | GPS | M5/M9 | Implemented | Image Meta GPS + maps/remove |
 | F48-13 | File properties and inspector | file size | M5/M9 | Implemented | Image Properties file size + path |
-| F49-01 | Undo and redo | annotations | M1-M4 | Not Started |  |
+| F49-01 | Undo and redo | annotations | M1-M4 | Implemented | Ctrl+Z undoes sticky/text/markup/ink/shape/stamp via annot stack |
 | F49-02 | Undo and redo | drawing | M1-M4 | Implemented | PDF stroke undo stack; image markup undo |
 | F49-03 | Undo and redo | page insertion | M1-M4 | Implemented | Via `PdfPageEditHistory` snapshots |
 | F49-04 | Undo and redo | page deletion | M1-M4 | Implemented | Via `PdfPageEditHistory` snapshots |
@@ -705,7 +705,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F49-09 | Undo and redo | image adjustments | M1-M4 | Implemented | Image adjust undo checkpoints |
 | F49-10 | Undo and redo | metadata editing | M1-M4 | Not Started |  |
 | F49-11 | Undo and redo | form filling | M1-M4 | Not Started |  |
-| F49-12 | Undo and redo | signature placement | M1-M4 | Not Started |  |
+| F49-12 | Undo and redo | signature placement | M1-M4 | Implemented | Signature stamps push onto annot undo stack (Ctrl+Z) |
 | F49-13 | Undo and redo | redaction before permanent application | M1-M4 | Implemented | Ctrl+Z / Undo undoes last pending redaction mark |
 | F49-14 | Undo and redo | Ctrl+Z | M1-M4 | Implemented | PDF: pending redaction → stroke → page edit; image undo |
 | F49-15 | Undo and redo | Ctrl+Y / Ctrl+Shift+Z | M1-M4 | Implemented | PDF page-edit redo (Ctrl+Y) |
