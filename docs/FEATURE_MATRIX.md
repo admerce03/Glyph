@@ -250,7 +250,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-24 | PDF annotations | cut | M4 | Implemented | Sidebar Cut / Ctrl+X; removes source on paste |
 | F13-25 | PDF annotations | copy | M4 | Implemented | Sidebar Copy / Ctrl+C when annot selected |
 | F13-26 | PDF annotations | paste | M4 | Implemented | Sidebar Paste / Ctrl+V; `DuplicateAsync` + optional cut-remove |
-| F13-27 | PDF annotations | multi-select | M4 | Not Started |  |
+| F13-27 | PDF annotations | multi-select | M4 | Implemented | Ctrl+click toggle; sidebar Extended; bulk delete/move |
 | F13-28 | PDF annotations | group where useful | M4 | Not Started |  |
 | F13-29 | PDF annotations | change border color | M4 | Tested | Set on create + `SetColorAsync` |
 | F13-30 | PDF annotations | change fill color | M4 | Tested | `SetFillColorAsync` (InteriorColor) + sidebar Fill; also on shape create |
@@ -315,7 +315,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F17-12 | Shapes | rotate | M4 | Not Started |  |
 | F17-13 | Shapes | move | M4 | Tested | Same as F13-19 drag / `MoveAsync` |
 | F17-14 | Shapes | duplicate | M4 | Tested | Same as F13-22 `DuplicateAsync` |
-| F17-15 | Shapes | multi-select | M4 | Not Started |  |
+| F17-15 | Shapes | multi-select | M4 | Implemented | Same as F13-27 Ctrl+click / Extended list |
 | F17-16 | Shapes | border color | M4 | Implemented | Stroke picker when entering Rect/Ellipse/Line/Arrow |
 | F17-17 | Shapes | border width | M4 | Implemented | Width picker with stroke color dialog |
 | F17-18 | Shapes | line style | M4 | Tested | Shape stroke dialog: Solid/Dashed/Dotted for Line/Arrow |
