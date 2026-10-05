@@ -79,6 +79,21 @@ public static class AppShellStatus
     public static string FormatRestoredSnapshot(string whenLocal) =>
         "Restored snapshot from " + whenLocal;
 
+    public const string RenameDialogTitle = "Rename";
+    public const string RenameButton = "Rename";
+    public const string ReplaceExistingTitle = "Replace existing file?";
+    public const string VersionSnapshotsTitlePrefix = "Version snapshots — ";
+    public const string RestoreSnapshotTitle = "Restore snapshot?";
+    public const string RestoreSnapshotBody =
+        "Replace the current file on disk with this snapshot? A new snapshot of the current file will be kept first when snapshots are enabled.";
+    public const string ReplaceButton = "Replace";
+    public const string RestoreButton = "Restore";
+
+    public static string FormatReplaceExistingBody(string fileName) =>
+        $"“{fileName}” already exists in the destination folder.";
+
+    public static string FormatVersionSnapshotsTitle(string displayName) =>
+        VersionSnapshotsTitlePrefix + displayName;
     public const string Ready = "Ready";
     public const string OpenedFileFromClipboard = "Opened file from clipboard.";
     public const string NoVersionSnapshotsYet =

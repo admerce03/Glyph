@@ -325,9 +325,9 @@ public sealed partial class MainWindow : Window
         var box = new TextBox { PlaceholderText = "Search all open PDFs", Width = 360 };
         var dialog = new ContentDialog
         {
-            Title = "Find in all open PDFs",
+            Title = FindAllOpenPdfsStatus.DialogTitle,
             Content = box,
-            PrimaryButtonText = "Search",
+            PrimaryButtonText = FindAllOpenPdfsStatus.SearchButton,
             CloseButtonText = PreferencesDialogUi.CancelButton,
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = Content.XamlRoot,
@@ -775,10 +775,10 @@ public sealed partial class MainWindow : Window
 
             var offerCrop = new ContentDialog
             {
-                Title = "Camera capture",
-                Content = "Open the photo now. Use Crop… in the image toolbar if you want to trim it.",
-                PrimaryButtonText = "Open",
-                CloseButtonText = "Discard",
+                Title = WebcamCaptureUi.CaptureDialogTitle,
+                Content = WebcamCaptureUi.CaptureDialogBody,
+                PrimaryButtonText = WebcamCaptureUi.OpenNowButton,
+                CloseButtonText = WebcamCaptureUi.DiscardButton,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = root,
             };
@@ -818,9 +818,9 @@ public sealed partial class MainWindow : Window
                 StatusText.Text = ScanDialogUi.NoScannersFound;
                 var none = new ContentDialog
                 {
-                    Title = "No scanners",
-                    Content = "Windows did not report any image scanners. Connect a scanner and try again.",
-                    CloseButtonText = "OK",
+                    Title = ScanDialogUi.NoScannersDialogTitle,
+                    Content = ScanDialogUi.NoScannersDialogBody,
+                    CloseButtonText = ScanDialogUi.OkButton,
                     XamlRoot = Content.XamlRoot,
                 };
                 await none.ShowAsync();
@@ -1320,9 +1320,9 @@ public sealed partial class MainWindow : Window
             };
             var dialog = new ContentDialog
             {
-                Title = "Rename",
+                Title = AppShellStatus.RenameDialogTitle,
                 Content = box,
-                PrimaryButtonText = "Rename",
+                PrimaryButtonText = AppShellStatus.RenameButton,
                 CloseButtonText = "Cancel",
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = Content.XamlRoot,
@@ -1404,9 +1404,9 @@ public sealed partial class MainWindow : Window
             {
                 var overwrite = new ContentDialog
                 {
-                    Title = "Replace existing file?",
+                    Title = AppShellStatus.ReplaceExistingTitle,
                     Content = $"“{fileName}” already exists in the destination folder.",
-                    PrimaryButtonText = "Replace",
+                    PrimaryButtonText = AppShellStatus.ReplaceButton,
                     CloseButtonText = "Cancel",
                     DefaultButton = ContentDialogButton.Close,
                     XamlRoot = Content.XamlRoot,
@@ -2875,7 +2875,7 @@ public sealed partial class MainWindow : Window
         var panel = new StackPanel { Children = { list, buttons } };
         var dialog = new ContentDialog
         {
-            Title = "Version snapshots — " + active.DisplayName,
+            Title = AppShellStatus.FormatVersionSnapshotsTitle(active.DisplayName),
             Content = panel,
             CloseButtonText = "Close",
             XamlRoot = RootGrid.XamlRoot,
@@ -2940,9 +2940,9 @@ public sealed partial class MainWindow : Window
         {
             var confirm = new ContentDialog
             {
-                Title = "Restore snapshot?",
-                Content = "Replace the current file on disk with this snapshot? A new snapshot of the current file will be kept first when snapshots are enabled.",
-                PrimaryButtonText = "Restore",
+                Title = AppShellStatus.RestoreSnapshotTitle,
+                Content = AppShellStatus.RestoreSnapshotBody,
+                PrimaryButtonText = AppShellStatus.RestoreButton,
                 CloseButtonText = "Cancel",
                 DefaultButton = ContentDialogButton.Close,
                 XamlRoot = RootGrid.XamlRoot,

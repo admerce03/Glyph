@@ -14,6 +14,11 @@ public static class WebcamCaptureUi
         "Camera capture cancelled or unavailable.";
     public const string CameraUiUnavailable = "Camera UI unavailable.";
     public const string CaptureDiscarded = "Camera capture discarded.";
+    public const string CaptureDialogTitle = "Camera capture";
+    public const string CaptureDialogBody =
+        "Open the photo now. Use Crop… in the image toolbar if you want to trim it.";
+    public const string OpenNowButton = "Open";
+    public const string DiscardButton = "Discard";
     public const string CaptureFailedPrefix = "Camera capture failed: ";
     public const bool InsertsIntoPdfAsStamp = true;
     public const bool OpensAsImageTab = true;

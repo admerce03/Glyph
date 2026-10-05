@@ -10,6 +10,10 @@ public static class ScanDialogUi
     public const string Cancelled = "Scan cancelled.";
     public const string LookingForScanners = "Looking for scanners…";
     public const string NoScannersFound = "No scanners found.";
+    public const string NoScannersDialogTitle = "No scanners";
+    public const string NoScannersDialogBody =
+        "Windows did not report any image scanners. Connect a scanner and try again.";
+    public const string OkButton = "OK";
     public const string ProducedNoFiles = "Scan produced no files.";
     public const string FailedPrefix = "Scan failed: ";
     public const string OpenPdfFirstToInsert = "Open a PDF first to insert scanned pages.";

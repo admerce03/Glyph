@@ -19,5 +19,11 @@ public class AppShellStatusTests
         AppShellStatus.NoVersionSnapshotsYet.Should().Contain("Save");
         AppShellStatus.FormatOpenedFilesFromClipboard(2).Should().Contain("2");
         AppShellStatus.FormatActive("Doc").Should().Contain("Doc");
+        AppShellStatus.RenameDialogTitle.Should().Be("Rename");
+        AppShellStatus.FormatReplaceExistingBody("a.pdf").Should().Contain("a.pdf");
+        AppShellStatus.FormatVersionSnapshotsTitle("X").Should().Contain("X");
+        FindAllOpenPdfsStatus.DialogTitle.Should().Contain("Find");
+        ScanDialogUi.NoScannersDialogTitle.Should().Be("No scanners");
+        WebcamCaptureUi.CaptureDialogTitle.Should().Be("Camera capture");
     }
 }
