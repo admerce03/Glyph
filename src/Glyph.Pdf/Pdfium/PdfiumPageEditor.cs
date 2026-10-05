@@ -1,3 +1,4 @@
+using Glyph.Core.Documents;
 using Glyph.Pdf.Abstractions;
 using PDFiumCore;
 
@@ -284,6 +285,73 @@ public sealed class PdfiumPageEditor : IPdfPageEditor
                     }
 
                     pdfium.RebuildPages();
+                }
+            },
+            cancellationToken);
+    }
+
+public async Task MergeDocumentsAsync(
+        IPdfDocument document,
+        IReadOnlyList<IPdfDocument> sources,
+        int insertIndex,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sources);
+        var pdfium = RequirePdfium(document);
+        if (insertIndex < 0 || insertIndex > pdfium.PageCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(insertIndex));
+        }
+
+        var cursor = insertIndex;
+        foreach (var source in sources)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ArgumentNullException.ThrowIfNull(source);
+            if (source.PageCount == 0)
+            {
+                continue;
+            }
+
+            var indexes = Enumerable.Range(0, source.PageCount).ToList();
+            await InsertPagesAsync(document, source, indexes, cursor, cancellationToken);
+            cursor += indexes.Count;
+        }
+    }
+
+    public Task<IReadOnlyList<IPdfDocument>> SplitDocumentAsync(
+        IPdfDocument document,
+        IReadOnlyList<int> splitBeforeIndexes,
+        CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        ArgumentNullException.ThrowIfNull(splitBeforeIndexes);
+        var ranges = PdfSplitRanges.BuildRanges(pdfium.PageCount, splitBeforeIndexes);
+        if (ranges.Count == 0)
+        {
+            return Task.FromResult<IReadOnlyList<IPdfDocument>>([]);
+        }
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    var parts = new List<IPdfDocument>(ranges.Count);
+                    foreach (var range in ranges)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var handle = BuildDocumentFromPages(pdfium.Handle, range);
+                        var pages = new List<PdfiumPage>();
+                        var part = new PdfiumDocument(path: null, handle, pages, isEncrypted: false);
+                        pages.AddRange(PdfiumPageCatalog.Build(part, handle));
+                        parts.Add(part);
+                    }
+
+                    return (IReadOnlyList<IPdfDocument>)parts;
                 }
             },
             cancellationToken);

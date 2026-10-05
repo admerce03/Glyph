@@ -40,6 +40,25 @@ public interface IPdfPageEditor
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Appends (or inserts) every page from each source document into <paramref name="document"/>
+    /// in order, starting at <paramref name="insertIndex"/> (PageCount = append).
+    /// </summary>
+    Task MergeDocumentsAsync(
+        IPdfDocument document,
+        IReadOnlyList<IPdfDocument> sources,
+        int insertIndex,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Splits <paramref name="document"/> into contiguous page ranges. Each index in
+    /// <paramref name="splitBeforeIndexes"/> starts a new document (0 is implied).
+    /// </summary>
+    Task<IReadOnlyList<IPdfDocument>> SplitDocumentAsync(
+        IPdfDocument document,
+        IReadOnlyList<int> splitBeforeIndexes,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sets a non-destructive CropBox on each selected page by insetting
     /// <paramref name="margins"/> from the page MediaBox (falling back to the current CropBox).
     /// Underlying page content is preserved.

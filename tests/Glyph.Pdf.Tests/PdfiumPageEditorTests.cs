@@ -298,6 +298,63 @@ public class PdfiumPageEditorTests
         }
     }
 
+[Fact]
+    public async Task Merge_documents_appends_all_source_pages()
+    {
+        var destPath = CreateMultiPagePdf(pageCount: 2);
+        var srcA = CreateMultiPagePdf(pageCount: 1);
+        var srcB = CreateMultiPagePdf(pageCount: 2);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var editor = new PdfiumPageEditor();
+            await using var dest = await factory.OpenAsync(destPath);
+            await using var a = await factory.OpenAsync(srcA);
+            await using var b = await factory.OpenAsync(srcB);
+
+            await editor.MergeDocumentsAsync(dest, [a, b], insertIndex: dest.PageCount);
+            dest.PageCount.Should().Be(5);
+        }
+        finally
+        {
+            File.Delete(destPath);
+            File.Delete(srcA);
+            File.Delete(srcB);
+        }
+    }
+
+    [Fact]
+    public async Task Split_document_returns_contiguous_parts()
+    {
+        var path = CreateMultiPagePdf(pageCount: 5);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var editor = new PdfiumPageEditor();
+            await using var document = await factory.OpenAsync(path);
+
+            var parts = await editor.SplitDocumentAsync(document, [2, 4]);
+            try
+            {
+                parts.Should().HaveCount(3);
+                parts[0].PageCount.Should().Be(2);
+                parts[1].PageCount.Should().Be(2);
+                parts[2].PageCount.Should().Be(1);
+            }
+            finally
+            {
+                foreach (var part in parts)
+                {
+                    await part.DisposeAsync();
+                }
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static string CreateMultiPagePdf(int pageCount)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-edit-" + Guid.NewGuid().ToString("N") + ".pdf");
