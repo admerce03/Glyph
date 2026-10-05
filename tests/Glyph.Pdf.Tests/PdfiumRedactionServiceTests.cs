@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text;
 using FluentAssertions;
 using Glyph.Pdf.Abstractions;
@@ -404,6 +405,133 @@ public class PdfiumRedactionServiceTests
         }
     }
 
+    [Fact]
+    public async Task Apply_removes_intersecting_images()
+    {
+        var path = CreateBlankPdf();
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var redaction = new PdfiumRedactionService();
+            await using var document = await factory.OpenAsync(path);
+            var pdfium = (PdfiumDocument)document;
+
+            PdfiumLibrary.EnsureInitialized();
+            lock (PdfiumSync.Gate)
+            {
+                InsertSolidImage(pdfium, pageIndex: 0, pixelSize: 64, displayPoints: 144);
+                CountImageObjects(pdfium, 0).Should().Be(1);
+            }
+
+            // Image is placed at (72, 576)–(216, 720); cover it fully (>35% threshold).
+            redaction.MarkRectangle(document, 0, new PdfRect(60, 560, 230, 740), "img");
+            var result = await redaction.ApplyAsync(
+                document,
+                new PdfRedactionApplyOptions(
+                    RemoveIntersectingTextObjects: false,
+                    RemoveIntersectingImageObjects: true,
+                    RemoveIntersectingAnnotations: false,
+                    RemoveEmbeddedAttachments: false,
+                    RemoveMetadata: false));
+
+            result.MarksApplied.Should().Be(1);
+            result.ImageObjectsRemoved.Should().BeGreaterThanOrEqualTo(1);
+
+            lock (PdfiumSync.Gate)
+            {
+                CountImageObjects(pdfium, 0).Should().Be(0);
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    private static int CountImageObjects(PdfiumDocument pdfium, int pageIndex)
+    {
+        var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
+        page.Should().NotBeNull();
+        try
+        {
+            var images = 0;
+            var count = fpdf_edit.FPDFPageCountObjects(page);
+            for (var i = 0; i < count; i++)
+            {
+                var obj = fpdf_edit.FPDFPageGetObject(page, i);
+                if (obj is not null && fpdf_edit.FPDFPageObjGetType(obj) == 3)
+                {
+                    images++;
+                }
+            }
+
+            return images;
+        }
+        finally
+        {
+            fpdfview.FPDF_ClosePage(page);
+        }
+    }
+
+    private static void InsertSolidImage(PdfiumDocument pdfium, int pageIndex, int pixelSize, float displayPoints)
+    {
+        var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
+        page.Should().NotBeNull();
+        try
+        {
+            var pixels = new byte[pixelSize * pixelSize * 4];
+            for (var i = 0; i < pixels.Length; i += 4)
+            {
+                pixels[i] = 40;
+                pixels[i + 1] = 80;
+                pixels[i + 2] = 160;
+                pixels[i + 3] = 255;
+            }
+
+            var image = fpdf_edit.FPDFPageObjNewImageObj(pdfium.Handle);
+            image.Should().NotBeNull();
+            var handle = GCHandle.Alloc(pixels, GCHandleType.Pinned);
+            FpdfBitmapT? bitmap = null;
+            try
+            {
+                bitmap = fpdfview.FPDFBitmapCreateEx(
+                    pixelSize,
+                    pixelSize,
+                    PdfiumBitmapFormats.Bgra,
+                    handle.AddrOfPinnedObject(),
+                    pixelSize * 4);
+                bitmap.Should().NotBeNull();
+                fpdf_edit.FPDFImageObjSetBitmap(page, 1, image, bitmap).Should().NotBe(0);
+                fpdf_edit.FPDFImageObjSetMatrix(
+                    image,
+                    displayPoints,
+                    0,
+                    0,
+                    displayPoints,
+                    72,
+                    720 - displayPoints).Should().NotBe(0);
+                fpdf_edit.FPDFPageInsertObject(page, image);
+                fpdf_edit.FPDFPageGenerateContent(page).Should().NotBe(0);
+            }
+            finally
+            {
+                if (bitmap is not null)
+                {
+                    fpdfview.FPDFBitmapDestroy(bitmap);
+                }
+
+                if (handle.IsAllocated)
+                {
+                    handle.Free();
+                }
+            }
+        }
+        finally
+        {
+            fpdfview.FPDF_ClosePage(page);
+        }
+    }
+
     private static unsafe void AddAttachment(FpdfDocumentT handle, string name, byte[] contents)
     {
         var nameBytes = Encoding.Unicode.GetBytes(name + "\0");
@@ -447,6 +575,15 @@ public class PdfiumRedactionServiceTests
         var font = builder.AddStandard14Font(Standard14Font.Helvetica);
         var page = builder.AddPage(PageSize.Letter);
         page.AddText("Info sample", 14, new PdfPoint(72, 720), font);
+        File.WriteAllBytes(path, builder.Build());
+        return path;
+    }
+
+    private static string CreateBlankPdf()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-redact-blank-" + Guid.NewGuid().ToString("N") + ".pdf");
+        var builder = new PdfDocumentBuilder();
+        builder.AddPage(PageSize.Letter);
         File.WriteAllBytes(path, builder.Build());
         return path;
     }
