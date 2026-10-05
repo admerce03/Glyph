@@ -219,6 +219,8 @@ public sealed class PdfDocumentView : UserControl
         var insertBlank = new Button { Content = "Blank" };
         var duplicate = new Button { Content = "Dup" };
         var extract = new Button { Content = "Extract" };
+        var merge = new Button { Content = "Merge" };
+        var split = new Button { Content = "Split" };
         var undoEdit = new Button { Content = "Undo" };
         var redoEdit = new Button { Content = "Redo" };
         ToolTipService.SetToolTip(rotateLeft, "Rotate selected pages left");
@@ -229,6 +231,8 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(insertBlank, "Insert blank page after selection");
         ToolTipService.SetToolTip(duplicate, "Duplicate selected pages");
         ToolTipService.SetToolTip(extract, "Extract selected pages to a new PDF file");
+        ToolTipService.SetToolTip(merge, "Merge other PDF files into this document");
+        ToolTipService.SetToolTip(split, "Split document before each selected page");
         ToolTipService.SetToolTip(undoEdit, "Undo last page edit (Ctrl+Z)");
         ToolTipService.SetToolTip(redoEdit, "Redo page edit (Ctrl+Y)");
 
@@ -268,6 +272,8 @@ public sealed class PdfDocumentView : UserControl
         insertBlank.Click += async (_, _) => await InsertBlankAfterSelectionAsync();
         duplicate.Click += async (_, _) => await DuplicateSelectedAsync();
         extract.Click += async (_, _) => await ExtractSelectedAsync();
+        merge.Click += async (_, _) => await MergePdfsAsync();
+        split.Click += async (_, _) => await SplitDocumentAsync();
         undoEdit.Click += async (_, _) => await UndoPageEditAsync();
         redoEdit.Click += async (_, _) => await RedoPageEditAsync();
 
@@ -281,7 +287,7 @@ public sealed class PdfDocumentView : UserControl
                 first, prev, _gotoBox, next, last, back, forward,
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
-                rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract,
+                rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split,
                 _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -1684,6 +1690,117 @@ public sealed class PdfDocumentView : UserControl
         await using var extracted = await _pageEditor.ExtractPagesAsync(_document, indexes);
         await _pageEditor.SaveAsync(extracted, file.Path);
         _status.Text = $"Extracted {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")} to {file.Name}.";
+    }
+
+    private async Task MergePdfsAsync()
+    {
+        var window = App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for open picker.");
+        var picker = new Windows.Storage.Pickers.FileOpenPicker();
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+        picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+        picker.FileTypeFilter.Add(".pdf");
+
+        var files = await picker.PickMultipleFilesAsync();
+        if (files is null || files.Count == 0)
+        {
+            _status.Text = "Merge cancelled.";
+            return;
+        }
+
+        var insertAt = _document.PageCount;
+        var opened = new List<IPdfDocument>();
+        try
+        {
+            foreach (var file in files)
+            {
+                opened.Add(await _documentFactory.OpenAsync(file.Path));
+            }
+
+            var before = _document.PageCount;
+            _status.Text = files.Count == 1 ? "Merging PDF…" : $"Merging {files.Count} PDFs…";
+            await RunPageEditAsync(() => _pageEditor.MergeDocumentsAsync(_document, opened, insertAt));
+            await ReloadAfterPageEditAsync();
+            var added = _document.PageCount - before;
+            _status.Text = added == 1 ? "Merged 1 page." : $"Merged {added} pages.";
+            if (added > 0)
+            {
+                await GoToPageAsync(insertAt, recordHistory: true);
+            }
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Merge failed: " + ex.Message;
+        }
+        finally
+        {
+            foreach (var doc in opened)
+            {
+                await doc.DisposeAsync();
+            }
+        }
+    }
+
+    private async Task SplitDocumentAsync()
+    {
+        // Split before each selected page (excluding page 0). If only page 0 is selected, split every page.
+        var selected = SelectedOrCurrentPages();
+        var splitBefore = selected.Where(i => i > 0).Distinct().OrderBy(i => i).ToList();
+        if (splitBefore.Count == 0)
+        {
+            if (_document.PageCount < 2)
+            {
+                _status.Text = "Need at least two pages to split.";
+                return;
+            }
+
+            splitBefore = Enumerable.Range(1, _document.PageCount - 1).ToList();
+        }
+
+        var ranges = PdfSplitRanges.BuildRanges(_document.PageCount, splitBefore);
+        if (ranges.Count < 2)
+        {
+            _status.Text = "Split would produce a single document.";
+            return;
+        }
+
+        var window = App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for folder picker.");
+        var picker = new Windows.Storage.Pickers.FolderPicker();
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+        picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+        picker.FileTypeFilter.Add("*");
+
+        var folder = await picker.PickSingleFolderAsync();
+        if (folder is null)
+        {
+            _status.Text = "Split cancelled.";
+            return;
+        }
+
+        _status.Text = $"Splitting into {ranges.Count} PDFs…";
+        var parts = await _pageEditor.SplitDocumentAsync(_document, splitBefore);
+        try
+        {
+            var baseName = Path.GetFileNameWithoutExtension(_document.Path) ?? "Glyph";
+            for (var i = 0; i < parts.Count; i++)
+            {
+                var name = $"{baseName}-part{i + 1}.pdf";
+                var file = await folder.CreateFileAsync(name, Windows.Storage.CreationCollisionOption.GenerateUniqueName);
+                await _pageEditor.SaveAsync(parts[i], file.Path);
+            }
+
+            _status.Text = $"Split into {parts.Count} PDFs in {folder.Name}.";
+        }
+        finally
+        {
+            foreach (var part in parts)
+            {
+                await part.DisposeAsync();
+            }
+        }
     }
 
     private async Task ReloadAfterPageEditAsync()
