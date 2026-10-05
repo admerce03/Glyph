@@ -379,14 +379,14 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F22-04 | PDF annotation flattening | signatures | M4 | Tested | Stamp annots included in `FlattenAsync` |
 | F22-05 | PDF annotation flattening | text boxes | M4 | Tested | Same flatten path |
 | F22-06 | PDF annotation flattening | drawings | M4 | Tested | Ink strokes included in flatten |
-| F23-01 | PDF security | Open encrypted PDFs. | M7 | Tested | Open with password prompt via `OpenPdfWithPasswordAsync` / fixture test||
+| F23-01 | PDF security | Open encrypted PDFs. | M7 | Tested | Open with password prompt via `OpenPdfWithPasswordAsync` / fixture test |
 | F23-02 | PDF security | Create password-protected PDFs. | M7 | Blocked | ADR-015; `PdfPasswordWriteBlockedPolicy` |
 | F23-03 | PDF security | Set document-open password. | M7 | Blocked | ADR-015; `PdfPasswordWriteBlockedPolicy` |
 | F23-04 | PDF security | Set permissions/owner password where PDF standard permits. | M7 | Blocked | ADR-015; `PdfPasswordWriteBlockedPolicy` |
 | F23-05 | PDF security | Restrict: printing/editing/copying/annotation/page extraction | M7 | Blocked | ADR-015; `PdfPasswordWriteBlockedPolicy` |
 | F23-06 | PDF security | Change existing permissions where credentials permit. | M7 | Blocked | ADR-015; `PdfPasswordWriteBlockedPolicy` |
 | F23-07 | PDF security | Remove protection when authorized. | M7 | Blocked | ADR-015; `PdfPasswordWriteBlockedPolicy` |
-| F23-08 | PDF security | Display encryption information. | M7 | Tested | Info dialog + status "Encrypted"; `GetInfo_reports_encryption_for_password_pdf` |
+| F23-08 | PDF security | Display encryption information. | M7 | Tested | Info dialog + status; `PdfDocumentPermissions.StatusBarEncryptedSuffix` / `InfoEncryptedLine` |
 | F23-09 | PDF security | Warn about limitations of PDF permission enforcement. | M7 | Tested | `PdfDocumentPermissions.AdvisoryNotice` / `EncryptedAdvisoryStatus` + Info dialog |
 | F24-01 | PDF optimization and compression | Lossless | M7 | Tested | `Lossless_full_rewrite_succeeds` + FromPreset disables downsample |
 | F24-02 | PDF optimization and compression | High quality | M7 | Tested | FromPreset 300→200 DPI + `HighQuality_downsamples_images_above_300dpi` |

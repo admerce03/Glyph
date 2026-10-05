@@ -55,6 +55,15 @@ public sealed record PdfDocumentPermissions(
     public const string EncryptedAdvisoryStatus =
         "Document is encrypted — permissions shown are advisory.";
 
+    /// <summary>Compact status-bar marker when <c>IsEncrypted</c> (F23-08).</summary>
+    public const string StatusBarEncryptedMarker = "    Encrypted";
+
+    public static string StatusBarEncryptedSuffix(bool isEncrypted) =>
+        isEncrypted ? StatusBarEncryptedMarker : string.Empty;
+
+    public static string InfoEncryptedLine(bool isEncrypted) =>
+        $"Encrypted: {(isEncrypted ? "yes" : "no")}";
+
     /// <summary>Decode standard security handler <c>/P</c> flags.</summary>
     public static PdfDocumentPermissions FromFlags(uint flags) =>
         new(

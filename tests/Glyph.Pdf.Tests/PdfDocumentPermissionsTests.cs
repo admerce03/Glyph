@@ -40,6 +40,10 @@ public class PdfDocumentPermissionsTests
         PdfDocumentPermissions.AdvisoryNotice.Should().Contain("advisory");
         PdfDocumentPermissions.EncryptedAdvisoryStatus.Should().Contain("advisory");
         PdfDocumentPermissions.EncryptedAdvisoryStatus.Should().Contain("encrypted");
+        PdfDocumentPermissions.StatusBarEncryptedSuffix(true).Should().Contain("Encrypted");
+        PdfDocumentPermissions.StatusBarEncryptedSuffix(false).Should().BeEmpty();
+        PdfDocumentPermissions.InfoEncryptedLine(true).Should().Be("Encrypted: yes");
+        PdfDocumentPermissions.InfoEncryptedLine(false).Should().Be("Encrypted: no");
     }
 
     [Fact]

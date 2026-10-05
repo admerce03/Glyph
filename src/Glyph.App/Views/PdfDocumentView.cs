@@ -12240,7 +12240,7 @@ public sealed class PdfDocumentView : UserControl
     private void UpdateStatus()
     {
         _gotoBox.Text = (CurrentPageIndex + 1).ToString();
-        var encrypted = _document.IsEncrypted ? "    Encrypted" : string.Empty;
+        var encrypted = PdfDocumentPermissions.StatusBarEncryptedSuffix(_document.IsEncrypted);
         _status.Text =
             $"Page {CurrentPageIndex + 1} / {_document.PageCount}    Zoom {(int)Math.Round(_scale * 100)}%    {_layoutMode}{encrypted}";
     }
@@ -12901,7 +12901,7 @@ public sealed class PdfDocumentView : UserControl
                 + $"Path: {DisplayValue.OrEmDash(info.FilePath)}\n"
                 + $"File: {DisplayValue.OrEmDash(info.FilePath is null ? null : System.IO.Path.GetFileName(info.FilePath))}\n"
                 + $"Size: {Bytes(info.FileSizeBytes)}\n"
-                + $"Encrypted: {(info.IsEncrypted ? "yes" : "no")}\n"
+                + $"{PdfDocumentPermissions.InfoEncryptedLine(info.IsEncrypted)}\n"
                 + $"Security handler revision: {(info.SecurityHandlerRevision < 0 ? "none" : info.SecurityHandlerRevision.ToString())}\n"
                 + $"Permission flags: 0x{info.PermissionFlags:X8}\n\n"
                 + perms.FormatSection(),
