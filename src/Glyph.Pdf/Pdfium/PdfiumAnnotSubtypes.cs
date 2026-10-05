@@ -18,4 +18,8 @@ internal static class PdfiumAnnotSubtypes
     public const int Underline = 10;
     public const int Squiggly = 11;
     public const int StrikeOut = 12;
+    public const int Stamp = 13;
+    public const int Caret = 14;
+    public const int Ink = 15;
+    public const int Popup = 16;
 }

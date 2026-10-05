@@ -114,6 +114,54 @@ public class PdfiumAnnotationServiceTests
     }
 
     [Fact]
+    public async Task Add_ink_stroke_lists_and_survives_save()
+    {
+        var path = CreateTextPdf("Ink stroke host page");
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-ink-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var stroke = new List<PdfPagePoint>
+                {
+                    new(80, 700),
+                    new(120, 720),
+                    new(160, 690),
+                    new(200, 710),
+                };
+                var created = await annots.AddInkAsync(
+                    document,
+                    pageIndex: 0,
+                    stroke,
+                    new PdfAnnotationColor(220, 60, 40));
+
+                created.IsInk.Should().BeTrue();
+                var listed = await annots.ListAsync(document, 0);
+                listed.Should().Contain(a => a.IsInk);
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var listed = await annots.ListAsync(reopened, 0);
+                listed.Should().Contain(a => a.IsInk);
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Add_sticky_note_sets_contents_color_and_survives_save()
     {
         var path = CreateTextPdf("Sticky note host page");
@@ -171,7 +219,7 @@ public class PdfiumAnnotationServiceTests
         var builder = new PdfDocumentBuilder();
         var font = builder.AddStandard14Font(Standard14Font.Helvetica);
         var page = builder.AddPage(PageSize.A4);
-        page.AddText(text, 18, new PdfPoint(50, 750), font);
+        page.AddText(text, 18, new UglyToad.PdfPig.Core.PdfPoint(50, 750), font);
         File.WriteAllBytes(path, builder.Build());
         return path;
     }
