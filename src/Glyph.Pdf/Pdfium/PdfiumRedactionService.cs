@@ -235,7 +235,7 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
             }
 
             var objBounds = new PdfRect(left, bottom, right, top);
-            if (!redactionBounds.Any(r => r.Intersects(objBounds) && CoverageRatio(objBounds, r) >= 0.35))
+            if (!redactionBounds.Any(r => r.Intersects(objBounds) && objBounds.CoverageBy(r) >= 0.35))
             {
                 continue;
             }
@@ -278,7 +278,7 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
                 }
 
                 var bounds = new PdfRect(rect.Left, rect.Bottom, rect.Right, rect.Top);
-                if (!redactionBounds.Any(r => r.Intersects(bounds) && CoverageRatio(bounds, r) >= 0.35))
+                if (!redactionBounds.Any(r => r.Intersects(bounds) && bounds.CoverageBy(r) >= 0.35))
                 {
                     continue;
                 }
@@ -295,19 +295,6 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
         }
 
         return removed;
-    }
-
-    private static double CoverageRatio(PdfRect obj, PdfRect redaction)
-    {
-        var left = Math.Max(obj.Left, redaction.Left);
-        var bottom = Math.Max(obj.Bottom, redaction.Bottom);
-        var right = Math.Min(obj.Right, redaction.Right);
-        var top = Math.Min(obj.Top, redaction.Top);
-        var width = Math.Max(0, right - left);
-        var height = Math.Max(0, top - bottom);
-        var intersection = width * height;
-        var area = Math.Max(1e-6, obj.Width * obj.Height);
-        return intersection / area;
     }
 
     private static PdfRect Normalize(PdfRect bounds)

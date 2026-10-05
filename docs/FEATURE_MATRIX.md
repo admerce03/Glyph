@@ -323,8 +323,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F17-20 | Shapes | opacity | M4 | Implemented | Sidebar Opacity → `SetOpacityAsync` |
 | F17-21 | Shapes | shape-specific adjustment handles | M4 | Tested | Line/Arrow show endpoint handles (`p0`/`p1`); `SetLineEndpointsAsync` + `GlyphLineEnds` |
 | F18-01 | Freehand drawing | Mouse drawing. | M4 | Tested | Ink draw mode |
-| F18-02 | Freehand drawing | Stroke color. | M4 | Implemented | Stroke picker when entering Ink mode |
-| F18-03 | Freehand drawing | Stroke width. | M4 | Implemented | Width picker (1–8 pt) with color dialog |
+| F18-02 | Freehand drawing | Stroke color. | M4 | Tested | Stroke picker; `DefaultStrokeColor` prefs round-trip |
+| F18-03 | Freehand drawing | Stroke width. | M4 | Tested | Width picker (1–8 pt); `DefaultStrokeWidthPoints` clamp + prefs unit tests |
 | F18-04 | Freehand drawing | Stroke opacity. | M4 | Implemented | Sidebar Opacity → `SetOpacityAsync` on ink |
 | F18-05 | Freehand drawing | Eraser. | M4 | Implemented | Eraser toolbar mode: click annotation to remove (ink preferred, padded hit) |
 | F18-06 | Freehand drawing | Undo stroke. | M4 | Implemented | Ctrl+Z undoes last ink/freeform/polygon via `_strokeUndoStack` |

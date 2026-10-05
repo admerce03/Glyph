@@ -32,4 +32,19 @@ public class PdfRectTests
         rect.ContainsPoint(9, 20).Should().BeFalse();
         rect.ContainsPoint(25, 51).Should().BeFalse();
     }
+
+    [Fact]
+    public void CoverageBy_reports_overlap_fraction_for_redaction_threshold()
+    {
+        var obj = new PdfRect(0, 0, 100, 100);
+        obj.CoverageBy(new PdfRect(0, 0, 100, 100)).Should().BeApproximately(1.0, 1e-9);
+        obj.CoverageBy(new PdfRect(0, 0, 50, 100)).Should().BeApproximately(0.5, 1e-9);
+        obj.CoverageBy(new PdfRect(0, 0, 40, 100)).Should().BeApproximately(0.4, 1e-9);
+        obj.CoverageBy(new PdfRect(0, 0, 30, 100)).Should().BeApproximately(0.3, 1e-9);
+        // Redaction sanitize uses >= 0.35 coverage.
+        (obj.CoverageBy(new PdfRect(0, 0, 35, 100)) >= 0.35).Should().BeTrue();
+        (obj.CoverageBy(new PdfRect(0, 0, 34, 100)) >= 0.35).Should().BeFalse();
+        obj.CoverageBy(new PdfRect(200, 200, 300, 300)).Should().Be(0);
+        new PdfRect(0, 0, 0, 10).CoverageBy(obj).Should().Be(0);
+    }
 }

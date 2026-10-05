@@ -273,21 +273,17 @@ public class JsonSettingsStoreTests
     }
 
     [Fact]
-    public async Task Save_clamps_sidebar_and_thumbnail_widths()
+    public async Task Save_clamps_default_stroke_width()
     {
-        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-widths-clamp-" + Guid.NewGuid().ToString("N") + ".json");
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-stroke-clamp-" + Guid.NewGuid().ToString("N") + ".json");
         try
         {
             var store = new JsonSettingsStore(path);
-            await store.SaveAsync(new AppSettings { SidebarWidth = 10, ThumbnailWidth = 10 });
-            var low = await new JsonSettingsStore(path).LoadAsync();
-            low.SidebarWidth.Should().Be(140);
-            low.ThumbnailWidth.Should().Be(72);
+            await store.SaveAsync(new AppSettings { DefaultStrokeWidthPoints = 0.1 });
+            (await new JsonSettingsStore(path).LoadAsync()).DefaultStrokeWidthPoints.Should().Be(0.5);
 
-            await store.SaveAsync(new AppSettings { SidebarWidth = 999, ThumbnailWidth = 999 });
-            var high = await new JsonSettingsStore(path).LoadAsync();
-            high.SidebarWidth.Should().Be(480);
-            high.ThumbnailWidth.Should().Be(180);
+            await store.SaveAsync(new AppSettings { DefaultStrokeWidthPoints = 99 });
+            (await new JsonSettingsStore(path).LoadAsync()).DefaultStrokeWidthPoints.Should().Be(12);
         }
         finally
         {
