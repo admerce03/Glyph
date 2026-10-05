@@ -47,6 +47,12 @@ public sealed class PdfDocumentView : UserControl
     private readonly Button _ocrCancelButton;
     private CancellationTokenSource? _ocrCts;
     private readonly Dictionary<int, string> _ocrPageTexts = new();
+    private readonly Dictionary<int, (OcrResult Result, int SourceWidth, int SourceHeight)> _ocrPageData = new();
+    private readonly Dictionary<int, Canvas> _ocrOverlays = new();
+    private readonly Dictionary<int, List<(OcrWord Word, Microsoft.UI.Xaml.Shapes.Rectangle Visual)>> _ocrVisualsByPage = new();
+    private readonly HashSet<(int PageIndex, int WordIndex)> _selectedOcrIndices = [];
+    private readonly Button _copyOcrButton;
+    private readonly Button _clearOcrOverlayButton;
     private readonly Window? _ownerWindow;
     private readonly DocumentViewState _viewState;
     private readonly DocumentNavigationHistory _history = new();
@@ -234,6 +240,12 @@ public sealed class PdfDocumentView : UserControl
         _ocrCancelButton = new Button { Content = "Cancel OCR", Visibility = Visibility.Collapsed };
         _ocrCancelButton.Click += (_, _) => CancelOcr();
         ToolTipService.SetToolTip(_ocrCancelButton, "Cancel the in-flight OCR job");
+        _copyOcrButton = new Button { Content = "Copy OCR", Visibility = Visibility.Collapsed };
+        _copyOcrButton.Click += (_, _) => CopySelectedOcrText();
+        ToolTipService.SetToolTip(_copyOcrButton, "Copy selected OCR words (or all OCR text on visible pages)");
+        _clearOcrOverlayButton = new Button { Content = "Clear OCR", Visibility = Visibility.Collapsed };
+        _clearOcrOverlayButton.Click += (_, _) => ClearOcrOverlays();
+        ToolTipService.SetToolTip(_clearOcrOverlayButton, "Hide OCR word overlays (keeps Find OCR cache)");
         var clearSearch = new Button { Content = "Clear" };
         ToolTipService.SetToolTip(clearSearch, "Clear search results");
         clearSearch.Click += async (_, _) => await ClearSearchAsync();
@@ -480,7 +492,7 @@ public sealed class PdfDocumentView : UserControl
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
                 highlight, underline, strikeout, stickyNote, textBox, callout, flatten, sign, formFill, ink, freeform, rect, ellipse, line, arrow,
-                _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, clearSearch, prevMatch, nextMatch, _status,
+                _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
 
@@ -590,6 +602,10 @@ public sealed class PdfDocumentView : UserControl
         _spreadHost.Children.Clear();
         _pageImages.Clear();
         _pageOverlays.Clear();
+        _ocrOverlays.Clear();
+        _ocrVisualsByPage.Clear();
+        _selectedOcrIndices.Clear();
+        UpdateOcrOverlayChrome();
 
         if (_layoutMode == PageLayoutMode.Continuous)
         {
@@ -674,9 +690,19 @@ public sealed class PdfDocumentView : UserControl
         };
         _pageOverlays[pageIndex] = overlay;
 
+        var ocrOverlay = new Canvas
+        {
+            Width = width,
+            Height = height,
+            IsHitTestVisible = true,
+            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(1, 0, 0, 0)),
+        };
+        _ocrOverlays[pageIndex] = ocrOverlay;
+
         var layer = new Grid { Width = width, Height = height };
         layer.Children.Add(image);
         layer.Children.Add(overlay);
+        layer.Children.Add(ocrOverlay);
 
         var border = new Border
         {
@@ -690,6 +716,7 @@ public sealed class PdfDocumentView : UserControl
         border.PointerMoved += PageBorder_PointerMoved;
         border.PointerReleased += PageBorder_PointerReleased;
         border.PointerCaptureLost += (_, _) => _dragSelecting = false;
+        RebuildOcrOverlayForPage(pageIndex);
         return border;
     }
 
@@ -1968,17 +1995,22 @@ public sealed class PdfDocumentView : UserControl
                 if (!string.IsNullOrWhiteSpace(result.Text))
                 {
                     _ocrPageTexts[pageIndex] = result.Text;
+                    _ocrPageData[pageIndex] = (result, rendered.Width, rendered.Height);
                 }
                 else
                 {
                     _ocrPageTexts.Remove(pageIndex);
+                    _ocrPageData.Remove(pageIndex);
                 }
+
+                RebuildOcrOverlayForPage(pageIndex);
 
                 sections.Add(pages.Count == 1
                     ? body
                     : $"--- Page {pageIndex + 1} ---\n{body}");
             }
 
+            UpdateOcrOverlayChrome();
             var combined = string.Join("\n\n", sections);
             var box = new TextBox
             {
@@ -2026,8 +2058,8 @@ public sealed class PdfDocumentView : UserControl
                     ? $"OCR page {pages[0] + 1} — no text."
                     : $"OCR {pages.Count} pages — no text.")
                 : (pages.Count == 1
-                    ? $"OCR page {pages[0] + 1} — {totalLines} line(s)."
-                    : $"OCR {pages.Count} pages — {totalLines} line(s).");
+                    ? $"OCR page {pages[0] + 1} — {totalLines} line(s). Click words to select."
+                    : $"OCR {pages.Count} pages — {totalLines} line(s). Click words to select.");
         }
         catch (OperationCanceledException)
         {
@@ -2041,6 +2073,188 @@ public sealed class PdfDocumentView : UserControl
         {
             EndOcrJob();
         }
+    }
+
+    private void RebuildOcrOverlayForPage(int pageIndex)
+    {
+        if (!_ocrOverlays.TryGetValue(pageIndex, out var overlay))
+        {
+            return;
+        }
+
+        overlay.Children.Clear();
+        _ocrVisualsByPage[pageIndex] = [];
+
+        if (!_ocrPageData.TryGetValue(pageIndex, out var data))
+        {
+            return;
+        }
+
+        var displayWidth = (int)Math.Max(1, Math.Round(overlay.Width));
+        var displayHeight = (int)Math.Max(1, Math.Round(overlay.Height));
+        if (displayWidth <= 0 || displayHeight <= 0 || data.SourceWidth <= 0 || data.SourceHeight <= 0)
+        {
+            return;
+        }
+
+        var visuals = new List<(OcrWord Word, Microsoft.UI.Xaml.Shapes.Rectangle Visual)>();
+        foreach (var line in data.Result.Lines)
+        {
+            foreach (var word in line.Words)
+            {
+                if (string.IsNullOrWhiteSpace(word.Text))
+                {
+                    continue;
+                }
+
+                var mapped = OcrOverlayMapper.MapToDisplay(
+                    word,
+                    data.SourceWidth,
+                    data.SourceHeight,
+                    displayWidth,
+                    displayHeight);
+                var wordIndex = visuals.Count;
+                var rect = new Microsoft.UI.Xaml.Shapes.Rectangle
+                {
+                    Width = mapped.Width,
+                    Height = mapped.Height,
+                    Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(55, 0, 120, 215)),
+                    Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(160, 0, 120, 215)),
+                    StrokeThickness = 1,
+                    Tag = (pageIndex, wordIndex),
+                };
+                Canvas.SetLeft(rect, mapped.X);
+                Canvas.SetTop(rect, mapped.Y);
+                var capturedIndex = wordIndex;
+                rect.PointerPressed += (s, e) =>
+                {
+                    e.Handled = true;
+                    ToggleOcrWordSelection(pageIndex, capturedIndex);
+                };
+                overlay.Children.Add(rect);
+                visuals.Add((word, rect));
+            }
+        }
+
+        _ocrVisualsByPage[pageIndex] = visuals;
+        RefreshOcrSelectionChrome(pageIndex);
+    }
+
+    private void ToggleOcrWordSelection(int pageIndex, int wordIndex)
+    {
+        var key = (pageIndex, wordIndex);
+        var ctrl = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        if (!ctrl)
+        {
+            _selectedOcrIndices.Clear();
+            foreach (var page in _ocrVisualsByPage.Keys.ToList())
+            {
+                RefreshOcrSelectionChrome(page);
+            }
+        }
+
+        if (!_selectedOcrIndices.Add(key))
+        {
+            _selectedOcrIndices.Remove(key);
+        }
+
+        RefreshOcrSelectionChrome(pageIndex);
+        UpdateOcrOverlayChrome();
+        if (_ocrVisualsByPage.TryGetValue(pageIndex, out var visuals)
+            && wordIndex >= 0
+            && wordIndex < visuals.Count)
+        {
+            _status.Text = _selectedOcrIndices.Count == 0
+                ? "OCR selection cleared."
+                : $"Selected OCR: {visuals[wordIndex].Word.Text}";
+        }
+    }
+
+    private void RefreshOcrSelectionChrome(int pageIndex)
+    {
+        if (!_ocrVisualsByPage.TryGetValue(pageIndex, out var visuals))
+        {
+            return;
+        }
+
+        for (var i = 0; i < visuals.Count; i++)
+        {
+            var selected = _selectedOcrIndices.Contains((pageIndex, i));
+            visuals[i].Visual.Fill = new SolidColorBrush(
+                selected
+                    ? Windows.UI.Color.FromArgb(120, 255, 200, 0)
+                    : Windows.UI.Color.FromArgb(55, 0, 120, 215));
+            visuals[i].Visual.Stroke = new SolidColorBrush(
+                selected
+                    ? Windows.UI.Color.FromArgb(220, 255, 170, 0)
+                    : Windows.UI.Color.FromArgb(160, 0, 120, 215));
+        }
+    }
+
+    private void UpdateOcrOverlayChrome()
+    {
+        var hasOverlay = _ocrPageData.Count > 0;
+        _copyOcrButton.Visibility = hasOverlay ? Visibility.Visible : Visibility.Collapsed;
+        _clearOcrOverlayButton.Visibility = hasOverlay ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void CopySelectedOcrText()
+    {
+        string text;
+        if (_selectedOcrIndices.Count > 0)
+        {
+            text = string.Join(
+                ' ',
+                _selectedOcrIndices
+                    .OrderBy(k => k.PageIndex)
+                    .ThenBy(k => k.WordIndex)
+                    .Select(k =>
+                    {
+                        if (!_ocrVisualsByPage.TryGetValue(k.PageIndex, out var visuals)
+                            || k.WordIndex < 0
+                            || k.WordIndex >= visuals.Count)
+                        {
+                            return null;
+                        }
+
+                        return visuals[k.WordIndex].Word.Text;
+                    })
+                    .Where(t => !string.IsNullOrWhiteSpace(t)));
+        }
+        else
+        {
+            text = string.Join(
+                "\n\n",
+                _ocrPageTexts.OrderBy(kv => kv.Key).Select(kv => kv.Value));
+        }
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            _status.Text = "No OCR text to copy.";
+            return;
+        }
+
+        var package = new DataPackage();
+        package.SetText(text);
+        Clipboard.SetContent(package);
+        _status.Text = _selectedOcrIndices.Count == 0
+            ? "All OCR text copied."
+            : $"Copied {_selectedOcrIndices.Count} OCR word(s).";
+    }
+
+    private void ClearOcrOverlays()
+    {
+        _ocrPageData.Clear();
+        _selectedOcrIndices.Clear();
+        foreach (var overlay in _ocrOverlays.Values)
+        {
+            overlay.Children.Clear();
+        }
+
+        _ocrVisualsByPage.Clear();
+        UpdateOcrOverlayChrome();
+        _status.Text = "OCR overlays cleared.";
     }
 
     private async Task SearchSelectedTextAsync()
@@ -5789,6 +6003,10 @@ public sealed class PdfDocumentView : UserControl
         _pageLinks.Clear();
         _pageImages.Clear();
         _pageOverlays.Clear();
+        _ocrOverlays.Clear();
+        _ocrVisualsByPage.Clear();
+        _selectedOcrIndices.Clear();
+        UpdateOcrOverlayChrome();
         CurrentPageIndex = Math.Clamp(CurrentPageIndex, 0, Math.Max(0, _document.PageCount - 1));
 
         var stillValid = _pageSelection.SelectedIndexes.Where(i => i < _document.PageCount).ToList();
