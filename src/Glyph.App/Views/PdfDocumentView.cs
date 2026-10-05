@@ -1034,61 +1034,61 @@ public sealed class PdfDocumentView : UserControl
                 _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _jobProgress, _status,
             },
         };
-        TagToolbarCommand(sidebarToggle, ToolbarCommands.Sidebar);
-        TagToolbarCommand(prev, ToolbarCommands.Previous);
-        TagToolbarCommand(next, ToolbarCommands.Next);
-        TagToolbarCommand(_gotoBox, ToolbarCommands.PageNumber);
-        TagToolbarCommand(zoomOut, ToolbarCommands.Zoom);
-        TagToolbarCommand(zoomIn, ToolbarCommands.Zoom);
-        TagToolbarCommand(fitPage, ToolbarCommands.FitPage);
-        TagToolbarCommand(fitWidth, ToolbarCommands.FitWidth);
-        TagToolbarCommand(_zoomAreaButton, ToolbarCommands.Zoom);
+        ToolbarCommandApplicator.Tag(sidebarToggle, ToolbarCommands.Sidebar);
+        ToolbarCommandApplicator.Tag(prev, ToolbarCommands.Previous);
+        ToolbarCommandApplicator.Tag(next, ToolbarCommands.Next);
+        ToolbarCommandApplicator.Tag(_gotoBox, ToolbarCommands.PageNumber);
+        ToolbarCommandApplicator.Tag(zoomOut, ToolbarCommands.Zoom);
+        ToolbarCommandApplicator.Tag(zoomIn, ToolbarCommands.Zoom);
+        ToolbarCommandApplicator.Tag(fitPage, ToolbarCommands.FitPage);
+        ToolbarCommandApplicator.Tag(fitWidth, ToolbarCommands.FitWidth);
+        ToolbarCommandApplicator.Tag(_zoomAreaButton, ToolbarCommands.Zoom);
         if (_viewLoupeButton is not null)
         {
-            TagToolbarCommand(_viewLoupeButton, ToolbarCommands.Zoom);
+            ToolbarCommandApplicator.Tag(_viewLoupeButton, ToolbarCommands.Zoom);
         }
 
         if (_presentButton is not null)
         {
-            TagToolbarCommand(_presentButton, ToolbarCommands.FitPage);
+            ToolbarCommandApplicator.Tag(_presentButton, ToolbarCommands.FitPage);
         }
-        TagToolbarCommand(_searchBox, ToolbarCommands.Search);
-        TagToolbarCommand(_caseSensitiveBox, ToolbarCommands.Search);
-        TagToolbarCommand(searchButton, ToolbarCommands.Search);
-        TagToolbarCommand(findSelection, ToolbarCommands.Search);
-        TagToolbarCommand(clearSearch, ToolbarCommands.Search);
-        TagToolbarCommand(prevMatch, ToolbarCommands.Search);
-        TagToolbarCommand(nextMatch, ToolbarCommands.Search);
-        TagToolbarCommand(ink, ToolbarCommands.Markup);
-        TagToolbarCommand(freeform, ToolbarCommands.Markup);
-        TagToolbarCommand(polygon, ToolbarCommands.Markup);
-        TagToolbarCommand(eraser, ToolbarCommands.Markup);
-        TagToolbarCommand(rect, ToolbarCommands.Markup);
-        TagToolbarCommand(roundRect, ToolbarCommands.Markup);
-        TagToolbarCommand(hiRect, ToolbarCommands.Markup);
-        TagToolbarCommand(ellipse, ToolbarCommands.Markup);
-        TagToolbarCommand(line, ToolbarCommands.Markup);
-        TagToolbarCommand(arrow, ToolbarCommands.Markup);
-        TagToolbarCommand(star, ToolbarCommands.Markup);
-        TagToolbarCommand(bubble, ToolbarCommands.Markup);
-        TagToolbarCommand(loupe, ToolbarCommands.Markup);
-        TagToolbarCommand(highlight, ToolbarCommands.Highlight);
-        TagToolbarCommand(underline, ToolbarCommands.Highlight);
-        TagToolbarCommand(strikeout, ToolbarCommands.Highlight);
-        TagToolbarCommand(rotateLeft, ToolbarCommands.Rotate);
-        TagToolbarCommand(rotateRight, ToolbarCommands.Rotate);
-        TagToolbarCommand(crop, ToolbarCommands.Crop);
-        TagToolbarCommand(sign, ToolbarCommands.Signature);
-        TagToolbarCommand(print, ToolbarCommands.Print);
-        TagToolbarCommand(info, ToolbarCommands.Inspector);
-        TagToolbarCommand(share, ToolbarCommands.Share);
-        TagToolbarCommand(ocrPage, ToolbarCommands.Ocr);
-        TagToolbarCommand(_ocrCancelButton, ToolbarCommands.Ocr);
-        TagToolbarCommand(_copyOcrButton, ToolbarCommands.Ocr);
-        TagToolbarCommand(_clearOcrOverlayButton, ToolbarCommands.Ocr);
-        TagToolbarCommand(_ocrSavePdfButton, ToolbarCommands.Ocr);
-        TagToolbarCommand(_ocrEntitiesButton, ToolbarCommands.Ocr);
-        ApplyToolbarCommandVisibility(_toolbar, settings);
+        ToolbarCommandApplicator.Tag(_searchBox, ToolbarCommands.Search);
+        ToolbarCommandApplicator.Tag(_caseSensitiveBox, ToolbarCommands.Search);
+        ToolbarCommandApplicator.Tag(searchButton, ToolbarCommands.Search);
+        ToolbarCommandApplicator.Tag(findSelection, ToolbarCommands.Search);
+        ToolbarCommandApplicator.Tag(clearSearch, ToolbarCommands.Search);
+        ToolbarCommandApplicator.Tag(prevMatch, ToolbarCommands.Search);
+        ToolbarCommandApplicator.Tag(nextMatch, ToolbarCommands.Search);
+        ToolbarCommandApplicator.Tag(ink, ToolbarCommands.Markup);
+        ToolbarCommandApplicator.Tag(freeform, ToolbarCommands.Markup);
+        ToolbarCommandApplicator.Tag(polygon, ToolbarCommands.Markup);
+        ToolbarCommandApplicator.Tag(eraser, ToolbarCommands.Markup);
+        ToolbarCommandApplicator.Tag(rect, ToolbarCommands.Markup);
+        ToolbarCommandApplicator.Tag(roundRect, ToolbarCommands.Markup);
+        ToolbarCommandApplicator.Tag(hiRect, ToolbarCommands.Markup);
+        ToolbarCommandApplicator.Tag(ellipse, ToolbarCommands.Markup);
+        ToolbarCommandApplicator.Tag(line, ToolbarCommands.Markup);
+        ToolbarCommandApplicator.Tag(arrow, ToolbarCommands.Markup);
+        ToolbarCommandApplicator.Tag(star, ToolbarCommands.Markup);
+        ToolbarCommandApplicator.Tag(bubble, ToolbarCommands.Markup);
+        ToolbarCommandApplicator.Tag(loupe, ToolbarCommands.Markup);
+        ToolbarCommandApplicator.Tag(highlight, ToolbarCommands.Highlight);
+        ToolbarCommandApplicator.Tag(underline, ToolbarCommands.Highlight);
+        ToolbarCommandApplicator.Tag(strikeout, ToolbarCommands.Highlight);
+        ToolbarCommandApplicator.Tag(rotateLeft, ToolbarCommands.Rotate);
+        ToolbarCommandApplicator.Tag(rotateRight, ToolbarCommands.Rotate);
+        ToolbarCommandApplicator.Tag(crop, ToolbarCommands.Crop);
+        ToolbarCommandApplicator.Tag(sign, ToolbarCommands.Signature);
+        ToolbarCommandApplicator.Tag(print, ToolbarCommands.Print);
+        ToolbarCommandApplicator.Tag(info, ToolbarCommands.Inspector);
+        ToolbarCommandApplicator.Tag(share, ToolbarCommands.Share);
+        ToolbarCommandApplicator.Tag(ocrPage, ToolbarCommands.Ocr);
+        ToolbarCommandApplicator.Tag(_ocrCancelButton, ToolbarCommands.Ocr);
+        ToolbarCommandApplicator.Tag(_copyOcrButton, ToolbarCommands.Ocr);
+        ToolbarCommandApplicator.Tag(_clearOcrOverlayButton, ToolbarCommands.Ocr);
+        ToolbarCommandApplicator.Tag(_ocrSavePdfButton, ToolbarCommands.Ocr);
+        ToolbarCommandApplicator.Tag(_ocrEntitiesButton, ToolbarCommands.Ocr);
+        ToolbarCommandApplicator.Apply(_toolbar, settings);
 
         var body = new Grid
         {
@@ -1127,49 +1127,6 @@ public sealed class PdfDocumentView : UserControl
     }
 
     public int CurrentPageIndex { get; private set; }
-
-    private static void TagToolbarCommand(FrameworkElement element, string commandId) =>
-        element.Tag = commandId;
-
-    private static void ApplyToolbarCommandVisibility(StackPanel? toolbar, AppSettings? settings)
-    {
-        if (toolbar is null)
-        {
-            return;
-        }
-
-        var hidden = new HashSet<string>(
-            settings?.ToolbarHiddenCommands ?? [],
-            StringComparer.OrdinalIgnoreCase);
-        if (hidden.Count > 0)
-        {
-            for (var i = toolbar.Children.Count - 1; i >= 0; i--)
-            {
-                if (toolbar.Children[i] is FrameworkElement { Tag: string id }
-                    && hidden.Contains(id))
-                {
-                    toolbar.Children.RemoveAt(i);
-                }
-            }
-        }
-
-        var order = settings?.ToolbarCommandOrder;
-        if (order is null || order.Count == 0)
-        {
-            return;
-        }
-
-        var children = toolbar.Children.Cast<UIElement>().ToList();
-        var reordered = ToolbarOrderPolicy.ApplyOrderToItems(
-            children,
-            element => element is FrameworkElement { Tag: string id } ? id : null,
-            order);
-        toolbar.Children.Clear();
-        foreach (var child in reordered)
-        {
-            toolbar.Children.Add(child);
-        }
-    }
 
     private async void PdfDocumentView_Loaded(object sender, RoutedEventArgs e)
     {

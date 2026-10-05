@@ -55,4 +55,45 @@ public class ToolbarOrderPolicyTests
 
         reordered.Should().Equal("next", "nav", "previous", "sidebar");
     }
+
+    [Fact]
+    public void ApplyVisibilityAndOrder_hides_tagged_then_reorders()
+    {
+        var items = new[] { "previous", "status", "zoom", "next", "ocr" };
+        string? Tag(string id) => id == "status" ? null : id;
+
+        var result = ToolbarOrderPolicy.ApplyVisibilityAndOrder(
+            items,
+            Tag,
+            [ToolbarCommands.Zoom],
+            [ToolbarCommands.Ocr, ToolbarCommands.Previous, ToolbarCommands.Next]);
+
+        result.Should().Equal("ocr", "status", "previous", "next");
+    }
+
+    [Fact]
+    public void ApplyVisibilityAndOrder_empty_prefs_leave_sequence()
+    {
+        var items = new[] { "previous", "next", "zoom" };
+        var result = ToolbarOrderPolicy.ApplyVisibilityAndOrder(
+            items,
+            id => id,
+            [],
+            []);
+
+        result.Should().Equal(items);
+    }
+
+    [Fact]
+    public void ApplyVisibilityAndOrder_never_hides_untagged()
+    {
+        var items = new[] { "previous", "status", "next" };
+        var result = ToolbarOrderPolicy.ApplyVisibilityAndOrder(
+            items,
+            id => id == "status" ? null : id,
+            [ToolbarCommands.Previous, "status"],
+            null);
+
+        result.Should().Equal("status", "next");
+    }
 }

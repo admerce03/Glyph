@@ -374,7 +374,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Startup and large-doc performance pass — background Find index (F57-05/F58-06) shipped
 - Accessibility (UIA, keyboard, high contrast, text scaling) — toolbar icon Names started (F56-01/04/08)
 - Shortcut customization — Preferences overrides for shell + PDF/image shortcuts (F52-23)
-- Toolbar customization polish — hide + ↑↓ reorder (`ToolbarCommandOrder` / `ToolbarOrderPolicy`)
+- Toolbar customization polish — hide + ↑↓ reorder on PDF + image (`ToolbarCommandOrder` / `ToolbarOrderPolicy` / `ToolbarCommandApplicator`)
 - Installer / MSIX / file associations finalize — test-sign + sideload helper; Explorer verify pending
 - Complete feature-spec audit against `FEATURE_MATRIX.md`
 - No silent drops: every requirement Tested or Deferred/Blocked with reason
@@ -394,7 +394,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Progress notes
 
-- Prefs, toolbar hide+↑↓ reorder (F54), shortcut customization (F52-23), check-for-updates (F55-04), session restore, crash recovery, version snapshots, a11y Names, cold-start timing, background Find index (F57-05/F58-06), image Live Text overlay restore shipped in matrix
+- Prefs, toolbar hide+↑↓ reorder (F54) on PDF **and** image viewers (`ToolbarCommandApplicator`), shortcut customization (F52-23), check-for-updates (F55-04), session restore, crash recovery, version snapshots, a11y Names, cold-start timing, background Find index (F57-05/F58-06), image Live Text overlay restore shipped in matrix
 - Third-party notices: `THIRD_PARTY_NOTICES.md` shipped with the app (About) and MSIX publish output (AGENTS.md / ADR-003)
 - CI: push + PR for the same branch share a concurrency group (`head_ref || ref_name`) so Windows runners are not double-queued
 - MSIX: Windows CI produces test-signed `Glyph.App_*.msix` + `Glyph.CI.TestSign.cer` via `scripts/publish-msix.ps1 -TestSign` (`GenerateAppxPackageOnBuild`, artifact `glyph-msix-layout`). `scripts/install-msix-test.ps1` trusts the cert, sideloads, and probes installed `uap:FileType` associations (`-VerifyOnly` supported). Operator guide: [`PACKAGING.md`](PACKAGING.md). F01-06/07 remain Deferred until Explorer default-app verification (ADR-012). **Blocked:** ADR-015 password-write (Needs approval, prefer Option A PdfSharp).

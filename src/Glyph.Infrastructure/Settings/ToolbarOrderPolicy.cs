@@ -157,4 +157,56 @@ public static class ToolbarOrderPolicy
 
         return result;
     }
+
+    /// <summary>
+    /// Drops items whose tag is in <paramref name="hiddenCommands"/>, then applies
+    /// <see cref="ApplyOrderToItems{T}"/>. Untagged items are never hidden.
+    /// Empty hidden and empty order leave the sequence unchanged.
+    /// </summary>
+    public static IReadOnlyList<T> ApplyVisibilityAndOrder<T>(
+        IReadOnlyList<T> items,
+        Func<T, string?> getTag,
+        IEnumerable<string>? hiddenCommands,
+        IEnumerable<string>? order)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        ArgumentNullException.ThrowIfNull(getTag);
+
+        var hidden = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (hiddenCommands is not null)
+        {
+            foreach (var raw in hiddenCommands)
+            {
+                if (!string.IsNullOrWhiteSpace(raw))
+                {
+                    hidden.Add(raw.Trim());
+                }
+            }
+        }
+
+        IReadOnlyList<T> visible = items;
+        if (hidden.Count > 0)
+        {
+            var kept = new List<T>(items.Count);
+            foreach (var item in items)
+            {
+                var tag = getTag(item);
+                if (!string.IsNullOrWhiteSpace(tag) && hidden.Contains(tag.Trim()))
+                {
+                    continue;
+                }
+
+                kept.Add(item);
+            }
+
+            visible = kept;
+        }
+
+        if (order is null || !order.Any(x => !string.IsNullOrWhiteSpace(x)))
+        {
+            return visible;
+        }
+
+        return ApplyOrderToItems(visible, getTag, order);
+    }
 }

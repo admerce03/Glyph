@@ -514,15 +514,17 @@ public sealed class ImageDocumentView : UserControl
         _markupOverlay.PointerReleased += MarkupOverlay_PointerReleased;
         _markupOverlay.PointerCaptureLost += (_, _) => _drawDragging = false;
 
-        var compact = false;
+        AppSettings? settings = null;
         try
         {
-            compact = App.Services.GetService<ISettingsStore>()?.Current.CompactToolbar == true;
+            settings = App.Services.GetService<ISettingsStore>()?.Current;
         }
         catch
         {
             // settings optional during construction
         }
+
+        var compact = settings?.CompactToolbar == true;
 
         var toolbar = new StackPanel
         {
@@ -541,6 +543,40 @@ public sealed class ImageDocumentView : UserControl
             },
         };
         _toolbar = toolbar;
+
+        // F54: same catalog ids as PDF for overlapping commands (hide + ↑↓ reorder).
+        ToolbarCommandApplicator.Tag(_prevButton, ToolbarCommands.Previous);
+        ToolbarCommandApplicator.Tag(_nextButton, ToolbarCommands.Next);
+        ToolbarCommandApplicator.Tag(zoomOut, ToolbarCommands.Zoom);
+        ToolbarCommandApplicator.Tag(zoomIn, ToolbarCommands.Zoom);
+        ToolbarCommandApplicator.Tag(actual, ToolbarCommands.Zoom);
+        ToolbarCommandApplicator.Tag(fit, ToolbarCommands.FitPage);
+        ToolbarCommandApplicator.Tag(_drawButton, ToolbarCommands.Markup);
+        ToolbarCommandApplicator.Tag(_flattenMarkupButton, ToolbarCommands.Markup);
+        ToolbarCommandApplicator.Tag(rotateLeft, ToolbarCommands.Rotate);
+        ToolbarCommandApplicator.Tag(rotateRight, ToolbarCommands.Rotate);
+        ToolbarCommandApplicator.Tag(rotate180, ToolbarCommands.Rotate);
+        ToolbarCommandApplicator.Tag(_cropBox, ToolbarCommands.Crop);
+        ToolbarCommandApplicator.Tag(crop, ToolbarCommands.Crop);
+        ToolbarCommandApplicator.Tag(_interactiveCropButton, ToolbarCommands.Crop);
+        ToolbarCommandApplicator.Tag(_cropAspectBox, ToolbarCommands.Crop);
+        ToolbarCommandApplicator.Tag(_applyCropButton, ToolbarCommands.Crop);
+        ToolbarCommandApplicator.Tag(_cancelCropButton, ToolbarCommands.Crop);
+        ToolbarCommandApplicator.Tag(_cropSelButton, ToolbarCommands.Crop);
+        ToolbarCommandApplicator.Tag(stamp, ToolbarCommands.Signature);
+        ToolbarCommandApplicator.Tag(printImage, ToolbarCommands.Print);
+        ToolbarCommandApplicator.Tag(meta, ToolbarCommands.Inspector);
+        ToolbarCommandApplicator.Tag(ocrButton, ToolbarCommands.Ocr);
+        ToolbarCommandApplicator.Tag(_ocrCancelButton, ToolbarCommands.Ocr);
+        ToolbarCommandApplicator.Tag(_copyOcrButton, ToolbarCommands.Ocr);
+        ToolbarCommandApplicator.Tag(_ocrSearchWebButton, ToolbarCommands.Ocr);
+        ToolbarCommandApplicator.Tag(_ocrSavePdfButton, ToolbarCommands.Ocr);
+        ToolbarCommandApplicator.Tag(_ocrEntitiesButton, ToolbarCommands.Ocr);
+        ToolbarCommandApplicator.Tag(_ocrSearchBox, ToolbarCommands.Ocr);
+        ToolbarCommandApplicator.Tag(_ocrFindButton, ToolbarCommands.Ocr);
+        ToolbarCommandApplicator.Tag(_ocrFindNextButton, ToolbarCommands.Ocr);
+        ToolbarCommandApplicator.Tag(_clearOcrButton, ToolbarCommands.Ocr);
+        ToolbarCommandApplicator.Apply(_toolbar, settings);
 
         var body = new Grid
         {
