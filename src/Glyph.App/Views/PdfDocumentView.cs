@@ -7229,13 +7229,22 @@ public sealed class PdfDocumentView : UserControl
         Windows.Foundation.Point uiPoint,
         PointerRoutedEventArgs e)
     {
-        _selectedAnnot = hit;
+        if (!_selectedAnnots.Exists(a => SameAnnot(a, hit)))
+        {
+            ReplaceAnnotSelection(hit);
+        }
+        else
+        {
+            _selectedAnnot = hit;
+        }
+
         _annotDragging = true;
         _annotResizeHandle = handle;
         _annotDragOriginBounds = hit.Bounds;
         _annotDragOriginUi = uiPoint;
+        _multiDragOrigins.Clear();
         border.CapturePointer(e.Pointer);
-        SyncSidebarSelection(hit);
+        SyncSidebarSelectionMulti();
         DrawAnnotSelection(hit);
         _status.Text = $"Resizing {FormatAnnotationLabel(hit)}…";
     }
