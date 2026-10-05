@@ -10826,6 +10826,15 @@ public sealed class PdfDocumentView : UserControl
 
                 await RenderPageAsync(i);
             }
+
+            // Drop distant page bitmaps from the visual tree; LRU cache still holds recent renders (F57-11).
+            foreach (var (pageIndex, image) in _pageImages)
+            {
+                if (pageIndex < first - 2 || pageIndex > last + 2)
+                {
+                    image.Source = null;
+                }
+            }
         }
         finally
         {
