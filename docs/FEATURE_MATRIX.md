@@ -204,7 +204,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F10-21 | PDF page manipulation | Crop selected page. | M3 | Not Started |  |
 | F10-22 | PDF page manipulation | Apply same crop to multiple pages. | M3 | Not Started |  |
 | F10-23 | PDF page manipulation | Change page order. | M3 | Implemented | `ReorderPagesAsync` + Move ↑/↓ |
-| F10-24 | PDF page manipulation | Copy/paste pages between documents. | M3 | Implemented | Cross-doc thumbnail DnD via `PageDragPayload` + registry |
+| F10-24 | PDF page manipulation | Copy/paste pages between documents. | M3 | Implemented | DnD + Ctrl+C/V via `PdfPageClipboard` |
 | F11-01 | Preview-style PDF drag-and-drop workflows | one page | M3 | Implemented | Thumbnail CanDrag + page payload |
 | F11-02 | Preview-style PDF drag-and-drop workflows | multiple contiguous pages | M3 | Implemented | Multi-select drag uses selection set |
 | F11-03 | Preview-style PDF drag-and-drop workflows | multiple noncontiguous pages | M3 | Implemented | Noncontiguous selection preserved in payload |

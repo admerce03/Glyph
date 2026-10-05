@@ -913,7 +913,23 @@ public sealed class PdfDocumentView : UserControl
 
         if (ctrlDown && e.Key == VirtualKey.C)
         {
-            await CopyTextAsync();
+            // Prefer text when the user has a text selection; otherwise copy selected pages.
+            if (!string.IsNullOrEmpty(_selectedText))
+            {
+                await CopyTextAsync();
+            }
+            else
+            {
+                await CopySelectedPagesAsync();
+            }
+
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrlDown && e.Key == VirtualKey.V)
+        {
+            await PastePagesAsync();
             e.Handled = true;
             return;
         }
@@ -1064,6 +1080,66 @@ public sealed class PdfDocumentView : UserControl
         package.SetText(_selectedText);
         Clipboard.SetContent(package);
         _status.Text = $"Copied {_selectedText.Length} characters.";
+    }
+
+    private async Task CopySelectedPagesAsync()
+    {
+        var indexes = SelectedOrCurrentPages();
+        if (indexes.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await PdfPageClipboard.SetFromDocumentAsync(_pageEditor, _document, indexes);
+            _status.Text = indexes.Count == 1
+                ? "Copied 1 page."
+                : $"Copied {indexes.Count} pages.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Copy pages failed: " + ex.Message;
+        }
+    }
+
+    private async Task PastePagesAsync()
+    {
+        if (!PdfPageClipboard.HasPages)
+        {
+            _status.Text = "No pages on the clipboard.";
+            return;
+        }
+
+        var insertAt = SelectedOrCurrentPages().DefaultIfEmpty(CurrentPageIndex).Max() + 1;
+        insertAt = Math.Clamp(insertAt, 0, _document.PageCount);
+        try
+        {
+            await using var source = await PdfPageClipboard.OpenCopyAsync(_documentFactory);
+            if (source is null || source.PageCount == 0)
+            {
+                _status.Text = "Clipboard pages unavailable.";
+                return;
+            }
+
+            var indexes = Enumerable.Range(0, source.PageCount).ToList();
+            _status.Text = indexes.Count == 1 ? "Pasting page…" : $"Pasting {indexes.Count} pages…";
+            await RunPageEditAsync(() => _pageEditor.InsertPagesAsync(_document, source, indexes, insertAt));
+
+            _pageSelection.Clear();
+            for (var i = 0; i < indexes.Count; i++)
+            {
+                _pageSelection.Toggle(insertAt + i);
+            }
+
+            await ReloadAfterPageEditAsync();
+            await GoToPageAsync(insertAt, recordHistory: true);
+            _status.Text = indexes.Count == 1 ? "Pasted 1 page." : $"Pasted {indexes.Count} pages.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Paste pages failed: " + ex.Message;
+        }
     }
 
     private void PageBorder_PointerPressed(object sender, PointerRoutedEventArgs e)
