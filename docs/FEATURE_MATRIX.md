@@ -366,7 +366,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F21-01 | Redaction | Mark text for redaction. | M7 | Implemented | Context menu / Redact → Mark selection → `MarkTextRegion` |
 | F21-02 | Redaction | Mark rectangular areas for redaction. | M7 | Implemented | Redact draw mode + region mark → `MarkRectangle` |
 | F21-03 | Redaction | Preview pending redactions. | M7 | Implemented | Pending marks drawn on dedicated overlay canvas |
-| F21-04 | Redaction | Remove pending redaction. | M7 | Implemented | Redact dialog Clear pending + `RemovePending` API |
+| F21-04 | Redaction | Remove pending redaction. | M7 | Implemented | Click pending mark to remove; Apply dialog Clear marks; `RemovePending` API|
 | F21-05 | Redaction | Apply redactions permanently. | M7 | Implemented | `ApplyAsync` with confirm dialog |
 | F21-06 | Redaction | Remove underlying text/image data, not merely cover it visually. | M7 | Tested | Black page object + remove intersecting text/images; search empty after apply |
 | F21-07 | Redaction | Warn before permanent application. | M7 | Implemented | ContentDialog confirm before `ApplyAsync` |

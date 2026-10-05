@@ -5497,6 +5497,7 @@ public sealed class PdfDocumentView : UserControl
         }
     }
 
+
     private void RefreshAllPendingRedactionOverlays()
     {
         foreach (var pageIndex in _redactionOverlays.Keys.ToList())
@@ -5513,8 +5514,10 @@ public sealed class PdfDocumentView : UserControl
         }
 
         overlay.Children.Clear();
+        var marks = _redaction.GetPending(_document).Where(m => m.PageIndex == pageIndex).ToList();
+        overlay.IsHitTestVisible = marks.Count > 0;
         var page = _document.GetPage(pageIndex);
-        foreach (var mark in _redaction.GetPending(_document).Where(m => m.PageIndex == pageIndex))
+        foreach (var mark in marks)
         {
             var left = mark.Bounds.Left * _scale;
             var top = (page.HeightPoints - mark.Bounds.Top) * _scale;
@@ -5532,7 +5535,10 @@ public sealed class PdfDocumentView : UserControl
                 Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(160, 0, 0, 0)),
                 Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(230, 200, 40, 40)),
                 StrokeThickness = 1.5,
+                Tag = mark.Id,
             };
+            ToolTipService.SetToolTip(rect, "Click to remove pending redaction");
+            rect.PointerPressed += PendingRedactionRect_PointerPressed;
             Canvas.SetLeft(rect, left);
             Canvas.SetTop(rect, top);
             overlay.Children.Add(rect);
