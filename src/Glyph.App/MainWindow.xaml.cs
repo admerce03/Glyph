@@ -161,6 +161,8 @@ public sealed partial class MainWindow : Window
 
     private async void ShowInExplorerMenuItem_Click(object sender, RoutedEventArgs e) => await ShowActiveInExplorerAsync();
 
+    private async void PropertiesMenuItem_Click(object sender, RoutedEventArgs e) => await ShowActivePropertiesAsync();
+
     private void CopyPathMenuItem_Click(object sender, RoutedEventArgs e) => CopyActivePath();
 
     private async void CopyFileMenuItem_Click(object sender, RoutedEventArgs e) => await CopyActiveFileAsync();
@@ -835,6 +837,23 @@ public sealed partial class MainWindow : Window
         {
             StatusText.Text = "Show in Explorer failed: " + ex.Message;
         }
+    }
+
+    private async Task ShowActivePropertiesAsync()
+    {
+        if (DocumentTabs.SelectedItem is TabViewItem { Content: PdfDocumentView pdfView })
+        {
+            await pdfView.ShowPropertiesAsync();
+            return;
+        }
+
+        if (DocumentTabs.SelectedItem is TabViewItem { Content: ImageDocumentView imageView })
+        {
+            await imageView.ShowPropertiesAsync();
+            return;
+        }
+
+        StatusText.Text = "Open a document to view properties.";
     }
 
     private void CopyActivePath()

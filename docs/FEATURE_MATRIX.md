@@ -604,7 +604,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F39-07 | Color management | Toggle soft proof. | M8 | Implemented | Meta soft-proof checkbox |
 | F39-08 | Color management | Gamut-warning option, advanced. | M8 | Deferred | Needs gamut visualization overlay |
 | F39-09 | Color management | Rendering intent selection: | M8 | Implemented | Meta Intent combo (Perceptual/Relative/Saturation/Absolute) |
-| F40-01 | Clipboard integration | PDF text → text | M1/M5 | Not Started |  |
+| F40-01 | Clipboard integration | PDF text → text | M1/M5 | Implemented | Copy / Ctrl+C selected or page text |
 | F40-02 | Clipboard integration | PDF region → bitmap | M1/M5 | Not Started |  |
 | F40-03 | Clipboard integration | image selection → image | M1/M5 | Implemented | Copy sel / Ctrl+C with selection → clipboard PNG |
 | F40-04 | Clipboard integration | whole image → image | M1/M5 | Implemented | Copy toolbar / Ctrl+C without selection → clipboard PNG |
@@ -681,19 +681,19 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F47-03 | External application integration | Open URL | M9 | Implemented | PDF link launcher / OSM maps already |
 | F47-04 | External application integration | Open location in browser/maps | M9 | Implemented | Image Meta → Open map |
 | F47-05 | External application integration | Send via default mail application where possible | M9 | Implemented | Alias of F46-05 |
-| F48-01 | File properties and inspector | dimensions | M5/M9 | Not Started |  |
-| F48-02 | File properties and inspector | pages | M5/M9 | Not Started |  |
-| F48-03 | File properties and inspector | metadata | M5/M9 | Not Started |  |
-| F48-04 | File properties and inspector | security | M5/M9 | Not Started |  |
-| F48-05 | File properties and inspector | fonts | M5/M9 | Not Started |  |
-| F48-06 | File properties and inspector | annotations | M5/M9 | Not Started |  |
-| F48-07 | File properties and inspector | file size | M5/M9 | Not Started |  |
-| F48-08 | File properties and inspector | dimensions | M5/M9 | Not Started |  |
-| F48-09 | File properties and inspector | color profile | M5/M9 | Not Started |  |
-| F48-10 | File properties and inspector | metadata | M5/M9 | Not Started |  |
-| F48-11 | File properties and inspector | EXIF | M5/M9 | Not Started |  |
-| F48-12 | File properties and inspector | GPS | M5/M9 | Not Started |  |
-| F48-13 | File properties and inspector | file size | M5/M9 | Not Started |  |
+| F48-01 | File properties and inspector | dimensions | M5/M9 | Implemented | PDF Info page size (pt) |
+| F48-02 | File properties and inspector | pages | M5/M9 | Implemented | PDF Info page count |
+| F48-03 | File properties and inspector | metadata | M5/M9 | Implemented | PDF Info Title/Author/… + Edit |
+| F48-04 | File properties and inspector | security | M5/M9 | Implemented | PDF Info encryption + permission flags |
+| F48-05 | File properties and inspector | fonts | M5/M9 | Implemented | PDF Info font list |
+| F48-06 | File properties and inspector | annotations | M5/M9 | Implemented | PDF Info annotation count |
+| F48-07 | File properties and inspector | file size | M5/M9 | Implemented | PDF Info file size + path |
+| F48-08 | File properties and inspector | dimensions | M5/M9 | Implemented | Image Meta / Properties pixel size |
+| F48-09 | File properties and inspector | color profile | M5/M9 | Implemented | Image Meta ICC / color space |
+| F48-10 | File properties and inspector | metadata | M5/M9 | Implemented | Image Meta EXIF/IPTC/XMP entries |
+| F48-11 | File properties and inspector | EXIF | M5/M9 | Implemented | Image Meta EXIF group |
+| F48-12 | File properties and inspector | GPS | M5/M9 | Implemented | Image Meta GPS + maps/remove |
+| F48-13 | File properties and inspector | file size | M5/M9 | Implemented | Image Properties file size + path |
 | F49-01 | Undo and redo | annotations | M1-M4 | Not Started |  |
 | F49-02 | Undo and redo | drawing | M1-M4 | Not Started |  |
 | F49-03 | Undo and redo | page insertion | M1-M4 | Not Started |  |

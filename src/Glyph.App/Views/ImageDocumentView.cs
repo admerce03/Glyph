@@ -4006,6 +4006,37 @@ public sealed class ImageDocumentView : UserControl
         try
         {
             var info = await _document.GetMetadataAsync();
+            long? fileBytes = null;
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(_document.Path) && System.IO.File.Exists(_document.Path))
+                {
+                    fileBytes = new System.IO.FileInfo(_document.Path).Length;
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+
+            static string Bytes(long? size) =>
+                size is null ? "—" : size.Value < 1024
+                    ? $"{size.Value} B"
+                    : size.Value < 1024 * 1024
+                        ? $"{size.Value / 1024.0:0.#} KB"
+                        : $"{size.Value / (1024.0 * 1024.0):0.##} MB";
+
+            var summary = new TextBlock
+            {
+                TextWrapping = TextWrapping.Wrap,
+                MaxWidth = 420,
+                Margin = new Thickness(0, 0, 0, 8),
+                Text =
+                    $"Path: {(_document.Path ?? "—")}\n"
+                    + $"Dimensions: {_document.PixelWidth} × {_document.PixelHeight} px\n"
+                    + $"Format: {_document.FormatName}\n"
+                    + $"File size: {Bytes(fileBytes)}",
+            };
             var list = new ListView
             {
                 ItemsSource = info.Entries
@@ -4146,6 +4177,7 @@ public sealed class ImageDocumentView : UserControl
                 Spacing = 8,
                 Children =
                 {
+                    summary,
                     new TextBlock
                     {
                         Text = $"{info.FormatName} · {info.PixelWidth}×{info.PixelHeight}"
@@ -4186,6 +4218,9 @@ public sealed class ImageDocumentView : UserControl
             _status.Text = "Metadata failed: " + ex.Message;
         }
     }
+
+    /// <summary>File → Properties entry point (F48).</summary>
+    public Task ShowPropertiesAsync() => ShowMetadataAsync();
 
     private async Task EditDescriptiveMetadataAsync(ImageMetadataInfo current)
     {

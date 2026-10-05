@@ -36,6 +36,11 @@
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem x:Name="ShareMenuItem" Text="Share…" Click="ShareMenuItem_Click" />
                 <MenuFlyoutItem x:Name="ShowInExplorerMenuItem" Text="Show in File Explorer" Click="ShowInExplorerMenuItem_Click" />
+                <MenuFlyoutItem x:Name="PropertiesMenuItem" Text="Properties" Click="PropertiesMenuItem_Click">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="I" Modifiers="Control" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
                 <MenuFlyoutItem x:Name="CopyPathMenuItem" Text="Copy File Path" Click="CopyPathMenuItem_Click" />
                 <MenuFlyoutItem x:Name="CopyFileMenuItem" Text="Copy File" Click="CopyFileMenuItem_Click" />
                 <MenuFlyoutItem x:Name="OpenWithMenuItem" Text="Open With Default App" Click="OpenWithMenuItem_Click" />

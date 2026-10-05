@@ -308,7 +308,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Color management / soft proof
 - Animated image controls
 - Smart selection / background removal (local)
-- Printing polish, Share UI, inspector completeness
+- Printing polish, Share UI, inspector completeness (File → Properties / Ctrl+I)
 
 ### Completion criteria
 

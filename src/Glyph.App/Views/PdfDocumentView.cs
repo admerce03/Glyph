@@ -10951,6 +10951,17 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        var annotationCount = 0;
+        try
+        {
+            var annotations = await _annotations.ListAsync(_document);
+            annotationCount = annotations.Count;
+        }
+        catch
+        {
+            // Annotation list optional for inspector.
+        }
+
         static string Val(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
         static string Bytes(long? size) =>
             size is null ? "—" : size.Value < 1024
@@ -10983,12 +10994,14 @@ public sealed class PdfDocumentView : UserControl
                 + $"Created: {Val(info.CreationDate)}\n"
                 + $"Modified: {Val(info.ModificationDate)}\n"
                 + $"Pages: {info.PageCount}\n"
+                + $"Annotations: {annotationCount}\n"
                 + $"PDF version: {Val(info.PdfVersion)}\n"
                 + $"Page size: {(info.PageWidthPoints is null || info.PageHeightPoints is null
                     ? "—"
                     : $"{info.PageWidthPoints:0.#} × {info.PageHeightPoints:0.#} pt")}\n"
                 + $"Fonts: {(info.Fonts.Count == 0 ? "—" : string.Join(", ", info.Fonts))}\n"
                 + $"Embedded files: {info.EmbeddedAttachmentCount}\n"
+                + $"Path: {Val(info.FilePath)}\n"
                 + $"File: {Val(info.FilePath is null ? null : System.IO.Path.GetFileName(info.FilePath))}\n"
                 + $"Size: {Bytes(info.FileSizeBytes)}\n"
                 + $"Encrypted: {(info.IsEncrypted ? "yes" : "no")}\n"
@@ -11024,6 +11037,9 @@ public sealed class PdfDocumentView : UserControl
             ? "Document is encrypted — permissions shown are advisory."
             : "Document info.";
     }
+
+    /// <summary>File → Properties entry point (F48).</summary>
+    public Task ShowPropertiesAsync() => ShowDocumentInfoAsync();
 
     private async Task EditDocumentInfoAsync(PdfDocumentInfo current)
     {
