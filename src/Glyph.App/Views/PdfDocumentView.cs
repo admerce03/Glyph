@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.Core.Documents;
 using Glyph.Core.Signatures;
+using Glyph.Ocr.Abstractions;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Editing;
 using Glyph.Pdf.Rendering;
@@ -28,6 +29,7 @@ namespace Glyph.App.Views;
 public sealed class PdfDocumentView : UserControl
 {
     private const double ThumbnailWidth = 108;
+    private const int OcrMaxEdgePixels = 2048;
 
     private readonly IPdfDocument _document;
     private readonly IPdfRenderer _renderer;
@@ -41,6 +43,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly ISignatureLibrary _signatures;
     private readonly IPdfFormStore _forms;
     private readonly IPdfDocumentFactory _documentFactory;
+    private readonly IOcrEngine? _ocr;
     private readonly Window? _ownerWindow;
     private readonly DocumentViewState _viewState;
     private readonly DocumentNavigationHistory _history = new();
@@ -153,7 +156,8 @@ public sealed class PdfDocumentView : UserControl
         IPdfFormStore forms,
         IPdfDocumentFactory documentFactory,
         DocumentViewState? viewState = null,
-        Window? ownerWindow = null)
+        Window? ownerWindow = null,
+        IOcrEngine? ocr = null)
     {
         _document = document;
         _renderer = renderer;
@@ -167,6 +171,7 @@ public sealed class PdfDocumentView : UserControl
         _signatures = signatures;
         _forms = forms;
         _documentFactory = documentFactory;
+        _ocr = ocr;
         _ownerWindow = ownerWindow;
         _viewState = viewState ?? new DocumentViewState();
         _scale = PdfZoomCalculator.Clamp(_viewState.Zoom <= 0 ? 1.25 : _viewState.Zoom);
@@ -217,6 +222,9 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(_caseSensitiveBox, "Match case");
         var searchButton = new Button { Content = "Find" };
         searchButton.Click += async (_, _) => await RunSearchAsync();
+        var ocrPage = new Button { Content = "OCR" };
+        ocrPage.Click += async (_, _) => await RunOcrCurrentPageAsync();
+        ToolTipService.SetToolTip(ocrPage, "Run offline OCR on the current page");
         var clearSearch = new Button { Content = "Clear" };
         ToolTipService.SetToolTip(clearSearch, "Clear search results");
         clearSearch.Click += async (_, _) => await ClearSearchAsync();
@@ -463,7 +471,7 @@ public sealed class PdfDocumentView : UserControl
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
                 highlight, underline, strikeout, stickyNote, textBox, callout, flatten, sign, formFill, ink, freeform, rect, ellipse, line, arrow,
-                _searchBox, _caseSensitiveBox, searchButton, clearSearch, prevMatch, nextMatch, _status,
+                _searchBox, _caseSensitiveBox, searchButton, ocrPage, clearSearch, prevMatch, nextMatch, _status,
             },
         };
 
@@ -1832,6 +1840,81 @@ public sealed class PdfDocumentView : UserControl
 
         await SetScaleAsync(_scale * e.Delta.Scale);
         e.Handled = true;
+    }
+
+    private async Task RunOcrCurrentPageAsync()
+    {
+        if (_ocr is null)
+        {
+            _status.Text = "OCR engine unavailable.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = $"Running OCR on page {CurrentPageIndex + 1}…";
+            using var rendered = await _renderer.RenderPageAsync(
+                _document,
+                CurrentPageIndex,
+                new PdfRenderRequest(
+                    Scale: 4.0,
+                    MaxWidthPixels: OcrMaxEdgePixels,
+                    MaxHeightPixels: OcrMaxEdgePixels));
+
+            var pixels = rendered.Pixels.ToArray();
+            var result = await _ocr.RecognizeAsync(
+                new OcrRequest(rendered.Width, rendered.Height, pixels));
+
+            var text = string.IsNullOrWhiteSpace(result.Text) ? "(no text recognized)" : result.Text;
+            var box = new TextBox
+            {
+                Text = text,
+                IsReadOnly = true,
+                AcceptsReturn = true,
+                TextWrapping = TextWrapping.Wrap,
+                Width = 480,
+                Height = 320,
+            };
+            var copy = new Button { Content = "Copy text", Margin = new Thickness(0, 8, 0, 0) };
+            copy.Click += (_, _) =>
+            {
+                var package = new DataPackage();
+                package.SetText(result.Text ?? string.Empty);
+                Clipboard.SetContent(package);
+                _status.Text = "OCR text copied.";
+            };
+
+            var panel = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = $"Page {CurrentPageIndex + 1} · {result.Lines.Count} line(s) · {result.Lines.Sum(l => l.Words.Count)} word(s)",
+                        Opacity = 0.75,
+                    },
+                    box,
+                    copy,
+                },
+            };
+
+            var dialog = new ContentDialog
+            {
+                Title = "OCR result",
+                Content = panel,
+                CloseButtonText = "Close",
+                XamlRoot = XamlRoot,
+            };
+            await dialog.ShowAsync();
+            _status.Text = string.IsNullOrWhiteSpace(result.Text)
+                ? $"OCR page {CurrentPageIndex + 1} — no text."
+                : $"OCR page {CurrentPageIndex + 1} — {result.Lines.Count} line(s).";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "OCR failed: " + ex.Message;
+        }
     }
 
     private async Task RunSearchAsync()
