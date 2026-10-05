@@ -258,6 +258,82 @@ public class PdfiumOptimizeServiceTests
     }
 
     [Fact]
+    public void FromPreset_HighQuality_targets_200dpi_above_300()
+    {
+        var opts = PdfOptimizeOptions.FromPreset(PdfOptimizePreset.HighQuality);
+        opts.DownsampleImages.Should().BeTrue();
+        opts.DownsampleAboveDpi.Should().Be(300);
+        opts.TargetDpi.Should().Be(200);
+        opts.JpegQuality.Should().Be(85);
+        opts.RemoveEmbeddedAttachments.Should().BeFalse();
+        opts.PreserveMonochrome.Should().BeTrue();
+    }
+
+    [Fact]
+    public void FromPreset_Lossless_disables_downsample()
+    {
+        var opts = PdfOptimizeOptions.FromPreset(PdfOptimizePreset.Lossless);
+        opts.DownsampleImages.Should().BeFalse();
+        opts.RemoveEmbeddedAttachments.Should().BeFalse();
+        opts.RemoveMetadata.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task HighQuality_downsamples_images_above_300dpi()
+    {
+        var path = CreateBlankPdf();
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var optimize = new PdfiumOptimizeService();
+            await using var document = await factory.OpenAsync(path);
+            var pdfium = (PdfiumDocument)document;
+            PdfiumLibrary.EnsureInitialized();
+            lock (PdfiumSync.Gate)
+            {
+                // 800px in 72pt ≈ 800 DPI → above HighQuality's 300 threshold.
+                InsertSolidImage(pdfium, pageIndex: 0, pixelSize: 800, displayPoints: 72);
+            }
+
+            var result = await optimize.OptimizeAsync(
+                document,
+                PdfOptimizeOptions.FromPreset(PdfOptimizePreset.HighQuality));
+            result.ImagesDownsampled.Should().BeGreaterThan(0);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task PreserveMonochrome_false_still_downsamples_color_images()
+    {
+        var path = CreateBlankPdf();
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var optimize = new PdfiumOptimizeService();
+            await using var document = await factory.OpenAsync(path);
+            var pdfium = (PdfiumDocument)document;
+            PdfiumLibrary.EnsureInitialized();
+            lock (PdfiumSync.Gate)
+            {
+                InsertSolidImage(pdfium, pageIndex: 0, pixelSize: 800, displayPoints: 72);
+            }
+
+            var result = await optimize.OptimizeAsync(
+                document,
+                PdfOptimizeOptions.FromPreset(PdfOptimizePreset.Balanced) with { PreserveMonochrome = false });
+            result.ImagesDownsampled.Should().BeGreaterThan(0);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Lossless_full_rewrite_succeeds()
     {
         var path = CreateBlankPdf();

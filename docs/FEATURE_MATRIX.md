@@ -363,16 +363,16 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F20-13 | PDF forms | remember recently entered values, optionally | M4 | Tested | `IFormValueHistory` JSON store; text edit dialog Recent values list |
 | F20-14 | PDF forms | user-defined profile for: | M4 | Tested | Name/Address/Email/Phone via `IFormAutofillProfileStore` |
 | F20-15 | PDF forms | optional AutoFill from that application profile | M4 | Tested | Form → AutoFill matches field names; skips non-empty |
-| F21-01 | Redaction | Mark text for redaction. | M7 | Implemented | Context menu / Redact → Mark selection → `MarkTextRegion` |
-| F21-02 | Redaction | Mark rectangular areas for redaction. | M7 | Implemented | Redact draw mode + region mark → `MarkRectangle` |
+| F21-01 | Redaction | Mark text for redaction. | M7 | Tested | `MarkTextRegion` + undo/remove pending unit tests |
+| F21-02 | Redaction | Mark rectangular areas for redaction. | M7 | Tested | `MarkRectangle` + pending store unit tests |
 | F21-03 | Redaction | Preview pending redactions. | M7 | Implemented | Pending marks drawn on dedicated overlay canvas |
-| F21-04 | Redaction | Remove pending redaction. | M7 | Implemented | Click pending mark to remove; Apply dialog Clear marks; `RemovePending` API|
-| F21-05 | Redaction | Apply redactions permanently. | M7 | Implemented | `ApplyAsync` with confirm dialog |
+| F21-04 | Redaction | Remove pending redaction. | M7 | Tested | `RemovePending` / `UndoLastPending` unit tests |
+| F21-05 | Redaction | Apply reded permanently. | M7 | Tested | `ApplyAsync` unit tests (text/image/annot sanitize) |
 | F21-06 | Redaction | Remove underlying text/image data, not merely cover it visually. | M7 | Tested | Black page object + remove intersecting text/images; search empty after apply |
 | F21-07 | Redaction | Warn before permanent application. | M7 | Implemented | ContentDialog confirm before `ApplyAsync` |
 | F21-08 | Redaction | Sanitize associated hidden content where practical. | M7 | Tested | Apply removes intersecting annotations via `RemoveIntersectingAnnotations` |
 | F21-09 | Redaction | Option to remove: | M7 | Tested | Apply dialog checkboxes: intersecting annotations, embedded attachments, Info metadata (Info patcher). Layers N/A (no OCG API). |
-| F21-10 | Redaction | Search and redact matching text, later/advanced. | M7 | Implemented | Redact → Mark find matches from current Find query |
+| F21-10 | Redaction | Search and redact matching text, later/advanced. | M7 | Tested | Unit: mark each search hit then apply; UI: Redact → Mark find matches |
 | F22-01 | PDF annotation flattening | highlights | M4 | Tested | `FlattenAsync` via `FPDFPage_Flatten` |
 | F22-02 | PDF annotation flattening | notes as configured | M4 | Tested | Same flatten path |
 | F22-03 | PDF annotation flattening | shapes | M4 | Tested | Same flatten path |
@@ -386,17 +386,17 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F23-05 | PDF security | Restrict: printing/editing/copying/annotation/page extraction | M7 | Blocked | Needs ADR-015 (permission write) |
 | F23-06 | PDF security | Change existing permissions where credentials permit. | M7 | Blocked | Needs ADR-015 |
 | F23-07 | PDF security | Remove protection when authorized. | M7 | Blocked | Needs ADR-015 |
-| F23-08 | PDF security | Display encryption information. | M7 | Implemented | Info dialog + status "Encrypted"; `IPdfDocumentInfoService` permissions||
+| F23-08 | PDF security | Display encryption information. | M7 | Tested | Info dialog + status "Encrypted"; `GetInfo_reports_encryption_for_password_pdf` |
 | F23-09 | PDF security | Warn about limitations of PDF permission enforcement. | M7 | Implemented | Info dialog notes PDF permission flags are advisory||
-| F24-01 | PDF optimization and compression | Lossless | M7 | Implemented | Optimize dialog preset — full rewrite via `FPDF_NO_INCREMENTAL` |
-| F24-02 | PDF optimization and compression | High quality | M7 | Implemented | Optimize preset → 200 DPI target when above 300 |
+| F24-01 | PDF optimization and compression | Lossless | M7 | Tested | `Lossless_full_rewrite_succeeds` + FromPreset disables downsample |
+| F24-02 | PDF optimization and compression | High quality | M7 | Tested | FromPreset 300→200 DPI + `HighQuality_downsamples_images_above_300dpi` |
 | F24-03 | PDF optimization and compression | Balanced | M7 | Tested | Optimize preset → 150 DPI; service tests |
 | F24-04 | PDF optimization and compression | Small file | M7 | Tested | Optimize preset → 96 DPI + strip attachments |
 | F24-05 | PDF optimization and compression | Custom | M7 | Implemented | Optimize dialog Custom: above/target DPI, JPEG quality, strip attachments, preserve mono |
 | F24-06 | PDF optimization and compression | downsample images above selected DPI | M7 | Tested | `DownsampleAboveDpi` + PDFium `SetBitmap` resize |
 | F24-07 | PDF optimization and compression | target DPI | M7 | Tested | `TargetDpi` on presets |
 | F24-08 | PDF optimization and compression | JPEG quality | M7 | Tested | Magick encoder + zeroed FILEACCESS `LoadJpegFileInline`; Custom dialog NumberBox; SetBitmap fallback |
-| F24-09 | PDF optimization and compression | preserve monochrome content | M7 | Implemented | Skip 1-bpp images when PreserveMonochrome |
+| F24-09 | PDF optimization and compression | preserve monochrome content | M7 | Tested | Skip 1-bpp when PreserveMonochrome; color path covered with flag false |
 | F24-10 | PDF optimization and compression | compress streams | M7 | Implemented | Optimize measures/saves with `FPDF_NO_INCREMENTAL` full rewrite |
 | F24-11 | PDF optimization and compression | subset fonts where appropriate | M7 | Deferred | ADR-016 — no PDFium font-subset API |
 | F24-12 | PDF optimization and compression | remove unused objects | M7 | Implemented | Best-effort via `FPDF_NO_INCREMENTAL` full rewrite after edits (ADR-016) |
@@ -404,20 +404,20 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F24-14 | PDF optimization and compression | linearize / Fast Web View | M7 | Deferred | ADR-016 — no PDFium linearize flag |
 | F24-15 | PDF optimization and compression | remove metadata optionally | M7 | Tested | Custom Optimize → Remove metadata via Info dict patcher |
 | F24-16 | PDF optimization and compression | estimate output size before saving where feasible | M7 | Tested | Optimize → Estimate via SaveToBytes + eligible image heuristic |
-| F25-01 | PDF metadata | title | M7 | Implemented | Info dialog Title from `FPDF_GetMetaText`||
-| F25-02 | PDF metadata | author | M7 | Implemented | Info dialog Author||
-| F25-03 | PDF metadata | subject | M7 | Implemented | Info dialog Subject||
-| F25-04 | PDF metadata | keywords | M7 | Implemented | Info dialog Keywords||
+| F25-01 | PDF metadata | title | M7 | Tested | Info dialog + GetInfo/SetInfo unit tests |
+| F25-02 | PDF metadata | author | M7 | Tested | Info dialog + GetInfo/SetInfo unit tests |
+| F25-03 | PDF metadata | subject | M7 | Tested | Info dialog + GetInfo/SetInfo unit tests |
+| F25-04 | PDF metadata | keywords | M7 | Tested | Info dialog + GetInfo/SetInfo unit tests |
 | F25-05 | PDF metadata | creator | M7 | Tested | Info dialog + Edit… `/Creator` via Info patch |
 | F25-06 | PDF metadata | producer | M7 | Tested | Info dialog + Edit… `/Producer` via Info patch |
 | F25-07 | PDF metadata | created date | M7 | Tested | Info dialog CreationDate; preserved on Edit… |
 | F25-08 | PDF metadata | modified date | M7 | Tested | Info dialog ModDate; Edit…/SetInfo refreshes `/ModDate` |
-| F25-09 | PDF metadata | page count | M7 | Implemented | Info dialog page count||
+| F25-09 | PDF metadata | page count | M7 | Tested | Info dialog page count; GetInfo unit test |
 | F25-10 | PDF metadata | PDF version | M7 | Tested | Info dialog `%PDF-x.y` header via `ReadPdfVersion` |
 | F25-11 | PDF metadata | page dimensions | M7 | Tested | Info dialog page 0 width×height in points |
-| F25-12 | PDF metadata | file size | M7 | Implemented | Info dialog file size||
-| F25-13 | PDF metadata | encryption status | M7 | Implemented | Info dialog + status encryption flag||
-| F25-14 | PDF metadata | permissions | M7 | Implemented | Info dialog decoded permission flags||
+| F25-12 | PDF metadata | file size | M7 | Tested | Info dialog file size; GetInfo unit test |
+| F25-13 | PDF metadata | encryption status | M7 | Tested | Info dialog + `GetInfo_reports_encryption_for_password_pdf` |
+| F25-14 | PDF metadata | permissions | M7 | Tested | Info dialog decoded permission flags; GetInfo CanPrint/CanCopy |
 | F25-15 | PDF metadata | embedded fonts, optionally | M7 | Tested | Info dialog lists fonts from page text objects (first 32 pages) |
 | F25-16 | PDF metadata | title | M7 | Tested | Info → Edit… writes `/Title` via incremental Info patch |
 | F25-17 | PDF metadata | author | M7 | Tested | Info → Edit… `/Author` |
