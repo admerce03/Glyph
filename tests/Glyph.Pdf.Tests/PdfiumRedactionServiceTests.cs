@@ -15,6 +15,33 @@ namespace Glyph.Pdf.Tests;
 public class PdfiumRedactionServiceTests
 {
     [Fact]
+    public async Task GetPending_exposes_bounds_and_label_for_preview()
+    {
+        var path = CreateTextPdf("Secret data here");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var redaction = new PdfiumRedactionService();
+            await using var document = await factory.OpenAsync(path);
+
+            var bounds = new PdfRect(50, 700, 200, 740);
+            var mark = redaction.MarkRectangle(document, 0, bounds, "preview-label");
+            var pending = redaction.GetPending(document);
+            pending.Should().ContainSingle();
+            var item = pending[0];
+            item.Id.Should().Be(mark.Id);
+            item.PageIndex.Should().Be(0);
+            item.Kind.Should().Be(PdfRedactionKind.Rectangle);
+            item.Bounds.Should().Be(bounds);
+            item.Label.Should().Be("preview-label");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Mark_and_remove_pending_redactions()
     {
         var path = CreateTextPdf("Secret data here");

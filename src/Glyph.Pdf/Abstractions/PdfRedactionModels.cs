@@ -26,7 +26,7 @@ public sealed record PdfRedactionApplyOptions(
     /// </summary>
     bool RemoveEmbeddedAttachments = true,
     /// <summary>
-    /// Clear Info dictionary Title/Author/Subject/Keywords/Creator/Producer via incremental patch.
+    /// Clear Info dictionary Title/Author/Subject/Keywords/Creator/Producer/CreationDate/ModDate via incremental patch.
     /// </summary>
     bool RemoveMetadata = true);
 
