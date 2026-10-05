@@ -60,6 +60,8 @@ PDFiumCore’s save path is `FPDF_SaveAsCopy` / `FPDF_SaveWithVersion` only — 
 - Shipping document encryption UX (major product/security behavior).
 - Any move to a commercial SDK (cost/licensing).
 
+**Escalation (blocking M7/M9 password-protect + F45-09):** reply with Accept **A** (PdfSharp), **C** (commercial vendor), or **D** (keep Blocked). No password-write implementation will land until ADR-015 is Accepted.
+
 ### Consequences (if A accepted)
 
 - New package pin in `Directory.Packages.props`; confine types to `Glyph.Pdf` security adapter.
