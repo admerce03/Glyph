@@ -452,7 +452,12 @@ public sealed partial class MainWindow : Window
 
             _openEngines[session.Id] = image;
             SidebarStatus.Text = $"{image.FormatName} · {image.PixelWidth}×{image.PixelHeight}";
-            return new ImageDocumentView(image, _imageProcessor, _imageEncoder, session.ViewState);
+            return new ImageDocumentView(
+                image,
+                _imageProcessor,
+                _imageEncoder,
+                session.ViewState,
+                openSibling: OpenPathAsync);
         }
 
         return CreatePlaceholderContent(session);
