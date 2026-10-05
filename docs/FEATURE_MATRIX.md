@@ -43,7 +43,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-06 | Main window and interface | Hide/show sidebar. | M1/M9 | Tested | View → Hide/Show Sidebar; `SidebarVisible` prefs round-trip |
 | F02-07 | Main window and interface | Resizable sidebar. | M1/M9 | Tested | Drag splitter; `SidebarWidth` clamp + prefs unit tests |
 | F02-08 | Main window and interface | Resizable document area. | M1/M9 | Implemented | Content pane fills remaining space; window resize |
-| F02-09 | Main window and interface | Full-screen mode. | M1/M9 | Implemented | View → Full Screen / F11 / toolbar |
+| F02-09 | Main window and interface | Full-screen mode. | M1/M9 | Tested | View → Full Screen / F11; `FullscreenTogglePolicy` unit tests |
 | F02-10 | Main window and interface | Tabbed documents. | M1/M9 | Tested | TabView + `WorkspaceState` Open/Activate/Reorder/ActivateNext unit tests |
 | F02-11 | Main window and interface | Tear tab into separate window. | M1/M9 | Tested | Window → Move Tab to New Window; `TabTearOffPolicy` unit tests |
 | F02-12 | Main window and interface | Move tabs between windows. | M1/M9 | Tested | Tear-off + `CanDragTabs`/`AllowDropTabs`; `TabTearOffPolicy` (see F59-03) |
@@ -53,7 +53,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-16 | Main window and interface | Light mode. | M1/M9 | Tested | Theme preference Light (default System + Dark round-trip) |
 | F02-17 | Main window and interface | Follow Windows system theme. | M1/M9 | Tested | Theme preference System default on missing prefs file |
 | F02-18 | Main window and interface | High-DPI scaling. | M1/M9 | Implemented | PerMonitorV2 declared in app.manifest |
-| F02-19 | Main window and interface | Multi-monitor support. | M1/M9 | Implemented | OS multi-monitor windows + Window → Move to Next Monitor |
+| F02-19 | Main window and interface | Multi-monitor support. | M1/M9 | Tested | OS multi-monitor + Window → Move to Next Monitor; `MonitorCyclePolicy` unit tests |
 | F02-20 | Main window and interface | Per-monitor DPI awareness. | M1/M9 | Implemented | PerMonitorV2 declared in app.manifest |
 | F02-21 | Main window and interface | Mouse support. | M1/M9 | Implemented | Pointer input throughout document and chrome UI |
 | F02-22 | Main window and interface | Precision touchpad gesture support where useful. | M1/M9 | Implemented | Two-finger ScrollViewer scroll + Ctrl+wheel / Manipulation Scale pinch (PDF + image) |

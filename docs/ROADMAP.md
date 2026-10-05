@@ -316,6 +316,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - DocumentFileNamePolicy duplicate/rename; F01-15 / F01-19 Tested
 - DocumentMovePolicy same-folder/overwrite; F01-20 Tested
 - ToolbarVisibilityLabel; F02-05 Tested
+- FullscreenTogglePolicy + MonitorCyclePolicy; F02-09 / F02-19 Tested
 
 ---
 

@@ -232,7 +232,7 @@ public sealed partial class MainWindow : Window
             var areas = EnumerateDisplayAreas();
             if (areas.Count < 2)
             {
-                StatusText.Text = "Only one monitor detected.";
+                StatusText.Text = MonitorCyclePolicy.SingleMonitorStatus;
                 return;
             }
 
@@ -247,17 +247,20 @@ public sealed partial class MainWindow : Window
                 }
             }
 
-            var next = areas[(index + 1) % areas.Count];
+            var nextIndex = MonitorCyclePolicy.NextIndex(index, areas.Count);
+            if (nextIndex < 0)
+            {
+                StatusText.Text = MonitorCyclePolicy.SingleMonitorStatus;
+                return;
+            }
+
+            var next = areas[nextIndex];
             var work = next.WorkArea;
             var size = AppWindow.Size;
-            var width = Math.Min(size.Width, work.Width);
-            var height = Math.Min(size.Height, work.Height);
-            AppWindow.MoveAndResize(new RectInt32(
-                work.X + Math.Max(0, (work.Width - width) / 2),
-                work.Y + Math.Max(0, (work.Height - height) / 2),
-                width,
-                height));
-            StatusText.Text = $"Moved window to monitor {((index + 1) % areas.Count) + 1} of {areas.Count}.";
+            var (x, y, width, height) = MonitorCyclePolicy.FitInWorkArea(
+                work.X, work.Y, work.Width, work.Height, size.Width, size.Height);
+            AppWindow.MoveAndResize(new RectInt32(x, y, width, height));
+            StatusText.Text = MonitorCyclePolicy.MovedStatus(nextIndex, areas.Count);
         }
         catch (Exception ex)
         {
@@ -2206,16 +2209,12 @@ public sealed partial class MainWindow : Window
 
     public void ToggleFullscreen()
     {
-        if (AppWindow.Presenter.Kind == AppWindowPresenterKind.FullScreen)
-        {
-            AppWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
-            StatusText.Text = "Exited fullscreen.";
-        }
-        else
-        {
-            AppWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
-            StatusText.Text = "Fullscreen — press Fullscreen again or Esc via window chrome to exit.";
-        }
+        var currentlyFullscreen = AppWindow.Presenter.Kind == AppWindowPresenterKind.FullScreen;
+        AppWindow.SetPresenter(
+            FullscreenTogglePolicy.ShouldExitFullscreen(currentlyFullscreen)
+                ? AppWindowPresenterKind.Overlapped
+                : AppWindowPresenterKind.FullScreen);
+        StatusText.Text = FullscreenTogglePolicy.StatusAfterToggle(currentlyFullscreen);
     }
 
     /// <summary>One-shot cold-start timing from <see cref="App.OnLaunched"/> (F57-01).</summary>
