@@ -53,6 +53,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly HashSet<(int PageIndex, int WordIndex)> _selectedOcrIndices = [];
     private readonly Button _copyOcrButton;
     private readonly Button _clearOcrOverlayButton;
+    private readonly Button _ocrSavePdfButton;
     private readonly Window? _ownerWindow;
     private readonly DocumentViewState _viewState;
     private readonly DocumentNavigationHistory _history = new();
@@ -246,6 +247,9 @@ public sealed class PdfDocumentView : UserControl
         _clearOcrOverlayButton = new Button { Content = "Clear OCR", Visibility = Visibility.Collapsed };
         _clearOcrOverlayButton.Click += (_, _) => ClearOcrOverlays();
         ToolTipService.SetToolTip(_clearOcrOverlayButton, "Hide OCR word overlays (keeps Find OCR cache)");
+        _ocrSavePdfButton = new Button { Content = "OCR→PDF", Visibility = Visibility.Collapsed };
+        _ocrSavePdfButton.Click += async (_, _) => await SaveSearchableOcrPdfAsync();
+        ToolTipService.SetToolTip(_ocrSavePdfButton, "Export OCR'd pages as a searchable PDF with invisible text");
         var clearSearch = new Button { Content = "Clear" };
         ToolTipService.SetToolTip(clearSearch, "Clear search results");
         clearSearch.Click += async (_, _) => await ClearSearchAsync();
@@ -492,7 +496,7 @@ public sealed class PdfDocumentView : UserControl
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
                 highlight, underline, strikeout, stickyNote, textBox, callout, flatten, sign, formFill, ink, freeform, rect, ellipse, line, arrow,
-                _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, clearSearch, prevMatch, nextMatch, _status,
+                _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
 
@@ -2197,6 +2201,85 @@ public sealed class PdfDocumentView : UserControl
         var hasOverlay = _ocrPageData.Count > 0;
         _copyOcrButton.Visibility = hasOverlay ? Visibility.Visible : Visibility.Collapsed;
         _clearOcrOverlayButton.Visibility = hasOverlay ? Visibility.Visible : Visibility.Collapsed;
+        _ocrSavePdfButton.Visibility = hasOverlay ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private async Task SaveSearchableOcrPdfAsync()
+    {
+        if (_ocrPageData.Count == 0)
+        {
+            _status.Text = "Run OCR before exporting a searchable PDF.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Building searchable OCR PDF…";
+            var pages = new List<(byte[] ImageBytes, bool IsJpeg, int PixelWidth, int PixelHeight, IEnumerable<SearchablePdfWord> Words)>();
+            foreach (var pageIndex in _ocrPageData.Keys.OrderBy(i => i))
+            {
+                var data = _ocrPageData[pageIndex];
+                using var rendered = await _renderer.RenderPageAsync(
+                    _document,
+                    pageIndex,
+                    new PdfRenderRequest(
+                        Scale: 4.0,
+                        MaxWidthPixels: OcrMaxEdgePixels,
+                        MaxHeightPixels: OcrMaxEdgePixels));
+
+                var png = await EncodeBgraPngAsync(rendered.Pixels.ToArray(), rendered.Width, rendered.Height);
+                var words = data.Result.Lines
+                    .SelectMany(l => l.Words)
+                    .Where(w => !string.IsNullOrWhiteSpace(w.Text))
+                    .Select(w => new SearchablePdfWord(w.Text, w.X, w.Y, w.Width, w.Height));
+                pages.Add((png, false, rendered.Width, rendered.Height, words));
+            }
+
+            var pdfBytes = OcrSearchablePdfWriter.BuildPages(pages);
+            var window = _ownerWindow
+                ?? App.CurrentApp.MainWindowInstance
+                ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+            var picker = new FileSavePicker();
+            var hwnd = WindowNative.GetWindowHandle(window);
+            InitializeWithWindow.Initialize(picker, hwnd);
+            picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+            picker.SuggestedFileName = "OCR searchable";
+            picker.FileTypeChoices.Add("PDF", [".pdf"]);
+            var file = await picker.PickSaveFileAsync();
+            if (file is null)
+            {
+                _status.Text = "OCR→PDF cancelled.";
+                return;
+            }
+
+            await FileIO.WriteBytesAsync(file, pdfBytes);
+            _status.Text = $"Saved searchable OCR PDF ({pages.Count} page(s)): {file.Name}";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "OCR→PDF failed: " + ex.Message;
+        }
+    }
+
+    private static async Task<byte[]> EncodeBgraPngAsync(byte[] bgra, int width, int height)
+    {
+        using var stream = new Windows.Storage.Streams.InMemoryRandomAccessStream();
+        var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
+        encoder.SetPixelData(
+            BitmapPixelFormat.Bgra8,
+            BitmapAlphaMode.Premultiplied,
+            (uint)width,
+            (uint)height,
+            96,
+            96,
+            bgra);
+        await encoder.FlushAsync();
+        var reader = new Windows.Storage.Streams.DataReader(stream.GetInputStreamAt(0));
+        var size = (uint)stream.Size;
+        await reader.LoadAsync(size);
+        var bytes = new byte[size];
+        reader.ReadBytes(bytes);
+        return bytes;
     }
 
     private void CopySelectedOcrText()
@@ -2245,7 +2328,6 @@ public sealed class PdfDocumentView : UserControl
 
     private void ClearOcrOverlays()
     {
-        _ocrPageData.Clear();
         _selectedOcrIndices.Clear();
         foreach (var overlay in _ocrOverlays.Values)
         {
@@ -2253,7 +2335,10 @@ public sealed class PdfDocumentView : UserControl
         }
 
         _ocrVisualsByPage.Clear();
-        UpdateOcrOverlayChrome();
+        // Keep _ocrPageData / _ocrPageTexts so Find and OCR→PDF still work.
+        _copyOcrButton.Visibility = _ocrPageData.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        _clearOcrOverlayButton.Visibility = Visibility.Collapsed;
+        _ocrSavePdfButton.Visibility = _ocrPageData.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         _status.Text = "OCR overlays cleared.";
     }
 
