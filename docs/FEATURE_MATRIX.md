@@ -626,9 +626,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F42-09 | Scanner support | Paper size. | M8 | Tested | Scan dialog `ScanDialogUi.PaperSizeLabels` + feeder `PageSize` |
 | F42-10 | Scanner support | Auto crop. | M8 | Tested | `ScanDialogUi.AutoCropLabels` + AutoCroppingMode SingleRegion |
 | F42-11 | Scanner support | Auto straighten. | M8 | Tested | Magick DeskewAndCrop; `ScanDialogUi.StraightenLabel` + image Straighten |
-| F42-12 | Scanner support | Brightness/contrast where hardware supports it. | M8 | Implemented | Scan dialog brightness/contrast sliders |
-| F42-13 | Scanner support | Scan one page. | M8 | Implemented | Flatbed / MaxPages=1 |
-| F42-14 | Scanner support | Scan multiple pages. | M8 | Implemented | Feeder MaxPages |
+| F42-12 | Scanner support | Brightness/contrast where hardware supports it. | M8 | Tested | Scan dialog tone sliders; `ScanDialogUi.ClampTone` / `ToneOrNull` |
+| F42-13 | Scanner support | Scan one page. | M8 | Tested | Flatbed / `ScanDialogUi.MinMaxPages` default |
+| F42-14 | Scanner support | Scan multiple pages. | M8 | Tested | Feeder `ScanDialogUi.ClampMaxPages` (1–50) |
 | F42-15 | Scanner support | Scan directly into new PDF. | M8 | Tested | Destination → New PDF via Magick collection |
 | F42-16 | Scanner support | Insert scanned pages into existing PDF. | M8 | Tested | Destination → Insert; `ScanDialogUi.DestinationLabels` unit tests |
 | F42-17 | Scanner support | Scan multiple photos separately from a flatbed where detection is practical. | M8 | Tested | Auto crop → Multiple photos; `ScanDialogUi.AutoCropLabels` |
@@ -656,7 +656,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F44-18 | Printing | auto rotate | M8 | Tested | `ShouldAutoRotate` + occupied-size swap unit tests |
 | F44-19 | Printing | center | M8 | Tested | `PrintSheetLayout.PlaceInCell` center/offset unit tests |
 | F44-20 | Printing | print annotations | M8 | Implemented | PDFium render includes annotations |
-| F44-21 | Printing | print notes optionally | M8 | Implemented | Print → Append notes page |
+| F44-21 | Printing | print notes optionally | M8 | Tested | Print → Append notes; `PrintNotesUi.IncludeCheckbox` |
 | F44-22 | Printing | grayscale | M8 | Tested | Print dialog Grayscale (`ImagePixelOps`) |
 | F44-23 | Printing | Windows printer properties integration | M8 | Implemented | PrintManager / PrintTaskOptionDetails |
 | F45-01 | Exporting | output format | M5-M9 | Implemented | PDF Export → PNG/JPEG/WebP/TIFF/BMP; image Convert/Export |
@@ -669,18 +669,18 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F45-08 | Exporting | transparency | M5-M9 | Implemented | PNG/WebP/TIFF/AVIF keep render alpha; JPEG/JP2/BMP/GIF flatten |
 | F45-09 | Exporting | PDF security | M5-M9 | Blocked | Needs ADR-015 password-write |
 | F45-10 | Exporting | annotation flattening | M5-M9 | Implemented | Raster page export renders annotations into pixels |
-| F46-01 | Sharing and Windows integration | Windows Share UI where available | M9 | Implemented | File → Share… (`DataTransferManagerInterop`) |
+| F46-01 | Sharing and Windows integration | Windows Share UI where available | M9 | Tested | File → Share…; `DocumentShareStatus` + DataTransferManagerInterop |
 | F46-02 | Sharing and Windows integration | Open containing folder | M9 | Implemented | File → Show in File Explorer |
-| F46-03 | Sharing and Windows integration | Copy file path | M9 | Implemented | File → Copy File Path |
-| F46-04 | Sharing and Windows integration | Copy file | M9 | Implemented | File → Copy File |
-| F46-05 | Sharing and Windows integration | Send to default email workflow where practical | M9 | Implemented | File → Send Email… (mailto + path note) |
+| F46-03 | Sharing and Windows integration | Copy file path | M9 | Tested | File → Copy File Path; `DocumentShareStatus.PathCopied` |
+| F46-04 | Sharing and Windows integration | Copy file | M9 | Tested | File → Copy File; `DocumentShareStatus.FileCopied` |
+| F46-05 | Sharing and Windows integration | Send to default email workflow where practical | M9 | Tested | File → Send Email…; `DocumentShareStatus.MailtoBody` / subject |
 | F46-06 | Sharing and Windows integration | Nearby Share through Windows system facilities where available rather than custom implementation | M9 | Implemented | Via system Share UI when available |
 | F46-07 | Sharing and Windows integration | OneDrive works naturally because files are ordinary filesystem objects | M9 | Implemented | Ordinary paths; no special casing |
-| F47-01 | External application integration | Open With... | M9 | Implemented | File → Open With Default App |
+| F47-01 | External application integration | Open With... | M9 | Tested | File → Open With Default App; `DocumentShareStatus.OpenWithFailed` |
 | F47-02 | External application integration | Show in File Explorer | M9 | Implemented | Alias of F46-02 |
 | F47-03 | External application integration | Open URL | M9 | Implemented | PDF link launcher / OSM maps already |
 | F47-04 | External application integration | Open location in browser/maps | M9 | Implemented | Image Meta → Open map |
-| F47-05 | External application integration | Send via default mail application where possible | M9 | Implemented | Alias of F46-05 |
+| F47-05 | External application integration | Send via default mail application where possible | M9 | Tested | Alias of F46-05; `DocumentShareStatus` mailto |
 | F48-01 | File properties and inspector | dimensions | M5/M9 | Tested | PDF Info page size (pt); `GetInfo_reads_metadata_and_unencrypted_permissions` |
 | F48-02 | File properties and inspector | pages | M5/M9 | Tested | PDF Info page count; GetInfo unit test |
 | F48-03 | File properties and inspector | metadata | M5/M9 | Tested | PDF Info Title/Author/… + Edit (Creator/Producer + Clear all); SetInfo unit tests |

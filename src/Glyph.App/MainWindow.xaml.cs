@@ -872,10 +872,10 @@ public sealed partial class MainWindow : Window
             };
             var pagesBox = new NumberBox
             {
-                Header = "Max pages (feeder)",
-                Value = 1,
-                Minimum = 1,
-                Maximum = 50,
+                Header = ScanDialogUi.MaxPagesHeader,
+                Value = ScanDialogUi.MinMaxPages,
+                Minimum = ScanDialogUi.MinMaxPages,
+                Maximum = ScanDialogUi.MaxMaxPages,
                 SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
                 Width = 160,
             };
@@ -888,18 +888,18 @@ public sealed partial class MainWindow : Window
             };
             var brightness = new Slider
             {
-                Header = "Brightness (device, if supported)",
-                Minimum = -1000,
-                Maximum = 1000,
-                Value = 0,
+                Header = ScanDialogUi.BrightnessHeader,
+                Minimum = ScanDialogUi.ToneMin,
+                Maximum = ScanDialogUi.ToneMax,
+                Value = ScanDialogUi.ToneNeutral,
                 Width = 320,
             };
             var contrast = new Slider
             {
-                Header = "Contrast (device, if supported)",
-                Minimum = -1000,
-                Maximum = 1000,
-                Value = 0,
+                Header = ScanDialogUi.ContrastHeader,
+                Minimum = ScanDialogUi.ToneMin,
+                Maximum = ScanDialogUi.ToneMax,
+                Value = ScanDialogUi.ToneNeutral,
                 Width = 320,
             };
 
@@ -981,9 +981,9 @@ public sealed partial class MainWindow : Window
                     Duplex: duplex.IsChecked == true,
                     AutoCrop: cropBox.SelectedIndex > 0,
                     MultiPhoto: cropBox.SelectedIndex == 2,
-                    Brightness: (int)brightness.Value == 0 ? null : (int)brightness.Value,
-                    Contrast: (int)contrast.Value == 0 ? null : (int)contrast.Value,
-                    MaxPages: (uint)Math.Clamp(pagesBox.Value, 1, 50),
+                    Brightness: ScanDialogUi.ToneOrNull((int)brightness.Value),
+                    Contrast: ScanDialogUi.ToneOrNull((int)contrast.Value),
+                    MaxPages: (uint)ScanDialogUi.ClampMaxPages(pagesBox.Value),
                     PageSize: pageSize,
                     AutoDetectPageSize: autoDetectPaper));
 
@@ -1075,7 +1075,7 @@ public sealed partial class MainWindow : Window
         var active = _workspace.ActiveDocument;
         if (active is null || string.IsNullOrWhiteSpace(active.Path))
         {
-            StatusText.Text = "Nothing to share — open a saved document.";
+            StatusText.Text = DocumentShareStatus.NothingToShare;
             return;
         }
 
@@ -1084,11 +1084,11 @@ public sealed partial class MainWindow : Window
             var hwnd = WindowNative.GetWindowHandle(this);
             _shareHelper ??= new DocumentShareHelper(hwnd);
             _shareHelper.ShowShareUi(active.DisplayName, active.Path);
-            StatusText.Text = "Share UI opened.";
+            StatusText.Text = DocumentShareStatus.ShareOpened;
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Share failed: " + ex.Message;
+            StatusText.Text = DocumentShareStatus.ShareFailed(ex.Message);
         }
     }
 
@@ -1478,12 +1478,12 @@ public sealed partial class MainWindow : Window
         var path = _workspace.ActiveDocument?.Path;
         if (string.IsNullOrWhiteSpace(path))
         {
-            StatusText.Text = "No file path to copy.";
+            StatusText.Text = DocumentShareStatus.NoPath;
             return;
         }
 
         DocumentShareHelper.CopyPathToClipboard(path);
-        StatusText.Text = "Copied path.";
+        StatusText.Text = DocumentShareStatus.PathCopied;
     }
 
     private async Task CopyActiveFileAsync()
@@ -1491,18 +1491,18 @@ public sealed partial class MainWindow : Window
         var path = _workspace.ActiveDocument?.Path;
         if (string.IsNullOrWhiteSpace(path))
         {
-            StatusText.Text = "No file to copy.";
+            StatusText.Text = DocumentShareStatus.NoFile;
             return;
         }
 
         try
         {
             await DocumentShareHelper.CopyFileToClipboardAsync(path);
-            StatusText.Text = "Copied file to clipboard.";
+            StatusText.Text = DocumentShareStatus.FileCopied;
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Copy file failed: " + ex.Message;
+            StatusText.Text = DocumentShareStatus.CopyFileFailed(ex.Message);
         }
     }
 
@@ -1511,7 +1511,7 @@ public sealed partial class MainWindow : Window
         var path = _workspace.ActiveDocument?.Path;
         if (string.IsNullOrWhiteSpace(path))
         {
-            StatusText.Text = "No file to open.";
+            StatusText.Text = DocumentShareStatus.NoFileToOpen;
             return;
         }
 
@@ -1521,7 +1521,7 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Open With failed: " + ex.Message;
+            StatusText.Text = DocumentShareStatus.OpenWithFailed(ex.Message);
         }
     }
 
@@ -1531,14 +1531,14 @@ public sealed partial class MainWindow : Window
         try
         {
             await DocumentShareHelper.SendMailtoAsync(
-                subject: active?.DisplayName ?? "Glyph document",
-                body: "Shared from Glyph.",
+                subject: DocumentShareStatus.MailtoSubject(active?.DisplayName),
+                body: DocumentShareStatus.MailtoBody,
                 attachmentPath: active?.Path);
-            StatusText.Text = "Mail client opened.";
+            StatusText.Text = DocumentShareStatus.MailOpened;
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Email failed: " + ex.Message;
+            StatusText.Text = DocumentShareStatus.EmailFailed(ex.Message);
         }
     }
 

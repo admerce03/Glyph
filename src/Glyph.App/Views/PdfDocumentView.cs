@@ -969,7 +969,7 @@ public sealed class PdfDocumentView : UserControl
             }
             else
             {
-                _status.Text = "Share unavailable.";
+                _status.Text = DocumentShareStatus.ShareUnavailable;
             }
         };
         sidebarToggle.Click += async (_, _) =>
@@ -12283,7 +12283,7 @@ public sealed class PdfDocumentView : UserControl
             var grayscale = new CheckBox { Content = "Grayscale" };
             var center = new CheckBox { Content = "Center on page", IsChecked = true };
             var autoRotate = new CheckBox { Content = "Auto-rotate", IsChecked = true };
-            var includeNotes = new CheckBox { Content = "Append notes page (text)" };
+            var includeNotes = new CheckBox { Content = PrintNotesUi.IncludeCheckbox };
             scopeBox.SelectionChanged += (_, _) =>
             {
                 rangeBox.Visibility =
