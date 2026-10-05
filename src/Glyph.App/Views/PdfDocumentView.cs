@@ -13,6 +13,7 @@ using Glyph.Pdf.Rendering;
 using Glyph.Pdf.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -215,6 +216,17 @@ public sealed class PdfDocumentView : UserControl
     private bool _cropMode;
     private bool _zoomAreaMode;
     private Button? _zoomAreaButton;
+    private bool _viewLoupeMode;
+    private Button? _viewLoupeButton;
+    private Border? _viewLoupePopup;
+    private Canvas? _viewLoupeHost;
+    private bool _presentationMode;
+    private Button? _presentButton;
+    private PageLayoutMode _layoutBeforePresentation = PageLayoutMode.Continuous;
+    private double _scaleBeforePresentation = 1.25;
+    private bool _toolbarWasVisible = true;
+    private Grid? _bodyGrid;
+    private DispatcherTimer? _presentationTimer;
     private int _cropPageIndex = -1;
     private double _cropMarginLeftPt;
     private double _cropMarginTopPt;
@@ -741,6 +753,12 @@ public sealed class PdfDocumentView : UserControl
         _zoomAreaButton = new Button { Content = "Zoom ▭" };
         ToolTipService.SetToolTip(_zoomAreaButton, "Rectangular zoom-to-area: drag on a page to zoom into that region");
         AutomationProperties.SetName(_zoomAreaButton, "Zoom to area");
+        _viewLoupeButton = new Button { Content = "Glass" };
+        ToolTipService.SetToolTip(_viewLoupeButton, "Magnifier/loupe: move over the page to enlarge under the cursor");
+        AutomationProperties.SetName(_viewLoupeButton, "Magnifier loupe");
+        _presentButton = new Button { Content = "Present" };
+        ToolTipService.SetToolTip(_presentButton, "Presentation mode: fullscreen, hide chrome, single-page (Esc to exit)");
+        AutomationProperties.SetName(_presentButton, "Presentation mode");
         var copy = new Button { Content = "Copy" };
         ToolTipService.SetToolTip(copy, "Copy selected text, or the current page text if nothing is selected");
         var rotateLeft = new Button { Content = "⟲" };
@@ -862,7 +880,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(_layoutBox, "Page layout mode");
         ToolTipService.SetToolTip(_gotoBox, "Go to page number");
         ApplyToolbarAccessibleNames(
-            first, prev, next, last, back, forward, zoomOut, zoomIn, fitWidth, fitPage, actual, _zoomAreaButton, copy,
+            first, prev, next, last, back, forward, zoomOut, zoomIn, fitWidth, fitPage, actual, _zoomAreaButton, _viewLoupeButton, _presentButton, copy,
             rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract,
             merge, split, crop, highlight, underline, strikeout, stickyNote, textBox, callout, flatten,
             redact, info, optimize, export, print, share, sidebarToggle, camera, sign, formFill, ink, freeform, eraser, rect,
@@ -902,6 +920,8 @@ public sealed class PdfDocumentView : UserControl
         fitPage.Click += async (_, _) => await FitPageAsync();
         actual.Click += async (_, _) => await SetScaleAsync(PdfZoomCalculator.ActualSize());
         _zoomAreaButton.Click += (_, _) => ToggleZoomAreaMode();
+        _viewLoupeButton.Click += (_, _) => ToggleViewLoupeMode();
+        _presentButton.Click += async (_, _) => await TogglePresentationModeAsync();
         copy.Click += async (_, _) => await CopyTextAsync();
         rotateLeft.Click += async (_, _) => await RotateSelectedAsync(-90);
         rotateRight.Click += async (_, _) => await RotateSelectedAsync(90);
@@ -976,7 +996,7 @@ public sealed class PdfDocumentView : UserControl
             Children =
             {
                 sidebarToggle, first, prev, _gotoBox, next, last, back, forward,
-                zoomOut, zoomIn, fitWidth, fitPage, actual, _zoomAreaButton, _layoutBox, copy,
+                zoomOut, zoomIn, fitWidth, fitPage, actual, _zoomAreaButton, _viewLoupeButton, _presentButton, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
                 highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, print, share, camera, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, fullscreen,
@@ -992,6 +1012,15 @@ public sealed class PdfDocumentView : UserControl
         TagToolbarCommand(fitPage, ToolbarCommands.FitPage);
         TagToolbarCommand(fitWidth, ToolbarCommands.FitWidth);
         TagToolbarCommand(_zoomAreaButton, ToolbarCommands.Zoom);
+        if (_viewLoupeButton is not null)
+        {
+            TagToolbarCommand(_viewLoupeButton, ToolbarCommands.Zoom);
+        }
+
+        if (_presentButton is not null)
+        {
+            TagToolbarCommand(_presentButton, ToolbarCommands.FitPage);
+        }
         TagToolbarCommand(_searchBox, ToolbarCommands.Search);
         TagToolbarCommand(_caseSensitiveBox, ToolbarCommands.Search);
         TagToolbarCommand(searchButton, ToolbarCommands.Search);
@@ -1038,9 +1067,13 @@ public sealed class PdfDocumentView : UserControl
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
             },
         };
+        _bodyGrid = body;
         body.Children.Add(sidePanel);
         Grid.SetColumn(_scrollViewer, 1);
         body.Children.Add(_scrollViewer);
+        _viewLoupeHost = new Canvas { IsHitTestVisible = false };
+        Grid.SetColumnSpan(_viewLoupeHost, 2);
+        body.Children.Add(_viewLoupeHost);
 
         var root = new Grid
         {
@@ -1118,6 +1151,8 @@ public sealed class PdfDocumentView : UserControl
     {
         PdfPageDragRegistry.Unregister(_documentKey);
         ClearDropHighlight();
+        _presentationTimer?.Stop();
+        _presentationTimer = null;
         if (_cropMode)
         {
             CancelCropMode();
@@ -1989,6 +2024,20 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (_viewLoupeMode && e.Key == VirtualKey.Escape)
+        {
+            ClearViewLoupeMode();
+            e.Handled = true;
+            return;
+        }
+
+        if (_presentationMode && e.Key == VirtualKey.Escape)
+        {
+            await ExitPresentationModeAsync();
+            e.Handled = true;
+            return;
+        }
+
         if (_highlightMode && e.Key == VirtualKey.Escape)
         {
             ClearHighlightMode();
@@ -2220,9 +2269,17 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (e.Key is VirtualKey.Up or VirtualKey.Down)
+        if (e.Key is VirtualKey.Up or VirtualKey.Down or VirtualKey.Left or VirtualKey.Right)
         {
-            var delta = e.Key == VirtualKey.Up ? -1 : 1;
+            var delta = e.Key is VirtualKey.Up or VirtualKey.Left ? -1 : 1;
+            if (_presentationMode || e.Key is VirtualKey.Left or VirtualKey.Right)
+            {
+                var next = Math.Clamp(CurrentPageIndex + delta, 0, Math.Max(0, _document.PageCount - 1));
+                await GoToPageAsync(next, recordHistory: true);
+                e.Handled = true;
+                return;
+            }
+
             var focus = _pageSelection.SelectedIndexes.DefaultIfEmpty(CurrentPageIndex).Max();
             if (shiftDown && _pageSelection.Count > 0)
             {
@@ -2231,10 +2288,10 @@ public sealed class PdfDocumentView : UserControl
                     : _pageSelection.SelectedIndexes.Max();
             }
 
-            var next = Math.Clamp(focus + delta, 0, Math.Max(0, _document.PageCount - 1));
-            _pageSelection.ApplyKeyboardMove(next, extendRange: shiftDown);
+            var moveTo = Math.Clamp(focus + delta, 0, Math.Max(0, _document.PageCount - 1));
+            _pageSelection.ApplyKeyboardMove(moveTo, extendRange: shiftDown);
             RefreshThumbnailSelectionChrome();
-            await GoToPageAsync(next, recordHistory: !shiftDown);
+            await GoToPageAsync(moveTo, recordHistory: !shiftDown);
             e.Handled = true;
             return;
         }
@@ -2796,6 +2853,11 @@ public sealed class PdfDocumentView : UserControl
 
     private void PageBorder_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
+        if (_viewLoupeMode && sender is Border { Tag: int loupePage } loupeBorder)
+        {
+            UpdateViewLoupe(loupeBorder, loupePage, e.GetCurrentPoint(loupeBorder).Position);
+        }
+
         if (_cropMode)
         {
             if (sender is Border { Tag: int cropPage } cropBorder &&
@@ -4245,6 +4307,242 @@ public sealed class PdfDocumentView : UserControl
         {
             _zoomAreaButton.Background = null;
         }
+    }
+
+    private void ToggleViewLoupeMode()
+    {
+        if (_viewLoupeMode)
+        {
+            ClearViewLoupeMode();
+            return;
+        }
+
+        if (_presentationMode)
+        {
+            _ = ExitPresentationModeAsync();
+        }
+
+        ClearZoomAreaMode();
+        _viewLoupeMode = true;
+        if (_viewLoupeButton is not null)
+        {
+            _viewLoupeButton.Background = new SolidColorBrush(Colors.DodgerBlue);
+        }
+
+        EnsureViewLoupePopup();
+        _status.Text = "Magnifier on — move over a page (Esc to exit).";
+    }
+
+    private void ClearViewLoupeMode()
+    {
+        _viewLoupeMode = false;
+        if (_viewLoupeButton is not null)
+        {
+            _viewLoupeButton.Background = null;
+        }
+
+        if (_viewLoupePopup is not null)
+        {
+            _viewLoupePopup.Visibility = Visibility.Collapsed;
+        }
+
+        _status.Text = "Magnifier off.";
+    }
+
+    private void EnsureViewLoupePopup()
+    {
+        if (_viewLoupeHost is null)
+        {
+            return;
+        }
+
+        if (_viewLoupePopup is not null)
+        {
+            return;
+        }
+
+        var outSize = (int)PdfLoupeMagnifier.PopupSizeDip;
+        _viewLoupePopup = new Border
+        {
+            Width = outSize + 4,
+            Height = outSize + 4,
+            CornerRadius = new CornerRadius((outSize + 4) / 2.0),
+            BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 30, 100, 180)),
+            BorderThickness = new Thickness(2),
+            Background = new SolidColorBrush(Colors.White),
+            IsHitTestVisible = false,
+            Visibility = Visibility.Collapsed,
+            Child = new Image
+            {
+                Width = outSize,
+                Height = outSize,
+                Stretch = Stretch.UniformToFill,
+            },
+        };
+        _viewLoupeHost.Children.Add(_viewLoupePopup);
+    }
+
+    private void UpdateViewLoupe(Border pageBorder, int pageIndex, Windows.Foundation.Point pagePoint)
+    {
+        EnsureViewLoupePopup();
+        if (_viewLoupePopup is null || _viewLoupeHost is null || _bodyGrid is null)
+        {
+            return;
+        }
+
+        if (!_pageImages.TryGetValue(pageIndex, out var pageImage)
+            || pageImage.Source is not WriteableBitmap bitmap)
+        {
+            _viewLoupePopup.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var page = _document.GetPage(pageIndex);
+        var halfPts = 36 / Math.Max(_scale, 0.25); // ~36 DIP sample radius in page space
+        var pdfX = pagePoint.X / _scale;
+        var pdfYFromBottom = page.HeightPoints - (pagePoint.Y / _scale);
+        var magnified = PdfLoupeMagnifier.CropAndScale(
+            bitmap,
+            page.WidthPoints,
+            page.HeightPoints,
+            pdfX - halfPts,
+            pdfYFromBottom - halfPts,
+            pdfX + halfPts,
+            pdfYFromBottom + halfPts,
+            PdfLoupeMagnifier.DefaultZoom,
+            (int)PdfLoupeMagnifier.PopupSizeDip);
+        if (magnified is null)
+        {
+            _viewLoupePopup.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        if (_viewLoupePopup.Child is Image img)
+        {
+            img.Source = magnified;
+        }
+
+        // Position popup near the pointer in the body overlay.
+        var inBody = pageBorder.TransformToVisual(_bodyGrid).TransformPoint(pagePoint);
+        var size = PdfLoupeMagnifier.PopupSizeDip + 4;
+        var left = inBody.X + 24;
+        var top = inBody.Y - size / 2;
+        if (left + size > _bodyGrid.ActualWidth)
+        {
+            left = inBody.X - size - 24;
+        }
+
+        left = Math.Max(0, left);
+        top = Math.Clamp(top, 0, Math.Max(0, _bodyGrid.ActualHeight - size));
+        Canvas.SetLeft(_viewLoupePopup, left);
+        Canvas.SetTop(_viewLoupePopup, top);
+        _viewLoupePopup.Visibility = Visibility.Visible;
+    }
+
+    private async Task TogglePresentationModeAsync()
+    {
+        if (_presentationMode)
+        {
+            await ExitPresentationModeAsync();
+            return;
+        }
+
+        ClearViewLoupeMode();
+        ClearZoomAreaMode();
+        _presentationMode = true;
+        _layoutBeforePresentation = _layoutMode;
+        _scaleBeforePresentation = _scale;
+        _toolbarWasVisible = IsToolbarVisible;
+        if (_toolbar is not null && _toolbar.Visibility == Visibility.Visible)
+        {
+            _toolbar.Visibility = Visibility.Collapsed;
+        }
+
+        if (_sidePanel is not null)
+        {
+            _sidePanel.Visibility = Visibility.Collapsed;
+        }
+
+        if (_bodyGrid is not null && _bodyGrid.ColumnDefinitions.Count > 0)
+        {
+            _bodyGrid.ColumnDefinitions[0].Width = new GridLength(0);
+        }
+
+        await SetLayoutModeAsync(PageLayoutMode.Single);
+        await FitPageAsync();
+        if (App.CurrentApp.MainWindowInstance is MainWindow mw
+            && mw.AppWindow.Presenter.Kind != AppWindowPresenterKind.FullScreen)
+        {
+            mw.ToggleFullscreen();
+        }
+
+        if (_presentButton is not null)
+        {
+            _presentButton.Background = new SolidColorBrush(Colors.DodgerBlue);
+            _presentButton.Content = "Exit present";
+        }
+
+        _presentationTimer?.Stop();
+        _presentationTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(8) };
+        _presentationTimer.Tick += async (_, _) =>
+        {
+            if (!_presentationMode || _document.PageCount == 0)
+            {
+                return;
+            }
+
+            var next = PageLayoutCalculator.NextPageIndex(_layoutMode, CurrentPageIndex, _document.PageCount);
+            if (next == CurrentPageIndex)
+            {
+                next = 0;
+            }
+
+            await GoToPageAsync(next, recordHistory: true);
+        };
+        _presentationTimer.Start();
+        _status.Text = "Presentation — ←/→ or Page keys; auto-advance 8s; Esc to exit.";
+    }
+
+    private async Task ExitPresentationModeAsync()
+    {
+        if (!_presentationMode)
+        {
+            return;
+        }
+
+        _presentationMode = false;
+        _presentationTimer?.Stop();
+        _presentationTimer = null;
+        if (_presentButton is not null)
+        {
+            _presentButton.Background = null;
+            _presentButton.Content = "Present";
+        }
+
+        if (_sidePanel is not null)
+        {
+            _sidePanel.Visibility = Visibility.Visible;
+        }
+
+        if (_bodyGrid is not null && _bodyGrid.ColumnDefinitions.Count > 0)
+        {
+            _bodyGrid.ColumnDefinitions[0].Width = new GridLength(170);
+        }
+
+        if (_toolbar is not null && _toolbarWasVisible)
+        {
+            _toolbar.Visibility = Visibility.Visible;
+        }
+
+        if (App.CurrentApp.MainWindowInstance is MainWindow mw
+            && mw.AppWindow.Presenter.Kind == AppWindowPresenterKind.FullScreen)
+        {
+            mw.ToggleFullscreen();
+        }
+
+        await SetLayoutModeAsync(_layoutBeforePresentation);
+        await SetScaleAsync(_scaleBeforePresentation);
+        _status.Text = "Exited presentation mode.";
     }
 
     private async Task ZoomToDisplayAreaAsync(int pageIndex, double leftUi, double topUi, double widthUi, double heightUi)

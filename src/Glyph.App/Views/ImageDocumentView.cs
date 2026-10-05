@@ -173,6 +173,8 @@ public sealed class ImageDocumentView : UserControl
         _imageSurface.Children.Add(_image);
         _imageSurface.Children.Add(_markupOverlay);
         _imageSurface.Children.Add(_cropOverlay);
+        _image.CanDrag = true;
+        _image.DragStarting += Image_DragStarting;
         _scrollViewer = new ScrollViewer
         {
             Content = _imageSurface,
@@ -1851,6 +1853,40 @@ public sealed class ImageDocumentView : UserControl
         {
             ClearPixelSelection();
         }
+    }
+
+    private void Image_DragStarting(UIElement sender, DragStartingEventArgs args)
+    {
+        var path = _document.Path;
+        if (string.IsNullOrWhiteSpace(path) || !System.IO.File.Exists(path))
+        {
+            args.Cancel = true;
+            return;
+        }
+
+        // Deferred StorageItems so Explorer and other Glyph windows/tabs receive the file on drop (F59-05).
+        var sourcePath = path;
+        args.Data.SetDataProvider(
+            Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems,
+            async request =>
+            {
+                var deferral = request.GetDeferral();
+                try
+                {
+                    var file = await Windows.Storage.StorageFile.GetFileFromPathAsync(sourcePath);
+                    request.SetData(new Windows.Storage.IStorageItem[] { file });
+                }
+                catch
+                {
+                    request.SetData(Array.Empty<Windows.Storage.IStorageItem>());
+                }
+                finally
+                {
+                    deferral.Complete();
+                }
+            });
+        args.Data.RequestedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
+        _status.Text = "Dragging image…";
     }
 
     private void SelectAllPixels()

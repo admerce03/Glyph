@@ -106,8 +106,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-27 | PDF viewing | Ctrl+mouse wheel zoom. | M2 | Implemented | Ctrl+wheel → zoom steps |
 | F04-28 | PDF viewing | Pinch-to-zoom on supported precision touchpads. | M2 | Implemented | Ctrl+wheel + Manipulation Scale pinch |
 | F04-29 | PDF viewing | Rectangular zoom-to-area. | M2 | Implemented | Zoom ▭ toolbar: drag rectangle on page; Esc cancels |
-| F04-30 | PDF viewing | Magnifier/loupe tool. | M2 | Deferred | ADR-014: post-core polish; not required for M2 minimum viewer |
-| F04-31 | PDF viewing | Presentation/slideshow mode. | M2 | Deferred | ADR-014: post-core polish; not required for M2 minimum viewer |
+| F04-30 | PDF viewing | Magnifier/loupe tool. | M2 | Implemented | Glass toolbar: cursor-follow magnifier over page bitmaps |
+| F04-31 | PDF viewing | Presentation/slideshow mode. | M2 | Implemented | Present: fullscreen, hide chrome, single-page fit; ←/→; auto-advance 8s; Esc exits |
 | F04-32 | PDF viewing | Remember last viewed page, optionally. | M2 | Tested | `IDocumentViewStateStore` persists page on close/reopen |
 | F04-33 | PDF viewing | Remember zoom/layout per document, optionally. | M2 | Tested | Persists zoom + layout with page index |
 | F05-01 | PDF table of contents and navigation | Read embedded PDF outlines/bookmarks. | M2 | Tested | `IPdfOutlineService` / PDFium bookmarks |
@@ -827,7 +827,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F59-02 | Multi-document workflow | multiple windows | M1/M3 | Implemented | File → New Window; per-window `WorkspaceState` |
 | F59-03 | Multi-document workflow | drag tabs between windows | M1/M3 | Implemented | `CanDragTabs` + `AllowDropTabs` cross-window; drop outside → new window |
 | F59-04 | Multi-document workflow | drag PDF pages between documents | M1/M3 | Implemented | Cross-tab/window insert via `PdfPageDragRegistry` |
-| F59-05 | Multi-document workflow | drag images between compatible contexts | M1/M3 | Deferred | Needs M5 image editor |
+| F59-05 | Multi-document workflow | drag images between compatible contexts | M1/M3 | Implemented | Image surface drag exposes file via deferred StorageItems; window drop opens |
 | F59-06 | Multi-document workflow | copy/paste between documents | M1/M3 | Implemented | Ctrl+C/V pages via `PdfPageClipboard` |
 | F59-07 | Multi-document workflow | side-by-side windows using Windows Snap | M1/M3 | Implemented | Multi-window shell; Snap is OS-native |
 | F59-08 | Multi-document workflow | maintain independent undo history for each document | M1/M3 | Implemented | Per-view `PdfPageEditHistory` |
