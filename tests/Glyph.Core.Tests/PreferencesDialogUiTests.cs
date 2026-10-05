@@ -18,5 +18,7 @@ public class PreferencesDialogUiTests
         PreferencesDialogUi.LocalOcrNote.Should().Contain("Windows OCR");
         PreferencesDialogUi.ClearSavedSignatures.Should().Contain("signatures");
         PreferencesDialogUi.PrivacyHeader.Should().Be("Privacy");
+        PreferencesDialogUi.ShortcutsHeader.Should().Contain("shortcuts");
+        PreferencesDialogUi.ResetShortcuts.Should().Contain("Reset");
     }
 }

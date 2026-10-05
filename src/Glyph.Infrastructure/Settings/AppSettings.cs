@@ -42,6 +42,13 @@ public sealed class AppSettings
     /// </summary>
     public List<string> ToolbarHiddenCommands { get; set; } = [];
 
+    /// <summary>
+    /// Keyboard shortcut overrides (F52 configurable). Key = command name from
+    /// <c>ShortcutCustomizationPolicy.DefaultCatalog</c>; value = gesture string.
+    /// Empty = defaults.
+    /// </summary>
+    public Dictionary<string, string> ShortcutOverrides { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Default highlight preset name (F55-18), e.g. Yellow.</summary>
     public string DefaultHighlightColor { get; set; } = "Yellow";
 

@@ -2143,8 +2143,15 @@ public sealed class PdfDocumentView : UserControl
         var shiftDown = Microsoft.UI.Input.InputKeyboardSource
             .GetKeyStateForCurrentThread(VirtualKey.Shift)
             .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        var altDown = Microsoft.UI.Input.InputKeyboardSource
+            .GetKeyStateForCurrentThread(VirtualKey.Menu)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        var shortcutOverrides = TryGetSettings()?.ShortcutOverrides;
 
-        if (ctrlDown && e.Key == VirtualKey.C)
+        bool Hit(string command) =>
+            WinUiKeyboardGestures.MatchesCommand(command, shortcutOverrides, e.Key, ctrlDown, shiftDown, altDown);
+
+        if (Hit("Copy"))
         {
             // Prefer text, then selected annotation, then selected pages.
             if (!string.IsNullOrEmpty(_selectedText))
@@ -2164,14 +2171,14 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (ctrlDown && e.Key == VirtualKey.P)
+        if (Hit("Print"))
         {
             await PrintDocumentAsync();
             e.Handled = true;
             return;
         }
 
-        if (ctrlDown && e.Key == VirtualKey.X)
+        if (Hit("Cut"))
         {
             if (TryGetSelectedAnnotation(out _))
             {
@@ -2181,7 +2188,7 @@ public sealed class PdfDocumentView : UserControl
             }
         }
 
-        if (ctrlDown && e.Key == VirtualKey.V)
+        if (Hit("Paste"))
         {
             if (_annotClipboard is not null)
             {
@@ -2196,80 +2203,86 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (ctrlDown && e.Key == VirtualKey.A)
+        if (Hit("Select all pages"))
         {
-            // Ctrl+Shift+A always selects all pages. Plain Ctrl+A prefers full-page text
-            // when the current page has extractable glyphs (F07-05); otherwise pages (F52-13).
-            if (shiftDown)
-            {
-                SelectAllPages();
-            }
-            else
-            {
-                await SelectAllTextOrPagesAsync();
-            }
-
+            SelectAllPages();
             e.Handled = true;
             return;
         }
 
-        if (ctrlDown && e.Key == VirtualKey.Z)
+        if (Hit("Select all"))
+        {
+            // Prefers full-page text when the current page has extractable glyphs (F07-05);
+            // otherwise pages (F52-13).
+            await SelectAllTextOrPagesAsync();
+            e.Handled = true;
+            return;
+        }
+
+        if (Hit("Undo"))
         {
             await UndoMostRecentAsync();
             e.Handled = true;
             return;
         }
 
-        if (ctrlDown && e.Key == VirtualKey.Y)
+        if (Hit("Redo"))
         {
             await RedoPageEditAsync();
             e.Handled = true;
             return;
         }
 
-        if (ctrlDown && e.Key == VirtualKey.F)
+        if (Hit("Find"))
         {
             _searchBox.Focus(FocusState.Programmatic);
             e.Handled = true;
             return;
         }
 
-        if (ctrlDown && (e.Key == VirtualKey.Add || e.Key == (VirtualKey)187 /* OEM plus */))
+        if (Hit("Zoom in"))
         {
             await SetScaleAsync(PdfZoomCalculator.ZoomIn(_scale));
             e.Handled = true;
             return;
         }
 
-        if (ctrlDown && (e.Key == VirtualKey.Subtract || e.Key == (VirtualKey)189 /* OEM minus */))
+        if (Hit("Zoom out"))
         {
             await SetScaleAsync(PdfZoomCalculator.ZoomOut(_scale));
             e.Handled = true;
             return;
         }
 
-        if (ctrlDown && e.Key == VirtualKey.Number0)
+        if (Hit("Fit / actual size"))
         {
             await FitPageAsync();
             e.Handled = true;
             return;
         }
 
-        if (e.Key == VirtualKey.F3)
+        if (Hit("Find previous"))
         {
-            await GoToHitAsync(_activeHitIndex + (shiftDown ? -1 : 1));
+            await GoToHitAsync(_activeHitIndex - 1);
             e.Handled = true;
             return;
         }
 
-        if (e.Key == VirtualKey.F11)
+        if (Hit("Find next"))
+        {
+            await GoToHitAsync(_activeHitIndex + 1);
+            e.Handled = true;
+            return;
+        }
+
+        if (Hit("Full Screen"))
         {
             ToggleFullscreen();
             e.Handled = true;
             return;
         }
 
-        if (e.Key is VirtualKey.Delete or VirtualKey.Back)
+        if (Hit("Delete selection") || e.Key == VirtualKey.Back)
         {
             if (TryGetSelectedAnnotation(out _))
             {
@@ -2311,20 +2324,26 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        if (Hit("Next page"))
+        {
+            await GoToPageAsync(
+                PageLayoutCalculator.NextPageIndex(_layoutMode, CurrentPageIndex, _document.PageCount),
+                recordHistory: true);
+            e.Handled = true;
+            return;
+        }
+
+        if (Hit("Previous page"))
+        {
+            await GoToPageAsync(
+                PageLayoutCalculator.PreviousPageIndex(_layoutMode, CurrentPageIndex, _document.PageCount),
+                recordHistory: true);
+            e.Handled = true;
+            return;
+        }
+
         switch (e.Key)
         {
-            case VirtualKey.PageDown:
-                await GoToPageAsync(
-                    PageLayoutCalculator.NextPageIndex(_layoutMode, CurrentPageIndex, _document.PageCount),
-                    recordHistory: true);
-                e.Handled = true;
-                break;
-            case VirtualKey.PageUp:
-                await GoToPageAsync(
-                    PageLayoutCalculator.PreviousPageIndex(_layoutMode, CurrentPageIndex, _document.PageCount),
-                    recordHistory: true);
-                e.Handled = true;
-                break;
             case VirtualKey.Home:
                 await GoToPageAsync(
                     PageLayoutCalculator.FirstPageIndex(_layoutMode, _document.PageCount),

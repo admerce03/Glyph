@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Glyph.Core.Documents;
 
 namespace Glyph.Infrastructure.Settings;
 
@@ -174,6 +175,8 @@ public sealed class JsonSettingsStore : ISettingsStore
             .Select(id => id.Trim().ToLowerInvariant())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+
+        settings.ShortcutOverrides = ShortcutCustomizationPolicy.NormalizeOverrides(settings.ShortcutOverrides);
     }
 
     private static string NormalizePageLayoutName(string? name) => name?.Trim() switch
@@ -199,6 +202,9 @@ public sealed class JsonSettingsStore : ISettingsStore
         AnnotationAuthor = settings.AnnotationAuthor ?? string.Empty,
         CompactToolbar = settings.CompactToolbar,
         ToolbarHiddenCommands = settings.ToolbarHiddenCommands?.ToList() ?? [],
+        ShortcutOverrides = settings.ShortcutOverrides is null
+            ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, string>(settings.ShortcutOverrides, StringComparer.OrdinalIgnoreCase),
         DefaultHighlightColor = settings.DefaultHighlightColor ?? "Yellow",
         DefaultStrokeColor = settings.DefaultStrokeColor ?? "Red",
         DefaultStickyNoteColor = settings.DefaultStickyNoteColor ?? "Yellow",
