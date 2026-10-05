@@ -399,8 +399,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F24-09 | PDF optimization and compression | preserve monochrome content | M7 | Tested | Skip 1-bpp when PreserveMonochrome; color path covered with flag false |
 | F24-10 | PDF optimization and compression | compress streams | M7 | Tested | Optimize measures/saves with `FPDF_NO_INCREMENTAL` full rewrite (Lossless/Balanced tests) |
 | F24-11 | PDF optimization and compression | subset fonts where appropriate | M7 | Deferred | ADR-016 — no PDFium font-subset API |
-| F24-12 | PDF optimization and compression | remove unused objects | M7 | Implemented | Best-effort via `FPDF_NO_INCREMENTAL` full rewrite after edits (ADR-016) |
-| F24-13 | PDF optimization and compression | optimize object structure | M7 | Implemented | Same full-rewrite path as F24-12 (ADR-016) |
+| F24-12 | PDF optimization and compression | remove unused objects | M7 | Tested | Best-effort via `FPDF_NO_INCREMENTAL` full rewrite (Lossless unit test; ADR-016) |
+| F24-13 | PDF optimization and compression | optimize object structure | M7 | Tested | Same full-rewrite path as F24-12 (Lossless unit test; ADR-016) |
 | F24-14 | PDF optimization and compression | linearize / Fast Web View | M7 | Deferred | ADR-016 — no PDFium linearize flag |
 | F24-15 | PDF optimization and compression | remove metadata optionally | M7 | Tested | Custom Optimize → Remove metadata via Info dict patcher |
 | F24-16 | PDF optimization and compression | estimate output size before saving where feasible | M7 | Tested | Optimize → Estimate via SaveToBytes + eligible image heuristic |

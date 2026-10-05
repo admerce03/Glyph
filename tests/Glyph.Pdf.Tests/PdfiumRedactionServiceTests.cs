@@ -331,6 +331,8 @@ public class PdfiumRedactionServiceTests
         builder.DocumentInformation.Author = "Glyph Author";
         builder.DocumentInformation.Subject = "Glyph Subject";
         builder.DocumentInformation.Keywords = "glyph, test";
+        builder.DocumentInformation.Creator = "Glyph Creator";
+        builder.DocumentInformation.Producer = "Glyph Producer";
         var font = builder.AddStandard14Font(Standard14Font.Helvetica);
         var page = builder.AddPage(PageSize.Letter);
         page.AddText("Info sample", 14, new PdfPoint(72, 720), font);
