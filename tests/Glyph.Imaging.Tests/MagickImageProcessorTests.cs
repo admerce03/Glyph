@@ -76,6 +76,39 @@ public class MagickImageProcessorTests
         }
     }
 
+    [Fact]
+    public async Task Rotate_right_180_and_resize_preserve_dimensions()
+    {
+        var path = CreateSolidPng(160, 80);
+        try
+        {
+            var decoder = new MagickImageDecoder();
+            var processor = new MagickImageProcessor();
+            await using var document = await decoder.OpenAsync(path);
+
+            await processor.RotateAsync(document, 90);
+            document.PixelWidth.Should().Be(80);
+            document.PixelHeight.Should().Be(160);
+
+            await processor.RotateAsync(document, 180);
+            document.PixelWidth.Should().Be(80);
+            document.PixelHeight.Should().Be(160);
+
+            await processor.ResizeAsync(document, 40, 80);
+            document.PixelWidth.Should().Be(40);
+            document.PixelHeight.Should().Be(80);
+
+            await processor.FlipHorizontalAsync(document);
+            await processor.FlipVerticalAsync(document);
+            document.PixelWidth.Should().Be(40);
+            document.PixelHeight.Should().Be(80);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static string CreateSolidPng(int width, int height)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-src-" + Guid.NewGuid().ToString("N") + ".png");

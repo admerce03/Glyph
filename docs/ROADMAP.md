@@ -224,9 +224,9 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Progress notes
 
-- Magick.NET adapter: `MagickImageDecoder` / `Document` / `Processor` / `Encoder` (open, rotate, flip, crop, export PNG/JPEG).
-- `ImageDocumentView`: zoom/fit, rotate/flip, numeric crop, save/export; wired from MainWindow for image kinds.
-- Imaging.Tests cover processor round-trips.
+- Magick.NET adapter: `MagickImageDecoder` / `Document` / `Processor` / `Encoder` (open, rotate, flip, crop, resize, export PNG/JPEG).
+- `ImageDocumentView`: zoom/fit, rotate L/R/180, flip H/V, numeric crop, resize dialog (px/%, aspect lock), save/export; wired from MainWindow for image kinds.
+- Imaging.Tests cover processor round-trips including rotate-right/180 and resize.
 ---
 
 ## Milestone 6 — OCR and scanned-document capabilities

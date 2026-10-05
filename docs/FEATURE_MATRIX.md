@@ -486,28 +486,28 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F30-02 | Image crop | Free aspect ratio. | M5 | Not Started |  |
 | F30-03 | Image crop | Original aspect ratio. | M5 | Not Started |  |
 | F30-04 | Image crop | Common presets: | M5 | Not Started |  |
-| F30-05 | Image crop | Numeric width/height. | M5 | Not Started |  |
-| F30-06 | Image crop | Apply crop. | M5 | Not Started |  |
+| F30-05 | Image crop | Numeric width/height. | M5 | Implemented | Crop x,y,w,h text box |
+| F30-06 | Image crop | Apply crop. | M5 | Implemented | Crop toolbar → MagickImageProcessor.CropAsync |
 | F30-07 | Image crop | Undo. | M5 | Not Started |  |
 | F30-08 | Image crop | Non-destructive editing internally until save where practical. | M5 | Not Started |  |
-| F31-01 | Image resizing | Adjust width. | M5 | Not Started |  |
-| F31-02 | Image resizing | Adjust height. | M5 | Not Started |  |
-| F31-03 | Image resizing | Lock aspect ratio. | M5 | Not Started |  |
-| F31-04 | Image resizing | Percentage scaling. | M5 | Not Started |  |
-| F31-05 | Image resizing | Pixel units. | M5 | Not Started |  |
+| F31-01 | Image resizing | Adjust width. | M5 | Implemented | Resize dialog width (px) |
+| F31-02 | Image resizing | Adjust height. | M5 | Implemented | Resize dialog height (px) |
+| F31-03 | Image resizing | Lock aspect ratio. | M5 | Implemented | Resize dialog lock checkbox |
+| F31-04 | Image resizing | Percentage scaling. | M5 | Implemented | Resize dialog scale % |
+| F31-05 | Image resizing | Pixel units. | M5 | Implemented | Width/height in pixels |
 | F31-06 | Image resizing | Physical units. | M5 | Not Started |  |
 | F31-07 | Image resizing | DPI/PPI. | M5 | Not Started |  |
 | F31-08 | Image resizing | Resampling toggle. | M5 | Not Started |  |
 | F31-09 | Image resizing | Resampling algorithm options, possibly: | M5 | Not Started |  |
-| F31-10 | Image resizing | Preserve aspect ratio. | M5 | Not Started |  |
-| F31-11 | Image resizing | Estimated resulting dimensions. | M5 | Not Started |  |
+| F31-10 | Image resizing | Preserve aspect ratio. | M5 | Implemented | Same as lock aspect |
+| F31-11 | Image resizing | Estimated resulting dimensions. | M5 | Implemented | Live result preview in dialog |
 | F31-12 | Image resizing | Estimated file size. | M5 | Not Started |  |
 | F31-13 | Image resizing | Batch resize selected images. | M5 | Not Started |  |
 | F32-01 | Image orientation | Rotate left 90°. | M5 | Tested | MagickImageProcessor.RotateAsync |
-| F32-02 | Image orientation | Rotate right 90°. | M5 | Not Started |  |
-| F32-03 | Image orientation | Rotate 180°. | M5 | Not Started |  |
-| F32-04 | Image orientation | Flip horizontal. | M5 | Not Started |  |
-| F32-05 | Image orientation | Flip vertical. | M5 | Not Started |  |
+| F32-02 | Image orientation | Rotate right 90°. | M5 | Tested | ImageDocumentView ⟳ + RotateAsync(90) |
+| F32-03 | Image orientation | Rotate 180°. | M5 | Tested | ImageDocumentView 180° + RotateAsync(180) |
+| F32-04 | Image orientation | Flip horizontal. | M5 | Tested | Flip H + FlipHorizontalAsync |
+| F32-05 | Image orientation | Flip vertical. | M5 | Tested | Flip V + FlipVerticalAsync |
 | F32-06 | Image orientation | Batch operations on selected images. | M5 | Not Started |  |
 | F32-07 | Image orientation | Respect EXIF orientation. | M5 | Not Started |  |
 | F32-08 | Image orientation | Option to normalize EXIF orientation into pixels. | M5 | Not Started |  |

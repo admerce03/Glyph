@@ -64,11 +64,15 @@ public sealed class ImageDocumentView : UserControl
         var flipH = new Button { Content = "Flip H" };
         var flipV = new Button { Content = "Flip V" };
         var crop = new Button { Content = "Crop" };
+        var resize = new Button { Content = "Resize" };
+        var rotate180 = new Button { Content = "180°" };
         var save = new Button { Content = "Save" };
         var exportPng = new Button { Content = "→PNG" };
         var exportJpeg = new Button { Content = "→JPEG" };
 
         ToolTipService.SetToolTip(crop, "Crop using x,y,w,h pixels (origin top-left)");
+        ToolTipService.SetToolTip(resize, "Resize width/height with optional aspect lock");
+        ToolTipService.SetToolTip(rotate180, "Rotate 180°");
         ToolTipService.SetToolTip(exportPng, "Export as PNG");
         ToolTipService.SetToolTip(exportJpeg, "Export as JPEG");
 
@@ -78,9 +82,11 @@ public sealed class ImageDocumentView : UserControl
         actual.Click += async (_, _) => await SetZoomAsync(1.0);
         rotateLeft.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, -90), "Rotated left.");
         rotateRight.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 90), "Rotated right.");
+        rotate180.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 180), "Rotated 180°.");
         flipH.Click += async (_, _) => await MutateAsync(() => _processor.FlipHorizontalAsync(_document), "Flipped horizontally.");
         flipV.Click += async (_, _) => await MutateAsync(() => _processor.FlipVerticalAsync(_document), "Flipped vertically.");
         crop.Click += async (_, _) => await CropAsync();
+        resize.Click += async (_, _) => await ResizeAsync();
         save.Click += async (_, _) => await SaveAsync();
         exportPng.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Png, ".png");
         exportJpeg.Click += async (_, _) => await ExportAsync(ImageEncodeFormat.Jpeg, ".jpg");
@@ -92,8 +98,8 @@ public sealed class ImageDocumentView : UserControl
             Padding = new Thickness(8),
             Children =
             {
-                zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, flipH, flipV,
-                _cropBox, crop, save, exportPng, exportJpeg, _status,
+                zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, flipH, flipV,
+                _cropBox, crop, resize, save, exportPng, exportJpeg, _status,
             },
         };
 
@@ -174,6 +180,158 @@ public sealed class ImageDocumentView : UserControl
         }
 
         await MutateAsync(() => _processor.CropAsync(_document, new ImageRect(x, y, w, h)), $"Cropped to {w}×{h}.");
+    }
+
+    private async Task ResizeAsync()
+    {
+        var srcW = _document.PixelWidth;
+        var srcH = _document.PixelHeight;
+        if (srcW <= 0 || srcH <= 0)
+        {
+            _status.Text = "Nothing to resize.";
+            return;
+        }
+
+        var aspect = (double)srcW / srcH;
+        var updating = false;
+        var widthBox = new TextBox { Text = srcW.ToString(), Width = 96, Header = "Width (px)" };
+        var heightBox = new TextBox { Text = srcH.ToString(), Width = 96, Header = "Height (px)" };
+        var percentBox = new TextBox { Text = "100", Width = 96, Header = "Scale %" };
+        var lockAspect = new CheckBox { Content = "Lock aspect ratio", IsChecked = true };
+        var preview = new TextBlock
+        {
+            Text = $"Result: {srcW}×{srcH}",
+            Opacity = 0.8,
+            Margin = new Thickness(0, 8, 0, 0),
+        };
+
+        void SyncFromWidth()
+        {
+            if (updating || !int.TryParse(widthBox.Text, out var w) || w <= 0)
+            {
+                return;
+            }
+
+            updating = true;
+            try
+            {
+                if (lockAspect.IsChecked == true)
+                {
+                    var h = Math.Max(1, (int)Math.Round(w / aspect));
+                    heightBox.Text = h.ToString();
+                    percentBox.Text = Math.Round(100.0 * w / srcW).ToString("0");
+                    preview.Text = $"Result: {w}×{h}";
+                }
+                else if (int.TryParse(heightBox.Text, out var h) && h > 0)
+                {
+                    percentBox.Text = Math.Round(100.0 * w / srcW).ToString("0");
+                    preview.Text = $"Result: {w}×{h}";
+                }
+            }
+            finally
+            {
+                updating = false;
+            }
+        }
+
+        void SyncFromHeight()
+        {
+            if (updating || !int.TryParse(heightBox.Text, out var h) || h <= 0)
+            {
+                return;
+            }
+
+            updating = true;
+            try
+            {
+                if (lockAspect.IsChecked == true)
+                {
+                    var w = Math.Max(1, (int)Math.Round(h * aspect));
+                    widthBox.Text = w.ToString();
+                    percentBox.Text = Math.Round(100.0 * h / srcH).ToString("0");
+                    preview.Text = $"Result: {w}×{h}";
+                }
+                else if (int.TryParse(widthBox.Text, out var w) && w > 0)
+                {
+                    percentBox.Text = Math.Round(100.0 * h / srcH).ToString("0");
+                    preview.Text = $"Result: {w}×{h}";
+                }
+            }
+            finally
+            {
+                updating = false;
+            }
+        }
+
+        void SyncFromPercent()
+        {
+            if (updating || !double.TryParse(percentBox.Text, out var pct) || pct <= 0)
+            {
+                return;
+            }
+
+            updating = true;
+            try
+            {
+                var w = Math.Max(1, (int)Math.Round(srcW * pct / 100.0));
+                var h = lockAspect.IsChecked == true
+                    ? Math.Max(1, (int)Math.Round(w / aspect))
+                    : Math.Max(1, (int)Math.Round(srcH * pct / 100.0));
+                widthBox.Text = w.ToString();
+                heightBox.Text = h.ToString();
+                preview.Text = $"Result: {w}×{h}";
+            }
+            finally
+            {
+                updating = false;
+            }
+        }
+
+        widthBox.TextChanged += (_, _) => SyncFromWidth();
+        heightBox.TextChanged += (_, _) => SyncFromHeight();
+        percentBox.TextChanged += (_, _) => SyncFromPercent();
+        lockAspect.Checked += (_, _) => SyncFromWidth();
+        lockAspect.Unchecked += (_, _) => SyncFromWidth();
+
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock { Text = $"Current: {srcW}×{srcH} px" },
+                widthBox,
+                heightBox,
+                percentBox,
+                lockAspect,
+                preview,
+            },
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = "Resize image",
+            Content = panel,
+            PrimaryButtonText = "Resize",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        if (!int.TryParse(widthBox.Text, out var width) || width <= 0
+            || !int.TryParse(heightBox.Text, out var height) || height <= 0)
+        {
+            _status.Text = "Resize needs positive width and height.";
+            return;
+        }
+
+        await MutateAsync(
+            () => _processor.ResizeAsync(_document, width, height),
+            $"Resized to {width}×{height}.");
     }
 
     private async Task SaveAsync()
