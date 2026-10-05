@@ -108,7 +108,7 @@ public static class PdfTextSelection
         {
             var b = chars[i].Bounds;
             var cx = (b.Left + b.Right) / 2;
-            var cy = MidY(b);
+            var cy = PdfTextReadingOrder.MidY(b);
             var dist = Math.Abs(cx - x) + Math.Abs(cy - y);
             if (dist < bestDist)
             {
