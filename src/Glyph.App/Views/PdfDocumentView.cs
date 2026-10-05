@@ -5228,7 +5228,7 @@ public sealed class PdfDocumentView : UserControl
         {
             dialog.PrimaryButtonText = "Apply…";
             dialog.SecondaryButtonText = "Draw marks";
-            dialog.CloseButtonText = "Clear pending";
+            dialog.CloseButtonText = "Cancel";
             dialog.DefaultButton = ContentDialogButton.Close;
         }
         else
@@ -5261,9 +5261,7 @@ public sealed class PdfDocumentView : UserControl
                 return;
             }
 
-            _redaction.ClearPending(_document);
-            RefreshAllPendingRedactionOverlays();
-            _status.Text = "Cleared pending redactions.";
+            _status.Text = "Redaction cancelled.";
             return;
         }
 
@@ -5574,12 +5572,22 @@ public sealed class PdfDocumentView : UserControl
             Content =
                 $"Apply {pending.Count} redaction mark(s)? Underlying text and covered content will be removed from the PDF. This cannot be undone.",
             PrimaryButtonText = "Apply",
+            SecondaryButtonText = "Clear marks",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = window.Content.XamlRoot,
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        var applyChoice = await dialog.ShowAsync();
+        if (applyChoice == ContentDialogResult.Secondary)
+        {
+            _redaction.ClearPending(_document);
+            RefreshAllPendingRedactionOverlays();
+            _status.Text = "Cleared pending redactions.";
+            return;
+        }
+
+        if (applyChoice != ContentDialogResult.Primary)
         {
             _status.Text = "Apply cancelled.";
             return;
