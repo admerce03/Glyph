@@ -12476,14 +12476,14 @@ public sealed class PdfDocumentView : UserControl
             formatBox.Items.Add(name);
         }
 
-        var dpiBox = new TextBox { Width = 80, Text = "144" };
+        var dpiBox = new TextBox { Width = 80, Text = DocumentExportFormats.DefaultDpi.ToString("0") };
         var qualityBox = new Slider
         {
-            Minimum = 1,
-            Maximum = 100,
-            Value = 85,
+            Minimum = DocumentExportFormats.MinQuality,
+            Maximum = DocumentExportFormats.MaxQuality,
+            Value = DocumentExportFormats.DefaultQuality,
             Width = 180,
-            Header = "JPEG/WebP/AVIF quality",
+            Header = DocumentExportFormats.QualityHeader,
         };
 
         var panel = new StackPanel
@@ -12491,10 +12491,10 @@ public sealed class PdfDocumentView : UserControl
             Spacing = 8,
             Children =
             {
-                new TextBlock { Text = $"Export {indexes.Count} page(s) as image(s)" },
+                new TextBlock { Text = DocumentExportFormats.ExportSummary(indexes.Count) },
                 new TextBlock { Text = "Format" },
                 formatBox,
-                new TextBlock { Text = "Render DPI" },
+                new TextBlock { Text = DocumentExportFormats.DpiHeader },
                 dpiBox,
                 qualityBox,
             },
@@ -12502,9 +12502,9 @@ public sealed class PdfDocumentView : UserControl
 
         var dialog = new ContentDialog
         {
-            Title = "Export pages",
+            Title = DocumentExportFormats.DialogTitle,
             Content = panel,
-            PrimaryButtonText = "Export…",
+            PrimaryButtonText = DocumentExportFormats.PrimaryButton,
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
@@ -12520,14 +12520,11 @@ public sealed class PdfDocumentView : UserControl
         var extension = DocumentExportFormats.ExtensionForDisplayName(formatName);
         var format = ImageEncodeFormatResolver.FromExtension(extension);
 
-        if (!double.TryParse(dpiBox.Text, out var dpi) || dpi < 36 || dpi > 600)
-        {
-            dpi = 144;
-        }
+        var dpi = DocumentExportFormats.ParseDpi(dpiBox.Text);
 
         var scale = dpi / 72.0;
         ImageEncodeOptions? options = format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Webp or ImageEncodeFormat.Avif
-            ? new ImageEncodeOptions(Quality: (int)qualityBox.Value, EmbedSrgbProfile: true)
+            ? new ImageEncodeOptions(Quality: DocumentExportFormats.ClampQuality(qualityBox.Value), EmbedSrgbProfile: true)
             : new ImageEncodeOptions(EmbedSrgbProfile: true);
 
         try
@@ -12544,11 +12541,7 @@ public sealed class PdfDocumentView : UserControl
             // Export still works without Info metadata.
         }
 
-        // Formats without alpha: drop transparency. PNG/WebP/TIFF/AVIF keep BGRA alpha from the render.
-        if (format is ImageEncodeFormat.Jpeg or ImageEncodeFormat.Jpeg2000 or ImageEncodeFormat.Bmp or ImageEncodeFormat.Gif)
-        {
-            // Encoder removes alpha for JPEG/JP2; BMP/GIF flatten via Magick defaults.
-        }
+        // Transparency: formats with FlattensTransparency flatten via Magick/codec; others keep render alpha.
 
         var baseName = _document.Path is null
             ? "page"

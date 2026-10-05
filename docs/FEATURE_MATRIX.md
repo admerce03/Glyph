@@ -659,14 +659,14 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F44-21 | Printing | print notes optionally | M8 | Tested | Print → Append notes; `PrintNotesUi.IncludeCheckbox` |
 | F44-22 | Printing | grayscale | M8 | Tested | Print dialog Grayscale (`ImagePixelOps`) |
 | F44-23 | Printing | Windows printer properties integration | M8 | Implemented | PrintManager / PrintTaskOptionDetails |
-| F45-01 | Exporting | output format | M5-M9 | Implemented | PDF Export → PNG/JPEG/WebP/TIFF/BMP; image Convert/Export |
+| F45-01 | Exporting | output format | M5-M9 | Tested | PDF Export formats; `DocumentExportFormats.PageImageFormatNames` |
 | F45-02 | Exporting | destination | M5-M9 | Implemented | FileSavePicker / FolderPicker for multi-page |
-| F45-03 | Exporting | quality | M5-M9 | Implemented | JPEG/WebP quality slider on PDF Export + image JPEG export |
+| F45-03 | Exporting | quality | M5-M9 | Tested | JPEG/WebP/AVIF quality; `DocumentExportFormats.ClampQuality` |
 | F45-04 | Exporting | compression | M5-M9 | Implemented | WebP lossless option; codec defaults for PNG/JPEG/AVIF |
-| F45-05 | Exporting | dimensions | M5-M9 | Implemented | PDF Export render DPI control |
+| F45-05 | Exporting | dimensions | M5-M9 | Tested | PDF Export render DPI; `DocumentExportFormats.ParseDpi` |
 | F45-06 | Exporting | metadata preservation | M5-M9 | Tested | PDF Info Title/Author → image Title/Artist on page export |
 | F45-07 | Exporting | color profile | M5-M9 | Tested | PDF page Export embeds sRGB ICC (`EmbedSrgbProfile`; PNG `preserve-iCCP`); JP2 may drop profile |
-| F45-08 | Exporting | transparency | M5-M9 | Implemented | PNG/WebP/TIFF/AVIF keep render alpha; JPEG/JP2/BMP/GIF flatten |
+| F45-08 | Exporting | transparency | M5-M9 | Tested | `DocumentExportFormats.FlattensTransparency` (JPEG/JP2/BMP/GIF) |
 | F45-09 | Exporting | PDF security | M5-M9 | Blocked | Needs ADR-015 password-write |
 | F45-10 | Exporting | annotation flattening | M5-M9 | Implemented | Raster page export renders annotations into pixels |
 | F46-01 | Sharing and Windows integration | Windows Share UI where available | M9 | Tested | File → Share…; `DocumentShareStatus` + DataTransferManagerInterop |
@@ -711,38 +711,38 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F49-15 | Undo and redo | Ctrl+Y / Ctrl+Shift+Z | M1-M4 | Tested | `PdfPageEditHistory` redo + `UndoStackTests` Redo |
 | F50-01 | Autosave and recovery | edits remain in memory until Save. | M1/M9 | Tested | Default; AutoSaveToOriginal opt-in off by default (prefs) |
 | F50-02 | Autosave and recovery | periodic crash-recovery snapshot. | M1/M9 | Tested | `FileCrashRecoveryStore.SaveSnapshotAsync` round-trip unit test |
-| F50-03 | Autosave and recovery | closing unsaved file prompts user. | M1/M9 | Implemented | Close tab dirty / HasUnsavedEdits prompt |
+| F50-03 | Autosave and recovery | closing unsaved file prompts user. | M1/M9 | Tested | Close tab dirty prompt; `DocumentClosePolicy` title/prompt unit tests |
 | F50-04 | Autosave and recovery | automatically save changes to original document. | M1/M9 | Tested | Preferences AutoSaveToOriginal prefs round-trip |
 | F50-05 | Autosave and recovery | reopen recovered document after crash. | M1/M9 | Tested | `ListAsync` returns recovery paths; startup prompt opens them |
-| F50-06 | Autosave and recovery | never silently discard recovery data. | M1/M9 | Implemented | Recover / Keep / Discard prompt |
+| F50-06 | Autosave and recovery | never silently discard recovery data. | M1/M9 | Tested | Recover / Keep / Discard; `CrashRecoveryPromptUi` unit tests |
 | F50-07 | Autosave and recovery | remove recovery copy after successful save/close. | M1/M9 | Tested | `DiscardAsync` / `DiscardAllAsync` unit tests |
 | F51-01 | Optional version snapshots | optional automatic local snapshots. | M9 | Tested | Opt-in prefs round-trip + `FileVersionSnapshotStore.CaptureAsync` unit tests |
 | F51-02 | Optional version snapshots | show: | M9 | Tested | `ListAsync` returns time/size; File → Version Snapshots UI |
 | F51-03 | Optional version snapshots | restore snapshot. | M9 | Tested | Snapshot bytes restore via File.Copy; store capture preserves bytes unit test |
 | F51-04 | Optional version snapshots | open snapshot as copy. | M9 | Tested | Sibling copy of snapshot path; capture byte-preservation unit test |
 | F51-05 | Optional version snapshots | delete snapshots. | M9 | Tested | `DeleteAsync` / `DeleteAllAsync` unit tests |
-| F52-01 | Keyboard shortcuts | Ctrl+O — Open | M1/M9 | Implemented | File menu accelerator |
-| F52-02 | Keyboard shortcuts | Ctrl+S — Save | M1/M9 | Implemented | File menu + image view key handler |
-| F52-03 | Keyboard shortcuts | Ctrl+Shift+S — Save As | M1/M9 | Implemented | File menu accelerator |
-| F52-04 | Keyboard shortcuts | Ctrl+P — Print | M1/M9 | Implemented | PDF + image views (Print dialog) |
-| F52-05 | Keyboard shortcuts | Ctrl+W — Close tab/document | M1/M9 | Implemented | File → Close Tab accelerator |
-| F52-06 | Keyboard shortcuts | Ctrl+Tab — Next tab | M1/M9 | Implemented | Window → Next Tab |
-| F52-07 | Keyboard shortcuts | Ctrl+Shift+Tab — Previous tab | M1/M9 | Implemented | Window → Previous Tab |
-| F52-08 | Keyboard shortcuts | Ctrl+F — Find | M1/M9 | Implemented | PDF view focuses search box |
-| F52-09 | Keyboard shortcuts | F3 / Shift+F3 — Next/previous result | M1/M9 | Implemented | PDF view hit navigation |
-| F52-10 | Keyboard shortcuts | Ctrl+C — Copy | M1/M9 | Implemented | PDF text/annot/pages; image pixels |
-| F52-11 | Keyboard shortcuts | Ctrl+X — Cut | M1/M9 | Implemented | Annotation / selection cut |
-| F52-12 | Keyboard shortcuts | Ctrl+V — Paste | M1/M9 | Implemented | Annotation/pages/image paste |
-| F52-13 | Keyboard shortcuts | Ctrl+A — Select all | M1/M9 | Implemented | PDF text on page (or pages if none); Ctrl+Shift+A pages; image selection |
-| F52-14 | Keyboard shortcuts | Ctrl+Z — Undo | M1/M9 | Implemented | PDF + image undo |
-| F52-15 | Keyboard shortcuts | Ctrl+Y — Redo | M1/M9 | Implemented | PDF page edit redo |
-| F52-16 | Keyboard shortcuts | Ctrl++ — Zoom in | M1/M9 | Implemented | PDF + image views |
-| F52-17 | Keyboard shortcuts | Ctrl+- — Zoom out | M1/M9 | Implemented | PDF + image views |
-| F52-18 | Keyboard shortcuts | Ctrl+0 — Fit/actual-size behavior depending on design | M1/M9 | Implemented | Fit page / Fit image |
-| F52-19 | Keyboard shortcuts | F11 — Full screen | M1/M9 | Implemented | Image view fullscreen toggle |
-| F52-20 | Keyboard shortcuts | Delete — Delete selected annotation/page when appropriate | M1/M9 | Implemented | PDF Delete key |
-| F52-21 | Keyboard shortcuts | arrow keys — navigation | M1/M9 | Implemented | PDF page selection; image selection nudge |
-| F52-22 | Keyboard shortcuts | Page Up/Page Down — page navigation | M1/M9 | Implemented | PDF view |
+| F52-01 | Keyboard shortcuts | Ctrl+O — Open | M1/M9 | Tested | File menu; `ShellKeyboardShortcuts` catalog |
+| F52-02 | Keyboard shortcuts | Ctrl+S — Save | M1/M9 | Tested | File menu + image view; `ShellKeyboardShortcuts` |
+| F52-03 | Keyboard shortcuts | Ctrl+Shift+S — Save As | M1/M9 | Tested | File menu; `ShellKeyboardShortcuts` catalog |
+| F52-04 | Keyboard shortcuts | Ctrl+P — Print | M1/M9 | Tested | PDF + image Print; `DocumentKeyboardShortcuts` |
+| F52-05 | Keyboard shortcuts | Ctrl+W — Close tab/document | M1/M9 | Tested | File → Close Tab; `ShellKeyboardShortcuts` |
+| F52-06 | Keyboard shortcuts | Ctrl+Tab — Next tab | M1/M9 | Tested | Window → Next Tab; `ShellKeyboardShortcuts` |
+| F52-07 | Keyboard shortcuts | Ctrl+Shift+Tab — Previous tab | M1/M9 | Tested | Window → Previous Tab; `ShellKeyboardShortcuts` |
+| F52-08 | Keyboard shortcuts | Ctrl+F — Find | M1/M9 | Tested | PDF Find focus; `DocumentKeyboardShortcuts` |
+| F52-09 | Keyboard shortcuts | F3 / Shift+F3 — Next/previous result | M1/M9 | Tested | PDF hit nav; `DocumentKeyboardShortcuts` F3/Shift+F3 |
+| F52-10 | Keyboard shortcuts | Ctrl+C — Copy | M1/M9 | Tested | PDF/image copy; `DocumentKeyboardShortcuts` |
+| F52-11 | Keyboard shortcuts | Ctrl+X — Cut | M1/M9 | Tested | Annot/selection cut; `DocumentKeyboardShortcuts` |
+| F52-12 | Keyboard shortcuts | Ctrl+V — Paste | M1/M9 | Tested | Paste paths; `ShellKeyboardShortcuts` + `DocumentKeyboardShortcuts` |
+| F52-13 | Keyboard shortcuts | Ctrl+A — Select all | M1/M9 | Tested | Select all / pages; `DocumentKeyboardShortcuts` |
+| F52-14 | Keyboard shortcuts | Ctrl+Z — Undo | M1/M9 | Tested | PDF + image undo; `DocumentKeyboardShortcuts` |
+| F52-15 | Keyboard shortcuts | Ctrl+Y — Redo | M1/M9 | Tested | PDF redo; `DocumentKeyboardShortcuts` |
+| F52-16 | Keyboard shortcuts | Ctrl++ — Zoom in | M1/M9 | Tested | PDF + image zoom; `DocumentKeyboardShortcuts` |
+| F52-17 | Keyboard shortcuts | Ctrl+- — Zoom out | M1/M9 | Tested | PDF + image zoom out; `DocumentKeyboardShortcuts` |
+| F52-18 | Keyboard shortcuts | Ctrl+0 — Fit/actual-size behavior depending on design | M1/M9 | Tested | Fit page / Fit image; `DocumentKeyboardShortcuts` |
+| F52-19 | Keyboard shortcuts | F11 — Full screen | M1/M9 | Tested | Full screen; `ShellKeyboardShortcuts` F11 |
+| F52-20 | Keyboard shortcuts | Delete — Delete selected annotation/page when appropriate | M1/M9 | Tested | PDF Delete; `DocumentKeyboardShortcuts` |
+| F52-21 | Keyboard shortcuts | arrow keys — navigation | M1/M9 | Tested | PDF page selection; image nudge (viewer key handlers) |
+| F52-22 | Keyboard shortcuts | Page Up/Page Down — page navigation | M1/M9 | Tested | PDF PageUp/PageDown; `DocumentKeyboardShortcuts` |
 | F53-01 | Precision touchpad behavior | two-finger scroll | M1/M2 | Implemented | Native ScrollViewer pan on PDF + image views |
 | F53-02 | Precision touchpad behavior | pinch zoom on supported precision touchpads | M1/M2 | Implemented | Ctrl+wheel + Manipulation Scale on PDF + image |
 | F53-03 | Precision touchpad behavior | standard Windows touchpad gestures where they map naturally to application navigation | M1/M2 | Implemented | Scroll/pinch map to pan/zoom; no touchscreen/pen gestures |

@@ -2053,10 +2053,10 @@ public sealed partial class MainWindow : Window
         {
             var dialog = new ContentDialog
             {
-                Title = "Unsaved changes",
+                Title = DocumentClosePolicy.UnsavedTitle,
                 Content = DocumentClosePolicy.UnsavedClosePrompt(session.DisplayName),
-                PrimaryButtonText = "Close",
-                CloseButtonText = "Cancel",
+                PrimaryButtonText = DocumentClosePolicy.CloseButton,
+                CloseButtonText = DocumentClosePolicy.CancelButton,
                 DefaultButton = ContentDialogButton.Close,
                 XamlRoot = RootGrid.XamlRoot,
             };
@@ -2322,19 +2322,16 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
-            var names = string.Join(", ", entries.Take(5).Select(e => e.DisplayName));
-            if (entries.Count > 5)
-            {
-                names += $" (+{entries.Count - 5} more)";
-            }
+            var names = CrashRecoveryPromptUi.NamesSummary(
+                entries.Select(e => e.DisplayName).ToList());
 
             var dialog = new ContentDialog
             {
-                Title = "Recover unsaved work?",
-                Content = $"Glyph found crash-recovery copies for: {names}.",
-                PrimaryButtonText = "Recover",
-                SecondaryButtonText = "Keep for later",
-                CloseButtonText = "Discard",
+                Title = CrashRecoveryPromptUi.Title,
+                Content = CrashRecoveryPromptUi.Content(names),
+                PrimaryButtonText = CrashRecoveryPromptUi.RecoverButton,
+                SecondaryButtonText = CrashRecoveryPromptUi.KeepButton,
+                CloseButtonText = CrashRecoveryPromptUi.DiscardButton,
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = RootGrid.XamlRoot,
             };
@@ -2349,16 +2346,16 @@ public sealed partial class MainWindow : Window
                     }
                 }
 
-                StatusText.Text = $"Opened {entries.Count} recovered document(s).";
+                StatusText.Text = CrashRecoveryPromptUi.OpenedStatus(entries.Count);
             }
             else if (result == ContentDialogResult.None)
             {
                 await _recoveryStore.DiscardAllAsync();
-                StatusText.Text = "Discarded crash-recovery copies.";
+                StatusText.Text = CrashRecoveryPromptUi.DiscardedStatus;
             }
             else
             {
-                StatusText.Text = "Crash-recovery copies kept on disk.";
+                StatusText.Text = CrashRecoveryPromptUi.KeptStatus;
             }
         }
         catch (Exception ex)
