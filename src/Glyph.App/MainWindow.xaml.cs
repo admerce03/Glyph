@@ -1110,18 +1110,18 @@ public sealed partial class MainWindow : Window
         var path = _workspace.ActiveDocument?.Path;
         if (string.IsNullOrWhiteSpace(path))
         {
-            StatusText.Text = "No file path for the active document.";
+            StatusText.Text = DocumentShareStatus.NoPathForExplorer;
             return;
         }
 
         try
         {
             await DocumentShareHelper.OpenContainingFolderAsync(path);
-            StatusText.Text = "Opened containing folder.";
+            StatusText.Text = DocumentShareStatus.OpenedContainingFolder;
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Show in Explorer failed: " + ex.Message;
+            StatusText.Text = DocumentShareStatus.ShowInExplorerFailedMessage(ex.Message);
         }
     }
 

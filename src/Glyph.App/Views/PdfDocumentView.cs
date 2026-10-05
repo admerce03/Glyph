@@ -335,7 +335,8 @@ public sealed class PdfDocumentView : UserControl
         };
         _scrollViewer.ViewChanged += ScrollViewer_ViewChanged;
         _scrollViewer.PointerWheelChanged += ScrollViewer_PointerWheelChanged;
-        // Precision-touchpad pinch often arrives as Ctrl+wheel; Manipulation Scale covers direct pinch.
+        // Precision-touchpad pinch often arrives as Ctrl+wheel; Manipulation Scale covers direct pinch
+        // (TouchpadGesturePolicy.PreferPinchZoom).
         _scrollViewer.ManipulationMode = ManipulationModes.Scale;
         _scrollViewer.ManipulationDelta += ScrollViewer_ManipulationDelta;
 
@@ -1581,17 +1582,17 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var flyout = new MenuFlyout();
-        var styleItem = new MenuFlyoutItem { Text = "Style…" };
+        var styleItem = new MenuFlyoutItem { Text = PageContextMenu.Style };
         styleItem.Click += async (_, _) => await SetSelectedAnnotationColorAsync();
-        var alignItem = new MenuFlyoutItem { Text = "Align…" };
+        var alignItem = new MenuFlyoutItem { Text = PageContextMenu.Align };
         alignItem.Click += async (_, _) => await SetSelectedTextQuaddingAsync();
-        var duplicateItem = new MenuFlyoutItem { Text = "Duplicate" };
+        var duplicateItem = new MenuFlyoutItem { Text = PageContextMenu.Duplicate };
         duplicateItem.Click += async (_, _) => await DuplicateSelectedAnnotationAsync();
-        var editItem = new MenuFlyoutItem { Text = "Edit…" };
+        var editItem = new MenuFlyoutItem { Text = PageContextMenu.Edit };
         editItem.Click += async (_, _) => await EditSelectedAnnotationContentsAsync();
-        var copyItem = new MenuFlyoutItem { Text = "Copy" };
+        var copyItem = new MenuFlyoutItem { Text = PageContextMenu.Copy };
         copyItem.Click += (_, _) => CopySelectedAnnotationToClipboard();
-        var deleteItem = new MenuFlyoutItem { Text = "Delete" };
+        var deleteItem = new MenuFlyoutItem { Text = PageContextMenu.Delete };
         deleteItem.Click += async (_, _) => await RemoveSelectedAnnotationAsync();
         flyout.Items.Add(styleItem);
         if (TryGetSelectedAnnotation(out var selected) && selected.IsTextBox)
@@ -2789,11 +2790,11 @@ public sealed class PdfDocumentView : UserControl
             flyout.Items.Add(new MenuFlyoutSeparator());
             var copyItem = new MenuFlyoutItem { Text = PdfTextInteractionUi.Copy };
             copyItem.Click += async (_, _) => await CopyTextAsync();
-            var highlightItem = new MenuFlyoutItem { Text = "Highlight" };
+            var highlightItem = new MenuFlyoutItem { Text = PageContextMenu.Highlight };
             highlightItem.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.Highlight);
-            var underlineItem = new MenuFlyoutItem { Text = "Underline" };
+            var underlineItem = new MenuFlyoutItem { Text = PageContextMenu.Underline };
             underlineItem.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.Underline);
-            var strikeItem = new MenuFlyoutItem { Text = "Strikethrough" };
+            var strikeItem = new MenuFlyoutItem { Text = PageContextMenu.Strikethrough };
             strikeItem.Click += async (_, _) => await ApplyTextMarkupAsync(PdfTextMarkupKind.StrikeOut);
             var findItem = new MenuFlyoutItem { Text = PdfTextInteractionUi.FindSelection };
             findItem.Click += async (_, _) => await SearchSelectedTextAsync();
@@ -2817,11 +2818,11 @@ public sealed class PdfDocumentView : UserControl
                 flyout.Items.Add(new MenuFlyoutSeparator());
             }
 
-            var styleItem = new MenuFlyoutItem { Text = "Style…" };
+            var styleItem = new MenuFlyoutItem { Text = PageContextMenu.Style };
             styleItem.Click += async (_, _) => await SetSelectedAnnotationColorAsync();
-            var duplicateItem = new MenuFlyoutItem { Text = "Duplicate" };
+            var duplicateItem = new MenuFlyoutItem { Text = PageContextMenu.Duplicate };
             duplicateItem.Click += async (_, _) => await DuplicateSelectedAnnotationAsync();
-            var deleteItem = new MenuFlyoutItem { Text = "Delete" };
+            var deleteItem = new MenuFlyoutItem { Text = PageContextMenu.Delete };
             deleteItem.Click += async (_, _) => await RemoveSelectedAnnotationAsync();
             var copyAnnotItem = new MenuFlyoutItem { Text = "Copy annotation" };
             copyAnnotItem.Click += (_, _) => CopySelectedAnnotationToClipboard();

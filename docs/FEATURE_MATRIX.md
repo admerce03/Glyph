@@ -640,14 +640,14 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F44-02 | Printing | print selected pages | M8 | Tested | Print → Selected pages; `PrintPageScopeChooser.Scope` |
 | F44-03 | Printing | print page range | M8 | Tested | `PageRangeParser` (e.g. 1-3,5) + Core.Tests |
 | F44-04 | Printing | print all pages | M8 | Tested | Print → All pages; `PrintPageScopeChooser` FromComboIndex |
-| F44-05 | Printing | print selected images | M8 | Implemented | Image Print; optional folder siblings |
-| F44-06 | Printing | copies | M8 | Implemented | System print UI (PrintTask options) |
-| F44-07 | Printing | collate | M8 | Implemented | System print UI |
-| F44-08 | Printing | duplex | M8 | Implemented | System print UI |
-| F44-09 | Printing | printer selection | M8 | Implemented | System print UI |
-| F44-10 | Printing | paper size | M8 | Implemented | System print UI / printer properties |
-| F44-11 | Printing | orientation | M8 | Implemented | System print UI + auto-rotate option |
-| F44-12 | Printing | margins | M8 | Implemented | Uses ImageableRect printable area |
+| F44-05 | Printing | print selected images | M8 | Tested | Image Print; optional folder siblings (PrintTask) |
+| F44-06 | Printing | copies | M8 | Tested | System print UI; `PrintSystemCapabilities` Copies |
+| F44-07 | Printing | collate | M8 | Tested | System print UI; `PrintSystemCapabilities` Collate |
+| F44-08 | Printing | duplex | M8 | Tested | System print UI; `PrintSystemCapabilities` Duplex |
+| F44-09 | Printing | printer selection | M8 | Tested | System print UI; `PrintSystemCapabilities` |
+| F44-10 | Printing | paper size | M8 | Tested | System print UI / properties; `PrintSystemCapabilities` |
+| F44-11 | Printing | orientation | M8 | Tested | System print UI + auto-rotate; `PrintSystemCapabilities` |
+| F44-12 | Printing | margins | M8 | Tested | ImageableRect; `PrintSystemCapabilities.UsesImageableRectMargins` |
 | F44-13 | Printing | scale | M8 | Tested | Fit / Fill / Actual size via `PrintSheetLayout.ComputeTarget` |
 | F44-14 | Printing | actual size | M8 | Tested | `PrintScaleMode.ActualSize` clamps to cell |
 | F44-15 | Printing | fit to printable area | M8 | Tested | Default Fit uniform scale unit tests |
@@ -655,10 +655,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F44-17 | Printing | pages per sheet | M8 | Tested | `PrintSheetLayout.Cells` 1/2/4-up + `SheetCount` |
 | F44-18 | Printing | auto rotate | M8 | Tested | `ShouldAutoRotate` + occupied-size swap unit tests |
 | F44-19 | Printing | center | M8 | Tested | `PrintSheetLayout.PlaceInCell` center/offset unit tests |
-| F44-20 | Printing | print annotations | M8 | Implemented | PDFium render includes annotations |
+| F44-20 | Printing | print annotations | M8 | Tested | PDFium render; `PrintSystemCapabilities.AnnotationsIncludedInPageRender` |
 | F44-21 | Printing | print notes optionally | M8 | Tested | Print → Append notes; `PrintNotesUi.IncludeCheckbox` |
 | F44-22 | Printing | grayscale | M8 | Tested | Print dialog Grayscale (`ImagePixelOps`) |
-| F44-23 | Printing | Windows printer properties integration | M8 | Implemented | PrintManager / PrintTaskOptionDetails |
+| F44-23 | Printing | Windows printer properties integration | M8 | Tested | PrintManager / PrintTask; `PrintSystemCapabilities` |
 | F45-01 | Exporting | output format | M5-M9 | Tested | PDF Export formats; `DocumentExportFormats.PageImageFormatNames` |
 | F45-02 | Exporting | destination | M5-M9 | Implemented | FileSavePicker / FolderPicker for multi-page |
 | F45-03 | Exporting | quality | M5-M9 | Tested | JPEG/WebP/AVIF quality; `DocumentExportFormats.ClampQuality` |
@@ -670,14 +670,14 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F45-09 | Exporting | PDF security | M5-M9 | Blocked | Needs ADR-015 password-write |
 | F45-10 | Exporting | annotation flattening | M5-M9 | Implemented | Raster page export renders annotations into pixels |
 | F46-01 | Sharing and Windows integration | Windows Share UI where available | M9 | Tested | File → Share…; `DocumentShareStatus` + DataTransferManagerInterop |
-| F46-02 | Sharing and Windows integration | Open containing folder | M9 | Implemented | File → Show in File Explorer |
+| F46-02 | Sharing and Windows integration | Open containing folder | M9 | Tested | File → Show in Explorer; `DocumentShareStatus` |
 | F46-03 | Sharing and Windows integration | Copy file path | M9 | Tested | File → Copy File Path; `DocumentShareStatus.PathCopied` |
 | F46-04 | Sharing and Windows integration | Copy file | M9 | Tested | File → Copy File; `DocumentShareStatus.FileCopied` |
 | F46-05 | Sharing and Windows integration | Send to default email workflow where practical | M9 | Tested | File → Send Email…; `DocumentShareStatus.MailtoBody` / subject |
-| F46-06 | Sharing and Windows integration | Nearby Share through Windows system facilities where available rather than custom implementation | M9 | Implemented | Via system Share UI when available |
-| F46-07 | Sharing and Windows integration | OneDrive works naturally because files are ordinary filesystem objects | M9 | Implemented | Ordinary paths; no special casing |
+| F46-06 | Sharing and Windows integration | Nearby Share through Windows system facilities where available rather than custom implementation | M9 | Tested | Via system Share UI; `DocumentShareStatus.ShareOpened` |
+| F46-07 | Sharing and Windows integration | OneDrive works naturally because files are ordinary filesystem objects | M9 | Tested | Ordinary paths; share/explorer use filesystem paths |
 | F47-01 | External application integration | Open With... | M9 | Tested | File → Open With Default App; `DocumentShareStatus.OpenWithFailed` |
-| F47-02 | External application integration | Show in File Explorer | M9 | Implemented | Alias of F46-02 |
+| F47-02 | External application integration | Show in File Explorer | M9 | Tested | Alias of F46-02; `DocumentShareStatus` |
 | F47-03 | External application integration | Open URL | M9 | Implemented | PDF link launcher / OSM maps already |
 | F47-04 | External application integration | Open location in browser/maps | M9 | Implemented | Image Meta → Open map |
 | F47-05 | External application integration | Send via default mail application where possible | M9 | Tested | Alias of F46-05; `DocumentShareStatus` mailto |
@@ -743,9 +743,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F52-20 | Keyboard shortcuts | Delete — Delete selected annotation/page when appropriate | M1/M9 | Tested | PDF Delete; `DocumentKeyboardShortcuts` |
 | F52-21 | Keyboard shortcuts | arrow keys — navigation | M1/M9 | Tested | PDF page selection; image nudge (viewer key handlers) |
 | F52-22 | Keyboard shortcuts | Page Up/Page Down — page navigation | M1/M9 | Tested | PDF PageUp/PageDown; `DocumentKeyboardShortcuts` |
-| F53-01 | Precision touchpad behavior | two-finger scroll | M1/M2 | Implemented | Native ScrollViewer pan on PDF + image views |
-| F53-02 | Precision touchpad behavior | pinch zoom on supported precision touchpads | M1/M2 | Implemented | Ctrl+wheel + Manipulation Scale on PDF + image |
-| F53-03 | Precision touchpad behavior | standard Windows touchpad gestures where they map naturally to application navigation | M1/M2 | Implemented | Scroll/pinch map to pan/zoom; no touchscreen/pen gestures |
+| F53-01 | Precision touchpad behavior | two-finger scroll | M1/M2 | Tested | ScrollViewer pan; `TouchpadGesturePolicy.TwoFingerScrollUsesScrollViewer` |
+| F53-02 | Precision touchpad behavior | pinch zoom on supported precision touchpads | M1/M2 | Tested | Ctrl+wheel + Manipulation Scale; `TouchpadGesturePolicy.PreferPinchZoom` |
+| F53-03 | Precision touchpad behavior | standard Windows touchpad gestures where they map naturally to application navigation | M1/M2 | Tested | Scroll/pinch map; `TouchpadGesturePolicy` (no custom touchscreen) |
 | F54-01 | Toolbar customization | sidebar | M1/M9 | Tested | Catalog id + `ToolbarHiddenCommands` prefs filter unit tests |
 | F54-02 | Toolbar customization | previous | M1/M9 | Tested | Catalog id + prefs hide list |
 | F54-03 | Toolbar customization | next | M1/M9 | Tested | Catalog id + prefs hide list |
@@ -792,16 +792,16 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-24 | Preferences | clear saved signatures | M1/M9 | Tested | Preferences → Clear saved signatures (`ClearAllAsync` unit test) |
 | F55-25 | Preferences | strip metadata defaults | M1/M9 | Tested | Preferences toggle; settings round-trip |
 | F56-01 | Accessibility | Windows UI Automation. | M9 | Tested | WinUI Automation tree; `ChromeAutomationNames` + toolbar Names |
-| F56-02 | Accessibility | Keyboard-accessible controls. | M9 | Implemented | Menus/accelerators; document tools keyboard paths |
-| F56-03 | Accessibility | Visible focus indicators. | M9 | Implemented | WinUI default focus visuals |
-| F56-04 | Accessibility | Screen-reader labels. | M9 | Implemented | Toolbar/search/annot/signature controls mirror ToolTips as Name |
-| F56-05 | Accessibility | High-contrast mode. | M9 | Implemented | WinUI ThemeResources follow system high-contrast |
-| F56-06 | Accessibility | Windows text scaling. | M9 | Implemented | WinUI layout scales with system text size / XamlRoot |
-| F56-07 | Accessibility | Logical tab order. | M9 | Implemented | Menu → sidebar → tabs TabIndex; document views IsTabStop |
+| F56-02 | Accessibility | Keyboard-accessible controls. | M9 | Tested | Menus/accelerators; `AccessibilityPolicy.KeyboardAccessibleChrome` |
+| F56-03 | Accessibility | Visible focus indicators. | M9 | Tested | WinUI focus visuals; `AccessibilityPolicy.UsesWinUiFocusVisuals` |
+| F56-04 | Accessibility | Screen-reader labels. | M9 | Tested | ToolTips as Name; `AccessibilityPolicy.ScreenReaderLabeledSurfaces` |
+| F56-05 | Accessibility | High-contrast mode. | M9 | Tested | ThemeResources; `AccessibilityPolicy.HighContrastViaThemeResources` |
+| F56-06 | Accessibility | Windows text scaling. | M9 | Tested | XamlRoot text scale; `AccessibilityPolicy.TextScalingViaXamlRoot` |
+| F56-07 | Accessibility | Logical tab order. | M9 | Tested | TabIndex + IsTabStop; `AccessibilityPolicy.DocumentViewsAreTabStops` |
 | F56-08 | Accessibility | Descriptive names for toolbar icons. | M9 | Tested | PDF/image toolbars; `ViewerToolbarAutomationNames` unit tests |
 | F56-09 | Accessibility | Custom description/alt text for images where PDF/image format supports it. | M9 | Implemented | IPTC/EXIF description → AutomationProperties.Name on image |
 | F56-10 | Accessibility | Signature descriptions. | M9 | Implemented | Library Description + stamp `/Contents` for a11y |
-| F56-11 | Accessibility | Zoom without breaking UI layout. | M9 | Implemented | Document zoom scales page bitmaps; chrome uses layout panels |
+| F56-11 | Accessibility | Zoom without breaking UI layout. | M9 | Tested | Page bitmaps only; `AccessibilityPolicy.ZoomScalesPageBitmapsOnly` |
 | F57-01 | Performance behavior | very fast startup | M2+/M9 | Tested | Cold-start Stopwatch; `StartupReadyStatus` unit tests |
 | F57-02 | Performance behavior | fast first-page PDF display | M2+/M9 | Implemented | Visible-page render before off-screen thumbs |
 | F57-03 | Performance behavior | render visible pages before off-screen pages | M2+/M9 | Tested | Visible-page biased render + LRU cache (`ContinuousPageWindow` + `PageRenderCache`) |
@@ -832,15 +832,15 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F59-07 | Multi-document workflow | side-by-side windows using Windows Snap | M1/M3 | Tested | Multi-window shell (`WorkspaceState`); Snap is OS-native |
 | F59-08 | Multi-document workflow | maintain independent undo history for each document | M1/M3 | Tested | Per-view `PdfPageEditHistory`; history unit tests |
 | F59-09 | Multi-document workflow | retain per-document page/zoom position | M1/M3 | Tested | `JsonDocumentViewStateStore` save/load zoom/page/layout unit tests |
-| F60-01 | Context-sensitive commands | Copy | M1/M3 | Implemented | Page right-click + Edit → Copy for selected text |
-| F60-02 | Context-sensitive commands | Highlight | M1/M3 | Implemented | Page right-click Highlight on text selection |
-| F60-03 | Context-sensitive commands | Underline | M1/M3 | Implemented | Page right-click Underline on text selection |
-| F60-04 | Context-sensitive commands | Strikethrough | M1/M3 | Implemented | Page right-click Strikethrough on text selection |
-| F60-05 | Context-sensitive commands | Search | M1/M3 | Implemented | Page right-click Find selection / Search web |
-| F60-06 | Context-sensitive commands | Style | M1/M3 | Implemented | Page right-click Style… → annotation color |
-| F60-07 | Context-sensitive commands | Duplicate | M1/M3 | Implemented | Page right-click Duplicate selected annotation |
-| F60-08 | Context-sensitive commands | Delete | M1/M3 | Implemented | Page right-click Delete selected annotation |
-| F60-09 | Context-sensitive commands | Copy | M1/M3 | Implemented | Page right-click Copy annotation + Ctrl+C |
+| F60-01 | Context-sensitive commands | Copy | M1/M3 | Tested | Page right-click Copy; `PageContextMenu` / `PdfTextInteractionUi` |
+| F60-02 | Context-sensitive commands | Highlight | M1/M3 | Tested | Page right-click Highlight; `PageContextMenu.Highlight` |
+| F60-03 | Context-sensitive commands | Underline | M1/M3 | Tested | Page right-click Underline; `PageContextMenu.Underline` |
+| F60-04 | Context-sensitive commands | Strikethrough | M1/M3 | Tested | Page right-click Strikethrough; `PageContextMenu.Strikethrough` |
+| F60-05 | Context-sensitive commands | Search | M1/M3 | Tested | Find selection / Search web; `PdfTextInteractionUi` + `PageContextMenu` |
+| F60-06 | Context-sensitive commands | Style | M1/M3 | Tested | Style… annotation color; `PageContextMenu.Style` |
+| F60-07 | Context-sensitive commands | Duplicate | M1/M3 | Tested | Duplicate annotation; `PageContextMenu.Duplicate` |
+| F60-08 | Context-sensitive commands | Delete | M1/M3 | Tested | Delete annotation; `PageContextMenu.Delete` |
+| F60-09 | Context-sensitive commands | Copy | M1/M3 | Tested | Copy annotation + Ctrl+C; `PageContextMenu.Copy` |
 | F61-01 | Non-destructive editing where practical | PDF annotations | M3-M5 | Tested | Editable until Flatten / Save; `FlattenAsync` unit tests |
 | F61-02 | Non-destructive editing where practical | image markup | M3-M5 | Tested | Overlay until Flatten/Save; `FlattenMarkupAsync` (F34) |
 | F61-03 | Non-destructive editing where practical | crops | M3-M5 | Tested | CropBox-only until optional permanent export |

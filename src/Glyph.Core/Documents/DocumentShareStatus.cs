@@ -16,6 +16,12 @@ public static class DocumentShareStatus
     public const string MailOpened = "Mail client opened.";
     public const string MailtoBody = "Shared from Glyph.";
     public const string DefaultSubject = "Glyph document";
+    public const string ShowInExplorerFailed = "Could not open containing folder.";
+    public const string NoPathForExplorer = "No file path for the active document.";
+    public const string OpenedContainingFolder = "Opened containing folder.";
+
+    public static string ShowInExplorerFailedMessage(string message) =>
+        "Show in Explorer failed: " + message;
 
     public static string ShareFailed(string message) => "Share failed: " + message;
 
