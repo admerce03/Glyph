@@ -189,6 +189,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 - `IPdfAnnotationService` / `PdfiumAnnotationService`: create/list/remove text markup (Highlight / Underline / StrikeOut) with QuadPoints + color; round-trip save/reopen covered by Pdf.Tests.
 - Viewer: select text → Highlight / Underline / Strike toolbar actions.
+- Annotation sidebar lists text markup; click jumps to page; Delete removes selected markup.
 
 ---
 
