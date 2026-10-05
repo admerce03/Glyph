@@ -3,6 +3,7 @@ using Glyph.App.Capture;
 using Glyph.App.Printing;
 using Glyph.Core.Documents;
 using Glyph.Core.IO;
+using Glyph.Core.Ocr;
 using Glyph.Core.Pdf;
 using Glyph.Core.Signatures;
 using Glyph.Core.Text;
@@ -2040,7 +2041,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        if (_highlightMode && e.Key == VirtualKey.Escape)
+        if (PersistentHighlightMode.ExitOnEscape(_highlightMode) && e.Key == VirtualKey.Escape)
         {
             ClearHighlightMode();
             RefreshToolButtonChrome();
@@ -3389,20 +3390,17 @@ public sealed class PdfDocumentView : UserControl
         }
 
         var selected = SelectedOrCurrentPages();
-        var selectedLabel = selected.Count == 1
-            ? $"Selected / current (page {selected[0] + 1})"
-            : $"Selected pages ({selected.Count})";
-
         var chooser = new ContentDialog
         {
             Title = "OCR",
             Content = new TextBlock
             {
-                Text = $"Recognize text offline.\n\n• {selectedLabel}\n• Entire document ({_document.PageCount} pages)",
+                Text =
+                    $"Recognize text offline.\n\n• {OcrPageRangeChooser.SelectedLabel(selected)}\n• {OcrPageRangeChooser.EntireDocumentLabel(_document.PageCount)}",
                 TextWrapping = TextWrapping.Wrap,
             },
-            PrimaryButtonText = selected.Count == 1 ? "Current page" : "Selected pages",
-            SecondaryButtonText = "Entire document",
+            PrimaryButtonText = OcrPageRangeChooser.PrimaryButton(selected.Count),
+            SecondaryButtonText = OcrPageRangeChooser.SecondaryButton,
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
@@ -3415,8 +3413,7 @@ public sealed class PdfDocumentView : UserControl
         }
         else if (choice == ContentDialogResult.Secondary)
         {
-            var all = Enumerable.Range(0, _document.PageCount).ToList();
-            await RunOcrPagesAsync(all);
+            await RunOcrPagesAsync(OcrPageRangeChooser.EntireDocumentPages(_document.PageCount));
         }
     }
 
@@ -3447,9 +3444,7 @@ public sealed class PdfDocumentView : UserControl
                 token.ThrowIfCancellationRequested();
                 var pageIndex = pages[i];
                 ShowJobProgress(pages.Count <= 1 ? 5 : (100.0 * i / pages.Count));
-                _status.Text = pages.Count == 1
-                    ? $"Running OCR on page {pageIndex + 1}… (1/1)"
-                    : $"Running OCR on page {pageIndex + 1} ({i + 1}/{pages.Count})…";
+                _status.Text = OcrPageRangeChooser.ProgressStatus(pageIndex, i + 1, pages.Count);
 
                 using var rendered = await _renderer.RenderPageAsync(
                     _document,
@@ -4862,7 +4857,7 @@ public sealed class PdfDocumentView : UserControl
             CancelCropMode();
         }
 
-        _highlightMode = true;
+        _highlightMode = PersistentHighlightMode.Toggle(false);
         _highlightModeColor = picked.Value;
         RefreshToolButtonChrome();
         _status.Text = "Highlight mode on — select text to highlight (Esc to exit).";
@@ -9373,7 +9368,7 @@ public sealed class PdfDocumentView : UserControl
         await GoToPageAsync(_selectedAnnot.PageIndex, recordHistory: true);
         _status.Text = _selectedAnnots.Count == 1
             ? $"Jumped to {PdfAnnotationListLabel.Format(_selectedAnnot)}."
-            : $"Selected {_selectedAnnots.Count} annotations.";
+            : AnnotationMultiSelectPolicy.StatusAfterSelect(_selectedAnnots.Count);
     }
 
 
@@ -9403,14 +9398,14 @@ public sealed class PdfDocumentView : UserControl
                 ExpandStickyNote(_selectedAnnot);
             }
 
-            _status.Text = _selectedAnnots.Count <= 1
+            _status.Text = _selectedAnnots.Count == 1
                 ? $"Selected {PdfAnnotationListLabel.Format(_selectedAnnot)}."
-                : $"Selected {_selectedAnnots.Count} annotations (Ctrl+click to toggle).";
+                : AnnotationMultiSelectPolicy.StatusAfterToggle(_selectedAnnots.Count);
         }
         else
         {
             ClearAnnotSelectionVisual();
-            _status.Text = "Annotation selection cleared.";
+            _status.Text = AnnotationMultiSelectPolicy.StatusAfterToggle(0);
         }
     }
 

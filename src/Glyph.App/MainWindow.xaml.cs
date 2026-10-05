@@ -161,7 +161,7 @@ public sealed partial class MainWindow : Window
         ApplySidebarVisibility(_settingsStore.Current.SidebarVisible);
         RefreshRecentList();
         UpdateEmptyState();
-        StatusText.Text = "Ready — File → Open or drop files here";
+        StatusText.Text = $"Ready — {OpenEntryPoints.Catalog[0]} or drop files here";
         ConfigureRecoveryTimer();
 
         if (!_startupSessionHandled)

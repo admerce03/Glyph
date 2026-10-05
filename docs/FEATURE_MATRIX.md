@@ -8,7 +8,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 
 | ID | Area | Requirement | Milestone | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
-| F01-01 | Application and file handling | Open files through: | M1/M9 | Implemented | Open / Open Multiple / drag-drop; picker filter via `FileFormatDetector.SupportedExtensions` |
+| F01-01 | Application and file handling | Open files through: | M1/M9 | Tested | Open / Open Multiple / drag-drop / recent; `OpenEntryPoints` + `FileFormatDetector` unit tests |
 | F01-02 | Application and file handling | Open multiple files simultaneously. | M1/M9 | Tested | Multi-tab open + `FilterSupportedPaths` / WorkspaceState multi-open unit tests |
 | F01-03 | Application and file handling | Open multiple files: | M1/M9 | Tested | Tabs by default; `OpenFilesInSeparateWindows` prefs round-trip |
 | F01-04 | Application and file handling | Reopen recently used files. | M1/M9 | Tested | JsonRecentFilesStore covered by unit tests |
@@ -42,7 +42,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-05 | Main window and interface | Hide/show toolbar. | M1/M9 | Tested | View → Hide/Show Toolbar; `ToolbarVisibilityLabel` unit tests |
 | F02-06 | Main window and interface | Hide/show sidebar. | M1/M9 | Tested | View → Hide/Show Sidebar; `SidebarVisible` prefs round-trip |
 | F02-07 | Main window and interface | Resizable sidebar. | M1/M9 | Tested | Drag splitter; `SidebarWidth` clamp + prefs unit tests |
-| F02-08 | Main window and interface | Resizable document area. | M1/M9 | Implemented | Content pane fills remaining space; window resize |
+| F02-08 | Main window and interface | Resizable document area. | M1/M9 | Tested | Content pane `*` column; `DocumentAreaLayout` XAML unit test |
 | F02-09 | Main window and interface | Full-screen mode. | M1/M9 | Tested | View → Full Screen / F11; `FullscreenTogglePolicy` unit tests |
 | F02-10 | Main window and interface | Tabbed documents. | M1/M9 | Tested | TabView + `WorkspaceState` Open/Activate/Reorder/ActivateNext unit tests |
 | F02-11 | Main window and interface | Tear tab into separate window. | M1/M9 | Tested | Window → Move Tab to New Window; `TabTearOffPolicy` unit tests |
@@ -154,9 +154,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F08-03 | OCR / Live Text equivalent | Copy text. | M6 | Implemented | OCR result dialog Copy text |
 | F08-04 | OCR / Live Text equivalent | Copy all recognized text. | M6 | Implemented | Same as copy full result text |
 | F08-05 | OCR / Live Text equivalent | Search recognized text. | M6 | Tested | Find merges session OCR via `PdfPageTextSearch.Merge`; word overlays after page OCR |
-| F08-06 | OCR / Live Text equivalent | OCR current page. | M6 | Implemented | PdfDocumentView OCR uses selected-or-current pages |
-| F08-07 | OCR / Live Text equivalent | OCR selected pages. | M6 | Implemented | Multi-select thumbnails → OCR concatenates page sections |
-| F08-08 | OCR / Live Text equivalent | OCR entire PDF. | M6 | Implemented | OCR chooser Secondary = entire document page range |
+| F08-06 | OCR / Live Text equivalent | OCR current page. | M6 | Tested | OCR chooser Primary = current/selected; `OcrPageRangeChooser` unit tests |
+| F08-07 | OCR / Live Text equivalent | OCR selected pages. | M6 | Tested | Multi-select thumbnails → OCR; `OcrPageRangeChooser.SelectedLabel` / PrimaryButton |
+| F08-08 | OCR / Live Text equivalent | OCR entire PDF. | M6 | Tested | Chooser Secondary = entire doc; `OcrPageRangeChooser.EntireDocumentPages` |
 | F08-09 | OCR / Live Text equivalent | OCR multiple images. | M6 | Implemented | Image OCR → Folder (N) runs siblings via batch progress dialog |
 | F08-10 | OCR / Live Text equivalent | Optionally embed OCR text layer into PDF. | M6 | Tested | OCR→PDF export via `OcrSearchablePdfWriter`; Ocr.Tests |
 | F08-11 | OCR / Live Text equivalent | Preserve image underneath the OCR layer. | M6 | Implemented | Full-bleed page render under invisible text layer |
@@ -250,7 +250,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-24 | PDF annotations | cut | M4 | Implemented | Sidebar Cut / Ctrl+X; removes source on paste |
 | F13-25 | PDF annotations | copy | M4 | Implemented | Sidebar Copy / Ctrl+C when annot selected |
 | F13-26 | PDF annotations | paste | M4 | Implemented | Sidebar Paste / Ctrl+V; `DuplicateAsync` + optional cut-remove |
-| F13-27 | PDF annotations | multi-select | M4 | Implemented | Ctrl+click toggle; sidebar Extended; bulk delete/move |
+| F13-27 | PDF annotations | multi-select | M4 | Tested | Ctrl+click toggle; sidebar Extended; `AnnotationMultiSelectPolicy` unit tests |
 | F13-28 | PDF annotations | group where useful | M4 | Tested | Sidebar Group/Ungroup; `GlyphGroup` key; select/move together |
 | F13-29 | PDF annotations | change border color | M4 | Tested | Set on create + `SetColorAsync` |
 | F13-30 | PDF annotations | change fill color | M4 | Tested | `SetFillColorAsync` (InteriorColor) + sidebar Fill; also on shape create |
@@ -263,7 +263,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-37 | PDF annotations | change text color | M4 | Tested | TextBox/Callout StrokePresets → `textColor` / DA; FreeText create tests |
 | F13-38 | PDF annotations | change text alignment | M4 | Tested | FreeText `/Q` via post-save dict patch (PDFium has GetNumberValue only); text box/callout Align UI |
 | F14-01 | Highlight workflow | Select text and apply highlight. | M4 | Tested | Selection quads → `AddTextMarkupAsync(Highlight)`; Pdf.Tests |
-| F14-02 | Highlight workflow | Persistent highlight mode: | M4 | Implemented | Highlight toggles mode; Esc exits; color remembered |
+| F14-02 | Highlight workflow | Persistent highlight mode: | M4 | Tested | Highlight toggles mode; Esc exits; `PersistentHighlightMode` unit tests |
 | F14-03 | Highlight workflow | Multiple highlight colors. | M4 | Tested | Yellow/Green/Pink/Blue/Orange picker |
 | F14-04 | Highlight workflow | Change existing highlight color. | M4 | Tested | Sidebar Color → presets / `SetColorAsync` |
 | F14-05 | Highlight workflow | Underline selection. | M4 | Tested | `AddTextMarkupAsync(Underline)`; Pdf.Tests |
@@ -821,7 +821,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F58-04 | Large-document handling | Avoid loading entire PDF rasterized into memory. | M2+/M9 | Tested | Visible-window render only + LRU `PageRenderCache` |
 | F58-05 | Large-document handling | Efficient page cache. | M2+/M9 | Tested | `PageRenderCache` LRU (capacity 32) |
 | F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Deferred | Search is on-demand; full-doc index not required yet (same as F57-05) |
-| F58-07 | Large-document handling | Partial OCR. | M2+/M9 | Implemented | OCR selected/current pages only (F08-06/07); not whole-doc by default |
+| F58-07 | Large-document handling | Partial OCR. | M2+/M9 | Tested | OCR selected/current via `OcrPageRangeChooser`; not whole-doc by default |
 | F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | Implemented | PDF search cancel + PDF/image OCR Cancel OCR |
 | F59-01 | Multi-document workflow | multiple tabs | M1/M3 | Tested | `WorkspaceState` Open/Activate/Close/Reorder/ActivateNext unit tests |
 | F59-02 | Multi-document workflow | multiple windows | M1/M3 | Tested | File → New Window; independent `WorkspaceState` per window (reuse/close tests) |
