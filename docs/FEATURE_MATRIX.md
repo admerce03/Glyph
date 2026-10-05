@@ -12,7 +12,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-02 | Application and file handling | Open multiple files simultaneously. | M1/M9 | Implemented | Multi-tab + multi-select open |
 | F01-03 | Application and file handling | Open multiple files: | M1/M9 | Implemented | Tabs by default; Preferences → separate windows |
 | F01-04 | Application and file handling | Reopen recently used files. | M1/M9 | Tested | JsonRecentFilesStore covered by unit tests |
-| F01-05 | Application and file handling | Restore previously open tabs/windows after restart, optionally. | M1/M9 | Implemented | `JsonSessionStore` + Preferences toggle; restores tabs on startup |
+| F01-05 | Application and file handling | Restore previously open tabs/windows after restart, optionally. | M1/M9 | Tested | `JsonSessionStore` save/load/clear unit tests + Preferences toggle |
 | F01-06 | Application and file handling | Native Windows file associations. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
 | F01-07 | Application and file handling | Configurable default associations for supported formats. | M1/M9 | Deferred | ADR-012: wait for MSIX/installer packaging |
 | F01-08 | Application and file handling | Drag files from Explorer into an existing application window. | M1/M9 | Implemented | Explorer → window drop opens documents |
@@ -710,12 +710,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F49-14 | Undo and redo | Ctrl+Z | M1-M4 | Implemented | PDF: redaction → annot → form → page edit; image undo |
 | F49-15 | Undo and redo | Ctrl+Y / Ctrl+Shift+Z | M1-M4 | Implemented | PDF page-edit redo (Ctrl+Y) |
 | F50-01 | Autosave and recovery | edits remain in memory until Save. | M1/M9 | Implemented | Default; AutoSaveToOriginal opt-in |
-| F50-02 | Autosave and recovery | periodic crash-recovery snapshot. | M1/M9 | Implemented | DispatcherTimer → `FileCrashRecoveryStore` |
+| F50-02 | Autosave and recovery | periodic crash-recovery snapshot. | M1/M9 | Tested | `FileCrashRecoveryStore.SaveSnapshotAsync` round-trip unit test |
 | F50-03 | Autosave and recovery | closing unsaved file prompts user. | M1/M9 | Implemented | Close tab dirty / HasUnsavedEdits prompt |
 | F50-04 | Autosave and recovery | automatically save changes to original document. | M1/M9 | Implemented | Preferences AutoSaveToOriginal |
-| F50-05 | Autosave and recovery | reopen recovered document after crash. | M1/M9 | Implemented | Startup recovery prompt opens snapshots |
+| F50-05 | Autosave and recovery | reopen recovered document after crash. | M1/M9 | Tested | `ListAsync` returns recovery paths; startup prompt opens them |
 | F50-06 | Autosave and recovery | never silently discard recovery data. | M1/M9 | Implemented | Recover / Keep / Discard prompt |
-| F50-07 | Autosave and recovery | remove recovery copy after successful save/close. | M1/M9 | Implemented | Discard on save and clean close |
+| F50-07 | Autosave and recovery | remove recovery copy after successful save/close. | M1/M9 | Tested | `DiscardAsync` / `DiscardAllAsync` unit tests |
 | F51-01 | Optional version snapshots | optional automatic local snapshots. | M9 | Implemented | Opt-in on Save via Preferences |
 | F51-02 | Optional version snapshots | show: | M9 | Implemented | File → Version Snapshots lists time + size |
 | F51-03 | Optional version snapshots | restore snapshot. | M9 | Implemented | Restore replaces file after confirm |
@@ -766,31 +766,31 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F54-18 | Toolbar customization | default toolbar | M1/M9 | Implemented | Empty `ToolbarHiddenCommands` = all visible |
 | F54-19 | Toolbar customization | reset toolbar | M1/M9 | Implemented | Preferences → Reset toolbar to default |
 | F54-20 | Toolbar customization | compact icon mode | M1/M9 | Implemented | Preferences → Compact document toolbars |
-| F55-01 | Preferences | theme | M1/M9 | Implemented | Theme setting persisted in settings.json |
-| F55-02 | Preferences | restore previous session | M1/M9 | Implemented | View → Preferences toggle |
-| F55-03 | Preferences | recent file count | M1/M9 | Implemented | View → Preferences NumberBox |
+| F55-01 | Preferences | theme | M1/M9 | Tested | Theme setting persisted; `JsonSettingsStoreTests` round-trip |
+| F55-02 | Preferences | restore previous session | M1/M9 | Tested | Preferences toggle; `JsonSettingsStore` + `JsonSessionStore` unit tests |
+| F55-03 | Preferences | recent file count | M1/M9 | Tested | Preferences NumberBox; settings round-trip unit test |
 | F55-04 | Preferences | check for updates | M1/M9 | Deferred | Needs installer/update channel (ADR-012 MSIX) |
-| F55-05 | Preferences | default page layout | M1/M9 | Implemented | Preferences combo; applied when no per-file view state |
-| F55-06 | Preferences | default zoom | M1/M9 | Implemented | Preferences NumberBox; applied when no per-file view state |
+| F55-05 | Preferences | default page layout | M1/M9 | Tested | Preferences combo; `Save_and_load_round_trips_pdf_open_defaults` |
+| F55-06 | Preferences | default zoom | M1/M9 | Tested | Preferences NumberBox; `Save_and_load_round_trips_pdf_open_defaults` |
 | F55-07 | Preferences | remember last page | M1/M9 | Implemented | `JsonDocumentViewStateStore` per-path page index |
 | F55-08 | Preferences | remember zoom | M1/M9 | Implemented | View-state zoom restored on open |
 | F55-09 | Preferences | open PDF in tabs/windows | M1/M9 | Implemented | Preferences → Open each file in a separate window |
 | F55-10 | Preferences | annotation author | M1/M9 | Implemented | Preferences + PDF Author button; persisted |
-| F55-11 | Preferences | OCR behavior | M1/M9 | Implemented | Preferred BCP-47 language tag (empty = profile langs) |
-| F55-12 | Preferences | autosave behavior | M1/M9 | Implemented | Auto-save to original checkbox |
+| F55-11 | Preferences | OCR behavior | M1/M9 | Tested | Preferred BCP-47 language; `Save_and_load_round_trips_ocr_language` |
+| F55-12 | Preferences | autosave behavior | M1/M9 | Tested | Auto-save to original checkbox; settings round-trip |
 | F55-13 | Preferences | open multiple images in same window or separate windows | M1/M9 | Implemented | Same as F55-09 — Open each file in a separate window |
 | F55-14 | Preferences | 100% zoom meaning | M1/M9 | Implemented | Pixels vs print-size (image DPI) combo |
 | F55-15 | Preferences | default interpolation | M1/M9 | Implemented | Resize dialog defaults from prefs filter |
 | F55-16 | Preferences | color management | M1/M9 | Implemented | Color-managed display default on image open |
-| F55-17 | Preferences | animation autoplay | M1/M9 | Implemented | Preferences → Autoplay animated images on open |
-| F55-18 | Preferences | default annotation colors | M1/M9 | Implemented | Highlight / stroke / sticky-note color combos |
-| F55-19 | Preferences | default line width | M1/M9 | Implemented | Default stroke width (pt) NumberBox |
+| F55-17 | Preferences | animation autoplay | M1/M9 | Tested | Preferences toggle; settings round-trip |
+| F55-18 | Preferences | default annotation colors | M1/M9 | Tested | Highlight/stroke/sticky colors; settings round-trip |
+| F55-19 | Preferences | default line width | M1/M9 | Tested | Default stroke width NumberBox; settings round-trip |
 | F55-20 | Preferences | signature handling | M1/M9 | Implemented | Signature library save/delete/reorder/descriptions + prefs clear |
-| F55-21 | Preferences | crash recovery interval | M1/M9 | Implemented | Seconds NumberBox (0 = off) |
-| F55-22 | Preferences | local-only OCR preference | M1/M9 | Implemented | Always on-device Windows OCR; prefs note |
+| F55-21 | Preferences | crash recovery interval | M1/M9 | Tested | Seconds NumberBox; clamped 0–3600 in `JsonSettingsStore` |
+| F55-22 | Preferences | local-only OCR preference | M1/M9 | Tested | Always on-device; `LocalOnlyOcr` asserted true in OCR settings test |
 | F55-23 | Preferences | clear recent files | M1/M9 | Implemented | File → Clear Recent + Preferences Privacy button |
 | F55-24 | Preferences | clear saved signatures | M1/M9 | Implemented | Preferences → Clear saved signatures (`ClearAllAsync`) |
-| F55-25 | Preferences | strip metadata defaults | M1/M9 | Implemented | Preferences → Strip metadata by default when converting |
+| F55-25 | Preferences | strip metadata defaults | M1/M9 | Tested | Preferences toggle; settings round-trip |
 | F56-01 | Accessibility | Windows UI Automation. | M9 | Implemented | WinUI Automation tree; toolbar `AutomationProperties.Name` |
 | F56-02 | Accessibility | Keyboard-accessible controls. | M9 | Implemented | Menus/accelerators; document tools keyboard paths |
 | F56-03 | Accessibility | Visible focus indicators. | M9 | Implemented | WinUI default focus visuals |

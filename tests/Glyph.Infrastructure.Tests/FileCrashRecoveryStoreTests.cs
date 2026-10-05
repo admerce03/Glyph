@@ -75,4 +75,42 @@ public class FileCrashRecoveryStoreTests
             }
         }
     }
+
+    [Fact]
+    public async Task Save_twice_overwrites_same_original()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "glyph-recovery-ow-" + Guid.NewGuid().ToString("N"));
+        var original = Path.Combine(Path.GetTempPath(), "glyph-orig-ow-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            await File.WriteAllTextAsync(original, "%PDF-original");
+            var store = new FileCrashRecoveryStore(root);
+            await using (var first = new MemoryStream("%PDF-v1"u8.ToArray()))
+            {
+                await store.SaveSnapshotAsync(original, first, ".pdf");
+            }
+
+            await using (var second = new MemoryStream("%PDF-v2"u8.ToArray()))
+            {
+                await store.SaveSnapshotAsync(original, second, ".pdf");
+            }
+
+            var listed = await store.ListAsync();
+            listed.Should().ContainSingle();
+            (await File.ReadAllTextAsync(listed[0].RecoveryPath)).Should().Be("%PDF-v2");
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+
+            if (File.Exists(original))
+            {
+                File.Delete(original);
+            }
+        }
+    }
 }
+

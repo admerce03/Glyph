@@ -110,4 +110,26 @@ public class JsonSettingsStoreTests
         settings.Theme.Should().Be(ThemePreference.System);
         settings.SidebarVisible.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task Save_clamps_crash_recovery_interval()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-clamp-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings { CrashRecoveryIntervalSeconds = -5 });
+            (await new JsonSettingsStore(path).LoadAsync()).CrashRecoveryIntervalSeconds.Should().Be(0);
+
+            await store.SaveAsync(new AppSettings { CrashRecoveryIntervalSeconds = 99999 });
+            (await new JsonSettingsStore(path).LoadAsync()).CrashRecoveryIntervalSeconds.Should().Be(3600);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
 }
