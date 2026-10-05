@@ -5,6 +5,7 @@ using Glyph.Core.Documents;
 using Glyph.Core.IO;
 using Glyph.Core.Ocr;
 using Glyph.Core.Pdf;
+using Glyph.Core.Printing;
 using Glyph.Core.Signatures;
 using Glyph.Core.Text;
 using Glyph.Imaging.Abstractions;
@@ -12253,8 +12254,10 @@ public sealed class PdfDocumentView : UserControl
             var scopeBox = new ComboBox
             {
                 Width = 220,
-                ItemsSource = new[] { "Current page", "Selected pages", "Page range…", "All pages" },
-                SelectedIndex = _pageSelection.Count > 0 ? 1 : 0,
+                ItemsSource = PrintPageScopeChooser.Labels.ToList(),
+                SelectedIndex = _pageSelection.Count > 0
+                    ? (int)PrintPageScopeChooser.Scope.SelectedPages
+                    : (int)PrintPageScopeChooser.Scope.CurrentPage,
             };
             var rangeBox = new TextBox
             {
@@ -12283,7 +12286,11 @@ public sealed class PdfDocumentView : UserControl
             var includeNotes = new CheckBox { Content = "Append notes page (text)" };
             scopeBox.SelectionChanged += (_, _) =>
             {
-                rangeBox.Visibility = scopeBox.SelectedIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
+                rangeBox.Visibility =
+                    PrintPageScopeChooser.FromComboIndex(scopeBox.SelectedIndex)
+                        == PrintPageScopeChooser.Scope.PageRange
+                        ? Visibility.Visible
+                        : Visibility.Collapsed;
             };
 
             var dialog = new ContentDialog
@@ -12323,11 +12330,13 @@ public sealed class PdfDocumentView : UserControl
                 return;
             }
 
-            var indexes = scopeBox.SelectedIndex switch
+            var indexes = PrintPageScopeChooser.FromComboIndex(scopeBox.SelectedIndex) switch
             {
-                1 => SelectedOrCurrentPages(),
-                2 => PageRangeParser.Parse(rangeBox.Text, _document.PageCount).ToList(),
-                3 => Enumerable.Range(0, _document.PageCount).ToList(),
+                PrintPageScopeChooser.Scope.SelectedPages => SelectedOrCurrentPages(),
+                PrintPageScopeChooser.Scope.PageRange =>
+                    PageRangeParser.Parse(rangeBox.Text, _document.PageCount).ToList(),
+                PrintPageScopeChooser.Scope.AllPages =>
+                    Enumerable.Range(0, _document.PageCount).ToList(),
                 _ => [CurrentPageIndex],
             };
             if (indexes.Count == 0)

@@ -3041,7 +3041,7 @@ public sealed class ImageDocumentView : UserControl
             }
 
             var profiled = await BatchColorProfileFolderAsync(kind, convert, includeCurrent.IsChecked == true);
-            _status.Text = $"Batch color profile: updated {profiled} folder image(s)"
+            _status.Text = ImageBatchColorProfilePolicy.UpdatedStatus(profiled)
                 + (includeCurrent.IsChecked == true ? " (+ current)." : ".");
             return;
         }
@@ -3361,7 +3361,7 @@ public sealed class ImageDocumentView : UserControl
             .Where(s => !string.Equals(System.IO.Path.GetFullPath(s), current, StringComparison.OrdinalIgnoreCase))
             .ToList();
         var (updated, cancelled) = await RunBatchWithProgressAsync(
-            "Batch color profile",
+            ImageBatchColorProfilePolicy.BatchTitle,
             targets,
             async (sibling, _, ct) =>
             {
@@ -3381,7 +3381,7 @@ public sealed class ImageDocumentView : UserControl
             });
         if (cancelled)
         {
-            _status.Text = $"Batch color profile cancelled after {updated} file(s).";
+            _status.Text = ImageBatchColorProfilePolicy.CancelledStatus(updated);
         }
 
         return updated;
@@ -4846,7 +4846,7 @@ public sealed class ImageDocumentView : UserControl
 
     private async Task<bool> EnsureMarkupFlattenedAsync()
     {
-        if (_markupStrokes.Count == 0 && _markupShapes.Count == 0)
+        if (!ImageMarkupFlattenPolicy.HasPendingMarkup(_markupStrokes.Count, _markupShapes.Count))
         {
             return true;
         }
@@ -4854,9 +4854,9 @@ public sealed class ImageDocumentView : UserControl
         var total = _markupStrokes.Count + _markupShapes.Count;
         var dialog = new ContentDialog
         {
-            Title = "Flatten markup?",
+            Title = ImageMarkupFlattenPolicy.DialogTitle,
             Content = $"{total} markup item(s) will be baked into pixels before saving.",
-            PrimaryButtonText = "Flatten & continue",
+            PrimaryButtonText = ImageMarkupFlattenPolicy.PrimaryButton,
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot,
@@ -5022,9 +5022,9 @@ public sealed class ImageDocumentView : UserControl
 
     private void UpdateFlattenButtonVisibility()
     {
-        _flattenMarkupButton.Visibility =
-            _markupStrokes.Count > 0 || _markupShapes.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        if (_markupStrokes.Count > 0 || _markupShapes.Count > 0)
+        var pending = ImageMarkupFlattenPolicy.HasPendingMarkup(_markupStrokes.Count, _markupShapes.Count);
+        _flattenMarkupButton.Visibility = pending ? Visibility.Visible : Visibility.Collapsed;
+        if (pending)
         {
             _onEdited?.Invoke();
         }
@@ -5032,16 +5032,16 @@ public sealed class ImageDocumentView : UserControl
 
     private async Task FlattenMarkupAsync()
     {
-        if (_markupStrokes.Count == 0 && _markupShapes.Count == 0)
+        if (!ImageMarkupFlattenPolicy.HasPendingMarkup(_markupStrokes.Count, _markupShapes.Count))
         {
-            _status.Text = "No markup to flatten.";
+            _status.Text = ImageMarkupFlattenPolicy.NothingToFlatten;
             return;
         }
 
         var layer = new ImageMarkupLayer(_markupStrokes.ToList(), _markupShapes.ToList());
         await MutateAsync(
             () => _processor.FlattenMarkupAsync(_document, layer),
-            $"Flattened {layer.Count} markup item(s).");
+            ImageMarkupFlattenPolicy.Flattened(layer.Count));
         _markupStrokes.Clear();
         _markupShapes.Clear();
         _markupUndoWasShape.Clear();

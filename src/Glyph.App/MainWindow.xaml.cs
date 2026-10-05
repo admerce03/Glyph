@@ -854,36 +854,20 @@ public sealed partial class MainWindow : Window
                 ItemsSource = new[] { "150", "200", "300", "600" },
                 SelectedIndex = 2,
             };
-            var duplex = new CheckBox { Content = "Duplex (feeder)" };
+            var duplex = new CheckBox { Content = ScanDialogUi.DuplexLabel };
             var cropBox = new ComboBox
             {
                 Header = "Auto crop",
                 Width = 320,
-                ItemsSource = new[]
-                {
-                    "Off",
-                    "Single region",
-                    "Multiple photos (flatbed)",
-                },
+                ItemsSource = ScanDialogUi.AutoCropLabels.ToList(),
                 SelectedIndex = 1,
             };
-            var straighten = new CheckBox { Content = "Straighten (deskew after scan)" };
+            var straighten = new CheckBox { Content = ScanDialogUi.StraightenLabel };
             var paperBox = new ComboBox
             {
                 Header = "Paper size",
                 Width = 320,
-                ItemsSource = new[]
-                {
-                    "Device default",
-                    "Letter (8.5×11)",
-                    "Legal (8.5×14)",
-                    "A4",
-                    "A5",
-                    "A3",
-                    "Tabloid (11×17)",
-                    "Statement (5.5×8.5)",
-                    "Auto-detect (feeder)",
-                },
+                ItemsSource = ScanDialogUi.PaperSizeLabels.ToList(),
                 SelectedIndex = 0,
             };
             var pagesBox = new NumberBox

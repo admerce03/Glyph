@@ -536,7 +536,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F34-07 | Image markup | selection | M5 | Tested | Reuses Select / F28; `ImagePixelSelectionPolicy` |
 | F34-08 | Image markup | crop | M5 | Tested | Reuses Crop… / Crop sel; `ImageCropSelectionPolicy` |
 | F34-09 | Image markup | rotate | M5 | Tested | Reuses rotate L/R/180 toolbar |
-| F34-10 | Image markup | Save/export to a flat image format, or | M5 | Implemented | Save/Export prompts to flatten pending strokes |
+| F34-10 | Image markup | Save/export to a flat image format, or | M5 | Tested | Save/Export flatten prompt; `ImageMarkupFlattenPolicy` unit tests |
 | F34-11 | Image markup | user explicitly flattens. | M5 | Tested | Flatten toolbar → `FlattenMarkupAsync` |
 | F35-01 | Image format conversion | PNG | M5 | Tested | MagickImageEncoder → PNG |
 | F35-02 | Image format conversion | JPEG | M5 | Tested | →JPEG toolbar + SaveAsAsync |
@@ -561,7 +561,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F36-04 | Batch image operations | convert format | M8 | Tested | Batch Convert; `Batch_convert_and_strip_metadata_round_trip` |
 | F36-05 | Batch image operations | export | M8 | Tested | Same Convert/export path; batch convert unit test |
 | F36-06 | Batch image operations | strip metadata | M8 | Tested | Batch Strip; `Batch_convert_and_strip_metadata` + SaveAs strip test |
-| F36-07 | Batch image operations | change color profile | M8 | Implemented | Batch… → Color profile assign/convert sRGB/Adobe RGB |
+| F36-07 | Batch image operations | change color profile | M8 | Tested | Batch… → Color profile; `ImageBatchColorProfilePolicy` unit tests |
 | F36-08 | Batch image operations | rename, optionally | M8 | Tested | Batch rename `{name}-{n:000}`; `BatchRenamePattern` unit tests |
 | F36-09 | Batch image operations | Show batch progress. | M8 | Tested | Progress dialog + Cancel; `BatchProgressUi` unit tests |
 | F37-01 | Image metadata | dimensions | M5 | Tested | GetMetadataAsync PixelWidth/Height |
@@ -618,28 +618,28 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F42-01 | Scanner support | Discover connected scanners. | M8 | Tested | `ImageScanner.GetDeviceSelector`; Scan dialog UI unit-tested |
 | F42-02 | Scanner support | Flatbed scanner. | M8 | Tested | Scan dialog → Flatbed; `ScanDialogUi.SourceLabels` |
 | F42-03 | Scanner support | Automatic document feeder. | M8 | Tested | Scan dialog → Feeder (ADF); `ScanDialogUi` |
-| F42-04 | Scanner support | Duplex feeder. | M8 | Implemented | Scan dialog Duplex when feeder supports it |
+| F42-04 | Scanner support | Duplex feeder. | M8 | Tested | Scan dialog Duplex; `ScanDialogUi.DuplexLabel` unit tests |
 | F42-05 | Scanner support | Color. | M8 | Tested | ColorMode Color; `ScanDialogUi.ColorModeLabels` |
 | F42-06 | Scanner support | Grayscale. | M8 | Tested | ColorMode Grayscale; `ScanDialogUi` |
 | F42-07 | Scanner support | Black and white. | M8 | Tested | ColorMode Monochrome; `ScanDialogUi` |
 | F42-08 | Scanner support | Resolution/DPI. | M8 | Tested | DesiredResolution 150–600; `ScanDialogUi.ClampDpi` |
-| F42-09 | Scanner support | Paper size. | M8 | Implemented | Scan dialog paper size + feeder `PageSize` / flatbed region |
-| F42-10 | Scanner support | Auto crop. | M8 | Implemented | AutoCroppingMode SingleRegion toggle |
-| F42-11 | Scanner support | Auto straighten. | M8 | Implemented | Magick DeskewAndCrop; Scan checkbox + image Straighten |
+| F42-09 | Scanner support | Paper size. | M8 | Tested | Scan dialog `ScanDialogUi.PaperSizeLabels` + feeder `PageSize` |
+| F42-10 | Scanner support | Auto crop. | M8 | Tested | `ScanDialogUi.AutoCropLabels` + AutoCroppingMode SingleRegion |
+| F42-11 | Scanner support | Auto straighten. | M8 | Tested | Magick DeskewAndCrop; `ScanDialogUi.StraightenLabel` + image Straighten |
 | F42-12 | Scanner support | Brightness/contrast where hardware supports it. | M8 | Implemented | Scan dialog brightness/contrast sliders |
 | F42-13 | Scanner support | Scan one page. | M8 | Implemented | Flatbed / MaxPages=1 |
 | F42-14 | Scanner support | Scan multiple pages. | M8 | Implemented | Feeder MaxPages |
 | F42-15 | Scanner support | Scan directly into new PDF. | M8 | Tested | Destination → New PDF via Magick collection |
-| F42-16 | Scanner support | Insert scanned pages into existing PDF. | M8 | Implemented | Destination → Insert into current PDF |
-| F42-17 | Scanner support | Scan multiple photos separately from a flatbed where detection is practical. | M8 | Implemented | Auto crop → Multiple photos (MultipleRegion) |
+| F42-16 | Scanner support | Insert scanned pages into existing PDF. | M8 | Tested | Destination → Insert; `ScanDialogUi.DestinationLabels` unit tests |
+| F42-17 | Scanner support | Scan multiple photos separately from a flatbed where detection is practical. | M8 | Tested | Auto crop → Multiple photos; `ScanDialogUi.AutoCropLabels` |
 | F43-01 | Webcam/camera import | select webcam | M8 | Implemented | Uses default MediaCapture video device |
 | F43-02 | Webcam/camera import | capture image | M8 | Tested | File → Capture from Camera; `CaptureFileName.CameraPng` unit tests |
 | F43-03 | Webcam/camera import | crop result | M8 | Implemented | Post-capture Crop… in image view; stamp size on PDF |
 | F43-04 | Webcam/camera import | insert into document | M8 | Implemented | PDF Camera stamps capture; File opens as image tab |
-| F44-01 | Printing | print current page | M8 | Implemented | Print → Current page; Ctrl+P |
-| F44-02 | Printing | print selected pages | M8 | Implemented | Print → Selected pages |
+| F44-01 | Printing | print current page | M8 | Tested | Print → Current page; `PrintPageScopeChooser` unit tests |
+| F44-02 | Printing | print selected pages | M8 | Tested | Print → Selected pages; `PrintPageScopeChooser.Scope` |
 | F44-03 | Printing | print page range | M8 | Tested | `PageRangeParser` (e.g. 1-3,5) + Core.Tests |
-| F44-04 | Printing | print all pages | M8 | Implemented | Print → All pages |
+| F44-04 | Printing | print all pages | M8 | Tested | Print → All pages; `PrintPageScopeChooser` FromComboIndex |
 | F44-05 | Printing | print selected images | M8 | Implemented | Image Print; optional folder siblings |
 | F44-06 | Printing | copies | M8 | Implemented | System print UI (PrintTask options) |
 | F44-07 | Printing | collate | M8 | Implemented | System print UI |
