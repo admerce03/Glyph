@@ -358,14 +358,14 @@ public sealed class PdfDocumentView : UserControl
 
         _searchBox = new TextBox { PlaceholderText = PdfDialogPlaceholders.FindInDocument, Width = 160 };
         _searchBox.KeyDown += SearchBox_KeyDown;
-        _caseSensitiveBox = new CheckBox { Content = "Aa", VerticalAlignment = VerticalAlignment.Center };
+        _caseSensitiveBox = new CheckBox { Content = PdfViewerChromeLabels.Aa, VerticalAlignment = VerticalAlignment.Center };
         ToolTipService.SetToolTip(_caseSensitiveBox, PdfViewerTooltips.MatchCase);
-        var searchButton = new Button { Content = "Find" };
+        var searchButton = new Button { Content = PdfViewerChromeLabels.Find };
         searchButton.Click += async (_, _) => await RunSearchAsync();
-        var findSelection = new Button { Content = "Find sel" };
+        var findSelection = new Button { Content = PdfViewerChromeLabels.FindSelection };
         findSelection.Click += async (_, _) => await SearchSelectedTextAsync();
         ToolTipService.SetToolTip(findSelection, PdfViewerTooltips.SearchForTheCurrentlySelectedText);
-        var ocrPage = new Button { Content = "OCR" };
+        var ocrPage = new Button { Content = PdfViewerChromeLabels.Ocr };
         ocrPage.Click += async (_, _) => await OnOcrButtonClickAsync();
         ToolTipService.SetToolTip(ocrPage, PdfViewerTooltips.RunOfflineOcrOnSelectedPages);
         _ocrCancelButton = new Button { Content = PerformanceBehaviorPolicy.CancelOcrButton, Visibility = Visibility.Collapsed };
@@ -381,23 +381,23 @@ public sealed class PdfDocumentView : UserControl
             VerticalAlignment = VerticalAlignment.Center,
         };
         ToolTipService.SetToolTip(_jobProgress, PdfViewerTooltips.LongRunningJobProgress);
-        _copyOcrButton = new Button { Content = "Copy OCR", Visibility = Visibility.Collapsed };
+        _copyOcrButton = new Button { Content = PdfViewerChromeLabels.CopyOcr, Visibility = Visibility.Collapsed };
         _copyOcrButton.Click += (_, _) => CopySelectedOcrText();
         ToolTipService.SetToolTip(_copyOcrButton, PdfViewerTooltips.CopySelectedOcrWordsOrAll);
-        _clearOcrOverlayButton = new Button { Content = "Clear OCR", Visibility = Visibility.Collapsed };
+        _clearOcrOverlayButton = new Button { Content = PdfViewerChromeLabels.ClearOcr, Visibility = Visibility.Collapsed };
         _clearOcrOverlayButton.Click += (_, _) => ClearOcrOverlays();
         ToolTipService.SetToolTip(_clearOcrOverlayButton, PdfViewerTooltips.HideOcrWordOverlaysKeepsFind);
-        _ocrSavePdfButton = new Button { Content = "OCR→PDF", Visibility = Visibility.Collapsed };
+        _ocrSavePdfButton = new Button { Content = PdfViewerChromeLabels.OcrToPdf, Visibility = Visibility.Collapsed };
         _ocrSavePdfButton.Click += async (_, _) => await SaveSearchableOcrPdfAsync();
         ToolTipService.SetToolTip(_ocrSavePdfButton, PdfViewerTooltips.ExportOcrDPagesAsA);
-        _ocrEntitiesButton = new Button { Content = "Entities", Visibility = Visibility.Collapsed };
+        _ocrEntitiesButton = new Button { Content = PdfViewerChromeLabels.Entities, Visibility = Visibility.Collapsed };
         _ocrEntitiesButton.Click += async (_, _) => await ShowOcrEntitiesAsync();
         ToolTipService.SetToolTip(_ocrEntitiesButton, PdfViewerTooltips.ReviewDetectedUrlsEmailsPhonesAddresses);
-        var clearSearch = new Button { Content = "Clear" };
+        var clearSearch = new Button { Content = PdfViewerChromeLabels.Clear };
         ToolTipService.SetToolTip(clearSearch, PdfViewerTooltips.ClearSearchResults);
         clearSearch.Click += async (_, _) => await ClearSearchAsync();
-        var prevMatch = new Button { Content = "◁" };
-        var nextMatch = new Button { Content = "▷" };
+        var prevMatch = new Button { Content = PdfViewerChromeLabels.NavPrev };
+        var nextMatch = new Button { Content = PdfViewerChromeLabels.NavNext };
         ToolTipService.SetToolTip(prevMatch, PdfViewerTooltips.PreviousMatch);
         ToolTipService.SetToolTip(nextMatch, PdfViewerTooltips.NextMatch);
         prevMatch.Click += async (_, _) => await GoToHitAsync(_activeHitIndex - 1);
@@ -449,27 +449,27 @@ public sealed class PdfDocumentView : UserControl
                 },
             },
         };
-        var addBookmark = new Button { Content = "+", Width = 28, Padding = new Thickness(0) };
+        var addBookmark = new Button { Content = PdfViewerChromeLabels.Plus, Width = 28, Padding = new Thickness(0) };
         ToolTipService.SetToolTip(addBookmark, PdfViewerTooltips.AddBookmarkAtCurrentPage);
         AutomationProperties.SetName(addBookmark, "Add bookmark at current page");
         addBookmark.Click += async (_, _) => await AddBookmarkAsync();
-        var renameBookmark = new Button { Content = "Rename", Padding = new Thickness(4, 2, 4, 2) };
+        var renameBookmark = new Button { Content = PdfViewerChromeLabels.Rename, Padding = new Thickness(4, 2, 4, 2) };
         ToolTipService.SetToolTip(renameBookmark, PdfViewerTooltips.RenameSelectedBookmark);
         AutomationProperties.SetName(renameBookmark, "Rename selected bookmark");
         renameBookmark.Click += async (_, _) => await RenameSelectedBookmarkAsync();
-        var deleteBookmark = new Button { Content = "Del", Padding = new Thickness(4, 2, 4, 2) };
+        var deleteBookmark = new Button { Content = PdfViewerChromeLabels.DeleteShort, Padding = new Thickness(4, 2, 4, 2) };
         ToolTipService.SetToolTip(deleteBookmark, PdfViewerTooltips.DeleteSelectedBookmark);
         AutomationProperties.SetName(deleteBookmark, "Delete selected bookmark");
         deleteBookmark.Click += (_, _) => DeleteSelectedBookmark();
-        var upBookmark = new Button { Content = "↑", Width = 28, Padding = new Thickness(0) };
+        var upBookmark = new Button { Content = PdfViewerChromeLabels.MoveUp, Width = 28, Padding = new Thickness(0) };
         ToolTipService.SetToolTip(upBookmark, PdfViewerTooltips.MoveBookmarkUp);
         AutomationProperties.SetName(upBookmark, "Move bookmark up");
         upBookmark.Click += (_, _) => MoveSelectedBookmark(-1);
-        var downBookmark = new Button { Content = "↓", Width = 28, Padding = new Thickness(0) };
+        var downBookmark = new Button { Content = PdfViewerChromeLabels.MoveDown, Width = 28, Padding = new Thickness(0) };
         ToolTipService.SetToolTip(downBookmark, PdfViewerTooltips.MoveBookmarkDown);
         AutomationProperties.SetName(downBookmark, "Move bookmark down");
         downBookmark.Click += (_, _) => MoveSelectedBookmark(1);
-        var exportBookmarks = new Button { Content = "PDF", Padding = new Thickness(4, 2, 4, 2) };
+        var exportBookmarks = new Button { Content = PdfViewerChromeLabels.Pdf, Padding = new Thickness(4, 2, 4, 2) };
         ToolTipService.SetToolTip(exportBookmarks, PdfViewerTooltips.WriteBookmarksIntoThisPdfAs);
         AutomationProperties.SetName(exportBookmarks, "Export bookmarks to PDF outline");
         exportBookmarks.Click += async (_, _) => await ExportBookmarksToPdfOutlineAsync();
@@ -509,25 +509,25 @@ public sealed class PdfDocumentView : UserControl
                 },
             },
         };
-        var removeAnnot = new Button { Content = "Delete", Padding = new Thickness(6, 2, 6, 2) };
+        var removeAnnot = new Button { Content = PdfViewerChromeLabels.Delete, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(removeAnnot, PdfViewerTooltips.DeleteSelectedAnnotation);
         removeAnnot.Click += async (_, _) => await RemoveSelectedAnnotationAsync();
-        var duplicateAnnot = new Button { Content = "Dup", Padding = new Thickness(6, 2, 6, 2) };
+        var duplicateAnnot = new Button { Content = PdfViewerChromeLabels.Duplicate, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(duplicateAnnot, PdfViewerTooltips.DuplicateSelectedAnnotationOffsetCopy);
         duplicateAnnot.Click += async (_, _) => await DuplicateSelectedAnnotationAsync();
-        var copyAnnot = new Button { Content = "Copy", Padding = new Thickness(6, 2, 6, 2) };
+        var copyAnnot = new Button { Content = PdfViewerChromeLabels.Copy, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(copyAnnot, PdfViewerTooltips.CopySelectedAnnotationCtrlCWhen);
         copyAnnot.Click += (_, _) => CopySelectedAnnotationToClipboard();
-        var cutAnnot = new Button { Content = "Cut", Padding = new Thickness(6, 2, 6, 2) };
+        var cutAnnot = new Button { Content = PdfViewerChromeLabels.Cut, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(cutAnnot, PdfViewerTooltips.CutSelectedAnnotationCtrlXWhen);
         cutAnnot.Click += (_, _) => CutSelectedAnnotationToClipboard();
-        var pasteAnnot = new Button { Content = "Paste", Padding = new Thickness(6, 2, 6, 2) };
+        var pasteAnnot = new Button { Content = PdfViewerChromeLabels.Paste, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(pasteAnnot, PdfViewerTooltips.PasteAnnotationClipboardCtrlVWhen);
         pasteAnnot.Click += async (_, _) => await PasteAnnotationClipboardAsync();
-        var editAnnot = new Button { Content = "Edit", Padding = new Thickness(6, 2, 6, 2) };
+        var editAnnot = new Button { Content = PdfViewerChromeLabels.Edit, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(editAnnot, PdfViewerTooltips.EditContentsOfSelectedStickyNote);
         editAnnot.Click += async (_, _) => await EditSelectedAnnotationContentsAsync();
-        var authorAnnot = new Button { Content = "Author", Padding = new Thickness(6, 2, 6, 2) };
+        var authorAnnot = new Button { Content = PdfViewerChromeLabels.Author, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(authorAnnot, PdfViewerTooltips.SetDefaultAnnotationAuthorNameFor);
         authorAnnot.Click += async (_, _) => await ConfigureAnnotationAuthorAsync();
         annotHeaderRow.Children.Add(duplicateAnnot);
@@ -536,55 +536,55 @@ public sealed class PdfDocumentView : UserControl
         annotHeaderRow.Children.Add(cutAnnot);
         annotHeaderRow.Children.Add(pasteAnnot);
         annotHeaderRow.Children.Add(authorAnnot);
-        var expandNote = new Button { Content = "Expand", Padding = new Thickness(6, 2, 6, 2) };
+        var expandNote = new Button { Content = PdfViewerChromeLabels.Expand, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(expandNote, PdfViewerTooltips.ExpandSelectedStickyNoteShowPopup);
         expandNote.Click += (_, _) => ExpandSelectedStickyNote();
         annotHeaderRow.Children.Add(expandNote);
-        var collapseNote = new Button { Content = "Collapse", Padding = new Thickness(6, 2, 6, 2) };
+        var collapseNote = new Button { Content = PdfViewerChromeLabels.Collapse, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(collapseNote, PdfViewerTooltips.CollapseExpandedStickyNotePopup);
         collapseNote.Click += (_, _) => CollapseSelectedStickyNote();
         annotHeaderRow.Children.Add(collapseNote);
-        var exportNotes = new Button { Content = "Export notes", Padding = new Thickness(6, 2, 6, 2) };
+        var exportNotes = new Button { Content = PdfViewerChromeLabels.ExportNotes, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(exportNotes, PdfViewerTooltips.SaveStickyNotesAsAPrintable);
         exportNotes.Click += async (_, _) => await ExportNotesAsync();
         annotHeaderRow.Children.Add(exportNotes);
-        var underlineAnnot = new Button { Content = "Underline", Padding = new Thickness(6, 2, 6, 2) };
+        var underlineAnnot = new Button { Content = PdfViewerChromeLabels.Underline, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(underlineAnnot, PdfViewerTooltips.ToggleUnderlineOnSelectedTextBox);
         underlineAnnot.Click += async (_, _) => await ToggleSelectedTextUnderlineAsync();
         annotHeaderRow.Children.Add(underlineAnnot);
-        var alignAnnot = new Button { Content = "Align", Padding = new Thickness(6, 2, 6, 2) };
+        var alignAnnot = new Button { Content = PdfViewerChromeLabels.Align, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(alignAnnot, PdfViewerTooltips.SetTextAlignmentLeftCenterRight);
         alignAnnot.Click += async (_, _) => await SetSelectedTextQuaddingAsync();
         annotHeaderRow.Children.Add(alignAnnot);
-        var colorAnnot = new Button { Content = "Color", Padding = new Thickness(6, 2, 6, 2) };
+        var colorAnnot = new Button { Content = PdfViewerChromeLabels.Color, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(colorAnnot, PdfViewerTooltips.ChangeSelectedAnnotationColor);
         colorAnnot.Click += async (_, _) => await SetSelectedAnnotationColorAsync();
         annotHeaderRow.Children.Add(colorAnnot);
-        var fillAnnot = new Button { Content = "Fill", Padding = new Thickness(6, 2, 6, 2) };
+        var fillAnnot = new Button { Content = PdfViewerChromeLabels.Fill, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(fillAnnot, PdfViewerTooltips.ChangeFillColorForShapesAnd);
         fillAnnot.Click += async (_, _) => await SetSelectedAnnotationFillAsync();
         annotHeaderRow.Children.Add(fillAnnot);
-        var tipAnnot = new Button { Content = "Tip", Padding = new Thickness(6, 2, 6, 2) };
+        var tipAnnot = new Button { Content = PdfViewerChromeLabels.CalloutTip, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(tipAnnot, PdfViewerTooltips.RepositionCalloutPointerTipClickOn);
         tipAnnot.Click += (_, _) => BeginCalloutTipEdit();
         annotHeaderRow.Children.Add(tipAnnot);
-        var groupAnnot = new Button { Content = "Group", Padding = new Thickness(6, 2, 6, 2) };
+        var groupAnnot = new Button { Content = PdfViewerChromeLabels.Group, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(groupAnnot, PdfViewerTooltips.GroupSelectedAnnotationsSoTheyMove);
         groupAnnot.Click += async (_, _) => await GroupSelectedAnnotationsAsync();
         annotHeaderRow.Children.Add(groupAnnot);
-        var ungroupAnnot = new Button { Content = "Ungroup", Padding = new Thickness(6, 2, 6, 2) };
+        var ungroupAnnot = new Button { Content = PdfViewerChromeLabels.Ungroup, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(ungroupAnnot, PdfViewerTooltips.RemoveGroupFromSelectedAnnotations);
         ungroupAnnot.Click += async (_, _) => await UngroupSelectedAnnotationsAsync();
         annotHeaderRow.Children.Add(ungroupAnnot);
-        var opacityAnnot = new Button { Content = "Opacity", Padding = new Thickness(6, 2, 6, 2) };
+        var opacityAnnot = new Button { Content = PdfViewerChromeLabels.Opacity, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(opacityAnnot, PdfViewerTooltips.ChangeSelectedAnnotationOpacity);
         opacityAnnot.Click += async (_, _) => await SetSelectedAnnotationOpacityAsync();
         annotHeaderRow.Children.Add(opacityAnnot);
-        var widthAnnot = new Button { Content = "Width", Padding = new Thickness(6, 2, 6, 2) };
+        var widthAnnot = new Button { Content = PdfViewerChromeLabels.Width, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(widthAnnot, PdfViewerTooltips.ChangeStrokeOrBorderWidthFor);
         widthAnnot.Click += async (_, _) => await SetSelectedAnnotationBorderWidthAsync();
         annotHeaderRow.Children.Add(widthAnnot);
-        var rotateAnnot = new Button { Content = "Rotate", Padding = new Thickness(6, 2, 6, 2) };
+        var rotateAnnot = new Button { Content = PdfViewerChromeLabels.Rotate, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(rotateAnnot, PdfViewerTooltips.RotateSelectedStampInkShapeOr);
         rotateAnnot.Click += async (_, _) => await RotateSelectedAnnotationAsync();
         annotHeaderRow.Children.Add(rotateAnnot);
@@ -605,10 +605,10 @@ public sealed class PdfDocumentView : UserControl
                 },
             },
         };
-        var propertiesMore = new Button { Content = "More…", Padding = new Thickness(6, 2, 6, 2) };
+        var propertiesMore = new Button { Content = PdfViewerChromeLabels.MoreEllipsis, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(propertiesMore, PdfViewerTooltips.OpenFullDocumentInfoDialog);
         propertiesMore.Click += async (_, _) => await ShowDocumentInfoAsync();
-        var propertiesEdit = new Button { Content = "Edit…", Padding = new Thickness(6, 2, 6, 2) };
+        var propertiesEdit = new Button { Content = PdfViewerChromeLabels.EditEllipsis, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(propertiesEdit, PdfViewerTooltips.EditTitleAuthorSubjectAndKeywords);
         propertiesEdit.Click += async (_, _) =>
         {
@@ -648,10 +648,10 @@ public sealed class PdfDocumentView : UserControl
                 },
             },
         };
-        var saveAttachment = new Button { Content = "Save…", Padding = new Thickness(6, 2, 6, 2) };
+        var saveAttachment = new Button { Content = PdfViewerChromeLabels.SaveEllipsis, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(saveAttachment, PdfViewerTooltips.SaveSelectedEmbeddedAttachmentToDisk);
         saveAttachment.Click += async (_, _) => await SaveSelectedAttachmentAsync();
-        var refreshAttachments = new Button { Content = "↻", Padding = new Thickness(6, 2, 6, 2) };
+        var refreshAttachments = new Button { Content = PdfViewerChromeLabels.RotateRefresh, Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(refreshAttachments, PdfViewerTooltips.RefreshAttachmentList);
         refreshAttachments.Click += (_, _) => RefreshAttachmentsSidebar();
         attachmentHeader.Children.Add(saveAttachment);
@@ -749,70 +749,70 @@ public sealed class PdfDocumentView : UserControl
             await SetLayoutModeAsync(SelectedLayout());
         };
 
-        var first = new Button { Content = "First" };
-        var prev = new Button { Content = "Prev" };
-        var next = new Button { Content = "Next" };
-        var last = new Button { Content = "Last" };
-        var back = new Button { Content = "Back" };
-        var forward = new Button { Content = "Fwd" };
-        var zoomOut = new Button { Content = "−", Width = 36 };
-        var zoomIn = new Button { Content = "+", Width = 36 };
-        var fitWidth = new Button { Content = "Fit width" };
-        var fitPage = new Button { Content = "Fit page" };
-        var actual = new Button { Content = "100%" };
-        _zoomAreaButton = new Button { Content = "Zoom ▭" };
+        var first = new Button { Content = PdfViewerChromeLabels.First };
+        var prev = new Button { Content = PdfViewerChromeLabels.Prev };
+        var next = new Button { Content = PdfViewerChromeLabels.Next };
+        var last = new Button { Content = PdfViewerChromeLabels.Last };
+        var back = new Button { Content = PdfViewerChromeLabels.Back };
+        var forward = new Button { Content = PdfViewerChromeLabels.Fwd };
+        var zoomOut = new Button { Content = PdfViewerChromeLabels.Minus, Width = 36 };
+        var zoomIn = new Button { Content = PdfViewerChromeLabels.Plus, Width = 36 };
+        var fitWidth = new Button { Content = PdfViewerChromeLabels.FitWidth };
+        var fitPage = new Button { Content = PdfViewerChromeLabels.FitPage };
+        var actual = new Button { Content = PdfViewerChromeLabels.Zoom100 };
+        _zoomAreaButton = new Button { Content = PdfViewerChromeLabels.ZoomArea };
         ToolTipService.SetToolTip(_zoomAreaButton, PdfViewerTooltips.RectangularZoomToAreaDragOn);
         AutomationProperties.SetName(_zoomAreaButton, "Zoom to area");
-        _viewLoupeButton = new Button { Content = "Glass" };
+        _viewLoupeButton = new Button { Content = PdfViewerChromeLabels.LoupeGlass };
         ToolTipService.SetToolTip(_viewLoupeButton, PdfViewerTooltips.MagnifierLoupeMoveOverThePage);
         AutomationProperties.SetName(_viewLoupeButton, "Magnifier loupe");
-        _presentButton = new Button { Content = "Present" };
+        _presentButton = new Button { Content = PdfViewerChromeLabels.Present };
         ToolTipService.SetToolTip(_presentButton, PdfViewerTooltips.PresentationModeFullscreenHideChromeSingle);
         AutomationProperties.SetName(_presentButton, "Presentation mode");
-        var copy = new Button { Content = "Copy" };
+        var copy = new Button { Content = PdfViewerChromeLabels.Copy };
         ToolTipService.SetToolTip(copy, PdfViewerTooltips.CopySelectedTextOrTheCurrent);
-        var rotateLeft = new Button { Content = "⟲" };
-        var rotateRight = new Button { Content = "⟳" };
-        var deletePages = new Button { Content = "Delete" };
-        var moveUp = new Button { Content = "↑" };
-        var moveDown = new Button { Content = "↓" };
-        var insertBlank = new Button { Content = "Blank" };
-        var duplicate = new Button { Content = "Dup" };
-        var extract = new Button { Content = "Extract" };
-        var merge = new Button { Content = "Merge" };
-        var split = new Button { Content = "Split" };
-        var crop = new Button { Content = "Crop" };
-        var highlight = new Button { Content = "Highlight" };
-        var underline = new Button { Content = "Underline" };
-        var strikeout = new Button { Content = "Strike" };
-        var stickyNote = new Button { Content = "Note" };
-        var textBox = new Button { Content = "TextBox" };
-        var callout = new Button { Content = "Callout" };
-        var flatten = new Button { Content = "Flatten" };
-        var redact = new Button { Content = "Redact" };
-        var info = new Button { Content = "Info" };
-        var optimize = new Button { Content = "Optimize" };
-        var export = new Button { Content = "Export" };
-        var print = new Button { Content = "Print" };
+        var rotateLeft = new Button { Content = PdfViewerChromeLabels.RotateCcw };
+        var rotateRight = new Button { Content = PdfViewerChromeLabels.RotateCw };
+        var deletePages = new Button { Content = PdfViewerChromeLabels.Delete };
+        var moveUp = new Button { Content = PdfViewerChromeLabels.MoveUp };
+        var moveDown = new Button { Content = PdfViewerChromeLabels.MoveDown };
+        var insertBlank = new Button { Content = PdfViewerChromeLabels.Blank };
+        var duplicate = new Button { Content = PdfViewerChromeLabels.Duplicate };
+        var extract = new Button { Content = PdfViewerChromeLabels.Extract };
+        var merge = new Button { Content = PdfViewerChromeLabels.Merge };
+        var split = new Button { Content = PdfViewerChromeLabels.Split };
+        var crop = new Button { Content = PdfViewerChromeLabels.Crop };
+        var highlight = new Button { Content = PdfViewerChromeLabels.Highlight };
+        var underline = new Button { Content = PdfViewerChromeLabels.Underline };
+        var strikeout = new Button { Content = PdfViewerChromeLabels.Strike };
+        var stickyNote = new Button { Content = PdfViewerChromeLabels.Note };
+        var textBox = new Button { Content = PdfViewerChromeLabels.TextBox };
+        var callout = new Button { Content = PdfViewerChromeLabels.Callout };
+        var flatten = new Button { Content = PdfViewerChromeLabels.Flatten };
+        var redact = new Button { Content = PdfViewerChromeLabels.Redact };
+        var info = new Button { Content = PdfViewerChromeLabels.Info };
+        var optimize = new Button { Content = PdfViewerChromeLabels.Optimize };
+        var export = new Button { Content = PdfViewerChromeLabels.Export };
+        var print = new Button { Content = PdfViewerChromeLabels.Print };
         var camera = new Button { Content = WebcamCaptureUi.CaptureButton };
-        var sign = new Button { Content = "Sign" };
-        var share = new Button { Content = "Share" };
-        var sidebarToggle = new Button { Content = "Sidebar" };
-        var formFill = new Button { Content = "Form" };
-        var ink = new Button { Content = "Ink" };
-        var freeform = new Button { Content = "Freeform" };
-        var polygon = new Button { Content = "Polygon" };
-        var eraser = new Button { Content = "Eraser" };
-        var rect = new Button { Content = "Rect" };
-        var roundRect = new Button { Content = "Round" };
-        var hiRect = new Button { Content = "Area" };
-        var ellipse = new Button { Content = "Ellipse" };
-        var line = new Button { Content = "Line" };
-        var arrow = new Button { Content = "Arrow" };
-        var star = new Button { Content = "Star" };
-        var bubble = new Button { Content = "Bubble" };
-        var loupe = new Button { Content = "Loupe" };
-        var fullscreen = new Button { Content = "Fullscreen" };
+        var sign = new Button { Content = PdfViewerChromeLabels.Sign };
+        var share = new Button { Content = PdfViewerChromeLabels.Share };
+        var sidebarToggle = new Button { Content = PdfViewerChromeLabels.Sidebar };
+        var formFill = new Button { Content = PdfViewerChromeLabels.Form };
+        var ink = new Button { Content = PdfViewerChromeLabels.Ink };
+        var freeform = new Button { Content = PdfViewerChromeLabels.Freeform };
+        var polygon = new Button { Content = PdfViewerChromeLabels.Polygon };
+        var eraser = new Button { Content = PdfViewerChromeLabels.Eraser };
+        var rect = new Button { Content = PdfViewerChromeLabels.Rect };
+        var roundRect = new Button { Content = PdfViewerChromeLabels.Round };
+        var hiRect = new Button { Content = PdfViewerChromeLabels.Area };
+        var ellipse = new Button { Content = PdfViewerChromeLabels.Ellipse };
+        var line = new Button { Content = PdfViewerChromeLabels.Line };
+        var arrow = new Button { Content = PdfViewerChromeLabels.Arrow };
+        var star = new Button { Content = PdfViewerChromeLabels.Star };
+        var bubble = new Button { Content = PdfViewerChromeLabels.Bubble };
+        var loupe = new Button { Content = PdfViewerChromeLabels.Loupe };
+        var fullscreen = new Button { Content = PdfViewerChromeLabels.Fullscreen };
         _signButton = sign;
         _inkButton = ink;
         _freeformButton = freeform;
@@ -831,8 +831,8 @@ public sealed class PdfDocumentView : UserControl
         _loupeButton = loupe;
         _calloutButton = callout;
         _redactButton = redact;
-        var undoEdit = new Button { Content = "Undo" };
-        var redoEdit = new Button { Content = "Redo" };
+        var undoEdit = new Button { Content = PdfViewerChromeLabels.Undo };
+        var redoEdit = new Button { Content = PdfViewerChromeLabels.Redo };
         ToolTipService.SetToolTip(rotateLeft, PdfViewerTooltips.RotateSelectedPagesLeft);
         ToolTipService.SetToolTip(rotateRight, PdfViewerTooltips.RotateSelectedPagesRight);
         ToolTipService.SetToolTip(deletePages, PdfViewerTooltips.DeleteSelectedPages);
@@ -3826,9 +3826,9 @@ public sealed class PdfDocumentView : UserControl
             MaxHeight = 320,
             ItemsSource = entities.Select(e => $"{e.Kind}: {e.Value}").ToList(),
         };
-        var copy = new Button { Content = "Copy value", Margin = new Thickness(0, 8, 8, 0) };
-        var open = new Button { Content = "Open / act", Margin = new Thickness(0, 8, 8, 0) };
-        var searchWeb = new Button { Content = "Search web", Margin = new Thickness(0, 8, 0, 0) };
+        var copy = new Button { Content = PdfViewerChromeLabels.CopyValue, Margin = new Thickness(0, 8, 8, 0) };
+        var open = new Button { Content = PdfViewerChromeLabels.OpenOrAct, Margin = new Thickness(0, 8, 8, 0) };
+        var searchWeb = new Button { Content = PdfViewerChromeLabels.SearchWeb, Margin = new Thickness(0, 8, 0, 0) };
         copy.Click += (_, _) =>
         {
             if (list.SelectedIndex < 0 || list.SelectedIndex >= entities.Count)
@@ -4441,7 +4441,7 @@ public sealed class PdfDocumentView : UserControl
         if (_presentButton is not null)
         {
             _presentButton.Background = new SolidColorBrush(Colors.DodgerBlue);
-            _presentButton.Content = "Exit present";
+            _presentButton.Content = PdfViewerChromeLabels.ExitPresent;
         }
 
         _presentationTimer?.Stop();
@@ -4478,7 +4478,7 @@ public sealed class PdfDocumentView : UserControl
         if (_presentButton is not null)
         {
             _presentButton.Background = null;
-            _presentButton.Content = "Present";
+            _presentButton.Content = PdfViewerChromeLabels.Present;
         }
 
         if (_sidePanel is not null)
@@ -5362,9 +5362,9 @@ public sealed class PdfDocumentView : UserControl
             SelectedIndex = 0,
             Width = 220,
         };
-        var boldCheck = new CheckBox { Content = "Bold", IsChecked = false };
-        var italicCheck = new CheckBox { Content = "Italic", IsChecked = false };
-        var underlineCheck = new CheckBox { Content = "Underline", IsChecked = false };
+        var boldCheck = new CheckBox { Content = PdfViewerChromeLabels.Bold, IsChecked = false };
+        var italicCheck = new CheckBox { Content = PdfViewerChromeLabels.Italic, IsChecked = false };
+        var underlineCheck = new CheckBox { Content = PdfViewerChromeLabels.Underline, IsChecked = false };
         var alignBox = new ComboBox
         {
             Header = PdfDialogHeaders.Align,
@@ -6874,9 +6874,9 @@ public sealed class PdfDocumentView : UserControl
         };
 
         ContentDialogResult? choice = null;
-        var drawBtn = new Button { Content = "Draw with mouse", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 4, 0, 0) };
-        var importBtn = new Button { Content = "Import image…", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 4, 0, 0) };
-        var webcamBtn = new Button { Content = "Webcam…", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 4, 0, 0) };
+        var drawBtn = new Button { Content = PdfViewerChromeLabels.DrawWithMouse, HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 4, 0, 0) };
+        var importBtn = new Button { Content = PdfViewerChromeLabels.ImportImageEllipsis, HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 4, 0, 0) };
+        var webcamBtn = new Button { Content = PdfViewerChromeLabels.WebcamEllipsis, HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 4, 0, 0) };
         ToolTipService.SetToolTip(webcamBtn, PdfViewerTooltips.PhotographASignatureOnPaperWith);
         var picked = 0; // 1=draw, 2=import, 3=webcam
         drawBtn.Click += (_, _) => { picked = 1; dialog.Hide(); };
@@ -6935,10 +6935,10 @@ public sealed class PdfDocumentView : UserControl
             PlaceholderText = PdfDialogPlaceholders.SignatureOfExample,
             Width = 360,
         };
-        var up = new Button { Content = "↑", Padding = new Thickness(10, 4, 10, 4) };
-        var down = new Button { Content = "↓", Padding = new Thickness(10, 4, 10, 4) };
-        var del = new Button { Content = "Delete", Padding = new Thickness(10, 4, 10, 4) };
-        var saveDesc = new Button { Content = "Save description", Padding = new Thickness(10, 4, 10, 4) };
+        var up = new Button { Content = PdfViewerChromeLabels.MoveUp, Padding = new Thickness(10, 4, 10, 4) };
+        var down = new Button { Content = PdfViewerChromeLabels.MoveDown, Padding = new Thickness(10, 4, 10, 4) };
+        var del = new Button { Content = PdfViewerChromeLabels.Delete, Padding = new Thickness(10, 4, 10, 4) };
+        var saveDesc = new Button { Content = PdfViewerChromeLabels.SaveDescription, Padding = new Thickness(10, 4, 10, 4) };
         ToolTipService.SetToolTip(up, PdfViewerTooltips.MoveSelectedSignatureEarlierInThe);
         ToolTipService.SetToolTip(down, PdfViewerTooltips.MoveSelectedSignatureLaterInThe);
         ToolTipService.SetToolTip(del, PdfViewerTooltips.DeleteSelectedSignatureFromTheLibrary);
@@ -7086,8 +7086,8 @@ public sealed class PdfDocumentView : UserControl
             XamlRoot = window.Content.XamlRoot,
         };
 
-        var importBtn = new Button { Content = "Import image…", HorizontalAlignment = HorizontalAlignment.Left };
-        var webcamBtn = new Button { Content = "Webcam…", HorizontalAlignment = HorizontalAlignment.Left };
+        var importBtn = new Button { Content = PdfViewerChromeLabels.ImportImageEllipsis, HorizontalAlignment = HorizontalAlignment.Left };
+        var webcamBtn = new Button { Content = PdfViewerChromeLabels.WebcamEllipsis, HorizontalAlignment = HorizontalAlignment.Left };
         ToolTipService.SetToolTip(webcamBtn, PdfViewerTooltips.PhotographASignatureOnPaperWith);
         var importRequested = false;
         var webcamRequested = false;
@@ -8151,7 +8151,7 @@ public sealed class PdfDocumentView : UserControl
             pick = new ContentDialog
             {
                 Title = $"Sign {field.Name}",
-                Content = "No saved signatures. Draw a new one to place in this field.",
+                Content = PdfViewerChromeLabels.NoSavedSignaturesHint,
                 PrimaryButtonText = DialogButtons.Draw,
                 CloseButtonText = DialogButtons.Cancel,
                 DefaultButton = ContentDialogButton.Primary,
@@ -8944,17 +8944,17 @@ public sealed class PdfDocumentView : UserControl
 
         var removeAnnotations = new CheckBox
         {
-            Content = "Remove intersecting annotations",
+            Content = PdfViewerChromeLabels.RemoveIntersectingAnnotations,
             IsChecked = true,
         };
         var removeAttachments = new CheckBox
         {
-            Content = "Remove embedded file attachments",
+            Content = PdfViewerChromeLabels.RemoveEmbeddedAttachments,
             IsChecked = true,
         };
         var removeMetadata = new CheckBox
         {
-            Content = "Clear Info metadata (title/author/subject/keywords/creator/producer)",
+            Content = PdfViewerChromeLabels.ClearInfoMetadata,
             IsChecked = true,
         };
 
@@ -9169,9 +9169,9 @@ public sealed class PdfDocumentView : UserControl
             SelectedIndex = 0,
             Width = 220,
         };
-        var boldCheck = new CheckBox { Content = "Bold", IsChecked = false };
-        var italicCheck = new CheckBox { Content = "Italic", IsChecked = false };
-        var underlineCheck = new CheckBox { Content = "Underline", IsChecked = false };
+        var boldCheck = new CheckBox { Content = PdfViewerChromeLabels.Bold, IsChecked = false };
+        var italicCheck = new CheckBox { Content = PdfViewerChromeLabels.Italic, IsChecked = false };
+        var underlineCheck = new CheckBox { Content = PdfViewerChromeLabels.Underline, IsChecked = false };
         var alignBox = new ComboBox
         {
             Header = PdfDialogHeaders.Align,
@@ -10471,9 +10471,9 @@ public sealed class PdfDocumentView : UserControl
 
     private UIElement BuildPagesHeader()
     {
-        var small = new Button { Content = "S", Width = 28, Padding = new Thickness(0), Tag = ThumbnailWidthConstraints.Min };
-        var medium = new Button { Content = "M", Width = 28, Padding = new Thickness(0), Tag = ThumbnailWidthConstraints.Default };
-        var large = new Button { Content = "L", Width = 28, Padding = new Thickness(0), Tag = 156.0 };
+        var small = new Button { Content = PdfViewerChromeLabels.SizeSmall, Width = 28, Padding = new Thickness(0), Tag = ThumbnailWidthConstraints.Min };
+        var medium = new Button { Content = PdfViewerChromeLabels.SizeMedium, Width = 28, Padding = new Thickness(0), Tag = ThumbnailWidthConstraints.Default };
+        var large = new Button { Content = PdfViewerChromeLabels.SizeLarge, Width = 28, Padding = new Thickness(0), Tag = 156.0 };
         ToolTipService.SetToolTip(small, PdfViewerTooltips.SmallPageThumbnails);
         ToolTipService.SetToolTip(medium, PdfViewerTooltips.MediumPageThumbnails);
         ToolTipService.SetToolTip(large, PdfViewerTooltips.LargePageThumbnails);
@@ -11178,10 +11178,10 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var apply = new Button { Content = "Apply crop" };
-        var cancel = new Button { Content = "Cancel" };
-        var numeric = new Button { Content = "Numeric…" };
-        var exportCropped = new Button { Content = "Export cropped…" };
+        var apply = new Button { Content = PdfViewerChromeLabels.ApplyCrop };
+        var cancel = new Button { Content = PdfViewerChromeLabels.Cancel };
+        var numeric = new Button { Content = PdfViewerChromeLabels.NumericEllipsis };
+        var exportCropped = new Button { Content = PdfViewerChromeLabels.ExportCroppedEllipsis };
         apply.Click += async (_, _) => await ApplyCropModeAsync();
         cancel.Click += (_, _) => CancelCropMode();
         numeric.Click += async (_, _) => await CropNumericDialogAsync();
@@ -11485,7 +11485,7 @@ public sealed class PdfDocumentView : UserControl
             Minimum = 0,
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
         };
-        var allPages = new CheckBox { Content = "Apply to all pages", IsChecked = false };
+        var allPages = new CheckBox { Content = PdfViewerChromeLabels.ApplyToAllPages, IsChecked = false };
         var note = new TextBlock
         {
             Text = "Non-destructive CropBox inset. Visual handles remain available from Crop.",
@@ -12281,9 +12281,9 @@ public sealed class PdfDocumentView : UserControl
                 ItemsSource = new[] { "1", "2", "4" },
                 SelectedIndex = 0,
             };
-            var grayscale = new CheckBox { Content = "Grayscale" };
-            var center = new CheckBox { Content = "Center on page", IsChecked = true };
-            var autoRotate = new CheckBox { Content = "Auto-rotate", IsChecked = true };
+            var grayscale = new CheckBox { Content = PdfViewerChromeLabels.Grayscale };
+            var center = new CheckBox { Content = PdfViewerChromeLabels.CenterOnPage, IsChecked = true };
+            var autoRotate = new CheckBox { Content = PdfViewerChromeLabels.AutoRotate, IsChecked = true };
             var includeNotes = new CheckBox { Content = PrintNotesUi.IncludeCheckbox };
             scopeBox.SelectionChanged += (_, _) =>
             {
@@ -12740,7 +12740,7 @@ public sealed class PdfDocumentView : UserControl
                 RemoveMetadata: stripMetadata.IsChecked == true);
         }
 
-        var estimateButton = new Button { Content = "Estimate", Margin = new Thickness(0, 8, 8, 0) };
+        var estimateButton = new Button { Content = PdfViewerChromeLabels.Estimate, Margin = new Thickness(0, 8, 8, 0) };
         estimateButton.Click += (_, _) =>
         {
             try

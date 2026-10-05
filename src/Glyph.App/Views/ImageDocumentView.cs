@@ -211,18 +211,18 @@ public sealed class ImageDocumentView : UserControl
         };
         _siblingList.SelectionChanged += SiblingList_SelectionChanged;
 
-        var zoomOut = new Button { Content = "−", Width = 36 };
-        var zoomIn = new Button { Content = "+", Width = 36 };
-        var fit = new Button { Content = "Fit" };
-        var actual = new Button { Content = "100%" };
-        var rotateLeft = new Button { Content = "⟲" };
-        var rotateRight = new Button { Content = "⟳" };
-        var flipH = new Button { Content = "Flip H" };
-        var flipV = new Button { Content = "Flip V" };
-        var crop = new Button { Content = "Crop" };
-        _interactiveCropButton = new Button { Content = "Crop…" };
-        _applyCropButton = new Button { Content = "Apply crop", Visibility = Visibility.Collapsed };
-        _cancelCropButton = new Button { Content = "Cancel crop", Visibility = Visibility.Collapsed };
+        var zoomOut = new Button { Content = ImageViewerChromeLabels.Minus, Width = 36 };
+        var zoomIn = new Button { Content = ImageViewerChromeLabels.Plus, Width = 36 };
+        var fit = new Button { Content = ImageViewerChromeLabels.Fit };
+        var actual = new Button { Content = ImageViewerChromeLabels.Zoom100 };
+        var rotateLeft = new Button { Content = ImageViewerChromeLabels.RotateCcw };
+        var rotateRight = new Button { Content = ImageViewerChromeLabels.RotateCw };
+        var flipH = new Button { Content = ImageViewerChromeLabels.FlipHorizontal };
+        var flipV = new Button { Content = ImageViewerChromeLabels.FlipVertical };
+        var crop = new Button { Content = ImageViewerChromeLabels.Crop };
+        _interactiveCropButton = new Button { Content = ImageViewerChromeLabels.CropEllipsis };
+        _applyCropButton = new Button { Content = ImageViewerChromeLabels.ApplyCrop, Visibility = Visibility.Collapsed };
+        _cancelCropButton = new Button { Content = ImageViewerChromeLabels.CancelCrop, Visibility = Visibility.Collapsed };
         _cropAspectBox = new ComboBox
         {
             Width = 110,
@@ -231,7 +231,7 @@ public sealed class ImageDocumentView : UserControl
             SelectedIndex = 0,
         };
         ToolTipService.SetToolTip(_cropAspectBox, ImageViewerTooltips.CropAspectFreeOriginalImageRatio);
-        _selectButton = new Button { Content = "Select" };
+        _selectButton = new Button { Content = ImageViewerChromeLabels.Select };
         _selectionKindBox = new ComboBox
         {
             Width = 88,
@@ -239,16 +239,16 @@ public sealed class ImageDocumentView : UserControl
             ItemsSource = new[] { "Rect", "Ellipse", "Lasso", "Smart" },
             SelectedIndex = 0,
         };
-        _selectAllButton = new Button { Content = "All", Visibility = Visibility.Collapsed };
-        _invertSelButton = new Button { Content = "Invert", Visibility = Visibility.Collapsed };
-        _deselectButton = new Button { Content = "Deselect", Visibility = Visibility.Collapsed };
-        _copySelButton = new Button { Content = "Copy sel", Visibility = Visibility.Collapsed };
-        _cutSelButton = new Button { Content = "Cut sel", Visibility = Visibility.Collapsed };
-        _pasteSelButton = new Button { Content = "Paste", Visibility = Visibility.Collapsed };
-        _deleteSelButton = new Button { Content = "Del sel", Visibility = Visibility.Collapsed };
-        _cropSelButton = new Button { Content = "Crop sel", Visibility = Visibility.Collapsed };
-        _drawButton = new Button { Content = "Draw" };
-        _flattenMarkupButton = new Button { Content = "Flatten", Visibility = Visibility.Collapsed };
+        _selectAllButton = new Button { Content = ImageViewerChromeLabels.All, Visibility = Visibility.Collapsed };
+        _invertSelButton = new Button { Content = ImageViewerChromeLabels.Invert, Visibility = Visibility.Collapsed };
+        _deselectButton = new Button { Content = ImageViewerChromeLabels.Deselect, Visibility = Visibility.Collapsed };
+        _copySelButton = new Button { Content = ImageViewerChromeLabels.CopySelection, Visibility = Visibility.Collapsed };
+        _cutSelButton = new Button { Content = ImageViewerChromeLabels.CutSelection, Visibility = Visibility.Collapsed };
+        _pasteSelButton = new Button { Content = ImageViewerChromeLabels.Paste, Visibility = Visibility.Collapsed };
+        _deleteSelButton = new Button { Content = ImageViewerChromeLabels.DeleteSelection, Visibility = Visibility.Collapsed };
+        _cropSelButton = new Button { Content = ImageViewerChromeLabels.CropSelection, Visibility = Visibility.Collapsed };
+        _drawButton = new Button { Content = ImageViewerChromeLabels.Draw };
+        _flattenMarkupButton = new Button { Content = ImageViewerChromeLabels.Flatten, Visibility = Visibility.Collapsed };
         ToolTipService.SetToolTip(_selectButton, ImageViewerTooltips.PixelSelectionDragOnImageDrag);
         ToolTipService.SetToolTip(_selectionKindBox, ImageViewerTooltips.SelectionShapeRectangleEllipseFreeformLasso);
         ToolTipService.SetToolTip(_selectAllButton, ImageViewerTooltips.SelectEntireImage);
@@ -261,35 +261,35 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(_cropSelButton, ImageViewerTooltips.CropImageToSelection);
         ToolTipService.SetToolTip(_drawButton, ImageViewerTooltips.FreehandMarkupNonDestructiveOverlayUntil);
         ToolTipService.SetToolTip(_flattenMarkupButton, ImageViewerTooltips.BakeMarkupStrokesIntoPixels);
-        var resize = new Button { Content = "Resize" };
-        var adjust = new Button { Content = "Adjust" };
-        var bgRemove = new Button { Content = "BG" };
+        var resize = new Button { Content = ImageViewerChromeLabels.Resize };
+        var adjust = new Button { Content = ImageViewerChromeLabels.Adjust };
+        var bgRemove = new Button { Content = ImageViewerChromeLabels.Background };
         var stamp = new Button { Content = SignatureLibraryUi.ToolbarStamp };
-        var meta = new Button { Content = "Meta" };
-        var ocrButton = new Button { Content = "OCR" };
-        var rotate180 = new Button { Content = "180°" };
-        var orient = new Button { Content = "Orient" };
-        var straighten = new Button { Content = "Straighten" };
-        var batchOrient = new Button { Content = "Batch…" };
-        var fullscreen = new Button { Content = "Fullscreen" };
-        var save = new Button { Content = "Save" };
-        var exportPng = new Button { Content = "→PNG" };
-        var exportJpeg = new Button { Content = "→JPEG" };
-        var convert = new Button { Content = "Convert" };
-        var printImage = new Button { Content = "Print" };
-        var copyImage = new Button { Content = "Copy" };
-        var pasteImage = new Button { Content = "Paste" };
-        _prevButton = new Button { Content = "◀", Width = 36 };
-        _nextButton = new Button { Content = "▶", Width = 36 };
-        _slideshowButton = new Button { Content = "Slideshow" };
-        _animPlayButton = new Button { Content = "Play", Visibility = Visibility.Collapsed };
-        _animPrevButton = new Button { Content = "⟨frm", Visibility = Visibility.Collapsed };
-        _animNextButton = new Button { Content = "frm⟩", Visibility = Visibility.Collapsed };
-        _animRestartButton = new Button { Content = "Restart", Visibility = Visibility.Collapsed };
-        _animExtractButton = new Button { Content = "Save frame", Visibility = Visibility.Collapsed };
+        var meta = new Button { Content = ImageViewerChromeLabels.Metadata };
+        var ocrButton = new Button { Content = ImageViewerChromeLabels.Ocr };
+        var rotate180 = new Button { Content = ImageViewerChromeLabels.Rotate180 };
+        var orient = new Button { Content = ImageViewerChromeLabels.Orient };
+        var straighten = new Button { Content = ImageViewerChromeLabels.Straighten };
+        var batchOrient = new Button { Content = ImageViewerChromeLabels.BatchEllipsis };
+        var fullscreen = new Button { Content = ImageViewerChromeLabels.Fullscreen };
+        var save = new Button { Content = ImageViewerChromeLabels.Save };
+        var exportPng = new Button { Content = ImageViewerChromeLabels.ToPng };
+        var exportJpeg = new Button { Content = ImageViewerChromeLabels.ToJpeg };
+        var convert = new Button { Content = ImageViewerChromeLabels.Convert };
+        var printImage = new Button { Content = ImageViewerChromeLabels.Print };
+        var copyImage = new Button { Content = ImageViewerChromeLabels.Copy };
+        var pasteImage = new Button { Content = ImageViewerChromeLabels.Paste };
+        _prevButton = new Button { Content = ImageViewerChromeLabels.PrevSibling, Width = 36 };
+        _nextButton = new Button { Content = ImageViewerChromeLabels.NextSibling, Width = 36 };
+        _slideshowButton = new Button { Content = ImageViewerChromeLabels.Slideshow };
+        _animPlayButton = new Button { Content = ImageViewerChromeLabels.Play, Visibility = Visibility.Collapsed };
+        _animPrevButton = new Button { Content = ImageViewerChromeLabels.PrevFrame, Visibility = Visibility.Collapsed };
+        _animNextButton = new Button { Content = ImageViewerChromeLabels.NextFrame, Visibility = Visibility.Collapsed };
+        _animRestartButton = new Button { Content = ImageViewerChromeLabels.Restart, Visibility = Visibility.Collapsed };
+        _animExtractButton = new Button { Content = ImageViewerChromeLabels.SaveFrame, Visibility = Visibility.Collapsed };
         _animLoopBox = new CheckBox
         {
-            Content = "Loop",
+            Content = ImageViewerChromeLabels.Loop,
             IsChecked = true,
             Visibility = Visibility.Collapsed,
             VerticalAlignment = VerticalAlignment.Center,
@@ -301,7 +301,7 @@ public sealed class ImageDocumentView : UserControl
             Opacity = 0.8,
             Visibility = Visibility.Collapsed,
         };
-        _undoButton = new Button { Content = "Undo", IsEnabled = false };
+        _undoButton = new Button { Content = ImageViewerChromeLabels.Undo, IsEnabled = false };
 
         ToolTipService.SetToolTip(crop, ImageViewerTooltips.CropUsingXYWH);
         ToolTipService.SetToolTip(_interactiveCropButton, ImageViewerTooltips.DragARectangleOnTheImage);
@@ -2594,7 +2594,7 @@ public sealed class ImageDocumentView : UserControl
         var widthBox = new TextBox { Text = srcW.ToString(), Width = 96, Header = ImageDialogHeaders.Width };
         var heightBox = new TextBox { Text = srcH.ToString(), Width = 96, Header = ImageDialogHeaders.Height };
         var percentBox = new TextBox { Text = "100", Width = 96, Header = ImageDialogHeaders.Scale2 };
-        var lockAspect = new CheckBox { Content = "Lock aspect ratio", IsChecked = true };
+        var lockAspect = new CheckBox { Content = ImageViewerChromeLabels.LockAspectRatio, IsChecked = true };
         var filterBox = new ComboBox
         {
             Header = ImageDialogHeaders.Resampling,
@@ -2927,7 +2927,7 @@ public sealed class ImageDocumentView : UserControl
         };
         var includeCurrent = new CheckBox
         {
-            Content = "Also apply to the open image file",
+            Content = ImageViewerChromeLabels.AlsoApplyToOpenImage,
             IsChecked = true,
         };
 
@@ -3403,7 +3403,7 @@ public sealed class ImageDocumentView : UserControl
         };
         var trimBox = new CheckBox
         {
-            Content = "Trim to opaque bounds after remove",
+            Content = ImageViewerChromeLabels.TrimToOpaqueBounds,
             IsChecked = true,
         };
         var actionBox = new ComboBox
@@ -3585,7 +3585,7 @@ public sealed class ImageDocumentView : UserControl
         {
             var resetOne = new Button
             {
-                Content = "↺",
+                Content = ImageViewerChromeLabels.RotateCounter,
                 Width = 36,
                 VerticalAlignment = VerticalAlignment.Bottom,
                 Margin = new Thickness(6, 0, 0, 0),
@@ -3623,8 +3623,8 @@ public sealed class ImageDocumentView : UserControl
         var temperature = MakeSlider("Temperature (−100 cold…100 warm)", -100, 100, 0);
         var tint = MakeSlider("Tint (−100 green…100 magenta)", -100, 100, 0);
         var sharpness = MakeSlider("Sharpness (0…100)", 0, 100, 0);
-        var autoLevels = new CheckBox { Content = "Auto Levels", IsChecked = false };
-        var sepia = new CheckBox { Content = "Sepia", IsChecked = false };
+        var autoLevels = new CheckBox { Content = ImageViewerChromeLabels.AutoLevels, IsChecked = false };
+        var sepia = new CheckBox { Content = ImageViewerChromeLabels.Sepia, IsChecked = false };
         var histCanvas = new Canvas
         {
             Width = 280,
@@ -3726,7 +3726,7 @@ public sealed class ImageDocumentView : UserControl
 
         void RequestPreview() => _ = PreviewAsync();
 
-        var reset = new Button { Content = "Reset all", HorizontalAlignment = HorizontalAlignment.Left };
+        var reset = new Button { Content = ImageViewerChromeLabels.ResetAll, HorizontalAlignment = HorizontalAlignment.Left };
         reset.Click += (_, _) =>
         {
             brightness.Value = 0;
@@ -3975,8 +3975,8 @@ public sealed class ImageDocumentView : UserControl
                 ItemsSource = new[] { "1", "2", "4" },
                 SelectedIndex = 0,
             };
-            var grayscale = new CheckBox { Content = "Grayscale" };
-            var center = new CheckBox { Content = "Center on page", IsChecked = true };
+            var grayscale = new CheckBox { Content = ImageViewerChromeLabels.Grayscale };
+            var center = new CheckBox { Content = ImageViewerChromeLabels.CenterOnPage, IsChecked = true };
             var includeSiblings = new CheckBox
             {
                 Content = $"Also print other folder images ({Math.Max(0, _siblings.Count - 1)})",
@@ -4114,7 +4114,7 @@ public sealed class ImageDocumentView : UserControl
             Width = 240,
         };
         var lossless = new CheckBox { Content = DocumentExportFormats.WebpLosslessLabel, IsChecked = false };
-        var preserveAlpha = new CheckBox { Content = "Preserve alpha", IsChecked = true };
+        var preserveAlpha = new CheckBox { Content = ImageViewerChromeLabels.PreserveAlpha, IsChecked = true };
         var stripByDefault = false;
         try
         {
@@ -4127,7 +4127,7 @@ public sealed class ImageDocumentView : UserControl
 
         var preserveMeta = new CheckBox
         {
-            Content = "Preserve metadata (EXIF/IPTC/XMP)",
+            Content = ImageViewerChromeLabels.PreserveMetadata,
             IsChecked = !stripByDefault,
         };
         var embedSrgb = new CheckBox { Content = ImageEncodeEmbedSrgb.CheckboxLabel, IsChecked = false };
@@ -4310,14 +4310,14 @@ public sealed class ImageDocumentView : UserControl
             };
 
             var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-            var assignSrgb = new Button { Content = "Assign sRGB" };
+            var assignSrgb = new Button { Content = ImageViewerChromeLabels.AssignSrgb };
             assignSrgb.Click += async (_, _) =>
             {
                 await MutateAsync(
                     () => _processor.AssignColorProfileAsync(_document, ImageColorProfileKind.Srgb),
                     "Assigned sRGB ICC profile.");
             };
-            var convertSrgb = new Button { Content = "Convert → sRGB" };
+            var convertSrgb = new Button { Content = ImageViewerChromeLabels.ConvertToSrgb };
             convertSrgb.Click += async (_, _) =>
             {
                 await MutateAsync(
@@ -4655,7 +4655,7 @@ public sealed class ImageDocumentView : UserControl
                 Width = 480,
                 Height = 320,
             };
-            var copy = new Button { Content = "Copy text", Margin = new Thickness(0, 8, 0, 0) };
+            var copy = new Button { Content = ImageViewerChromeLabels.CopyText, Margin = new Thickness(0, 8, 0, 0) };
             copy.Click += (_, _) =>
             {
                 var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
@@ -4749,7 +4749,7 @@ public sealed class ImageDocumentView : UserControl
             Width = 520,
             Height = 360,
         };
-        var copy = new Button { Content = "Copy all", Margin = new Thickness(0, 8, 0, 0) };
+        var copy = new Button { Content = ImageViewerChromeLabels.CopyAll, Margin = new Thickness(0, 8, 0, 0) };
         copy.Click += (_, _) =>
         {
             var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
