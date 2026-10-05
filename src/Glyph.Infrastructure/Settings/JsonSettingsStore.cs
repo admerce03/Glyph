@@ -140,6 +140,21 @@ public sealed class JsonSettingsStore : ISettingsStore
         }
 
         settings.DefaultPageLayout = NormalizePageLayoutName(settings.DefaultPageLayout);
+
+        settings.Zoom100Meaning = string.Equals(settings.Zoom100Meaning, "Print", StringComparison.OrdinalIgnoreCase)
+            ? "Print"
+            : "Pixels";
+
+        settings.DefaultInterpolation = settings.DefaultInterpolation?.Trim() switch
+        {
+            "NearestNeighbor" or "Nearest-neighbor" or "Nearest" => "NearestNeighbor",
+            "Bilinear" => "Bilinear",
+            "Bicubic" => "Bicubic",
+            _ => "Auto",
+        };
+
+        // OCR is always on-device; keep the flag true so prefs stay honest.
+        settings.LocalOnlyOcr = true;
     }
 
     private static string NormalizePageLayoutName(string? name) => name?.Trim() switch
@@ -171,6 +186,10 @@ public sealed class JsonSettingsStore : ISettingsStore
         StripMetadataByDefault = settings.StripMetadataByDefault,
         DefaultPageLayout = settings.DefaultPageLayout ?? "Continuous",
         DefaultZoom = settings.DefaultZoom,
+        Zoom100Meaning = settings.Zoom100Meaning ?? "Pixels",
+        DefaultInterpolation = settings.DefaultInterpolation ?? "Auto",
+        ColorManagedDisplayDefault = settings.ColorManagedDisplayDefault,
+        LocalOnlyOcr = true,
         SidebarVisible = settings.SidebarVisible,
     };
 }

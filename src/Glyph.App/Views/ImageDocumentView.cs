@@ -346,7 +346,7 @@ public sealed class ImageDocumentView : UserControl
         zoomOut.Click += async (_, _) => await SetZoomAsync(_zoom / 1.25);
         zoomIn.Click += async (_, _) => await SetZoomAsync(_zoom * 1.25);
         fit.Click += async (_, _) => await FitAsync();
-        actual.Click += async (_, _) => await SetZoomAsync(1.0);
+        actual.Click += async (_, _) => await ZoomActualSizeAsync();
         rotateLeft.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, -90), "Rotated left.");
         rotateRight.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 90), "Rotated right.");
         rotate180.Click += async (_, _) => await MutateAsync(() => _processor.RotateAsync(_document, 180), "Rotated 180°.");
@@ -1584,6 +1584,65 @@ public sealed class ImageDocumentView : UserControl
         UpdateStatus();
     }
 
+    private async Task ZoomActualSizeAsync()
+    {
+        var meaning = "Pixels";
+        try
+        {
+            meaning = App.Services.GetService<ISettingsStore>()?.Current.Zoom100Meaning ?? "Pixels";
+        }
+        catch
+        {
+            // DI may be unavailable.
+        }
+
+        if (string.Equals(meaning, "Print", StringComparison.OrdinalIgnoreCase))
+        {
+            double imageDpi = 96;
+            try
+            {
+                var meta = await _document.GetMetadataAsync();
+                if (meta.DpiX is > 0)
+                {
+                    imageDpi = meta.DpiX.Value;
+                }
+                else if (meta.DpiY is > 0)
+                {
+                    imageDpi = meta.DpiY.Value;
+                }
+            }
+            catch
+            {
+                // Fall back to 96 DPI.
+            }
+
+            var screenDpi = 96.0 * (XamlRoot?.RasterizationScale ?? 1.0);
+            await SetZoomAsync(screenDpi / Math.Max(1.0, imageDpi));
+            return;
+        }
+
+        await SetZoomAsync(1.0);
+    }
+
+    private static int ResolveDefaultInterpolationIndex()
+    {
+        try
+        {
+            var name = App.Services.GetService<ISettingsStore>()?.Current.DefaultInterpolation;
+            return name switch
+            {
+                "NearestNeighbor" => 1,
+                "Bilinear" => 2,
+                "Bicubic" => 3,
+                _ => 0,
+            };
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
     private async Task FitAsync()
     {
         var availableW = Math.Max(1, _scrollViewer.ActualWidth - 24);
@@ -2457,7 +2516,7 @@ public sealed class ImageDocumentView : UserControl
             Header = "Resampling",
             Width = 180,
             ItemsSource = new[] { "Auto", "Nearest-neighbor", "Bilinear", "Bicubic" },
-            SelectedIndex = 0,
+            SelectedIndex = ResolveDefaultInterpolationIndex(),
         };
         var preview = new TextBlock
         {

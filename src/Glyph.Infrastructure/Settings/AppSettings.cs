@@ -60,5 +60,22 @@ public sealed class AppSettings
     /// <summary>Default PDF zoom scale when no per-file view state exists (F55-06).</summary>
     public double DefaultZoom { get; set; } = 1.25;
 
+    /// <summary>
+    /// Image 100% zoom meaning (F55-14): "Pixels" = 1 device pixel per image pixel;
+    /// "Print" = match physical size using image DPI vs screen DPI.
+    /// </summary>
+    public string Zoom100Meaning { get; set; } = "Pixels";
+
+    /// <summary>Default resize resampling filter name (F55-15): Auto/NearestNeighbor/Bilinear/Bicubic.</summary>
+    public string DefaultInterpolation { get; set; } = "Auto";
+
+    /// <summary>When true, open images with color-managed display enabled (F55-16).</summary>
+    public bool ColorManagedDisplayDefault { get; set; } = true;
+
+    /// <summary>
+    /// OCR stays on-device via Windows OCR (F55-22). Persisted for prefs UI; always treated as true.
+    /// </summary>
+    public bool LocalOnlyOcr { get; set; } = true;
+
     public bool SidebarVisible { get; set; } = true;
 }

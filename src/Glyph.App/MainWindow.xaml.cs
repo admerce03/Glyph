@@ -1503,7 +1503,8 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            if (!File.Exists(path))
+            path = PathUtilities.NormalizeOpenPath(path);
+            if (!PathUtilities.FileExists(path))
             {
                 StatusText.Text = "File not found.";
                 return;
@@ -1709,6 +1710,7 @@ public sealed partial class MainWindow : Window
         if (session.Kind == DocumentKind.Image && session.Path is not null)
         {
             var image = await _imageDecoder.OpenAsync(session.Path);
+            image.ColorManagedDisplay = _settingsStore.Current.ColorManagedDisplayDefault;
             var saved = await _viewStateStore.TryLoadAsync(session.Path);
             if (saved is not null && saved.Zoom > 0)
             {
@@ -2568,6 +2570,38 @@ public sealed partial class MainWindow : Window
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
             Width = 280,
         };
+        var zoom100Box = new ComboBox
+        {
+            Header = "Image 100% zoom means",
+            Width = 280,
+            ItemsSource = new[] { "1:1 pixels", "Print size (use image DPI)" }.ToList(),
+            SelectedIndex = string.Equals(settings.Zoom100Meaning, "Print", StringComparison.OrdinalIgnoreCase) ? 1 : 0,
+        };
+        var interpolationBox = new ComboBox
+        {
+            Header = "Default resize interpolation",
+            Width = 280,
+            ItemsSource = new[] { "Auto", "Nearest-neighbor", "Bilinear", "Bicubic" }.ToList(),
+            SelectedIndex = settings.DefaultInterpolation switch
+            {
+                "NearestNeighbor" => 1,
+                "Bilinear" => 2,
+                "Bicubic" => 3,
+                _ => 0,
+            },
+        };
+        var colorManagedBox = new CheckBox
+        {
+            Content = "Color-managed image display by default",
+            IsChecked = settings.ColorManagedDisplayDefault,
+        };
+        var localOcrNote = new TextBlock
+        {
+            Text = "OCR runs locally via Windows OCR (never uploaded).",
+            Opacity = 0.75,
+            TextWrapping = TextWrapping.WrapWholeWords,
+            MaxWidth = 360,
+        };
 
         var clearRecentButton = new Button
         {
@@ -2624,6 +2658,7 @@ public sealed partial class MainWindow : Window
                 separateWindowsBox, authorBox, compactToolbarBox,
                 highlightColorBox, strokeColorBox, stickyColorBox, strokeWidthBox,
                 animationAutoplayBox, stripMetadataBox, layoutBox, defaultZoomBox,
+                zoom100Box, interpolationBox, colorManagedBox, localOcrNote,
                 privacyHeader, clearRecentButton, clearSignaturesButton,
             },
         };
@@ -2664,6 +2699,16 @@ public sealed partial class MainWindow : Window
             _ => "Continuous",
         };
         settings.DefaultZoom = Math.Clamp(defaultZoomBox.Value, 0.1, 8);
+        settings.Zoom100Meaning = zoom100Box.SelectedIndex == 1 ? "Print" : "Pixels";
+        settings.DefaultInterpolation = interpolationBox.SelectedIndex switch
+        {
+            1 => "NearestNeighbor",
+            2 => "Bilinear",
+            3 => "Bicubic",
+            _ => "Auto",
+        };
+        settings.ColorManagedDisplayDefault = colorManagedBox.IsChecked == true;
+        settings.LocalOnlyOcr = true;
         await _settingsStore.SaveAsync(settings);
         ConfigureRecoveryTimer();
         await PersistSessionAsync();
