@@ -108,7 +108,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-29 | PDF viewing | Rectangular zoom-to-area. | M2 | Tested | Zoom ▭ drag rectangle; `PdfZoomCalculator.ZoomToArea` unit tests |
 | F04-30 | PDF viewing | Magnifier/loupe tool. | M2 | Tested | Glass toolbar loupe; `PdfLoupeSampleRegion` PDF→bitmap sample unit tests |
 | F04-31 | PDF viewing | Presentation/slideshow mode. | M2 | Tested | Present: fullscreen, hide chrome, single-page fit; ←/→; `PresentationModeDefaults` 8s auto-advance + status copy |
-| F04-32 | PDF viewing | Remember last viewed page, optionally. | M2 | Tested | `IDocumentViewStateStore` persists page on close/reopen |
+| F04-32 | PDF viewing | Remember last viewed page, optionally. | M2 | Tested | `IDocumentViewStateStore` + Preferences F55-07 (`DocumentViewRestorePolicy`) |
 | F04-33 | PDF viewing | Remember zoom/layout per document, optionally. | M2 | Tested | Persists zoom + layout with page index |
 | F05-01 | PDF table of contents and navigation | Read embedded PDF outlines/bookmarks. | M2 | Tested | `IPdfOutlineService` / PDFium bookmarks |
 | F05-02 | PDF table of contents and navigation | Hierarchical table of contents. | M2 | Tested | Nested `PdfOutlineNode`; `PdfOutlineTree` flatten/count unit tests |
@@ -773,8 +773,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-04 | Preferences | check for updates | M1/M9 | Tested | Help → Check for updates; `AppUpdateCheckPolicy` + GitHub Releases |
 | F55-05 | Preferences | default page layout | M1/M9 | Tested | Preferences combo; `Save_and_load_round_trips_pdf_open_defaults` |
 | F55-06 | Preferences | default zoom | M1/M9 | Tested | Preferences NumberBox; `Save_and_load_round_trips_pdf_open_defaults` |
-| F55-07 | Preferences | remember last page | M1/M9 | Tested | `JsonDocumentViewStateStore` page index round-trip |
-| F55-08 | Preferences | remember zoom | M1/M9 | Tested | `JsonDocumentViewStateStore` zoom round-trip |
+| F55-07 | Preferences | remember last page | M1/M9 | Tested | Preferences toggle (default ON); `DocumentViewRestorePolicy` + `JsonDocumentViewStateStore` / settings round-trip |
+| F55-08 | Preferences | remember zoom | M1/M9 | Tested | Preferences toggle (default ON); `DocumentViewRestorePolicy` + view-state / settings round-trip |
 | F55-09 | Preferences | open PDF in tabs/windows | M1/M9 | Tested | Preferences → Open each file in a separate window; prefs round-trip |
 | F55-10 | Preferences | annotation author | M1/M9 | Tested | Preferences + PDF Author button; trimmed prefs round-trip |
 | F55-11 | Preferences | OCR behavior | M1/M9 | Tested | Preferred BCP-47 language; `Save_and_load_round_trips_ocr_language` |

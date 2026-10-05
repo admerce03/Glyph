@@ -219,6 +219,8 @@ public sealed class JsonSettingsStore : ISettingsStore
         StripMetadataByDefault = settings.StripMetadataByDefault,
         DefaultPageLayout = settings.DefaultPageLayout ?? "Continuous",
         DefaultZoom = settings.DefaultZoom,
+        RememberLastPage = settings.RememberLastPage,
+        RememberZoom = settings.RememberZoom,
         Zoom100Meaning = settings.Zoom100Meaning ?? "Pixels",
         DefaultInterpolation = settings.DefaultInterpolation ?? "Auto",
         ColorManagedDisplayDefault = settings.ColorManagedDisplayDefault,

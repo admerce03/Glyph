@@ -1911,20 +1911,16 @@ public sealed partial class MainWindow : Window
                 return null;
             }
 
+            var settings = _settingsStore.Current;
             var saved = await _viewStateStore.TryLoadAsync(session.Path);
-            if (saved is not null)
-            {
-                session.ViewState.Zoom = saved.Zoom;
-                session.ViewState.PageLayout = saved.PageLayout;
-                session.ViewState.CurrentPageIndex = Math.Clamp(
-                    saved.CurrentPageIndex,
-                    0,
-                    Math.Max(0, pdf.PageCount - 1));
-            }
-            else
-            {
-                ApplyPdfOpenDefaults(session.ViewState);
-            }
+            DocumentViewRestorePolicy.ApplyPdf(
+                session.ViewState,
+                saved,
+                pdf.PageCount,
+                DocumentViewRestorePolicy.EffectiveRememberLastPage(settings.RememberLastPage),
+                DocumentViewRestorePolicy.EffectiveRememberZoom(settings.RememberZoom),
+                settings.DefaultZoom,
+                DocumentViewRestorePolicy.ResolveDefaultPageLayout(settings.DefaultPageLayout));
 
             _openEngines[session.Id] = pdf;
             SidebarStatus.Text = $"{pdf.PageCount} pages — thumbnails and search in the document pane.";
@@ -1957,13 +1953,14 @@ public sealed partial class MainWindow : Window
 
         if (session.Kind == DocumentKind.Image && session.Path is not null)
         {
+            var settings = _settingsStore.Current;
             var image = await _imageDecoder.OpenAsync(session.Path);
-            image.ColorManagedDisplay = _settingsStore.Current.ColorManagedDisplayDefault;
+            image.ColorManagedDisplay = settings.ColorManagedDisplayDefault;
             var saved = await _viewStateStore.TryLoadAsync(session.Path);
-            if (saved is not null && saved.Zoom > 0)
-            {
-                session.ViewState.Zoom = saved.Zoom;
-            }
+            DocumentViewRestorePolicy.ApplyImage(
+                session.ViewState,
+                saved,
+                DocumentViewRestorePolicy.EffectiveRememberZoom(settings.RememberZoom));
 
             _openEngines[session.Id] = image;
             SidebarStatus.Text = $"{image.FormatName} · {image.PixelWidth}×{image.PixelHeight}";
@@ -2669,19 +2666,6 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void ApplyPdfOpenDefaults(DocumentViewState viewState)
-    {
-        var settings = _settingsStore.Current;
-        viewState.Zoom = settings.DefaultZoom > 0 ? settings.DefaultZoom : 1.25;
-        viewState.PageLayout = settings.DefaultPageLayout switch
-        {
-            "Single" => PageLayoutMode.SinglePage,
-            "TwoPage" => PageLayoutMode.TwoPage,
-            "TwoPageWithCover" => PageLayoutMode.TwoPageWithCover,
-            _ => PageLayoutMode.Continuous,
-        };
-    }
-
     private async Task ShowPreferencesAsync()
     {
         var settings = _settingsStore.Current;
@@ -2948,6 +2932,16 @@ public sealed partial class MainWindow : Window
             SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
             Width = 280,
         };
+        var rememberLastPageBox = new CheckBox
+        {
+            Content = PreferencesDialogUi.RememberLastPage,
+            IsChecked = DocumentViewRestorePolicy.EffectiveRememberLastPage(settings.RememberLastPage),
+        };
+        var rememberZoomBox = new CheckBox
+        {
+            Content = PreferencesDialogUi.RememberZoom,
+            IsChecked = DocumentViewRestorePolicy.EffectiveRememberZoom(settings.RememberZoom),
+        };
         var zoom100Box = new ComboBox
         {
             Header = PreferencesDialogUi.ImageZoom100Header,
@@ -3045,6 +3039,7 @@ public sealed partial class MainWindow : Window
                 separateWindowsBox, authorBox, compactToolbarBox, toolbarPanel, shortcutPanel,
                 highlightColorBox, strokeColorBox, stickyColorBox, strokeWidthBox,
                 animationAutoplayBox, stripMetadataBox, layoutBox, defaultZoomBox,
+                rememberLastPageBox, rememberZoomBox,
                 zoom100Box, interpolationBox, colorManagedBox, localOcrNote, ocrLanguageBox,
                 privacyHeader, clearRecentButton, clearSignaturesButton, checkUpdatesButton,
             },
@@ -3111,6 +3106,8 @@ public sealed partial class MainWindow : Window
         settings.StripMetadataByDefault = stripMetadataBox.IsChecked == true;
         settings.DefaultPageLayout = PreferencesDialogUi.PdfLayoutNames[Math.Clamp(layoutBox.SelectedIndex, 0, PreferencesDialogUi.PdfLayoutNames.Count - 1)];
         settings.DefaultZoom = Math.Clamp(defaultZoomBox.Value, 0.1, 8);
+        settings.RememberLastPage = rememberLastPageBox.IsChecked == true;
+        settings.RememberZoom = rememberZoomBox.IsChecked == true;
         settings.Zoom100Meaning = PreferencesDialogUi.Zoom100Setting(zoom100Box.SelectedIndex);
         settings.DefaultInterpolation = PreferencesDialogUi.InterpolationSetting(interpolationBox.SelectedIndex);
         settings.ColorManagedDisplayDefault = colorManagedBox.IsChecked == true;
