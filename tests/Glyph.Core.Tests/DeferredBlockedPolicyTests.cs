@@ -13,12 +13,43 @@ public class PackagingDeferredPolicyTests
         PackagingDeferredPolicy.MsixScaffoldShipped.Should().BeTrue();
         PackagingDeferredPolicy.MsixPackageCiProduced.Should().BeTrue();
         PackagingDeferredPolicy.MsixPackageCiTestSigned.Should().BeTrue();
+        PackagingDeferredPolicy.MsixSideloadHelperShipped.Should().BeTrue();
         PackagingDeferredPolicy.NativeFileAssociationsShipped.Should().BeFalse();
         PackagingDeferredPolicy.InAppUpdateCheckShipped.Should().BeFalse();
         PackagingDeferredPolicy.Adr.Should().Be("ADR-012");
         PackagingDeferredPolicy.PublishScript.Should().Contain("publish-msix");
+        PackagingDeferredPolicy.InstallScript.Should().Contain("install-msix-test");
         PackagingDeferredPolicy.ManifestPath.Should().Contain("Package.appxmanifest");
-        PackagingDeferredPolicy.Reason.Should().Contain("Test-signed");
+        PackagingDeferredPolicy.Reason.Should().Contain("sideload helper");
+    }
+
+    [Fact]
+    public void Package_manifest_declares_pdf_and_image_associations()
+    {
+        var root = FindRepoRoot();
+        var manifestPath = Path.Combine(root, PackageFileAssociationDeclaration.ManifestRelativePath);
+        File.Exists(manifestPath).Should().BeTrue(manifestPath);
+        var xml = File.ReadAllText(manifestPath);
+        PackageFileAssociationDeclaration.ManifestDeclaresExpectedAssociations(xml).Should().BeTrue();
+        PackageFileAssociationDeclaration.ParseDeclaredExtensions(xml)
+            .Should().Contain(PackageFileAssociationDeclaration.ExpectedExtensions);
+    }
+
+    private static string FindRepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "Glyph.sln"))
+                || File.Exists(Path.Combine(dir.FullName, PackagingDeferredPolicy.ManifestPath)))
+            {
+                return dir.FullName;
+            }
+
+            dir = dir.Parent;
+        }
+
+        throw new InvalidOperationException("Repo root not found from " + AppContext.BaseDirectory);
     }
 }
 

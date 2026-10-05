@@ -19,6 +19,12 @@ public static class PackagingDeferredPolicy
     /// </summary>
     public const bool MsixPackageCiTestSigned = true;
 
+    /// <summary>
+    /// <c>scripts/install-msix-test.ps1</c> trusts the CI test cert and runs <c>Add-AppxPackage</c>.
+    /// Associations stay deferred until that install is verified on a Windows machine.
+    /// </summary>
+    public const bool MsixSideloadHelperShipped = true;
+
     public const bool NativeFileAssociationsShipped = false;
     public const bool ConfigurableDefaultAssociationsShipped = false;
     public const bool InAppUpdateCheckShipped = false;
@@ -26,8 +32,9 @@ public static class PackagingDeferredPolicy
     public const string Adr = "ADR-012";
 
     public const string Reason =
-        "Test-signed .msix builds on CI; durable file associations and update channel wait on verified sideload.";
+        "Test-signed .msix + sideload helper shipped; durable file associations and update channel wait on verified sideload.";
 
     public const string PublishScript = "scripts/publish-msix.ps1";
+    public const string InstallScript = "scripts/install-msix-test.ps1";
     public const string ManifestPath = "src/Glyph.App/Package.appxmanifest";
 }
