@@ -44,6 +44,17 @@ public sealed class PdfDocumentView : UserControl
     private readonly IPdfFormStore _forms;
     private readonly IPdfDocumentFactory _documentFactory;
     private readonly IOcrEngine? _ocr;
+    private readonly Button _ocrCancelButton;
+    private CancellationTokenSource? _ocrCts;
+    private readonly Dictionary<int, string> _ocrPageTexts = new();
+    private readonly Dictionary<int, (OcrResult Result, int SourceWidth, int SourceHeight)> _ocrPageData = new();
+    private readonly Dictionary<int, Canvas> _ocrOverlays = new();
+    private readonly Dictionary<int, List<(OcrWord Word, Microsoft.UI.Xaml.Shapes.Rectangle Visual)>> _ocrVisualsByPage = new();
+    private readonly HashSet<(int PageIndex, int WordIndex)> _selectedOcrIndices = [];
+    private readonly Button _copyOcrButton;
+    private readonly Button _clearOcrOverlayButton;
+    private readonly Button _ocrSavePdfButton;
+    private readonly Button _ocrEntitiesButton;
     private readonly Window? _ownerWindow;
     private readonly DocumentViewState _viewState;
     private readonly DocumentNavigationHistory _history = new();
@@ -118,6 +129,8 @@ public sealed class PdfDocumentView : UserControl
     private bool _dragSelecting;
     private Windows.Foundation.Point _dragStart;
     private int _dragPageIndex = -1;
+    private int _regionCopyPageIndex = -1;
+    private Windows.Foundation.Rect _regionCopyDisplayRect;
     private PdfAnnotationInfo? _selectedAnnot;
     private bool _annotDragging;
     private PdfRect _annotDragOriginBounds;
@@ -222,9 +235,27 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(_caseSensitiveBox, "Match case");
         var searchButton = new Button { Content = "Find" };
         searchButton.Click += async (_, _) => await RunSearchAsync();
+        var findSelection = new Button { Content = "Find sel" };
+        findSelection.Click += async (_, _) => await SearchSelectedTextAsync();
+        ToolTipService.SetToolTip(findSelection, "Search for the currently selected text");
         var ocrPage = new Button { Content = "OCR" };
-        ocrPage.Click += async (_, _) => await RunOcrSelectedPagesAsync();
-        ToolTipService.SetToolTip(ocrPage, "Run offline OCR on the selected page(s)");
+        ocrPage.Click += async (_, _) => await OnOcrButtonClickAsync();
+        ToolTipService.SetToolTip(ocrPage, "Run offline OCR on selected pages or the entire PDF");
+        _ocrCancelButton = new Button { Content = "Cancel OCR", Visibility = Visibility.Collapsed };
+        _ocrCancelButton.Click += (_, _) => CancelOcr();
+        ToolTipService.SetToolTip(_ocrCancelButton, "Cancel the in-flight OCR job");
+        _copyOcrButton = new Button { Content = "Copy OCR", Visibility = Visibility.Collapsed };
+        _copyOcrButton.Click += (_, _) => CopySelectedOcrText();
+        ToolTipService.SetToolTip(_copyOcrButton, "Copy selected OCR words (or all OCR text on visible pages)");
+        _clearOcrOverlayButton = new Button { Content = "Clear OCR", Visibility = Visibility.Collapsed };
+        _clearOcrOverlayButton.Click += (_, _) => ClearOcrOverlays();
+        ToolTipService.SetToolTip(_clearOcrOverlayButton, "Hide OCR word overlays (keeps Find OCR cache)");
+        _ocrSavePdfButton = new Button { Content = "OCR→PDF", Visibility = Visibility.Collapsed };
+        _ocrSavePdfButton.Click += async (_, _) => await SaveSearchableOcrPdfAsync();
+        ToolTipService.SetToolTip(_ocrSavePdfButton, "Export OCR'd pages as a searchable PDF with invisible text");
+        _ocrEntitiesButton = new Button { Content = "Entities", Visibility = Visibility.Collapsed };
+        _ocrEntitiesButton.Click += async (_, _) => await ShowOcrEntitiesAsync();
+        ToolTipService.SetToolTip(_ocrEntitiesButton, "Review detected URLs, emails, phones, addresses, dates, and times in OCR text");
         var clearSearch = new Button { Content = "Clear" };
         ToolTipService.SetToolTip(clearSearch, "Clear search results");
         clearSearch.Click += async (_, _) => await ClearSearchAsync();
@@ -471,7 +502,7 @@ public sealed class PdfDocumentView : UserControl
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
                 highlight, underline, strikeout, stickyNote, textBox, callout, flatten, sign, formFill, ink, freeform, rect, ellipse, line, arrow,
-                _searchBox, _caseSensitiveBox, searchButton, ocrPage, clearSearch, prevMatch, nextMatch, _status,
+                _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
 
@@ -581,6 +612,10 @@ public sealed class PdfDocumentView : UserControl
         _spreadHost.Children.Clear();
         _pageImages.Clear();
         _pageOverlays.Clear();
+        _ocrOverlays.Clear();
+        _ocrVisualsByPage.Clear();
+        _selectedOcrIndices.Clear();
+        UpdateOcrOverlayChrome();
 
         if (_layoutMode == PageLayoutMode.Continuous)
         {
@@ -665,9 +700,19 @@ public sealed class PdfDocumentView : UserControl
         };
         _pageOverlays[pageIndex] = overlay;
 
+        var ocrOverlay = new Canvas
+        {
+            Width = width,
+            Height = height,
+            IsHitTestVisible = true,
+            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(1, 0, 0, 0)),
+        };
+        _ocrOverlays[pageIndex] = ocrOverlay;
+
         var layer = new Grid { Width = width, Height = height };
         layer.Children.Add(image);
         layer.Children.Add(overlay);
+        layer.Children.Add(ocrOverlay);
 
         var border = new Border
         {
@@ -681,6 +726,10 @@ public sealed class PdfDocumentView : UserControl
         border.PointerMoved += PageBorder_PointerMoved;
         border.PointerReleased += PageBorder_PointerReleased;
         border.PointerCaptureLost += (_, _) => _dragSelecting = false;
+        border.RightTapped += PageBorder_RightTapped;
+        border.CanDrag = true;
+        border.DragStarting += PageBorder_DragStarting;
+        RebuildOcrOverlayForPage(pageIndex);
         return border;
     }
 
@@ -1396,6 +1445,12 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
+        // Reserve right-click for the text selection context menu.
+        if (e.GetCurrentPoint(border).Properties.IsRightButtonPressed)
+        {
+            return;
+        }
+
         if (_cropMode)
         {
             if (pageIndex == _cropPageIndex)
@@ -1467,6 +1522,66 @@ public sealed class PdfDocumentView : UserControl
         _dragPageIndex = pageIndex;
         _dragStart = pressPoint;
         border.CapturePointer(e.Pointer);
+    }
+
+    private void PageBorder_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement target)
+        {
+            return;
+        }
+
+        var hasText = !string.IsNullOrWhiteSpace(_selectedText);
+        var hasRegion = _regionCopyPageIndex >= 0
+            && _regionCopyDisplayRect.Width >= 4
+            && _regionCopyDisplayRect.Height >= 4;
+        if (!hasText && !hasRegion)
+        {
+            _status.Text = "Select text or drag a region, then right-click for actions.";
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+        if (hasText)
+        {
+            var copyItem = new MenuFlyoutItem { Text = "Copy" };
+            copyItem.Click += async (_, _) => await CopyTextAsync();
+            var findItem = new MenuFlyoutItem { Text = "Find selection" };
+            findItem.Click += async (_, _) => await SearchSelectedTextAsync();
+            var webItem = new MenuFlyoutItem { Text = "Search web" };
+            webItem.Click += async (_, _) => await SearchWebAsync(_selectedText);
+            flyout.Items.Add(copyItem);
+            flyout.Items.Add(findItem);
+            flyout.Items.Add(webItem);
+        }
+
+        if (hasRegion)
+        {
+            if (flyout.Items.Count > 0)
+            {
+                flyout.Items.Add(new MenuFlyoutSeparator());
+            }
+
+            var imageItem = new MenuFlyoutItem { Text = "Copy region as image" };
+            imageItem.Click += async (_, _) => await CopyRegionAsBitmapAsync();
+            flyout.Items.Add(imageItem);
+        }
+
+        flyout.ShowAt(target, e.GetPosition(target));
+        e.Handled = true;
+    }
+
+    private void PageBorder_DragStarting(UIElement sender, DragStartingEventArgs args)
+    {
+        if (string.IsNullOrWhiteSpace(_selectedText))
+        {
+            args.Cancel = true;
+            return;
+        }
+
+        args.Data.SetText(_selectedText);
+        args.Data.RequestedOperation = DataPackageOperation.Copy;
+        _status.Text = "Dragging selected text…";
     }
 
     private void PageBorder_PointerMoved(object sender, PointerRoutedEventArgs e)
@@ -1661,18 +1776,52 @@ public sealed class PdfDocumentView : UserControl
         var chars = _pageChars[pageIndex];
         if (wasDragging && dragDistance >= 4)
         {
-            var left = Math.Min(dragStart.X, point.Position.X) / _scale;
-            var right = Math.Max(dragStart.X, point.Position.X) / _scale;
+            var leftUi = Math.Min(dragStart.X, point.Position.X);
             var topUi = Math.Min(dragStart.Y, point.Position.Y);
+            var rightUi = Math.Max(dragStart.X, point.Position.X);
             var bottomUi = Math.Max(dragStart.Y, point.Position.Y);
+            _regionCopyPageIndex = pageIndex;
+            _regionCopyDisplayRect = new Windows.Foundation.Rect(
+                leftUi,
+                topUi,
+                Math.Max(1, rightUi - leftUi),
+                Math.Max(1, bottomUi - topUi));
+
+            var left = leftUi / _scale;
+            var right = rightUi / _scale;
             var top = page.HeightPoints - (bottomUi / _scale);
             var bottom = page.HeightPoints - (topUi / _scale);
             var selection = new PdfRect(left, bottom, right, top);
-            _selectedText = PdfTextSelection.CopyCharsInRect(chars, selection);
-            _selectionPageIndex = pageIndex;
-            _selectionQuads = PdfTextMarkupQuads.FromSelectionRect(chars, selection);
-            await RefreshSearchHighlightsAsync();
-            DrawSelectionOverlay(pageIndex, chars, selection);
+
+            var startPdfX = dragStart.X / _scale;
+            var startPdfY = page.HeightPoints - (dragStart.Y / _scale);
+            var endPdfX = point.Position.X / _scale;
+            var endPdfY = page.HeightPoints - (point.Position.Y / _scale);
+            var rectW = selection.Width;
+            var rectH = selection.Height;
+            // Alt or a wide short-tall drag prefers column/region geometry; otherwise stream across lines.
+            var columnMode = e.KeyModifiers.HasFlag(VirtualKeyModifiers.Menu)
+                || (rectW > Math.Max(40, rectH * 1.75) && rectH > 18);
+
+            if (columnMode)
+            {
+                _selectedText = PdfTextSelection.CopyCharsInRect(chars, selection);
+                _selectionPageIndex = pageIndex;
+                _selectionQuads = PdfTextMarkupQuads.FromSelectionRect(chars, selection);
+                await RefreshSearchHighlightsAsync();
+                DrawSelectionOverlay(pageIndex, chars, selection);
+            }
+            else
+            {
+                var startIdx = PdfTextSelection.NearestCharIndex(chars, startPdfX, startPdfY);
+                var endIdx = PdfTextSelection.NearestCharIndex(chars, endPdfX, endPdfY);
+                _selectedText = PdfTextSelection.CopyText(chars, startIdx, endIdx);
+                _selectionPageIndex = pageIndex;
+                _selectionQuads = PdfTextMarkupQuads.FromIndexRange(chars, startIdx, endIdx);
+                await RefreshSearchHighlightsAsync();
+                DrawSelectionOverlayFromRange(pageIndex, chars, startIdx, endIdx);
+            }
+
             if (_highlightMode && !string.IsNullOrEmpty(_selectedText))
             {
                 await ApplyTextMarkupAsync(PdfTextMarkupKind.Highlight, usePersistentColor: true);
@@ -1680,7 +1829,7 @@ public sealed class PdfDocumentView : UserControl
             }
 
             _status.Text = string.IsNullOrEmpty(_selectedText)
-                ? "No text in selection."
+                ? "Region selected — right-click to copy as image."
                 : $"Selected “{TrimForStatus(_selectedText)}”";
             return;
         }
@@ -1748,6 +1897,22 @@ public sealed class PdfDocumentView : UserControl
         foreach (var ch in PdfTextSelection.CharsInRect(chars, selection))
         {
             AddHighlightRect(overlay, page.HeightPoints, ch.Bounds, Windows.UI.Color.FromArgb(70, 30, 144, 255));
+        }
+    }
+
+    private void DrawSelectionOverlayFromRange(int pageIndex, IReadOnlyList<PdfTextChar> chars, int startIndex, int endIndexInclusive)
+    {
+        if (!_pageOverlays.TryGetValue(pageIndex, out var overlay) || chars.Count == 0)
+        {
+            return;
+        }
+
+        var start = Math.Clamp(Math.Min(startIndex, endIndexInclusive), 0, chars.Count - 1);
+        var end = Math.Clamp(Math.Max(startIndex, endIndexInclusive), 0, chars.Count - 1);
+        var page = _document.GetPage(pageIndex);
+        for (var i = start; i <= end; i++)
+        {
+            AddHighlightRect(overlay, page.HeightPoints, chars[i].Bounds, Windows.UI.Color.FromArgb(70, 30, 144, 255));
         }
     }
 
@@ -1842,7 +2007,33 @@ public sealed class PdfDocumentView : UserControl
         e.Handled = true;
     }
 
-    private async Task RunOcrSelectedPagesAsync()
+    private void CancelOcr()
+    {
+        if (_ocrCts is null)
+        {
+            return;
+        }
+
+        _ocrCts.Cancel();
+        _status.Text = "Cancelling OCR…";
+    }
+
+    private void BeginOcrJob()
+    {
+        _ocrCts?.Cancel();
+        _ocrCts?.Dispose();
+        _ocrCts = new CancellationTokenSource();
+        _ocrCancelButton.Visibility = Visibility.Visible;
+    }
+
+    private void EndOcrJob()
+    {
+        _ocrCancelButton.Visibility = Visibility.Collapsed;
+        _ocrCts?.Dispose();
+        _ocrCts = null;
+    }
+
+    private async Task OnOcrButtonClickAsync()
     {
         if (_ocr is null)
         {
@@ -1850,13 +2041,54 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        var pages = SelectedOrCurrentPages();
+        var selected = SelectedOrCurrentPages();
+        var selectedLabel = selected.Count == 1
+            ? $"Selected / current (page {selected[0] + 1})"
+            : $"Selected pages ({selected.Count})";
+
+        var chooser = new ContentDialog
+        {
+            Title = "OCR",
+            Content = new TextBlock
+            {
+                Text = $"Recognize text offline.\n\n• {selectedLabel}\n• Entire document ({_document.PageCount} pages)",
+                TextWrapping = TextWrapping.Wrap,
+            },
+            PrimaryButtonText = selected.Count == 1 ? "Current page" : "Selected pages",
+            SecondaryButtonText = "Entire document",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+
+        var choice = await chooser.ShowAsync();
+        if (choice == ContentDialogResult.Primary)
+        {
+            await RunOcrPagesAsync(selected);
+        }
+        else if (choice == ContentDialogResult.Secondary)
+        {
+            var all = Enumerable.Range(0, _document.PageCount).ToList();
+            await RunOcrPagesAsync(all);
+        }
+    }
+
+    private async Task RunOcrPagesAsync(IReadOnlyList<int> pages)
+    {
+        if (_ocr is null)
+        {
+            _status.Text = "OCR engine unavailable.";
+            return;
+        }
+
         if (pages.Count == 0)
         {
             _status.Text = "No pages selected for OCR.";
             return;
         }
 
+        BeginOcrJob();
+        var token = _ocrCts!.Token;
         try
         {
             var sections = new List<string>(pages.Count);
@@ -1865,9 +2097,10 @@ public sealed class PdfDocumentView : UserControl
 
             for (var i = 0; i < pages.Count; i++)
             {
+                token.ThrowIfCancellationRequested();
                 var pageIndex = pages[i];
                 _status.Text = pages.Count == 1
-                    ? $"Running OCR on page {pageIndex + 1}…"
+                    ? $"Running OCR on page {pageIndex + 1}… (1/1)"
                     : $"Running OCR on page {pageIndex + 1} ({i + 1}/{pages.Count})…";
 
                 using var rendered = await _renderer.RenderPageAsync(
@@ -1876,20 +2109,37 @@ public sealed class PdfDocumentView : UserControl
                     new PdfRenderRequest(
                         Scale: 4.0,
                         MaxWidthPixels: OcrMaxEdgePixels,
-                        MaxHeightPixels: OcrMaxEdgePixels));
+                        MaxHeightPixels: OcrMaxEdgePixels),
+                    token);
 
+                token.ThrowIfCancellationRequested();
                 var pixels = rendered.Pixels.ToArray();
                 var result = await _ocr.RecognizeAsync(
-                    new OcrRequest(rendered.Width, rendered.Height, pixels));
+                    new OcrRequest(rendered.Width, rendered.Height, pixels),
+                    token);
 
                 totalLines += result.Lines.Count;
                 totalWords += result.Lines.Sum(l => l.Words.Count);
                 var body = string.IsNullOrWhiteSpace(result.Text) ? "(no text recognized)" : result.Text.Trim();
+                if (!string.IsNullOrWhiteSpace(result.Text))
+                {
+                    _ocrPageTexts[pageIndex] = result.Text;
+                    _ocrPageData[pageIndex] = (result, rendered.Width, rendered.Height);
+                }
+                else
+                {
+                    _ocrPageTexts.Remove(pageIndex);
+                    _ocrPageData.Remove(pageIndex);
+                }
+
+                RebuildOcrOverlayForPage(pageIndex);
+
                 sections.Add(pages.Count == 1
                     ? body
                     : $"--- Page {pageIndex + 1} ---\n{body}");
             }
 
+            UpdateOcrOverlayChrome();
             var combined = string.Join("\n\n", sections);
             var box = new TextBox
             {
@@ -1937,12 +2187,556 @@ public sealed class PdfDocumentView : UserControl
                     ? $"OCR page {pages[0] + 1} — no text."
                     : $"OCR {pages.Count} pages — no text.")
                 : (pages.Count == 1
-                    ? $"OCR page {pages[0] + 1} — {totalLines} line(s)."
-                    : $"OCR {pages.Count} pages — {totalLines} line(s).");
+                    ? $"OCR page {pages[0] + 1} — {totalLines} line(s). Click words to select."
+                    : $"OCR {pages.Count} pages — {totalLines} line(s). Click words to select.");
+        }
+        catch (OperationCanceledException)
+        {
+            _status.Text = "OCR cancelled.";
         }
         catch (Exception ex)
         {
             _status.Text = "OCR failed: " + ex.Message;
+        }
+        finally
+        {
+            EndOcrJob();
+        }
+    }
+
+    private void RebuildOcrOverlayForPage(int pageIndex)
+    {
+        if (!_ocrOverlays.TryGetValue(pageIndex, out var overlay))
+        {
+            return;
+        }
+
+        overlay.Children.Clear();
+        _ocrVisualsByPage[pageIndex] = [];
+
+        if (!_ocrPageData.TryGetValue(pageIndex, out var data))
+        {
+            return;
+        }
+
+        var displayWidth = (int)Math.Max(1, Math.Round(overlay.Width));
+        var displayHeight = (int)Math.Max(1, Math.Round(overlay.Height));
+        if (displayWidth <= 0 || displayHeight <= 0 || data.SourceWidth <= 0 || data.SourceHeight <= 0)
+        {
+            return;
+        }
+
+        var visuals = new List<(OcrWord Word, Microsoft.UI.Xaml.Shapes.Rectangle Visual)>();
+        foreach (var line in data.Result.Lines)
+        {
+            foreach (var word in line.Words)
+            {
+                if (string.IsNullOrWhiteSpace(word.Text))
+                {
+                    continue;
+                }
+
+                var mapped = OcrOverlayMapper.MapToDisplay(
+                    word,
+                    data.SourceWidth,
+                    data.SourceHeight,
+                    displayWidth,
+                    displayHeight);
+                var wordIndex = visuals.Count;
+                var rect = new Microsoft.UI.Xaml.Shapes.Rectangle
+                {
+                    Width = mapped.Width,
+                    Height = mapped.Height,
+                    Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(55, 0, 120, 215)),
+                    Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(160, 0, 120, 215)),
+                    StrokeThickness = 1,
+                    Tag = (pageIndex, wordIndex),
+                };
+                Canvas.SetLeft(rect, mapped.X);
+                Canvas.SetTop(rect, mapped.Y);
+                var capturedIndex = wordIndex;
+                rect.PointerPressed += (s, e) =>
+                {
+                    e.Handled = true;
+                    ToggleOcrWordSelection(pageIndex, capturedIndex);
+                };
+                overlay.Children.Add(rect);
+                visuals.Add((word, rect));
+            }
+        }
+
+        _ocrVisualsByPage[pageIndex] = visuals;
+        RefreshOcrSelectionChrome(pageIndex);
+    }
+
+    private void ToggleOcrWordSelection(int pageIndex, int wordIndex)
+    {
+        var key = (pageIndex, wordIndex);
+        var ctrl = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        if (!ctrl)
+        {
+            _selectedOcrIndices.Clear();
+            foreach (var page in _ocrVisualsByPage.Keys.ToList())
+            {
+                RefreshOcrSelectionChrome(page);
+            }
+        }
+
+        if (!_selectedOcrIndices.Add(key))
+        {
+            _selectedOcrIndices.Remove(key);
+        }
+
+        RefreshOcrSelectionChrome(pageIndex);
+        UpdateOcrOverlayChrome();
+        if (_ocrVisualsByPage.TryGetValue(pageIndex, out var visuals)
+            && wordIndex >= 0
+            && wordIndex < visuals.Count)
+        {
+            _status.Text = _selectedOcrIndices.Count == 0
+                ? "OCR selection cleared."
+                : $"Selected OCR: {visuals[wordIndex].Word.Text}";
+        }
+    }
+
+    private void RefreshOcrSelectionChrome(int pageIndex)
+    {
+        if (!_ocrVisualsByPage.TryGetValue(pageIndex, out var visuals))
+        {
+            return;
+        }
+
+        for (var i = 0; i < visuals.Count; i++)
+        {
+            var selected = _selectedOcrIndices.Contains((pageIndex, i));
+            visuals[i].Visual.Fill = new SolidColorBrush(
+                selected
+                    ? Windows.UI.Color.FromArgb(120, 255, 200, 0)
+                    : Windows.UI.Color.FromArgb(55, 0, 120, 215));
+            visuals[i].Visual.Stroke = new SolidColorBrush(
+                selected
+                    ? Windows.UI.Color.FromArgb(220, 255, 170, 0)
+                    : Windows.UI.Color.FromArgb(160, 0, 120, 215));
+        }
+    }
+
+    private void UpdateOcrOverlayChrome()
+    {
+        var hasOverlay = _ocrPageData.Count > 0;
+        _copyOcrButton.Visibility = hasOverlay ? Visibility.Visible : Visibility.Collapsed;
+        _clearOcrOverlayButton.Visibility = hasOverlay ? Visibility.Visible : Visibility.Collapsed;
+        _ocrSavePdfButton.Visibility = hasOverlay ? Visibility.Visible : Visibility.Collapsed;
+        _ocrEntitiesButton.Visibility = hasOverlay ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private async Task SaveSearchableOcrPdfAsync()
+    {
+        if (_ocrPageData.Count == 0)
+        {
+            _status.Text = "Run OCR before exporting a searchable PDF.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Building searchable OCR PDF…";
+            var pages = new List<(byte[] ImageBytes, bool IsJpeg, int PixelWidth, int PixelHeight, IEnumerable<SearchablePdfWord> Words)>();
+            foreach (var pageIndex in _ocrPageData.Keys.OrderBy(i => i))
+            {
+                var data = _ocrPageData[pageIndex];
+                using var rendered = await _renderer.RenderPageAsync(
+                    _document,
+                    pageIndex,
+                    new PdfRenderRequest(
+                        Scale: 4.0,
+                        MaxWidthPixels: OcrMaxEdgePixels,
+                        MaxHeightPixels: OcrMaxEdgePixels));
+
+                var png = await EncodeBgraPngAsync(rendered.Pixels.ToArray(), rendered.Width, rendered.Height);
+                var words = data.Result.Lines
+                    .SelectMany(l => l.Words)
+                    .Where(w => !string.IsNullOrWhiteSpace(w.Text))
+                    .Select(w => new SearchablePdfWord(w.Text, w.X, w.Y, w.Width, w.Height));
+                pages.Add((png, false, rendered.Width, rendered.Height, words));
+            }
+
+            var pdfBytes = OcrSearchablePdfWriter.BuildPages(pages);
+            var window = _ownerWindow
+                ?? App.CurrentApp.MainWindowInstance
+                ?? throw new InvalidOperationException("Main window unavailable for save picker.");
+            var picker = new FileSavePicker();
+            var hwnd = WindowNative.GetWindowHandle(window);
+            InitializeWithWindow.Initialize(picker, hwnd);
+            picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+            picker.SuggestedFileName = "OCR searchable";
+            picker.FileTypeChoices.Add("PDF", [".pdf"]);
+            var file = await picker.PickSaveFileAsync();
+            if (file is null)
+            {
+                _status.Text = "OCR→PDF cancelled.";
+                return;
+            }
+
+            await FileIO.WriteBytesAsync(file, pdfBytes);
+            _status.Text = $"Saved searchable OCR PDF ({pages.Count} page(s)): {file.Name}";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "OCR→PDF failed: " + ex.Message;
+        }
+    }
+
+    private static async Task<byte[]> EncodeBgraPngAsync(byte[] bgra, int width, int height)
+    {
+        using var stream = new Windows.Storage.Streams.InMemoryRandomAccessStream();
+        var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
+        encoder.SetPixelData(
+            BitmapPixelFormat.Bgra8,
+            BitmapAlphaMode.Premultiplied,
+            (uint)width,
+            (uint)height,
+            96,
+            96,
+            bgra);
+        await encoder.FlushAsync();
+        var reader = new Windows.Storage.Streams.DataReader(stream.GetInputStreamAt(0));
+        var size = (uint)stream.Size;
+        await reader.LoadAsync(size);
+        var bytes = new byte[size];
+        reader.ReadBytes(bytes);
+        return bytes;
+    }
+
+    private void CopySelectedOcrText()
+    {
+        string text;
+        if (_selectedOcrIndices.Count > 0)
+        {
+            text = string.Join(
+                ' ',
+                _selectedOcrIndices
+                    .OrderBy(k => k.PageIndex)
+                    .ThenBy(k => k.WordIndex)
+                    .Select(k =>
+                    {
+                        if (!_ocrVisualsByPage.TryGetValue(k.PageIndex, out var visuals)
+                            || k.WordIndex < 0
+                            || k.WordIndex >= visuals.Count)
+                        {
+                            return null;
+                        }
+
+                        return visuals[k.WordIndex].Word.Text;
+                    })
+                    .Where(t => !string.IsNullOrWhiteSpace(t)));
+        }
+        else
+        {
+            text = string.Join(
+                "\n\n",
+                _ocrPageTexts.OrderBy(kv => kv.Key).Select(kv => kv.Value));
+        }
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            _status.Text = "No OCR text to copy.";
+            return;
+        }
+
+        var package = new DataPackage();
+        package.SetText(text);
+        Clipboard.SetContent(package);
+        _status.Text = _selectedOcrIndices.Count == 0
+            ? "All OCR text copied."
+            : $"Copied {_selectedOcrIndices.Count} OCR word(s).";
+    }
+
+    private void ClearOcrOverlays()
+    {
+        _selectedOcrIndices.Clear();
+        foreach (var overlay in _ocrOverlays.Values)
+        {
+            overlay.Children.Clear();
+        }
+
+        _ocrVisualsByPage.Clear();
+        // Keep _ocrPageData / _ocrPageTexts so Find and OCR→PDF still work.
+        _copyOcrButton.Visibility = _ocrPageData.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        _clearOcrOverlayButton.Visibility = Visibility.Collapsed;
+        _ocrSavePdfButton.Visibility = _ocrPageData.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        _ocrEntitiesButton.Visibility = _ocrPageData.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        _status.Text = "OCR overlays cleared.";
+    }
+
+    private async Task ShowOcrEntitiesAsync()
+    {
+        var text = string.Join("\n", _ocrPageTexts.OrderBy(kv => kv.Key).Select(kv => kv.Value));
+        var entities = OcrEntityDetector.Detect(text);
+        if (entities.Count == 0)
+        {
+            _status.Text = "No URLs, emails, phones, addresses, dates, or times detected.";
+            return;
+        }
+
+        var list = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            Width = 440,
+            MaxHeight = 320,
+            ItemsSource = entities.Select(e => $"{e.Kind}: {e.Value}").ToList(),
+        };
+        var copy = new Button { Content = "Copy value", Margin = new Thickness(0, 8, 8, 0) };
+        var open = new Button { Content = "Open / act", Margin = new Thickness(0, 8, 8, 0) };
+        var searchWeb = new Button { Content = "Search web", Margin = new Thickness(0, 8, 0, 0) };
+        copy.Click += (_, _) =>
+        {
+            if (list.SelectedIndex < 0 || list.SelectedIndex >= entities.Count)
+            {
+                return;
+            }
+
+            var package = new DataPackage();
+            package.SetText(entities[list.SelectedIndex].Value);
+            Clipboard.SetContent(package);
+            _status.Text = $"Copied {entities[list.SelectedIndex].Kind}.";
+        };
+        open.Click += async (_, _) =>
+        {
+            if (list.SelectedIndex < 0 || list.SelectedIndex >= entities.Count)
+            {
+                return;
+            }
+
+            await ActOnOcrEntityAsync(entities[list.SelectedIndex]);
+        };
+        searchWeb.Click += async (_, _) =>
+        {
+            if (list.SelectedIndex < 0 || list.SelectedIndex >= entities.Count)
+            {
+                return;
+            }
+
+            await SearchWebAsync(entities[list.SelectedIndex].Value);
+        };
+
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock { Text = $"{entities.Count} entity(ies) in OCR text", Opacity = 0.75 },
+                list,
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Children = { copy, open, searchWeb },
+                },
+            },
+        };
+        var dialog = new ContentDialog
+        {
+            Title = "OCR entities",
+            Content = panel,
+            CloseButtonText = "Close",
+            XamlRoot = XamlRoot,
+        };
+        await dialog.ShowAsync();
+    }
+
+    private async Task ActOnOcrEntityAsync(OcrEntity entity)
+    {
+        try
+        {
+            switch (entity.Kind)
+            {
+                case OcrEntityKind.Url:
+                    {
+                        var href = entity.Value.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                            ? entity.Value
+                            : "https://" + entity.Value;
+                        await Launcher.LaunchUriAsync(new Uri(href));
+                        _status.Text = "Opened URL.";
+                        break;
+                    }
+                case OcrEntityKind.Email:
+                    await Launcher.LaunchUriAsync(new Uri("mailto:" + entity.Value));
+                    _status.Text = "Opened mail compose.";
+                    break;
+                case OcrEntityKind.Address:
+                    {
+                        var maps = "https://www.bing.com/maps?q=" + Uri.EscapeDataString(entity.Value);
+                        await Launcher.LaunchUriAsync(new Uri(maps));
+                        _status.Text = "Opened address in Maps.";
+                        break;
+                    }
+                case OcrEntityKind.Date:
+                case OcrEntityKind.Time:
+                    await CreateCalendarFromOcrAsync(entity);
+                    break;
+                case OcrEntityKind.Phone:
+                default:
+                    {
+                        var package = new DataPackage();
+                        package.SetText(entity.Value);
+                        Clipboard.SetContent(package);
+                        _status.Text = $"Copied {entity.Kind}.";
+                        break;
+                    }
+            }
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Entity action failed: " + ex.Message;
+        }
+    }
+
+    private async Task CreateCalendarFromOcrAsync(OcrEntity entity)
+    {
+        string ics;
+        if (entity.Kind == OcrEntityKind.Date
+            && OcrCalendarInvite.TryParseDate(entity.Value, out var date))
+        {
+            ics = OcrCalendarInvite.BuildAllDayEvent(date, "Glyph OCR: " + entity.Value);
+        }
+        else if (entity.Kind == OcrEntityKind.Time
+            && OcrCalendarInvite.TryParseTime(entity.Value, out var time))
+        {
+            var start = DateTime.Today.Add(time);
+            ics = OcrCalendarInvite.BuildTimedEvent(start, TimeSpan.FromHours(1), "Glyph OCR: " + entity.Value);
+        }
+        else
+        {
+            var package = new DataPackage();
+            package.SetText(entity.Value);
+            Clipboard.SetContent(package);
+            _status.Text = $"Copied {entity.Kind} (could not parse for calendar).";
+            return;
+        }
+
+        var path = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(),
+            "glyph-ocr-" + Guid.NewGuid().ToString("N") + ".ics");
+        await System.IO.File.WriteAllTextAsync(path, ics);
+        var file = await StorageFile.GetFileFromPathAsync(path);
+        await Launcher.LaunchFileAsync(file);
+        _status.Text = "Opened calendar invite.";
+    }
+
+    private async Task SearchWebAsync(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            _status.Text = "Nothing to search.";
+            return;
+        }
+
+        try
+        {
+            var url = "https://www.bing.com/search?q=" + Uri.EscapeDataString(query.Trim());
+            await Launcher.LaunchUriAsync(new Uri(url));
+            _status.Text = "Opened web search.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Search web failed: " + ex.Message;
+        }
+    }
+
+    private async Task CopyRegionAsBitmapAsync()
+    {
+        if (_regionCopyPageIndex < 0
+            || _regionCopyDisplayRect.Width < 4
+            || _regionCopyDisplayRect.Height < 4)
+        {
+            _status.Text = "Drag a region on the page first.";
+            return;
+        }
+
+        try
+        {
+            _status.Text = "Copying region…";
+            using var rendered = await _renderer.RenderPageAsync(
+                _document,
+                _regionCopyPageIndex,
+                new PdfRenderRequest(_scale));
+
+            var page = _document.GetPage(_regionCopyPageIndex);
+            var scaleX = rendered.Width / Math.Max(1.0, page.WidthPoints * _scale);
+            var scaleY = rendered.Height / Math.Max(1.0, page.HeightPoints * _scale);
+            var srcX = (int)Math.Floor(_regionCopyDisplayRect.X * scaleX);
+            var srcY = (int)Math.Floor(_regionCopyDisplayRect.Y * scaleY);
+            var srcW = (int)Math.Ceiling(_regionCopyDisplayRect.Width * scaleX);
+            var srcH = (int)Math.Ceiling(_regionCopyDisplayRect.Height * scaleY);
+            srcX = Math.Clamp(srcX, 0, Math.Max(0, rendered.Width - 1));
+            srcY = Math.Clamp(srcY, 0, Math.Max(0, rendered.Height - 1));
+            srcW = Math.Clamp(srcW, 1, rendered.Width - srcX);
+            srcH = Math.Clamp(srcH, 1, rendered.Height - srcY);
+
+            var full = rendered.Pixels.ToArray();
+            var cropped = new byte[srcW * srcH * 4];
+            for (var y = 0; y < srcH; y++)
+            {
+                var srcOffset = ((srcY + y) * rendered.Width + srcX) * 4;
+                var dstOffset = y * srcW * 4;
+                Buffer.BlockCopy(full, srcOffset, cropped, dstOffset, srcW * 4);
+            }
+
+            var png = await EncodeBgraPngAsync(cropped, srcW, srcH);
+            var stream = new Windows.Storage.Streams.InMemoryRandomAccessStream();
+            var writer = new Windows.Storage.Streams.DataWriter(stream);
+            writer.WriteBytes(png);
+            await writer.StoreAsync();
+            await writer.FlushAsync();
+            writer.DetachStream();
+            stream.Seek(0);
+            var package = new DataPackage();
+            package.SetBitmap(Windows.Storage.Streams.RandomAccessStreamReference.CreateFromStream(stream));
+            Clipboard.SetContent(package);
+            _status.Text = $"Copied region ({srcW}×{srcH}) to clipboard.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Copy region failed: " + ex.Message;
+        }
+    }
+
+    private async Task SearchSelectedTextAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_selectedText))
+        {
+            _status.Text = "Select text on the page first.";
+            return;
+        }
+
+        var query = _selectedText.Trim();
+        if (query.Length > 200)
+        {
+            query = query[..200].Trim();
+        }
+
+        _searchBox.Text = query;
+        await RunSearchAsync();
+    }
+
+    public async Task RunExternalFindAsync(string query, int? preferPageIndex = null)
+    {
+        _searchBox.Text = query ?? string.Empty;
+        await RunSearchAsync();
+        if (preferPageIndex is int page
+            && page >= 0
+            && page < _document.PageCount)
+        {
+            await GoToPageAsync(page, recordHistory: true);
+            if (_hits.Count > 0)
+            {
+                var hitIndex = _hits.ToList().FindIndex(h => h.PageIndex == page);
+                if (hitIndex >= 0)
+                {
+                    _activeHitIndex = hitIndex;
+                    _searchResults.SelectedIndex = hitIndex;
+                }
+            }
         }
     }
 
@@ -1969,9 +2763,57 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        _hits = result.Hits;
+        var ocrHits = PdfPageTextSearch.Find(_ocrPageTexts, query, _searchCaseSensitive);
+        var merged = MergeSearchHits(result.Hits, ocrHits);
+        var usedOcr = ocrHits.Count > 0;
+        var status = result.Status;
+        string? message = result.Message;
+
+        if (merged.Count > 0)
+        {
+            status = PdfSearchStatus.Success;
+            message = usedOcr && result.Hits.Count == 0
+                ? $"{merged.Count} OCR match{(merged.Count == 1 ? string.Empty : "es")}"
+                : usedOcr
+                    ? $"{merged.Count} match{(merged.Count == 1 ? string.Empty : "es")} (incl. OCR)"
+                    : null;
+        }
+        else if (status == PdfSearchStatus.NoExtractableText && _ocrPageTexts.Count == 0)
+        {
+            message = result.Message ?? "OCR required.";
+            if (_ocr is not null && !string.IsNullOrWhiteSpace(query))
+            {
+                var offer = new ContentDialog
+                {
+                    Title = "OCR required",
+                    Content = "This PDF has no extractable text. Run OCR on the current page so Find can search recognized text?",
+                    PrimaryButtonText = "OCR page",
+                    CloseButtonText = "Not now",
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = XamlRoot,
+                };
+                if (await offer.ShowAsync() == ContentDialogResult.Primary)
+                {
+                    await RunOcrPagesAsync([CurrentPageIndex]);
+                    if (_ocrPageTexts.ContainsKey(CurrentPageIndex))
+                    {
+                        await RunSearchAsync();
+                        return;
+                    }
+                }
+            }
+        }
+        else if ((status is PdfSearchStatus.NoExtractableText or PdfSearchStatus.NoMatches)
+                 && _ocrPageTexts.Count > 0
+                 && !string.IsNullOrWhiteSpace(query))
+        {
+            status = PdfSearchStatus.NoMatches;
+            message = "No matches in document text or OCR cache.";
+        }
+
+        _hits = merged;
         _activeHitIndex = _hits.Count > 0 ? 0 : -1;
-        if (result.Status is PdfSearchStatus.EmptyQuery or PdfSearchStatus.NoMatches)
+        if (status is PdfSearchStatus.EmptyQuery or PdfSearchStatus.NoMatches or PdfSearchStatus.NoExtractableText)
         {
             _searchQuery = string.Empty;
             foreach (var overlay in _pageOverlays.Values)
@@ -1980,18 +2822,27 @@ public sealed class PdfDocumentView : UserControl
             }
         }
         _searchResults.ItemsSource = _hits
-            .Select(h => $"p.{h.PageIndex + 1}: {h.Snippet}")
+            .Select(h =>
+            {
+                var ocrTag = ocrHits.Any(o =>
+                    o.PageIndex == h.PageIndex
+                    && o.MatchStart == h.MatchStart
+                    && o.MatchLength == h.MatchLength)
+                    ? " [OCR]"
+                    : string.Empty;
+                return $"p.{h.PageIndex + 1}{ocrTag}: {h.Snippet}";
+            })
             .ToList();
 
-        _status.Text = result.Status switch
+        _status.Text = status switch
         {
-            PdfSearchStatus.EmptyQuery => result.Message ?? "Enter search text.",
-            PdfSearchStatus.NoMatches => result.Message ?? "No matches.",
-            PdfSearchStatus.NoExtractableText => result.Message ?? "OCR required.",
-            PdfSearchStatus.DocumentEncrypted => result.Message ?? "Password required.",
-            PdfSearchStatus.Failed => result.Message ?? "Search failed.",
-            PdfSearchStatus.Success => $"{_hits.Count} match{(_hits.Count == 1 ? string.Empty : "es")}",
-            _ => result.Message ?? _status.Text,
+            PdfSearchStatus.EmptyQuery => message ?? "Enter search text.",
+            PdfSearchStatus.NoMatches => message ?? "No matches.",
+            PdfSearchStatus.NoExtractableText => message ?? "OCR required.",
+            PdfSearchStatus.DocumentEncrypted => message ?? "Password required.",
+            PdfSearchStatus.Failed => message ?? "Search failed.",
+            PdfSearchStatus.Success => message ?? $"{_hits.Count} match{(_hits.Count == 1 ? string.Empty : "es")}",
+            _ => message ?? _status.Text,
         };
 
         if (_activeHitIndex >= 0)
@@ -2001,6 +2852,36 @@ public sealed class PdfDocumentView : UserControl
         }
 
         await RefreshSearchHighlightsAsync();
+    }
+
+    private static IReadOnlyList<PdfSearchHit> MergeSearchHits(
+        IReadOnlyList<PdfSearchHit> nativeHits,
+        IReadOnlyList<PdfSearchHit> ocrHits)
+    {
+        if (ocrHits.Count == 0)
+        {
+            return nativeHits;
+        }
+
+        if (nativeHits.Count == 0)
+        {
+            return ocrHits;
+        }
+
+        var seen = new HashSet<(int Page, int Start, int Length)>();
+        var merged = new List<PdfSearchHit>(nativeHits.Count + ocrHits.Count);
+        foreach (var hit in nativeHits.Concat(ocrHits).OrderBy(h => h.PageIndex).ThenBy(h => h.MatchStart))
+        {
+            var key = (hit.PageIndex, hit.MatchStart, hit.MatchLength);
+            if (!seen.Add(key))
+            {
+                continue;
+            }
+
+            merged.Add(hit);
+        }
+
+        return merged;
     }
 
     private void ClearSearchResults(string status)
@@ -5587,6 +6468,10 @@ public sealed class PdfDocumentView : UserControl
         _pageLinks.Clear();
         _pageImages.Clear();
         _pageOverlays.Clear();
+        _ocrOverlays.Clear();
+        _ocrVisualsByPage.Clear();
+        _selectedOcrIndices.Clear();
+        UpdateOcrOverlayChrome();
         CurrentPageIndex = Math.Clamp(CurrentPageIndex, 0, Math.Max(0, _document.PageCount - 1));
 
         var stillValid = _pageSelection.SelectedIndexes.Where(i => i < _document.PageCount).ToList();

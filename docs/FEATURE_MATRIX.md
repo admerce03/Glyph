@@ -126,7 +126,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F06-05 | PDF search | Any-word search. | M2/M6 | Implemented | Service supports `ExactPhrase: false`; UI still phrase-default |
 | F06-06 | PDF search | Search all occurrences. | M2/M6 | Tested | Collects every hit per page |
 | F06-07 | PDF search | Search current PDF. | M2/M6 | Tested | Current document path |
-| F06-08 | PDF search | Search all open PDFs. | M2/M6 | Not Started |  |
+| F06-08 | PDF search | Search all open PDFs. | M2/M6 | Implemented | Edit → Find in all open PDFs (Ctrl+Shift+F) |
 | F06-09 | PDF search | Highlight matches on pages. | M2/M6 | Implemented | Gold overlays from PDFium char boxes |
 | F06-10 | PDF search | Results sidebar. | M2/M6 | Implemented | Results list in viewer sidebar |
 | F06-11 | PDF search | Show contextual snippets around matches. | M2/M6 | Tested | Snippet around match |
@@ -135,44 +135,44 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F06-14 | PDF search | Previous match. | M2/M6 | Implemented | Toolbar previous-match control |
 | F06-15 | PDF search | Clear search. | M2/M6 | Implemented | Clear button + Escape; cancels in-flight search and overlays |
 | F06-16 | PDF search | Click result to jump to it. | M2/M6 | Tested | Selection jumps to hit page index |
-| F06-17 | PDF search | Search OCR text where OCR has been generated. | M2/M6 | Not Started | Image-only PDFs report OCR required |
+| F06-17 | PDF search | Search OCR text where OCR has been generated. | M2/M6 | Implemented | Session OCR cache merged into Find results (`PdfPageTextSearch`) |
 | F07-01 | PDF text interaction | Text selection. | M2/M6 | Implemented | Click near glyphs selects word-ish run via PDFium text |
 | F07-02 | PDF text interaction | Copy text. | M2/M6 | Implemented | Copy button / Ctrl+C |
-| F07-03 | PDF text interaction | Select across lines. | M2/M6 | Not Started |  |
-| F07-04 | PDF text interaction | Select columns where practical. | M2/M6 | Not Started |  |
+| F07-03 | PDF text interaction | Select across lines. | M2/M6 | Implemented | Drag stream selection across lines; Alt/wide drag = column rect |
+| F07-04 | PDF text interaction | Select columns where practical. | M2/M6 | In Progress | Alt-drag or wide region uses rectangular column selection |
 | F07-05 | PDF text interaction | Select all text on page/document. | M2/M6 | In Progress | Copy falls back to full page text |
-| F07-06 | PDF text interaction | Right-click selected text. | M2/M6 | Not Started |  |
+| F07-06 | PDF text interaction | Right-click selected text. | M2/M6 | Implemented | Context menu: Copy / Find selection / Search web / Copy region as image |
 | F07-07 | PDF text interaction | Copy. | M2/M6 | Implemented | Clipboard text package |
-| F07-08 | PDF text interaction | Search selected text. | M2/M6 | Not Started |  |
-| F07-09 | PDF text interaction | OCR fallback on scanned PDFs. | M2/M6 | Not Started |  |
-| F07-10 | PDF text interaction | Preserve reasonable reading order during copy. | M2/M6 | Not Started |  |
-| F07-11 | PDF text interaction | Rectangular selection for copying a region as an image. | M2/M6 | Not Started |  |
-| F07-12 | PDF text interaction | Copy selected PDF region to clipboard as bitmap. | M2/M6 | Not Started |  |
-| F07-13 | PDF text interaction | Drag selected text where supported. | M2/M6 | Not Started |  |
+| F07-08 | PDF text interaction | Search selected text. | M2/M6 | Implemented | Find sel toolbar uses current text selection as query |
+| F07-09 | PDF text interaction | OCR fallback on scanned PDFs. | M2/M6 | Implemented | Find on image-only PDF offers OCR current page then re-searches |
+| F07-10 | PDF text interaction | Preserve reasonable reading order during copy. | M2/M6 | Implemented | `PdfTextSelection` top-to-bottom / left-to-right with newlines |
+| F07-11 | PDF text interaction | Rectangular selection for copying a region as an image. | M2/M6 | Implemented | Drag region + right-click Copy region as image |
+| F07-12 | PDF text interaction | Copy selected PDF region to clipboard as bitmap. | M2/M6 | Implemented | Renders page crop to PNG bitmap on clipboard |
+| F07-13 | PDF text interaction | Drag selected text where supported. | M2/M6 | Implemented | Page CanDrag exports selected text via DragStarting |
 | F08-01 | OCR / Live Text equivalent | Detect text automatically or on demand. | M6 | Implemented | Image + PDF page OCR toolbar → Windows.Media.Ocr |
-| F08-02 | OCR / Live Text equivalent | Select detected text directly over the image. | M6 | Not Started |  |
+| F08-02 | OCR / Live Text equivalent | Select detected text directly over the image. | M6 | Implemented | PDF OCR word-box overlay (click/Ctrl+click) + Copy OCR; image overlay on Live Text PR |
 | F08-03 | OCR / Live Text equivalent | Copy text. | M6 | Implemented | OCR result dialog Copy text |
 | F08-04 | OCR / Live Text equivalent | Copy all recognized text. | M6 | Implemented | Same as copy full result text |
-| F08-05 | OCR / Live Text equivalent | Search recognized text. | M6 | Not Started |  |
+| F08-05 | OCR / Live Text equivalent | Search recognized text. | M6 | Implemented | Find merges session OCR cache; OCR word overlays after page OCR |
 | F08-06 | OCR / Live Text equivalent | OCR current page. | M6 | Implemented | PdfDocumentView OCR uses selected-or-current pages |
 | F08-07 | OCR / Live Text equivalent | OCR selected pages. | M6 | Implemented | Multi-select thumbnails → OCR concatenates page sections |
-| F08-08 | OCR / Live Text equivalent | OCR entire PDF. | M6 | Not Started |  |
+| F08-08 | OCR / Live Text equivalent | OCR entire PDF. | M6 | Implemented | OCR chooser Secondary = entire document page range |
 | F08-09 | OCR / Live Text equivalent | OCR multiple images. | M6 | Not Started |  |
-| F08-10 | OCR / Live Text equivalent | Optionally embed OCR text layer into PDF. | M6 | Not Started |  |
-| F08-11 | OCR / Live Text equivalent | Preserve image underneath the OCR layer. | M6 | Not Started |  |
-| F08-12 | OCR / Live Text equivalent | URLs | M6 | Not Started |  |
-| F08-13 | OCR / Live Text equivalent | email addresses | M6 | Not Started |  |
-| F08-14 | OCR / Live Text equivalent | phone numbers | M6 | Not Started |  |
-| F08-15 | OCR / Live Text equivalent | physical addresses | M6 | Not Started |  |
-| F08-16 | OCR / Live Text equivalent | dates | M6 | Not Started |  |
-| F08-17 | OCR / Live Text equivalent | times | M6 | Not Started |  |
-| F08-18 | OCR / Live Text equivalent | Open URL in default browser. | M6 | Not Started |  |
-| F08-19 | OCR / Live Text equivalent | Create email in default mail application. | M6 | Not Started |  |
-| F08-20 | OCR / Live Text equivalent | Copy phone number. | M6 | Not Started |  |
-| F08-21 | OCR / Live Text equivalent | Open address in user's default mapping/web service. | M6 | Not Started |  |
-| F08-22 | OCR / Live Text equivalent | Create calendar event through appropriate Windows/system mechanism where feasible. | M6 | Not Started |  |
-| F08-23 | OCR / Live Text equivalent | Search web. | M6 | Not Started |  |
-| F08-24 | OCR / Live Text equivalent | Copy recognized value. | M6 | Not Started |  |
+| F08-10 | OCR / Live Text equivalent | Optionally embed OCR text layer into PDF. | M6 | Implemented | OCR→PDF export via `OcrSearchablePdfWriter` invisible text |
+| F08-11 | OCR / Live Text equivalent | Preserve image underneath the OCR layer. | M6 | Implemented | Full-bleed page render under invisible text layer |
+| F08-12 | OCR / Live Text equivalent | URLs | M6 | Implemented | `OcrEntityDetector` + Entities dialog Open |
+| F08-13 | OCR / Live Text equivalent | email addresses | M6 | Implemented | `OcrEntityDetector` + mailto launch |
+| F08-14 | OCR / Live Text equivalent | phone numbers | M6 | Implemented | `OcrEntityDetector` + Copy value |
+| F08-15 | OCR / Live Text equivalent | physical addresses | M6 | Implemented | `OcrEntityDetector` street + city/ST/ZIP |
+| F08-16 | OCR / Live Text equivalent | dates | M6 | Implemented | `OcrEntityDetector` date patterns |
+| F08-17 | OCR / Live Text equivalent | times | M6 | Implemented | `OcrEntityDetector` time patterns |
+| F08-18 | OCR / Live Text equivalent | Open URL in default browser. | M6 | Implemented | Entities → Open / act |
+| F08-19 | OCR / Live Text equivalent | Create email in default mail application. | M6 | Implemented | Entities → mailto: |
+| F08-20 | OCR / Live Text equivalent | Copy phone number. | M6 | Implemented | Entities → Copy value |
+| F08-21 | OCR / Live Text equivalent | Open address in user's default mapping/web service. | M6 | Implemented | Entities → Bing Maps query |
+| F08-22 | OCR / Live Text equivalent | Create calendar event through appropriate Windows/system mechanism where feasible. | M6 | Implemented | Entities → temp `.ics` via `OcrCalendarInvite` |
+| F08-23 | OCR / Live Text equivalent | Search web. | M6 | Implemented | Entities dialog → Bing |
+| F08-24 | OCR / Live Text equivalent | Copy recognized value. | M6 | Implemented | Entities → Copy value |
 | F09-01 | PDF bookmarks | Add bookmark at current page/location. | M2/M4 | Not Started |  |
 | F09-02 | PDF bookmarks | Rename bookmark. | M2/M4 | Not Started |  |
 | F09-03 | PDF bookmarks | Delete bookmark. | M2/M4 | Not Started |  |
@@ -812,7 +812,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F57-09 | Performance behavior | large-document virtualization | M2+/M9 | Not Started |  |
 | F57-10 | Performance behavior | low memory usage | M2+/M9 | Not Started |  |
 | F57-11 | Performance behavior | unload distant PDF pages | M2+/M9 | Not Started |  |
-| F57-12 | Performance behavior | cancel long-running operations | M2+/M9 | Not Started |  |
+| F57-12 | Performance behavior | cancel long-running operations | M2+/M9 | In Progress | PDF OCR Cancel OCR + `CancellationToken`; PDF search cancel |
 | F57-13 | Performance behavior | progress indicator for: | M2+/M9 | Not Started |  |
 | F58-01 | Large-document handling | PDFs with thousands of pages. | M2+/M9 | In Progress | Page virtualization via on-demand render + cache |
 | F58-02 | Large-document handling | Very large raster images. | M2+/M9 | Not Started |  |
@@ -821,7 +821,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F58-05 | Large-document handling | Efficient page cache. | M2+/M9 | Not Started |  |
 | F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Not Started |  |
 | F58-07 | Large-document handling | Partial OCR. | M2+/M9 | Not Started |  |
-| F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | Not Started |  |
+| F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | In Progress | PDF search cancel + PDF/image OCR Cancel OCR |
 | F59-01 | Multi-document workflow | multiple tabs | M1/M3 | Implemented | Tab strip + per-tab document hosts |
 | F59-02 | Multi-document workflow | multiple windows | M1/M3 | Implemented | File → New Window; per-window `WorkspaceState` |
 | F59-03 | Multi-document workflow | drag tabs between windows | M1/M3 | Not Started |  |
