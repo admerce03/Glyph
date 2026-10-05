@@ -6251,13 +6251,14 @@ public sealed class PdfDocumentView : UserControl
             var pad = raster.PaddingPoints;
             var bounds = new PdfRect(minX - pad, minY - pad, maxX + pad, maxY + pad);
 
-            await _annotations.AddStampAsync(
+            var stamp = await _annotations.AddStampAsync(
                 _document,
                 pageIndex,
                 bounds,
                 raster.BgraPixels,
                 raster.PixelWidth,
                 raster.PixelHeight);
+            RememberAnnotationForUndo(stamp);
             await ApplySignatureContentsAsync(pageIndex, FormatSignatureContents(name, description));
 
             _cache.ClearDocument(_documentKey);
@@ -6446,13 +6447,14 @@ public sealed class PdfDocumentView : UserControl
         var bottom = Math.Max(36, 48.0);
         var bounds = new PdfRect(left, bottom, left + targetWidth, bottom + targetHeight);
 
-        await _annotations.AddStampAsync(
+        var stamp = await _annotations.AddStampAsync(
             _document,
             CurrentPageIndex,
             bounds,
             pixels,
             width,
             height);
+        RememberAnnotationForUndo(stamp);
         await ApplySignatureContentsAsync(
             CurrentPageIndex,
             string.IsNullOrWhiteSpace(contents) ? "Signature" : contents);
@@ -7157,13 +7159,14 @@ public sealed class PdfDocumentView : UserControl
         var bottom = field.Bounds.Bottom + ((fieldH - targetHeight) / 2);
         var bounds = new PdfRect(left, bottom, left + targetWidth, bottom + targetHeight);
 
-        await _annotations.AddStampAsync(
+        var stamp = await _annotations.AddStampAsync(
             _document,
             field.PageIndex,
             bounds,
             pixels,
             width,
             height);
+        RememberAnnotationForUndo(stamp);
         await ApplySignatureContentsAsync(field.PageIndex, FormatSignatureContents(entry));
 
         _cache.ClearDocument(_documentKey);
