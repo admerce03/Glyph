@@ -1,6 +1,6 @@
+using Glyph.Core.IO;
 using Glyph.Imaging.Abstractions;
 using ImageMagick;
-using Glyph.Core.IO;
 
 namespace Glyph.Imaging.Magick;
 

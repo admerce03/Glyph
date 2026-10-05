@@ -1706,125 +1706,125 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                     }
                     else
                     {
-                    uint r = 0, g = 0, b = 0, a = 255;
-                    if (fpdf_annot.FPDFAnnotGetColor(
-                            annot,
-                            FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_Color,
-                            ref r,
-                            ref g,
-                            ref b,
-                            ref a) != 0)
-                    {
-                        color = new PdfAnnotationColor((byte)r, (byte)g, (byte)b, (byte)a);
-                    }
-
-                    contents = PdfiumAnnotStrings.GetString(annot, "Contents");
-                    author = PdfiumAnnotStrings.GetString(annot, "T");
-                    if (string.IsNullOrWhiteSpace(author))
-                    {
-                        author = null;
-                    }
-
-                    markupKind = FromSubtype(subtype);
-                    shapeKind = FromShapeSubtype(subtype);
-                    if (shapeKind == PdfShapeKind.Rectangle)
-                    {
-                        if (string.Equals(contents, "HighlightRect", StringComparison.Ordinal))
+                        uint r = 0, g = 0, b = 0, a = 255;
+                        if (fpdf_annot.FPDFAnnotGetColor(
+                                annot,
+                                FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_Color,
+                                ref r,
+                                ref g,
+                                ref b,
+                                ref a) != 0)
                         {
-                            shapeKind = PdfShapeKind.HighlightRectangle;
+                            color = new PdfAnnotationColor((byte)r, (byte)g, (byte)b, (byte)a);
                         }
-                        else if (string.Equals(contents, "RoundedRect", StringComparison.Ordinal)
-                                 || (PdfiumNative.AnnotGetBorder(
-                                         annot.__Instance,
-                                         out var hr,
-                                         out var vr,
-                                         out _) != 0
-                                     && (hr > 0.5f || vr > 0.5f)))
+
+                        contents = PdfiumAnnotStrings.GetString(annot, "Contents");
+                        author = PdfiumAnnotStrings.GetString(annot, "T");
+                        if (string.IsNullOrWhiteSpace(author))
                         {
-                            shapeKind = PdfShapeKind.RoundedRectangle;
+                            author = null;
                         }
-                    }
 
-                    if (shapeKind == PdfShapeKind.Ellipse
-                        && string.Equals(contents, "Loupe", StringComparison.Ordinal))
-                    {
-                        shapeKind = PdfShapeKind.Loupe;
-                    }
-
-                    if (shapeKind is null && subtype == PdfiumAnnotSubtypes.Ink)
-                    {
-                        shapeKind = FromInkShapeContents(contents);
-                    }
-
-                    if (markupKind is not null)
-                    {
-                        var count = fpdf_annot.FPDFAnnotCountAttachmentPoints(annot);
-                        for (ulong i = 0; i < count; i++)
+                        markupKind = FromSubtype(subtype);
+                        shapeKind = FromShapeSubtype(subtype);
+                        if (shapeKind == PdfShapeKind.Rectangle)
                         {
-                            using var quad = new FS_QUADPOINTSF();
-                            if (fpdf_annot.FPDFAnnotGetAttachmentPoints(annot, i, quad) == 0)
+                            if (string.Equals(contents, "HighlightRect", StringComparison.Ordinal))
                             {
-                                continue;
+                                shapeKind = PdfShapeKind.HighlightRectangle;
                             }
-
-                            quads.Add(new PdfQuad(
-                                quad.X1 + offset,
-                                quad.Y1 - offset,
-                                quad.X2 + offset,
-                                quad.Y2 - offset,
-                                quad.X3 + offset,
-                                quad.Y3 - offset,
-                                quad.X4 + offset,
-                                quad.Y4 - offset));
-                        }
-                    }
-
-                    if (subtype == PdfiumAnnotSubtypes.Ink)
-                    {
-                        var strokeCount = (uint)PdfiumNative.AnnotGetInkListCount(annot.__Instance);
-                        for (uint s = 0; s < strokeCount; s++)
-                        {
-                            var needed = PdfiumNative.AnnotGetInkListPath(annot.__Instance, s, IntPtr.Zero, 0);
-                            if (needed == 0)
+                            else if (string.Equals(contents, "RoundedRect", StringComparison.Ordinal)
+                                     || (PdfiumNative.AnnotGetBorder(
+                                             annot.__Instance,
+                                             out var hr,
+                                             out var vr,
+                                             out _) != 0
+                                         && (hr > 0.5f || vr > 0.5f)))
                             {
-                                continue;
+                                shapeKind = PdfShapeKind.RoundedRectangle;
                             }
+                        }
 
-                            var buffer = new PdfiumNative.FsPointF[needed];
-                            var handle = System.Runtime.InteropServices.GCHandle.Alloc(
-                                buffer,
-                                System.Runtime.InteropServices.GCHandleType.Pinned);
-                            try
+                        if (shapeKind == PdfShapeKind.Ellipse
+                            && string.Equals(contents, "Loupe", StringComparison.Ordinal))
+                        {
+                            shapeKind = PdfShapeKind.Loupe;
+                        }
+
+                        if (shapeKind is null && subtype == PdfiumAnnotSubtypes.Ink)
+                        {
+                            shapeKind = FromInkShapeContents(contents);
+                        }
+
+                        if (markupKind is not null)
+                        {
+                            var count = fpdf_annot.FPDFAnnotCountAttachmentPoints(annot);
+                            for (ulong i = 0; i < count; i++)
                             {
-                                var written = PdfiumNative.AnnotGetInkListPath(
-                                    annot.__Instance,
-                                    s,
-                                    handle.AddrOfPinnedObject(),
-                                    needed);
-                                if (written == 0)
+                                using var quad = new FS_QUADPOINTSF();
+                                if (fpdf_annot.FPDFAnnotGetAttachmentPoints(annot, i, quad) == 0)
                                 {
                                     continue;
                                 }
 
-                                var stroke = new List<PdfPagePoint>((int)written);
-                                for (var i = 0; i < (int)written; i++)
-                                {
-                                    stroke.Add(new PdfPagePoint(
-                                        buffer[i].X + offset,
-                                        buffer[i].Y - offset));
-                                }
-
-                                if (stroke.Count >= 2)
-                                {
-                                    inkStrokes.Add(stroke);
-                                }
-                            }
-                            finally
-                            {
-                                handle.Free();
+                                quads.Add(new PdfQuad(
+                                    quad.X1 + offset,
+                                    quad.Y1 - offset,
+                                    quad.X2 + offset,
+                                    quad.Y2 - offset,
+                                    quad.X3 + offset,
+                                    quad.Y3 - offset,
+                                    quad.X4 + offset,
+                                    quad.Y4 - offset));
                             }
                         }
-                    }
+
+                        if (subtype == PdfiumAnnotSubtypes.Ink)
+                        {
+                            var strokeCount = (uint)PdfiumNative.AnnotGetInkListCount(annot.__Instance);
+                            for (uint s = 0; s < strokeCount; s++)
+                            {
+                                var needed = PdfiumNative.AnnotGetInkListPath(annot.__Instance, s, IntPtr.Zero, 0);
+                                if (needed == 0)
+                                {
+                                    continue;
+                                }
+
+                                var buffer = new PdfiumNative.FsPointF[needed];
+                                var handle = System.Runtime.InteropServices.GCHandle.Alloc(
+                                    buffer,
+                                    System.Runtime.InteropServices.GCHandleType.Pinned);
+                                try
+                                {
+                                    var written = PdfiumNative.AnnotGetInkListPath(
+                                        annot.__Instance,
+                                        s,
+                                        handle.AddrOfPinnedObject(),
+                                        needed);
+                                    if (written == 0)
+                                    {
+                                        continue;
+                                    }
+
+                                    var stroke = new List<PdfPagePoint>((int)written);
+                                    for (var i = 0; i < (int)written; i++)
+                                    {
+                                        stroke.Add(new PdfPagePoint(
+                                            buffer[i].X + offset,
+                                            buffer[i].Y - offset));
+                                    }
+
+                                    if (stroke.Count >= 2)
+                                    {
+                                        inkStrokes.Add(stroke);
+                                    }
+                                }
+                                finally
+                                {
+                                    handle.Free();
+                                }
+                            }
+                        }
                     } // end non-stamp clone extract
                 }
                 finally

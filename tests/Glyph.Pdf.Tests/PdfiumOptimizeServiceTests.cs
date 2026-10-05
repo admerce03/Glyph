@@ -13,7 +13,7 @@ public class PdfiumOptimizeServiceTests
     [Fact]
     public async Task Lower_jpeg_quality_yields_smaller_image_stream()
     {
-            var pathLow = CreateBlankPdf();
+        var pathLow = CreateBlankPdf();
         var pathHigh = CreateBlankPdf();
         try
         {

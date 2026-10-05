@@ -1,9 +1,9 @@
 using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.App.Printing;
 using Glyph.Core.Documents;
-using Glyph.Core.Printing;
 using Glyph.Core.IO;
 using Glyph.Core.Ocr;
+using Glyph.Core.Printing;
 using Glyph.Core.Signatures;
 using Glyph.Imaging.Abstractions;
 using Glyph.Infrastructure.Settings;
@@ -5126,127 +5126,127 @@ public sealed class ImageDocumentView : UserControl
         switch (shape.Kind)
         {
             case ImageMarkupShapeKind.Rectangle:
-            {
-                var rect = new Rectangle
                 {
-                    Stroke = brush,
-                    StrokeThickness = thickness,
-                    Fill = null,
-                    Width = Math.Abs(x2 - x1),
-                    Height = Math.Abs(y2 - y1),
-                    IsHitTestVisible = false,
-                };
-                Canvas.SetLeft(rect, Math.Min(x1, x2));
-                Canvas.SetTop(rect, Math.Min(y1, y2));
-                _markupOverlay.Children.Add(rect);
-                break;
-            }
+                    var rect = new Rectangle
+                    {
+                        Stroke = brush,
+                        StrokeThickness = thickness,
+                        Fill = null,
+                        Width = Math.Abs(x2 - x1),
+                        Height = Math.Abs(y2 - y1),
+                        IsHitTestVisible = false,
+                    };
+                    Canvas.SetLeft(rect, Math.Min(x1, x2));
+                    Canvas.SetTop(rect, Math.Min(y1, y2));
+                    _markupOverlay.Children.Add(rect);
+                    break;
+                }
             case ImageMarkupShapeKind.Ellipse:
-            {
-                var ellipse = new Ellipse
                 {
-                    Stroke = brush,
-                    StrokeThickness = thickness,
-                    Fill = null,
-                    Width = Math.Abs(x2 - x1),
-                    Height = Math.Abs(y2 - y1),
-                    IsHitTestVisible = false,
-                };
-                Canvas.SetLeft(ellipse, Math.Min(x1, x2));
-                Canvas.SetTop(ellipse, Math.Min(y1, y2));
-                _markupOverlay.Children.Add(ellipse);
-                break;
-            }
+                    var ellipse = new Ellipse
+                    {
+                        Stroke = brush,
+                        StrokeThickness = thickness,
+                        Fill = null,
+                        Width = Math.Abs(x2 - x1),
+                        Height = Math.Abs(y2 - y1),
+                        IsHitTestVisible = false,
+                    };
+                    Canvas.SetLeft(ellipse, Math.Min(x1, x2));
+                    Canvas.SetTop(ellipse, Math.Min(y1, y2));
+                    _markupOverlay.Children.Add(ellipse);
+                    break;
+                }
             case ImageMarkupShapeKind.Line:
             case ImageMarkupShapeKind.Arrow:
-            {
-                var line = new Line
                 {
-                    X1 = x1,
-                    Y1 = y1,
-                    X2 = x2,
-                    Y2 = y2,
-                    Stroke = brush,
-                    StrokeThickness = thickness,
-                    IsHitTestVisible = false,
-                };
-                _markupOverlay.Children.Add(line);
-                if (shape.Kind == ImageMarkupShapeKind.Arrow)
-                {
-                    AddArrowHeadVisual(x1, y1, x2, y2, brush, thickness);
-                }
+                    var line = new Line
+                    {
+                        X1 = x1,
+                        Y1 = y1,
+                        X2 = x2,
+                        Y2 = y2,
+                        Stroke = brush,
+                        StrokeThickness = thickness,
+                        IsHitTestVisible = false,
+                    };
+                    _markupOverlay.Children.Add(line);
+                    if (shape.Kind == ImageMarkupShapeKind.Arrow)
+                    {
+                        AddArrowHeadVisual(x1, y1, x2, y2, brush, thickness);
+                    }
 
-                break;
-            }
+                    break;
+                }
             case ImageMarkupShapeKind.Text:
-            {
-                var label = new TextBlock
                 {
-                    Text = string.IsNullOrWhiteSpace(shape.Text) ? "Text" : shape.Text,
-                    Foreground = brush,
-                    FontSize = Math.Max(8, shape.FontSizePixels * ((scaleX + scaleY) / 2.0)),
-                    IsHitTestVisible = false,
-                };
-                Canvas.SetLeft(label, x1);
-                Canvas.SetTop(label, y1);
-                _markupOverlay.Children.Add(label);
-                break;
-            }
+                    var label = new TextBlock
+                    {
+                        Text = string.IsNullOrWhiteSpace(shape.Text) ? "Text" : shape.Text,
+                        Foreground = brush,
+                        FontSize = Math.Max(8, shape.FontSizePixels * ((scaleX + scaleY) / 2.0)),
+                        IsHitTestVisible = false,
+                    };
+                    Canvas.SetLeft(label, x1);
+                    Canvas.SetTop(label, y1);
+                    _markupOverlay.Children.Add(label);
+                    break;
+                }
             case ImageMarkupShapeKind.Callout:
-            {
-                var left = Math.Min(x1, x2);
-                var top = Math.Min(y1, y2);
-                var w = Math.Abs(x2 - x1);
-                var h = Math.Abs(y2 - y1);
-                var rect = new Rectangle
                 {
-                    Stroke = brush,
-                    StrokeThickness = thickness,
-                    Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, shape.R, shape.G, shape.B)),
-                    Width = w,
-                    Height = h,
-                    IsHitTestVisible = false,
-                };
-                Canvas.SetLeft(rect, left);
-                Canvas.SetTop(rect, top);
-                _markupOverlay.Children.Add(rect);
-                var midX = left + (w / 2.0);
-                var tipY = top + h + Math.Max(12, h * 0.25);
-                var tipSpread = Math.Max(8, w * 0.12);
-                _markupOverlay.Children.Add(new Line
-                {
-                    X1 = midX - tipSpread,
-                    Y1 = top + h,
-                    X2 = midX,
-                    Y2 = tipY,
-                    Stroke = brush,
-                    StrokeThickness = thickness,
-                    IsHitTestVisible = false,
-                });
-                _markupOverlay.Children.Add(new Line
-                {
-                    X1 = midX + tipSpread,
-                    Y1 = top + h,
-                    X2 = midX,
-                    Y2 = tipY,
-                    Stroke = brush,
-                    StrokeThickness = thickness,
-                    IsHitTestVisible = false,
-                });
-                var label = new TextBlock
-                {
-                    Text = string.IsNullOrWhiteSpace(shape.Text) ? "Callout" : shape.Text,
-                    Foreground = brush,
-                    FontSize = Math.Max(8, shape.FontSizePixels * ((scaleX + scaleY) / 2.0)),
-                    IsHitTestVisible = false,
-                    TextWrapping = TextWrapping.Wrap,
-                    MaxWidth = Math.Max(20, w - 8),
-                };
-                Canvas.SetLeft(label, left + 4);
-                Canvas.SetTop(label, top + 2);
-                _markupOverlay.Children.Add(label);
-                break;
-            }
+                    var left = Math.Min(x1, x2);
+                    var top = Math.Min(y1, y2);
+                    var w = Math.Abs(x2 - x1);
+                    var h = Math.Abs(y2 - y1);
+                    var rect = new Rectangle
+                    {
+                        Stroke = brush,
+                        StrokeThickness = thickness,
+                        Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, shape.R, shape.G, shape.B)),
+                        Width = w,
+                        Height = h,
+                        IsHitTestVisible = false,
+                    };
+                    Canvas.SetLeft(rect, left);
+                    Canvas.SetTop(rect, top);
+                    _markupOverlay.Children.Add(rect);
+                    var midX = left + (w / 2.0);
+                    var tipY = top + h + Math.Max(12, h * 0.25);
+                    var tipSpread = Math.Max(8, w * 0.12);
+                    _markupOverlay.Children.Add(new Line
+                    {
+                        X1 = midX - tipSpread,
+                        Y1 = top + h,
+                        X2 = midX,
+                        Y2 = tipY,
+                        Stroke = brush,
+                        StrokeThickness = thickness,
+                        IsHitTestVisible = false,
+                    });
+                    _markupOverlay.Children.Add(new Line
+                    {
+                        X1 = midX + tipSpread,
+                        Y1 = top + h,
+                        X2 = midX,
+                        Y2 = tipY,
+                        Stroke = brush,
+                        StrokeThickness = thickness,
+                        IsHitTestVisible = false,
+                    });
+                    var label = new TextBlock
+                    {
+                        Text = string.IsNullOrWhiteSpace(shape.Text) ? "Callout" : shape.Text,
+                        Foreground = brush,
+                        FontSize = Math.Max(8, shape.FontSizePixels * ((scaleX + scaleY) / 2.0)),
+                        IsHitTestVisible = false,
+                        TextWrapping = TextWrapping.Wrap,
+                        MaxWidth = Math.Max(20, w - 8),
+                    };
+                    Canvas.SetLeft(label, left + 4);
+                    Canvas.SetTop(label, top + 2);
+                    _markupOverlay.Children.Add(label);
+                    break;
+                }
         }
     }
 

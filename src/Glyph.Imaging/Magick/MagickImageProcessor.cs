@@ -731,73 +731,73 @@ public sealed class MagickImageProcessor : IImageProcessor
                     Math.Max(y1, y2));
                 break;
             case ImageMarkupShapeKind.Ellipse:
-            {
-                var left = Math.Min(x1, x2);
-                var top = Math.Min(y1, y2);
-                var right = Math.Max(x1, x2);
-                var bottom = Math.Max(y1, y2);
-                var originX = (left + right) / 2.0;
-                var originY = (top + bottom) / 2.0;
-                var radiusX = Math.Max(0.5, (right - left) / 2.0);
-                var radiusY = Math.Max(0.5, (bottom - top) / 2.0);
-                drawables.Ellipse(originX, originY, radiusX, radiusY, 0, 360);
-                break;
-            }
+                {
+                    var left = Math.Min(x1, x2);
+                    var top = Math.Min(y1, y2);
+                    var right = Math.Max(x1, x2);
+                    var bottom = Math.Max(y1, y2);
+                    var originX = (left + right) / 2.0;
+                    var originY = (top + bottom) / 2.0;
+                    var radiusX = Math.Max(0.5, (right - left) / 2.0);
+                    var radiusY = Math.Max(0.5, (bottom - top) / 2.0);
+                    drawables.Ellipse(originX, originY, radiusX, radiusY, 0, 360);
+                    break;
+                }
             case ImageMarkupShapeKind.Line:
                 drawables.Line(x1, y1, x2, y2);
                 break;
             case ImageMarkupShapeKind.Arrow:
-            {
-                drawables.Line(x1, y1, x2, y2);
-                var angle = Math.Atan2(y2 - y1, x2 - x1);
-                var head = Math.Max(8, shape.WidthPixels * 4);
-                var a1 = angle + Math.PI - (Math.PI / 6);
-                var a2 = angle + Math.PI + (Math.PI / 6);
-                drawables
-                    .Line(x2, y2, x2 + (head * Math.Cos(a1)), y2 + (head * Math.Sin(a1)))
-                    .Line(x2, y2, x2 + (head * Math.Cos(a2)), y2 + (head * Math.Sin(a2)));
-                break;
-            }
-            case ImageMarkupShapeKind.Text:
-            {
-                var text = string.IsNullOrWhiteSpace(shape.Text) ? "Text" : shape.Text;
-                if (!TryDrawMarkupText(image, color, x1, y1 + shape.FontSizePixels, text, shape.FontSizePixels))
                 {
-                    // No usable FreeType font in this environment — keep dimensions via a stub box.
+                    drawables.Line(x1, y1, x2, y2);
+                    var angle = Math.Atan2(y2 - y1, x2 - x1);
+                    var head = Math.Max(8, shape.WidthPixels * 4);
+                    var a1 = angle + Math.PI - (Math.PI / 6);
+                    var a2 = angle + Math.PI + (Math.PI / 6);
+                    drawables
+                        .Line(x2, y2, x2 + (head * Math.Cos(a1)), y2 + (head * Math.Sin(a1)))
+                        .Line(x2, y2, x2 + (head * Math.Cos(a2)), y2 + (head * Math.Sin(a2)));
+                    break;
+                }
+            case ImageMarkupShapeKind.Text:
+                {
+                    var text = string.IsNullOrWhiteSpace(shape.Text) ? "Text" : shape.Text;
+                    if (!TryDrawMarkupText(image, color, x1, y1 + shape.FontSizePixels, text, shape.FontSizePixels))
+                    {
+                        // No usable FreeType font in this environment — keep dimensions via a stub box.
+                        new Drawables()
+                            .StrokeColor(color)
+                            .StrokeWidth(1)
+                            .FillColor(MagickColors.Transparent)
+                            .Rectangle(x1, y1, x1 + Math.Max(8, text.Length * shape.FontSizePixels * 0.5), y1 + shape.FontSizePixels)
+                            .Draw(image);
+                    }
+
+                    return;
+                }
+            case ImageMarkupShapeKind.Callout:
+                {
+                    var left = Math.Min(x1, x2);
+                    var top = Math.Min(y1, y2);
+                    var right = Math.Max(x1, x2);
+                    var bottom = Math.Max(y1, y2);
+                    var midX = (left + right) / 2.0;
+                    var tipY = bottom + Math.Max(12, (bottom - top) * 0.25);
+                    var tipSpread = Math.Max(8, (right - left) * 0.12);
+                    var label = string.IsNullOrWhiteSpace(shape.Text) ? "Callout" : shape.Text;
+                    // Geometry only — never chain Font/Text onto this builder so a font failure
+                    // cannot poison a retry Draw of the callout outline.
                     new Drawables()
                         .StrokeColor(color)
-                        .StrokeWidth(1)
+                        .StrokeWidth(shape.WidthPixels)
                         .FillColor(MagickColors.Transparent)
-                        .Rectangle(x1, y1, x1 + Math.Max(8, text.Length * shape.FontSizePixels * 0.5), y1 + shape.FontSizePixels)
+                        .Rectangle(left, top, right, bottom)
+                        .Line(midX - tipSpread, bottom, midX, tipY)
+                        .Line(midX + tipSpread, bottom, midX, tipY)
                         .Draw(image);
+                    _ = TryDrawMarkupText(image, color, left + 4, top + shape.FontSizePixels + 2, label, shape.FontSizePixels);
+
+                    return;
                 }
-
-                return;
-            }
-            case ImageMarkupShapeKind.Callout:
-            {
-                var left = Math.Min(x1, x2);
-                var top = Math.Min(y1, y2);
-                var right = Math.Max(x1, x2);
-                var bottom = Math.Max(y1, y2);
-                var midX = (left + right) / 2.0;
-                var tipY = bottom + Math.Max(12, (bottom - top) * 0.25);
-                var tipSpread = Math.Max(8, (right - left) * 0.12);
-                var label = string.IsNullOrWhiteSpace(shape.Text) ? "Callout" : shape.Text;
-                // Geometry only — never chain Font/Text onto this builder so a font failure
-                // cannot poison a retry Draw of the callout outline.
-                new Drawables()
-                    .StrokeColor(color)
-                    .StrokeWidth(shape.WidthPixels)
-                    .FillColor(MagickColors.Transparent)
-                    .Rectangle(left, top, right, bottom)
-                    .Line(midX - tipSpread, bottom, midX, tipY)
-                    .Line(midX + tipSpread, bottom, midX, tipY)
-                    .Draw(image);
-                _ = TryDrawMarkupText(image, color, left + 4, top + shape.FontSizePixels + 2, label, shape.FontSizePixels);
-
-                return;
-            }
         }
 
         drawables.Draw(image);

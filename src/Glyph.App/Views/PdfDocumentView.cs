@@ -3894,34 +3894,34 @@ public sealed class PdfDocumentView : UserControl
             switch (entity.Kind)
             {
                 case OcrEntityKind.Url:
-                {
-                    await Launcher.LaunchUriAsync(new Uri(OcrEntityActionUris.NormalizeUrl(entity.Value)));
-                    _status.Text = OcrEntityActionUris.OpenedUrl;
-                    break;
-                }
+                    {
+                        await Launcher.LaunchUriAsync(new Uri(OcrEntityActionUris.NormalizeUrl(entity.Value)));
+                        _status.Text = OcrEntityActionUris.OpenedUrl;
+                        break;
+                    }
                 case OcrEntityKind.Email:
                     await Launcher.LaunchUriAsync(new Uri(OcrEntityActionUris.Mailto(entity.Value)));
                     _status.Text = OcrEntityActionUris.OpenedMail;
                     break;
                 case OcrEntityKind.Address:
-                {
-                    await Launcher.LaunchUriAsync(new Uri(OcrEntityActionUris.BingMaps(entity.Value)));
-                    _status.Text = OcrEntityActionUris.OpenedMaps;
-                    break;
-                }
+                    {
+                        await Launcher.LaunchUriAsync(new Uri(OcrEntityActionUris.BingMaps(entity.Value)));
+                        _status.Text = OcrEntityActionUris.OpenedMaps;
+                        break;
+                    }
                 case OcrEntityKind.Date:
                 case OcrEntityKind.Time:
                     await CreateCalendarFromOcrAsync(entity);
                     break;
                 case OcrEntityKind.Phone:
                 default:
-                {
-                    var package = new DataPackage();
-                    package.SetText(entity.Value);
-                    Clipboard.SetContent(package);
-                    _status.Text = OcrEntityActionUris.CopiedKind(entity.Kind.ToString());
-                    break;
-                }
+                    {
+                        var package = new DataPackage();
+                        package.SetText(entity.Value);
+                        Clipboard.SetContent(package);
+                        _status.Text = OcrEntityActionUris.CopiedKind(entity.Kind.ToString());
+                        break;
+                    }
             }
         }
         catch (Exception ex)
@@ -6779,16 +6779,16 @@ public sealed class PdfDocumentView : UserControl
             switch (entry.Kind)
             {
                 case PdfFormFieldKind.CheckBox:
-                {
-                    var wasOn = !string.Equals(entry.PreviousValue, "Off", StringComparison.OrdinalIgnoreCase)
-                        && !string.IsNullOrEmpty(entry.PreviousValue);
-                    await _forms.SetCheckBoxAsync(
-                        _document,
-                        entry.PageIndex,
-                        entry.AnnotIndex,
-                        isChecked: wasOn);
-                    break;
-                }
+                    {
+                        var wasOn = !string.Equals(entry.PreviousValue, "Off", StringComparison.OrdinalIgnoreCase)
+                            && !string.IsNullOrEmpty(entry.PreviousValue);
+                        await _forms.SetCheckBoxAsync(
+                            _document,
+                            entry.PageIndex,
+                            entry.AnnotIndex,
+                            isChecked: wasOn);
+                        break;
+                    }
                 case PdfFormFieldKind.RadioButton:
                     // Best-effort: re-select if previous was on; otherwise leave as-is after annot undo path.
                     if (!string.Equals(entry.PreviousValue, "Off", StringComparison.OrdinalIgnoreCase)

@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Glyph.App.Capture;
 using Glyph.App.Scanning;
 using Glyph.App.Sharing;
@@ -23,13 +24,12 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using System.Runtime.InteropServices;
-using Windows.System;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Graphics;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
+using Windows.System;
 using WinRT.Interop;
 
 namespace Glyph.App;
