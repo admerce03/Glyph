@@ -808,7 +808,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F57-04 | Performance behavior | asynchronous thumbnail generation | M2+/M9 | Tested | Async near-current thumbs; `ContinuousPageWindow` + Yield |
 | F57-05 | Performance behavior | background text indexing | M2+/M9 | Deferred | On-demand Find; `BackgroundSearchIndexPolicy` |
 | F57-06 | Performance behavior | lazy OCR | M2+/M9 | Tested | Explicit OCR only; `PerformanceBehaviorPolicy.LazyOcrRequiresExplicitRequest` |
-| F57-07 | Performance behavior | GPU acceleration where appropriate | M2+/M9 | Deferred | Win2D/Composition GPU path not adopted yet |
+| F57-07 | Performance behavior | GPU acceleration where appropriate | M2+/M9 | Deferred | Win2D/Composition not adopted; `GpuAccelerationPolicy` |
 | F57-08 | Performance behavior | smooth scrolling | M2+/M9 | Tested | Continuous: page sync + `IntermediateScrollThrottle` (72ms) while flinging; settle render on idle |
 | F57-09 | Performance behavior | large-document virtualization | M2+/M9 | Tested | Visible window; `PerformanceBehaviorPolicy.IsOutsideMaterializedWindow` |
 | F57-10 | Performance behavior | low memory usage | M2+/M9 | Tested | Bounded `PageRenderCache` (capacity 32); same coverage as F58-05 |
