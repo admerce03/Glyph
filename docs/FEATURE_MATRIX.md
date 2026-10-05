@@ -181,11 +181,11 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F09-06 | PDF bookmarks | Click to navigate. | M2/M4 | Tested | ItemClick → GoToPage via `PageIndex` |
 | F09-07 | PDF bookmarks | Preserve bookmarks when saving. | M2/M4 | Tested | Persisted in view-state.json per path (unit test) |
 | F09-08 | PDF bookmarks | Export them as standard PDF bookmarks where compatible. | M2/M4 | Tested | Bookmarks → PDF writes flat `/Outlines` via incremental patch (`PdfOutlinePatcher`) |
-| F10-01 | PDF page manipulation | Select page thumbnails. | M3 | Implemented | Click thumbnails; chrome shows selection |
+| F10-01 | PDF page manipulation | Select page thumbnails. | M3 | Tested | Click thumbnails; `PageSelection` unit tests |
 | F10-02 | PDF page manipulation | Multi-select pages. | M3 | Tested | Ctrl+click / Ctrl+A via `PageSelection` |
 | F10-03 | PDF page manipulation | Select ranges. | M3 | Tested | Shift+click / Shift+↑↓ via `PageSelection` |
 | F10-04 | PDF page manipulation | Reorder pages by dragging thumbnails. | M3 | Tested | Thumbnail drag-drop + `PageReorder` helper |
-| F10-05 | PDF page manipulation | Move multiple pages as one selection. | M3 | Implemented | Move ↑/↓ shifts contiguous selection |
+| F10-05 | PDF page manipulation | Move multiple pages as one selection. | M3 | Tested | Move ↑/↓; `PageReorder.MoveSelection` unit tests |
 | F10-06 | PDF page manipulation | Delete pages. | M3 | Tested | `IPdfPageEditor.DeletePagesAsync` + toolbar |
 | F10-07 | PDF page manipulation | Duplicate pages. | M3 | Tested | `DuplicatePagesAsync` + Dup toolbar |
 | F10-08 | PDF page manipulation | Insert blank page. | M3 | Tested | `InsertBlankPageAsync` + Blank toolbar |
@@ -205,9 +205,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F10-22 | PDF page manipulation | Apply same crop to multiple pages. | M3 | Tested | Multi-select + SetCropBox / apply-all |
 | F10-23 | PDF page manipulation | Change page order. | M3 | Implemented | `ReorderPagesAsync` + Move ↑/↓ |
 | F10-24 | PDF page manipulation | Copy/paste pages between documents. | M3 | Implemented | DnD + Ctrl+C/V via `PdfPageClipboard` |
-| F11-01 | Preview-style PDF drag-and-drop workflows | one page | M3 | Implemented | Thumbnail CanDrag + page payload |
-| F11-02 | Preview-style PDF drag-and-drop workflows | multiple contiguous pages | M3 | Implemented | Multi-select drag uses selection set |
-| F11-03 | Preview-style PDF drag-and-drop workflows | multiple noncontiguous pages | M3 | Implemented | Noncontiguous selection preserved in payload |
+| F11-01 | Preview-style PDF drag-and-drop workflows | one page | M3 | Tested | Thumbnail CanDrag + `PageDragPayload` format/parse unit tests |
+| F11-02 | Preview-style PDF drag-and-drop workflows | multiple contiguous pages | M3 | Tested | Multi-select drag; payload preserves sorted indexes |
+| F11-03 | Preview-style PDF drag-and-drop workflows | multiple noncontiguous pages | M3 | Tested | Noncontiguous selection preserved in `PageDragPayload` |
 | F11-04 | Preview-style PDF drag-and-drop workflows | insertion before/after any page | M3 | Implemented | Drop Y half chooses before/after |
 | F11-05 | Preview-style PDF drag-and-drop workflows | visible insertion indicator | M3 | Implemented | Orange before/after border highlight |
 | F11-06 | Preview-style PDF drag-and-drop workflows | insert entire PDF at drop location. | M3 | Implemented | Explorer `.pdf` StorageItems → insert |
@@ -217,7 +217,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F12-01 | PDF crop | Rectangular page crop. | M3 | Tested | CropBox rectangle via margins / absolute box; `PdfCropBox`/`PdfCropMargins` unit tests |
 | F12-02 | PDF crop | Visual crop handles. | M3 | Implemented | Interactive overlay handles + Apply/Cancel chrome |
 | F12-03 | PDF crop | Numeric crop dimensions. | M3 | Implemented | L/T/R/B inset dialog |
-| F12-04 | PDF crop | Units: | M3 | Implemented | pt / in / cm / mm via `PdfLengthUnits` |
+| F12-04 | PDF crop | Units: | M3 | Tested | pt / in / cm / mm via `PdfLengthUnits` unit tests |
 | F12-05 | PDF crop | Apply to current page. | M3 | Implemented | Selection defaults to current page |
 | F12-06 | PDF crop | Apply to selected pages. | M3 | Tested | Multi-select crop |
 | F12-07 | PDF crop | Apply to all pages. | M3 | Implemented | Dialog checkbox |
@@ -774,14 +774,14 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-06 | Preferences | default zoom | M1/M9 | Tested | Preferences NumberBox; `Save_and_load_round_trips_pdf_open_defaults` |
 | F55-07 | Preferences | remember last page | M1/M9 | Tested | `JsonDocumentViewStateStore` page index round-trip |
 | F55-08 | Preferences | remember zoom | M1/M9 | Tested | `JsonDocumentViewStateStore` zoom round-trip |
-| F55-09 | Preferences | open PDF in tabs/windows | M1/M9 | Implemented | Preferences → Open each file in a separate window |
+| F55-09 | Preferences | open PDF in tabs/windows | M1/M9 | Tested | Preferences → Open each file in a separate window; prefs round-trip |
 | F55-10 | Preferences | annotation author | M1/M9 | Tested | Preferences + PDF Author button; trimmed prefs round-trip |
 | F55-11 | Preferences | OCR behavior | M1/M9 | Tested | Preferred BCP-47 language; `Save_and_load_round_trips_ocr_language` |
 | F55-12 | Preferences | autosave behavior | M1/M9 | Tested | Auto-save to original checkbox; settings round-trip |
-| F55-13 | Preferences | open multiple images in same window or separate windows | M1/M9 | Implemented | Same as F55-09 — Open each file in a separate window |
-| F55-14 | Preferences | 100% zoom meaning | M1/M9 | Implemented | Pixels vs print-size (image DPI) combo |
-| F55-15 | Preferences | default interpolation | M1/M9 | Implemented | Resize dialog defaults from prefs filter |
-| F55-16 | Preferences | color management | M1/M9 | Implemented | Color-managed display default on image open |
+| F55-13 | Preferences | open multiple images in same window or separate windows | M1/M9 | Tested | Same as F55-09 — Open each file in a separate window prefs |
+| F55-14 | Preferences | 100% zoom meaning | M1/M9 | Tested | Pixels vs Print normalized in `JsonSettingsStore` unit test |
+| F55-15 | Preferences | default interpolation | M1/M9 | Tested | NearestNeighbor/Bilinear/Bicubic/Auto normalize unit test |
+| F55-16 | Preferences | color management | M1/M9 | Tested | Color-managed display default prefs round-trip |
 | F55-17 | Preferences | animation autoplay | M1/M9 | Tested | Preferences toggle; settings round-trip |
 | F55-18 | Preferences | default annotation colors | M1/M9 | Tested | Highlight/stroke/sticky colors; settings round-trip |
 | F55-19 | Preferences | default line width | M1/M9 | Tested | Default stroke width NumberBox; settings round-trip |
@@ -789,7 +789,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-21 | Preferences | crash recovery interval | M1/M9 | Tested | Seconds NumberBox; clamped 0–3600 in `JsonSettingsStore` |
 | F55-22 | Preferences | local-only OCR preference | M1/M9 | Tested | Always on-device; `LocalOnlyOcr` asserted true in OCR settings test |
 | F55-23 | Preferences | clear recent files | M1/M9 | Tested | File → Clear Recent; `ClearAsync_empties_persisted_list` |
-| F55-24 | Preferences | clear saved signatures | M1/M9 | Implemented | Preferences → Clear saved signatures (`ClearAllAsync`) |
+| F55-24 | Preferences | clear saved signatures | M1/M9 | Tested | Preferences → Clear saved signatures (`ClearAllAsync` unit test) |
 | F55-25 | Preferences | strip metadata defaults | M1/M9 | Tested | Preferences toggle; settings round-trip |
 | F56-01 | Accessibility | Windows UI Automation. | M9 | Implemented | WinUI Automation tree; toolbar `AutomationProperties.Name` |
 | F56-02 | Accessibility | Keyboard-accessible controls. | M9 | Implemented | Menus/accelerators; document tools keyboard paths |

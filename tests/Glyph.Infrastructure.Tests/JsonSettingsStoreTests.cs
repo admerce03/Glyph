@@ -319,4 +319,41 @@ public class JsonSettingsStoreTests
             }
         }
     }
+
+    [Fact]
+    public async Task Save_normalizes_zoom100_and_interpolation_prefs()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-zoom-interp-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings
+            {
+                Zoom100Meaning = "print",
+                DefaultInterpolation = "Nearest-neighbor",
+                ColorManagedDisplayDefault = true,
+            });
+
+            var settings = await new JsonSettingsStore(path).LoadAsync();
+            settings.Zoom100Meaning.Should().Be("Print");
+            settings.DefaultInterpolation.Should().Be("NearestNeighbor");
+            settings.ColorManagedDisplayDefault.Should().BeTrue();
+
+            await store.SaveAsync(new AppSettings
+            {
+                Zoom100Meaning = "nonsense",
+                DefaultInterpolation = "weird",
+            });
+            var fallback = await new JsonSettingsStore(path).LoadAsync();
+            fallback.Zoom100Meaning.Should().Be("Pixels");
+            fallback.DefaultInterpolation.Should().Be("Auto");
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
 }
