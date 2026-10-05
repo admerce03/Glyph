@@ -126,7 +126,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F06-05 | PDF search | Any-word search. | M2/M6 | Implemented | Service supports `ExactPhrase: false`; UI still phrase-default |
 | F06-06 | PDF search | Search all occurrences. | M2/M6 | Tested | Collects every hit per page |
 | F06-07 | PDF search | Search current PDF. | M2/M6 | Tested | Current document path |
-| F06-08 | PDF search | Search all open PDFs. | M2/M6 | Not Started |  |
+| F06-08 | PDF search | Search all open PDFs. | M2/M6 | Implemented | Edit → Find in all open PDFs (Ctrl+Shift+F) |
 | F06-09 | PDF search | Highlight matches on pages. | M2/M6 | Implemented | Gold overlays from PDFium char boxes |
 | F06-10 | PDF search | Results sidebar. | M2/M6 | Implemented | Results list in viewer sidebar |
 | F06-11 | PDF search | Show contextual snippets around matches. | M2/M6 | Tested | Snippet around match |

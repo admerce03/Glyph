@@ -133,6 +133,108 @@ public sealed partial class MainWindow : Window
 
     private void NewWindowMenuItem_Click(object sender, RoutedEventArgs e) => App.CurrentApp.OpenNewWindow();
 
+    private async void FindAllPdfsMenuItem_Click(object sender, RoutedEventArgs e) => await FindInAllOpenPdfsAsync();
+
+    private async Task FindInAllOpenPdfsAsync()
+    {
+        var pdfs = _workspace.Documents
+            .Where(d => d.Kind == DocumentKind.Pdf && !string.IsNullOrWhiteSpace(d.Path) && File.Exists(d.Path!))
+            .ToList();
+        if (pdfs.Count == 0)
+        {
+            StatusText.Text = "No open PDF documents to search.";
+            return;
+        }
+
+        var box = new TextBox { PlaceholderText = "Search all open PDFs", Width = 360 };
+        var dialog = new ContentDialog
+        {
+            Title = "Find in all open PDFs",
+            Content = box,
+            PrimaryButtonText = "Search",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = Content.XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var query = (box.Text ?? string.Empty).Trim();
+        if (query.Length == 0)
+        {
+            StatusText.Text = "Enter search text.";
+            return;
+        }
+
+        StatusText.Text = $"Searching {pdfs.Count} PDF(s)…";
+        var hits = new List<(DocumentSession Doc, PdfSearchHit Hit)>();
+        foreach (var doc in pdfs)
+        {
+            try
+            {
+                var result = await _pdfSearch.SearchAsync(doc.Path!, query);
+                if (result.Status == PdfSearchStatus.Cancelled)
+                {
+                    StatusText.Text = "Search cancelled.";
+                    return;
+                }
+
+                foreach (var hit in result.Hits)
+                {
+                    hits.Add((doc, hit));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Search failed for {Path}", doc.Path);
+            }
+        }
+
+        if (hits.Count == 0)
+        {
+            StatusText.Text = "No matches in open PDFs.";
+            return;
+        }
+
+        var list = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            Width = 480,
+            MaxHeight = 360,
+            ItemsSource = hits
+                .Select(h => $"{h.Doc.DisplayName} · p.{h.Hit.PageIndex + 1}: {h.Hit.Snippet}")
+                .ToList(),
+        };
+        var results = new ContentDialog
+        {
+            Title = $"{hits.Count} match(es) across open PDFs",
+            Content = list,
+            PrimaryButtonText = "Go to",
+            CloseButtonText = "Close",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = Content.XamlRoot,
+        };
+        if (await results.ShowAsync() != ContentDialogResult.Primary
+            || list.SelectedIndex < 0
+            || list.SelectedIndex >= hits.Count)
+        {
+            StatusText.Text = $"{hits.Count} match(es) across open PDFs.";
+            return;
+        }
+
+        var chosen = hits[list.SelectedIndex];
+        _workspace.Activate(chosen.Doc.Id);
+        SelectTabForActiveDocument();
+        if (DocumentTabs.SelectedItem is TabViewItem { Content: PdfDocumentView pdfView })
+        {
+            await pdfView.RunExternalFindAsync(query, chosen.Hit.PageIndex);
+        }
+
+        StatusText.Text = $"Opened {chosen.Doc.DisplayName} p.{chosen.Hit.PageIndex + 1}.";
+    }
+
     private async void CloseTabMenuItem_Click(object sender, RoutedEventArgs e) => await CloseActiveTabAsync();
 
     private async void CloseAllMenuItem_Click(object sender, RoutedEventArgs e) => await CloseAllAsync();

@@ -2719,6 +2719,27 @@ public sealed class PdfDocumentView : UserControl
         await RunSearchAsync();
     }
 
+    public async Task RunExternalFindAsync(string query, int? preferPageIndex = null)
+    {
+        _searchBox.Text = query ?? string.Empty;
+        await RunSearchAsync();
+        if (preferPageIndex is int page
+            && page >= 0
+            && page < _document.PageCount)
+        {
+            await GoToPageAsync(page, recordHistory: true);
+            if (_hits.Count > 0)
+            {
+                var hitIndex = _hits.ToList().FindIndex(h => h.PageIndex == page);
+                if (hitIndex >= 0)
+                {
+                    _activeHitIndex = hitIndex;
+                    _searchResults.SelectedIndex = hitIndex;
+                }
+            }
+        }
+    }
+
     private async Task RunSearchAsync()
     {
         if (_document.Path is null)
