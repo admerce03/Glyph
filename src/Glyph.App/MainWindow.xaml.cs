@@ -1,3 +1,4 @@
+using Glyph.App.Capture;
 using Glyph.App.Views;
 using Glyph.Core.Documents;
 using Glyph.Core.IO;
@@ -147,6 +148,8 @@ public sealed partial class MainWindow : Window
     private async void OpenMultipleMenuItem_Click(object sender, RoutedEventArgs e) => await OpenWithPickerAsync(allowMultiple: true);
 
     private async void NewFromClipboardMenuItem_Click(object sender, RoutedEventArgs e) => await NewFromClipboardAsync();
+
+    private async void CaptureCameraMenuItem_Click(object sender, RoutedEventArgs e) => await CaptureFromCameraAsync();
 
     private void NewWindowMenuItem_Click(object sender, RoutedEventArgs e) => App.CurrentApp.OpenNewWindow();
 
@@ -423,6 +426,71 @@ public sealed partial class MainWindow : Window
         {
             _logger.LogError(ex, "New from Clipboard failed");
             StatusText.Text = "Could not create image from clipboard.";
+        }
+    }
+
+    private async Task CaptureFromCameraAsync()
+    {
+        try
+        {
+            var root = Content?.XamlRoot;
+            if (root is null)
+            {
+                StatusText.Text = "Camera UI unavailable.";
+                return;
+            }
+
+            StatusText.Text = "Starting camera…";
+            var captured = await WebcamCaptureHelper.CaptureAsync(
+                root,
+                title: "Capture from camera",
+                hint: "Frame the document or photo, then Capture. Use Crop after open if needed.");
+            if (captured is null)
+            {
+                StatusText.Text = "Camera capture cancelled or unavailable.";
+                return;
+            }
+
+            var folder = await StorageFolder.GetFolderFromPathAsync(System.IO.Path.GetTempPath());
+            var fileName = $"Camera-{DateTime.Now:yyyyMMdd-HHmmss}.png";
+            var file = await folder.CreateFileAsync(fileName, CreationCollisionOption.GenerateUniqueName);
+            var png = Glyph.Core.Signatures.SignaturePngEncoder.EncodeBgra(
+                captured.BgraPixels,
+                captured.Width,
+                captured.Height);
+            await FileIO.WriteBytesAsync(file, png);
+
+            var offerCrop = new ContentDialog
+            {
+                Title = "Camera capture",
+                Content = "Open the photo now. Use Crop… in the image toolbar if you want to trim it.",
+                PrimaryButtonText = "Open",
+                CloseButtonText = "Discard",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = root,
+            };
+            if (await offerCrop.ShowAsync() != ContentDialogResult.Primary)
+            {
+                try
+                {
+                    await file.DeleteAsync();
+                }
+                catch
+                {
+                    // ignore
+                }
+
+                StatusText.Text = "Camera capture discarded.";
+                return;
+            }
+
+            await OpenPathAsync(file.Path);
+            StatusText.Text = $"Opened camera capture: {file.Name}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Camera capture failed");
+            StatusText.Text = "Camera capture failed: " + ex.Message;
         }
     }
 

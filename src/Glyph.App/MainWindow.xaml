@@ -31,6 +31,7 @@
                         <KeyboardAccelerator Key="N" Modifiers="Control,Shift" />
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="CaptureCameraMenuItem" Text="Capture from Camera…" Click="CaptureCameraMenuItem_Click" />
                 <MenuFlyoutItem x:Name="NewWindowMenuItem" Text="New Window" Click="NewWindowMenuItem_Click">
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="N" Modifiers="Control" />

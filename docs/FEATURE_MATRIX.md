@@ -632,10 +632,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F42-15 | Scanner support | Scan directly into new PDF. | M8 | Not Started |  |
 | F42-16 | Scanner support | Insert scanned pages into existing PDF. | M8 | Not Started |  |
 | F42-17 | Scanner support | Scan multiple photos separately from a flatbed where detection is practical. | M8 | Not Started |  |
-| F43-01 | Webcam/camera import | select webcam | M8 | Not Started |  |
-| F43-02 | Webcam/camera import | capture image | M8 | Not Started |  |
-| F43-03 | Webcam/camera import | crop result | M8 | Not Started |  |
-| F43-04 | Webcam/camera import | insert into document | M8 | Not Started |  |
+| F43-01 | Webcam/camera import | select webcam | M8 | Implemented | Default MediaCapture device (system picker when multiple) |
+| F43-02 | Webcam/camera import | capture image | M8 | Implemented | File → Capture from Camera; PDF Camera button |
+| F43-03 | Webcam/camera import | crop result | M8 | Implemented | Post-capture Crop… in image view; stamp size on PDF |
+| F43-04 | Webcam/camera import | insert into document | M8 | Implemented | PDF Camera stamps capture; File opens as image tab |
 | F44-01 | Printing | print current page | M8 | Implemented | Print → Current page; Ctrl+P |
 | F44-02 | Printing | print selected pages | M8 | Implemented | Print → Selected pages |
 | F44-03 | Printing | print page range | M8 | Implemented | Print → Page range (e.g. 1-3,5) |

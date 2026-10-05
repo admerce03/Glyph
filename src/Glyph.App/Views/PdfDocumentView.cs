@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices.WindowsRuntime;
+using Glyph.App.Capture;
 using Glyph.App.Printing;
 using Glyph.Core.Documents;
 using Glyph.Core.Signatures;
@@ -510,6 +511,7 @@ public sealed class PdfDocumentView : UserControl
         var optimize = new Button { Content = "Optimize" };
         var export = new Button { Content = "Export" };
         var print = new Button { Content = "Print" };
+        var camera = new Button { Content = "Camera" };
         var sign = new Button { Content = "Sign" };
         var formFill = new Button { Content = "Form" };
         var ink = new Button { Content = "Ink" };
@@ -568,6 +570,7 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(optimize, "Downsample images / shrink PDF (presets)");
         ToolTipService.SetToolTip(export, "Export selected/current page(s) as PNG, JPEG, WebP, TIFF, BMP, GIF, AVIF, or JPEG 2000");
         ToolTipService.SetToolTip(print, "Print current, selected, range, or all pages (Ctrl+P)");
+        ToolTipService.SetToolTip(camera, "Capture from webcam and insert onto the current page");
         ToolTipService.SetToolTip(sign, "Signature: draw, import PNG/JPEG, or webcam photo of paper signature");
         ToolTipService.SetToolTip(formFill, "Form fill: overlay mode or field list (Tab order)");
         ToolTipService.SetToolTip(ink, "Toggle freehand ink drawing on the page");
@@ -636,6 +639,7 @@ public sealed class PdfDocumentView : UserControl
         optimize.Click += async (_, _) => await ShowOptimizeDialogAsync();
         export.Click += async (_, _) => await ExportPagesAsImagesAsync();
         print.Click += async (_, _) => await PrintDocumentAsync();
+        camera.Click += async (_, _) => await CaptureCameraIntoDocumentAsync();
         sign.Click += async (_, _) => await BeginSignatureAsync();
         formFill.Click += async (_, _) => await OnFormButtonClickAsync();
         ink.Click += async (_, _) => await ToggleInkModeAsync();
@@ -675,7 +679,7 @@ public sealed class PdfDocumentView : UserControl
                 zoomOut, zoomIn, fitWidth, fitPage, actual, _layoutBox, copy,
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
-                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, print, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe,
+                highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimize, export, print, camera, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe,
                 _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _status,
             },
         };
@@ -6045,6 +6049,36 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Signature failed: " + ex.Message;
+        }
+    }
+
+    private async Task CaptureCameraIntoDocumentAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for camera.");
+        try
+        {
+            _status.Text = "Starting camera…";
+            var captured = await WebcamCaptureHelper.CaptureAsync(
+                window.Content.XamlRoot,
+                title: "Capture into PDF",
+                hint: "Frame the page or photo, then Capture. It will be stamped on the current PDF page.");
+            if (captured is null)
+            {
+                _status.Text = "Camera capture cancelled or unavailable.";
+                return;
+            }
+
+            await InsertSignaturePixelsAsync(
+                captured.BgraPixels,
+                captured.Width,
+                captured.Height,
+                statusOnSuccess: "Camera capture inserted on page.");
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Camera insert failed: " + ex.Message;
         }
     }
 
