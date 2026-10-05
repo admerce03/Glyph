@@ -258,9 +258,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-32 | PDF annotations | change line thickness | M4 | Tested | Create + sidebar Width → `SetBorderWidthAsync` (ink/shapes/text box) |
 | F13-33 | PDF annotations | change line style | M4 | Tested | Line/Arrow ink: Solid/Dashed/Dotted via segmented strokes |
 | F13-34 | PDF annotations | change arrowheads | M4 | Tested | Arrow tool: Open / Filled / Diamond ink heads |
-| F13-35 | PDF annotations | change font | M4 | Implemented | TextBox/Callout Font combo → DA resource (Helv/TiRo/Cour + bold/italic) |
-| F13-36 | PDF annotations | change font size | M4 | Implemented | TextBox/Callout dialog NumberBox → `fontSizePoints` |
-| F13-37 | PDF annotations | change text color | M4 | Implemented | TextBox/Callout dialog StrokePresets → `textColor` / DA |
+| F13-35 | PDF annotations | change font | M4 | Tested | TextBox/Callout Font combo → DA resource; `PdfFreeTextFontTests` |
+| F13-36 | PDF annotations | change font size | M4 | Tested | TextBox/Callout NumberBox → `fontSizePoints`; annotation service tests |
+| F13-37 | PDF annotations | change text color | M4 | Tested | TextBox/Callout StrokePresets → `textColor` / DA; FreeText create tests |
 | F13-38 | PDF annotations | change text alignment | M4 | Tested | FreeText `/Q` via post-save dict patch (PDFium has GetNumberValue only); text box/callout Align UI |
 | F14-01 | Highlight workflow | Select text and apply highlight. | M4 | Implemented | Selection quads → Highlight toolbar |
 | F14-02 | Highlight workflow | Persistent highlight mode: | M4 | Implemented | Highlight toggles mode; Esc exits; color remembered |
@@ -290,14 +290,14 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F16-04 | Text boxes and callouts | Resize it. | M4 | Tested | `MoveAsync` with new bounds |
 | F16-05 | Text boxes and callouts | Rotate where appropriate. | M4 | Tested | Sidebar Rotate → `RotateAsync` swaps FreeText bounds around center |
 | F16-06 | Text boxes and callouts | Font family. | M4 | Tested | Helvetica/Times/Courier via DA (`PdfFreeTextFont` unit tests) |
-| F16-07 | Text boxes and callouts | Font size. | M4 | Implemented | `fontSizePoints` + TextBox/Callout dialog NumberBox |
+| F16-07 | Text boxes and callouts | Font size. | M4 | Tested | `fontSizePoints` + TextBox/Callout dialog; annotation service tests |
 | F16-08 | Text boxes and callouts | Bold. | M4 | Tested | Dialog Bold → HeBo/TiBo/CoBo in DA; `PdfFreeTextFontTests` |
 | F16-09 | Text boxes and callouts | Italic. | M4 | Tested | Dialog Italic → HeOb/TiIt/CoOb in DA; `PdfFreeTextFontTests` |
 | F16-10 | Text boxes and callouts | Underline. | M4 | Tested | `SetUnderlineAsync` + `GlyphUnderline` + companion ink stroke; TextBox/Callout checkbox |
-| F16-11 | Text boxes and callouts | Text color. | M4 | Implemented | DA RGB from `textColor` + TextBox/Callout picker |
-| F16-12 | Text boxes and callouts | Background/fill color. | M4 | Implemented | `fillColor` → InteriorColor; TextBox dialog picker |
+| F16-11 | Text boxes and callouts | Text color. | M4 | Tested | DA RGB from `textColor` + TextBox/Callout picker; FreeText create tests |
+| F16-12 | Text boxes and callouts | Background/fill color. | M4 | Tested | `fillColor` → InteriorColor; `SetFillColorAsync` callout test |
 | F16-13 | Text boxes and callouts | Border. | M4 | Tested | Border color + width on create |
-| F16-14 | Text boxes and callouts | Opacity. | M4 | Implemented | Sidebar Opacity → `SetOpacityAsync` |
+| F16-14 | Text boxes and callouts | Opacity. | M4 | Tested | Sidebar Opacity → `SetOpacityAsync` (same path as F18-04) |
 | F16-15 | Text boxes and callouts | Alignment. | M4 | Tested | Same `/Q` quadding path as F13-38 |
 | F16-16 | Text boxes and callouts | Callout pointer. | M4 | Tested | Ink pointer from tip to nearest box edge |
 | F16-17 | Text boxes and callouts | Move pointer separately from text box. | M4 | Tested | Sidebar Tip → click page; `SetCalloutTipAsync` rebuilds ink pointer |
@@ -320,7 +320,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F17-17 | Shapes | border width | M4 | Implemented | Width picker with stroke color dialog |
 | F17-18 | Shapes | line style | M4 | Tested | Shape stroke dialog: Solid/Dashed/Dotted for Line/Arrow |
 | F17-19 | Shapes | fill color | M4 | Implemented | Semi-transparent fill from stroke hue |
-| F17-20 | Shapes | opacity | M4 | Implemented | Sidebar Opacity → `SetOpacityAsync` |
+| F17-20 | Shapes | opacity | M4 | Tested | Sidebar Opacity → `SetOpacityAsync` (same path as F18-04) |
 | F17-21 | Shapes | shape-specific adjustment handles | M4 | Tested | Line/Arrow show endpoint handles (`p0`/`p1`); `SetLineEndpointsAsync` + `GlyphLineEnds` |
 | F18-01 | Freehand drawing | Mouse drawing. | M4 | Tested | Ink draw mode |
 | F18-02 | Freehand drawing | Stroke color. | M4 | Tested | Stroke picker; `DefaultStrokeColor` prefs round-trip |

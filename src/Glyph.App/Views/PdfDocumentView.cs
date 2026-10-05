@@ -4,6 +4,7 @@ using Glyph.App.Printing;
 using Glyph.Core.Documents;
 using Glyph.Core.IO;
 using Glyph.Core.Signatures;
+using Glyph.Core.Text;
 using Glyph.Imaging.Abstractions;
 using Glyph.Infrastructure.Forms;
 using Glyph.Infrastructure.Settings;
@@ -12888,7 +12889,6 @@ public sealed class PdfDocumentView : UserControl
             // Annotation list optional for inspector.
         }
 
-        static string Val(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
         static string Bytes(long? size) => ByteSizeFormat.FormatOptional(size);
 
         var perms = info.Permissions;
@@ -12899,24 +12899,22 @@ public sealed class PdfDocumentView : UserControl
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 460,
             Text =
-                $"Title: {Val(info.Title)}\n"
-                + $"Author: {Val(info.Author)}\n"
-                + $"Subject: {Val(info.Subject)}\n"
-                + $"Keywords: {Val(info.Keywords)}\n"
-                + $"Creator: {Val(info.Creator)}\n"
-                + $"Producer: {Val(info.Producer)}\n"
-                + $"Created: {Val(info.CreationDate)}\n"
-                + $"Modified: {Val(info.ModificationDate)}\n"
+                $"Title: {DisplayValue.OrEmDash(info.Title)}\n"
+                + $"Author: {DisplayValue.OrEmDash(info.Author)}\n"
+                + $"Subject: {DisplayValue.OrEmDash(info.Subject)}\n"
+                + $"Keywords: {DisplayValue.OrEmDash(info.Keywords)}\n"
+                + $"Creator: {DisplayValue.OrEmDash(info.Creator)}\n"
+                + $"Producer: {DisplayValue.OrEmDash(info.Producer)}\n"
+                + $"Created: {DisplayValue.OrEmDash(info.CreationDate)}\n"
+                + $"Modified: {DisplayValue.OrEmDash(info.ModificationDate)}\n"
                 + $"Pages: {info.PageCount}\n"
                 + $"Annotations: {annotationCount}\n"
-                + $"PDF version: {Val(info.PdfVersion)}\n"
-                + $"Page size: {(info.PageWidthPoints is null || info.PageHeightPoints is null
-                    ? "—"
-                    : $"{info.PageWidthPoints:0.#} × {info.PageHeightPoints:0.#} pt")}\n"
-                + $"Fonts: {(info.Fonts.Count == 0 ? "—" : string.Join(", ", info.Fonts))}\n"
+                + $"PDF version: {DisplayValue.OrEmDash(info.PdfVersion)}\n"
+                + $"Page size: {PdfPageSizeFormat.FormatPoints(info.PageWidthPoints, info.PageHeightPoints)}\n"
+                + $"Fonts: {(info.Fonts.Count == 0 ? DisplayValue.EmDash : string.Join(", ", info.Fonts))}\n"
                 + $"Embedded files: {info.EmbeddedAttachmentCount}\n"
-                + $"Path: {Val(info.FilePath)}\n"
-                + $"File: {Val(info.FilePath is null ? null : System.IO.Path.GetFileName(info.FilePath))}\n"
+                + $"Path: {DisplayValue.OrEmDash(info.FilePath)}\n"
+                + $"File: {DisplayValue.OrEmDash(info.FilePath is null ? null : System.IO.Path.GetFileName(info.FilePath))}\n"
                 + $"Size: {Bytes(info.FileSizeBytes)}\n"
                 + $"Encrypted: {(info.IsEncrypted ? "yes" : "no")}\n"
                 + $"Security handler revision: {(info.SecurityHandlerRevision < 0 ? "none" : info.SecurityHandlerRevision.ToString())}\n"
@@ -13121,25 +13119,24 @@ public sealed class PdfDocumentView : UserControl
         try
         {
             var info = _documentInfo.GetInfo(_document);
-            static string Val(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
             static string Bytes(long? size) => ByteSizeFormat.FormatOptional(size);
 
-            var pageSize = info.PageWidthPoints is null || info.PageHeightPoints is null
-                ? "—"
-                : $"{info.PageWidthPoints:0.#}×{info.PageHeightPoints:0.#} pt";
-            var fileName = info.FilePath is null
-                ? "—"
-                : System.IO.Path.GetFileName(info.FilePath);
+            var pageSize = PdfPageSizeFormat.FormatPoints(
+                info.PageWidthPoints,
+                info.PageHeightPoints,
+                separator: "×");
+            var fileName = DisplayValue.OrEmDash(
+                info.FilePath is null ? null : System.IO.Path.GetFileName(info.FilePath));
 
             _propertiesSummary.Text =
-                $"Title: {Val(info.Title)}\n"
-                + $"Author: {Val(info.Author)}\n"
-                + $"Subject: {Val(info.Subject)}\n"
-                + $"Creator: {Val(info.Creator)}\n"
-                + $"Producer: {Val(info.Producer)}\n"
+                $"Title: {DisplayValue.OrEmDash(info.Title)}\n"
+                + $"Author: {DisplayValue.OrEmDash(info.Author)}\n"
+                + $"Subject: {DisplayValue.OrEmDash(info.Subject)}\n"
+                + $"Creator: {DisplayValue.OrEmDash(info.Creator)}\n"
+                + $"Producer: {DisplayValue.OrEmDash(info.Producer)}\n"
                 + $"Pages: {info.PageCount} · {pageSize}\n"
                 + $"File: {fileName} · {Bytes(info.FileSizeBytes)}\n"
-                + $"PDF: {Val(info.PdfVersion)}"
+                + $"PDF: {DisplayValue.OrEmDash(info.PdfVersion)}"
                 + (info.IsEncrypted ? " · Encrypted" : string.Empty)
                 + (info.EmbeddedAttachmentCount > 0
                     ? $"\nAttachments: {info.EmbeddedAttachmentCount}"
