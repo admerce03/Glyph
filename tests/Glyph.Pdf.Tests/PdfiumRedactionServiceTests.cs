@@ -141,6 +141,46 @@ public class PdfiumRedactionServiceTests
         }
     }
 
+    [Fact]
+    public async Task Apply_removes_intersecting_annotations()
+    {
+        var path = CreateTextPdf("Visible note target");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var redaction = new PdfiumRedactionService();
+            var annots = new PdfiumAnnotationService();
+
+            await using var document = await factory.OpenAsync(path);
+            await annots.AddStickyNoteAsync(
+                document,
+                pageIndex: 0,
+                xPoints: 100,
+                yPoints: 700,
+                contents: "secret note",
+                color: PdfAnnotationColor.StickyNoteYellow);
+
+            var before = await annots.ListAsync(document, pageIndex: 0);
+            before.Should().Contain(a => a.Contents == "secret note");
+
+            redaction.MarkRectangle(document, 0, new PdfRect(80, 680, 160, 740), "note");
+            var result = await redaction.ApplyAsync(
+                document,
+                new PdfRedactionApplyOptions(
+                    RemoveIntersectingTextObjects: false,
+                    RemoveIntersectingImageObjects: false,
+                    RemoveIntersectingAnnotations: true));
+            result.AnnotationsRemoved.Should().BeGreaterThan(0);
+
+            var after = await annots.ListAsync(document, pageIndex: 0);
+            after.Should().NotContain(a => a.Contents == "secret note");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static string CreateTextPdf(string text)
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-redact-" + Guid.NewGuid().ToString("N") + ".pdf");

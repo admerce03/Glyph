@@ -18,10 +18,12 @@ public sealed record PdfPendingRedaction(
 
 public sealed record PdfRedactionApplyOptions(
     bool RemoveIntersectingTextObjects = true,
-    bool RemoveIntersectingImageObjects = false);
+    bool RemoveIntersectingImageObjects = false,
+    bool RemoveIntersectingAnnotations = true);
 
 public sealed record PdfRedactionApplyResult(
     int MarksApplied,
     int PagesChanged,
     int TextObjectsRemoved,
-    int ImageObjectsRemoved);
+    int ImageObjectsRemoved,
+    int AnnotationsRemoved = 0);

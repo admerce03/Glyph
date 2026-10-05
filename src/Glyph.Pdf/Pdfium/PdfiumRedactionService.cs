@@ -54,7 +54,7 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
         var pending = _store.Get(pdfium);
         if (pending.Count == 0)
         {
-            return Task.FromResult(new PdfRedactionApplyResult(0, 0, 0, 0));
+            return Task.FromResult(new PdfRedactionApplyResult(0, 0, 0, 0, 0));
         }
 
         return Task.Run(
@@ -69,6 +69,7 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
                     var pagesChanged = 0;
                     var textRemoved = 0;
                     var imagesRemoved = 0;
+                    var annotationsRemoved = 0;
                     var marks = 0;
 
                     foreach (var group in byPage)
@@ -84,6 +85,7 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
                         try
                         {
                             var marksOnPage = group.ToList();
+                            var boundsList = marksOnPage.Select(m => m.Bounds).ToList();
                             foreach (var mark in marksOnPage)
                             {
                                 InsertBlackRect(page, mark.Bounds);
@@ -94,11 +96,16 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
                             {
                                 var (text, images) = RemoveIntersectingObjects(
                                     page,
-                                    marksOnPage.Select(m => m.Bounds).ToList(),
+                                    boundsList,
                                     opts.RemoveIntersectingTextObjects,
                                     opts.RemoveIntersectingImageObjects);
                                 textRemoved += text;
                                 imagesRemoved += images;
+                            }
+
+                            if (opts.RemoveIntersectingAnnotations)
+                            {
+                                annotationsRemoved += RemoveIntersectingAnnotations(page, boundsList);
                             }
 
                             if (fpdf_edit.FPDFPageGenerateContent(page) == 0)
@@ -121,7 +128,12 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
                         pdfium.NotifyAnnotationsChanged();
                     }
 
-                    return new PdfRedactionApplyResult(marks, pagesChanged, textRemoved, imagesRemoved);
+                    return new PdfRedactionApplyResult(
+                        marks,
+                        pagesChanged,
+                        textRemoved,
+                        imagesRemoved,
+                        annotationsRemoved);
                 }
             },
             cancellationToken);
@@ -196,6 +208,47 @@ public sealed class PdfiumRedactionService : IPdfRedactionService
         }
 
         return (textRemoved, imagesRemoved);
+    }
+
+    private static int RemoveIntersectingAnnotations(FpdfPageT page, IReadOnlyList<PdfRect> redactionBounds)
+    {
+        var removed = 0;
+        // High→low so removals don't shift earlier indices.
+        var count = fpdf_annot.FPDFPageGetAnnotCount(page);
+        for (var i = count - 1; i >= 0; i--)
+        {
+            var annot = fpdf_annot.FPDFPageGetAnnot(page, i);
+            if (annot is null)
+            {
+                continue;
+            }
+
+            try
+            {
+                using var rect = new FS_RECTF_();
+                if (fpdf_annot.FPDFAnnotGetRect(annot, rect) == 0)
+                {
+                    continue;
+                }
+
+                var bounds = new PdfRect(rect.Left, rect.Bottom, rect.Right, rect.Top);
+                if (!redactionBounds.Any(r => r.Intersects(bounds) && CoverageRatio(bounds, r) >= 0.35))
+                {
+                    continue;
+                }
+            }
+            finally
+            {
+                fpdf_annot.FPDFPageCloseAnnot(annot);
+            }
+
+            if (fpdf_annot.FPDFPageRemoveAnnot(page, i) != 0)
+            {
+                removed++;
+            }
+        }
+
+        return removed;
     }
 
     private static double CoverageRatio(PdfRect obj, PdfRect redaction)

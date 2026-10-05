@@ -5640,7 +5640,8 @@ public sealed class PdfDocumentView : UserControl
                 _document,
                 new PdfRedactionApplyOptions(
                     RemoveIntersectingTextObjects: true,
-                    RemoveIntersectingImageObjects: true));
+                    RemoveIntersectingImageObjects: true,
+                    RemoveIntersectingAnnotations: true));
             ClearRedactionMode();
             RefreshToolButtonChrome();
             _cache.ClearDocument(_documentKey);
@@ -5648,6 +5649,7 @@ public sealed class PdfDocumentView : UserControl
             _pageChars.Clear();
             await RenderVisibleAsync();
             await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
             RefreshAllPendingRedactionOverlays();
             if (result.MarksApplied == 0)
             {
@@ -5657,7 +5659,8 @@ public sealed class PdfDocumentView : UserControl
             {
                 _status.Text =
                     $"Applied {result.MarksApplied} redaction(s) on {result.PagesChanged} page(s); "
-                    + $"removed {result.TextObjectsRemoved} text / {result.ImageObjectsRemoved} image object(s).";
+                    + $"removed {result.TextObjectsRemoved} text / {result.ImageObjectsRemoved} image / "
+                    + $"{result.AnnotationsRemoved} annotation object(s).";
             }
         }
         catch (Exception ex)
