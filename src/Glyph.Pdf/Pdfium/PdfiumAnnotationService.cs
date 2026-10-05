@@ -1346,6 +1346,36 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             cancellationToken);
     }
 
+    public async Task SetGroupAsync(
+        IPdfDocument document,
+        IReadOnlyList<(int PageIndex, int AnnotIndex)> annots,
+        string? groupId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(annots);
+        if (annots.Count == 0)
+        {
+            return;
+        }
+
+        var value = string.IsNullOrWhiteSpace(groupId) ? string.Empty : groupId.Trim();
+        foreach (var (pageIndex, annotIndex) in annots)
+        {
+            await MutateAnnotAsync(
+                document,
+                pageIndex,
+                annotIndex,
+                cancellationToken,
+                annot =>
+                {
+                    if (!PdfiumAnnotStrings.SetString(annot, "GlyphGroup", value))
+                    {
+                        throw new InvalidOperationException("Failed to set annotation GlyphGroup.");
+                    }
+                });
+        }
+    }
+
     public Task MoveAsync(
         IPdfDocument document,
         int pageIndex,
@@ -1904,6 +1934,12 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                             PdfiumAnnotStrings.GetString(annot, "Subj"),
                             "Callout",
                             StringComparison.Ordinal);
+                    var groupId = PdfiumAnnotStrings.GetString(annot, "GlyphGroup");
+                    if (string.IsNullOrWhiteSpace(groupId))
+                    {
+                        groupId = null;
+                    }
+
                     results.Add(new PdfAnnotationInfo(
                         pageIndex,
                         i,
@@ -1917,7 +1953,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                         isTextBox,
                         isStamp,
                         isCallout,
-                        author));
+                        author,
+                        groupId));
                 }
                 finally
                 {

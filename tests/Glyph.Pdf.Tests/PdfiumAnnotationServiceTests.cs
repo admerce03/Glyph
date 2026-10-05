@@ -534,6 +534,20 @@ public class PdfiumAnnotationServiceTests
                     inkLineStyle: PdfInkLineStyle.Dashed);
                 dashed.Contents.Should().Be("Line|Dashed");
 
+                await annots.SetGroupAsync(
+                    document,
+                    [(0, rect.AnnotIndex), (0, ellipse.AnnotIndex)],
+                    groupId: "test-group-1");
+                var grouped = await annots.ListAsync(document, 0);
+                grouped.Should().Contain(a => a.AnnotIndex == rect.AnnotIndex && a.GroupId == "test-group-1");
+                grouped.Should().Contain(a => a.AnnotIndex == ellipse.AnnotIndex && a.GroupId == "test-group-1");
+                await annots.SetGroupAsync(
+                    document,
+                    [(0, rect.AnnotIndex), (0, ellipse.AnnotIndex)],
+                    groupId: null);
+                grouped = await annots.ListAsync(document, 0);
+                grouped.Should().Contain(a => a.AnnotIndex == rect.AnnotIndex && a.GroupId == null);
+
                 var arrow = await annots.AddShapeAsync(
                     document,
                     0,

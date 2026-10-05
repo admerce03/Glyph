@@ -171,6 +171,16 @@ public interface IPdfAnnotationService
         float pointerWidthPoints = 1.5f,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Assign a shared group id to the given annotations (same page). Pass null to clear.
+    /// Stored in annotation dictionary key <c>GlyphGroup</c>.
+    /// </summary>
+    Task SetGroupAsync(
+        IPdfDocument document,
+        IReadOnlyList<(int PageIndex, int AnnotIndex)> annots,
+        string? groupId,
+        CancellationToken cancellationToken = default);
+
     Task MoveAsync(
         IPdfDocument document,
         int pageIndex,

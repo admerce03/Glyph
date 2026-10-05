@@ -251,7 +251,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-25 | PDF annotations | copy | M4 | Implemented | Sidebar Copy / Ctrl+C when annot selected |
 | F13-26 | PDF annotations | paste | M4 | Implemented | Sidebar Paste / Ctrl+V; `DuplicateAsync` + optional cut-remove |
 | F13-27 | PDF annotations | multi-select | M4 | Implemented | Ctrl+click toggle; sidebar Extended; bulk delete/move |
-| F13-28 | PDF annotations | group where useful | M4 | Not Started |  |
+| F13-28 | PDF annotations | group where useful | M4 | Tested | Sidebar Group/Ungroup; `GlyphGroup` key; select/move together |
 | F13-29 | PDF annotations | change border color | M4 | Tested | Set on create + `SetColorAsync` |
 | F13-30 | PDF annotations | change fill color | M4 | Tested | `SetFillColorAsync` (InteriorColor) + sidebar Fill; also on shape create |
 | F13-31 | PDF annotations | change opacity | M4 | Tested | `SetOpacityAsync` + sidebar Opacity slider |

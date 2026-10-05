@@ -16,4 +16,5 @@ public sealed record PdfAnnotationInfo(
     bool IsTextBox = false,
     bool IsStamp = false,
     bool IsCallout = false,
-    string? Author = null);
+    string? Author = null,
+    string? GroupId = null);

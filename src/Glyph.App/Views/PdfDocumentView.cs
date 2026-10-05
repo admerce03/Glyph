@@ -421,6 +421,14 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(tipAnnot, "Reposition callout pointer tip (click on page)");
         tipAnnot.Click += (_, _) => BeginCalloutTipEdit();
         annotHeaderRow.Children.Add(tipAnnot);
+        var groupAnnot = new Button { Content = "Group", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(groupAnnot, "Group selected annotations so they move together");
+        groupAnnot.Click += async (_, _) => await GroupSelectedAnnotationsAsync();
+        annotHeaderRow.Children.Add(groupAnnot);
+        var ungroupAnnot = new Button { Content = "Ungroup", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(ungroupAnnot, "Remove group from selected annotations");
+        ungroupAnnot.Click += async (_, _) => await UngroupSelectedAnnotationsAsync();
+        annotHeaderRow.Children.Add(ungroupAnnot);
         var opacityAnnot = new Button { Content = "Opacity", Padding = new Thickness(6, 2, 6, 2) };
         ToolTipService.SetToolTip(opacityAnnot, "Change selected annotation opacity");
         opacityAnnot.Click += async (_, _) => await SetSelectedAnnotationOpacityAsync();
@@ -3915,12 +3923,13 @@ public sealed class PdfDocumentView : UserControl
 
     private static string FormatAnnotationLabel(PdfAnnotationInfo info)
     {
+        var group = string.IsNullOrEmpty(info.GroupId) ? string.Empty : "[G] ";
         if (info.IsCallout)
         {
             var preview = string.IsNullOrWhiteSpace(info.Contents)
                 ? "(empty)"
                 : TrimForStatus(info.Contents);
-            return $"Callout · p.{info.PageIndex + 1}: {preview}";
+            return $"{group}Callout · p.{info.PageIndex + 1}: {preview}";
         }
 
         if (info.IsStickyNote)
@@ -3929,7 +3938,7 @@ public sealed class PdfDocumentView : UserControl
                 ? "(empty)"
                 : TrimForStatus(info.Contents);
             var author = string.IsNullOrWhiteSpace(info.Author) ? string.Empty : $" · {info.Author}";
-            return $"Note{author} · p.{info.PageIndex + 1}: {preview}";
+            return $"{group}Note{author} · p.{info.PageIndex + 1}: {preview}";
         }
 
         if (info.IsTextBox)
@@ -3937,12 +3946,12 @@ public sealed class PdfDocumentView : UserControl
             var preview = string.IsNullOrWhiteSpace(info.Contents)
                 ? "(empty)"
                 : TrimForStatus(info.Contents);
-            return $"Text · p.{info.PageIndex + 1}: {preview}";
+            return $"{group}Text · p.{info.PageIndex + 1}: {preview}";
         }
 
         if (info.IsStamp)
         {
-            return $"Signature · p.{info.PageIndex + 1}";
+            return $"{group}Signature · p.{info.PageIndex + 1}";
         }
 
         if (info.ShapeKind is { } shape)
@@ -3961,12 +3970,12 @@ public sealed class PdfDocumentView : UserControl
                 PdfShapeKind.SpeechBubble => "Bubble",
                 _ => "Shape",
             };
-            return $"{shapeName} · p.{info.PageIndex + 1}";
+            return $"{group}{shapeName} · p.{info.PageIndex + 1}";
         }
 
         if (info.IsInk)
         {
-            return $"Ink · p.{info.PageIndex + 1}";
+            return $"{group}Ink · p.{info.PageIndex + 1}";
         }
 
         var kind = info.TextMarkupKind switch
@@ -3976,7 +3985,7 @@ public sealed class PdfDocumentView : UserControl
             PdfTextMarkupKind.StrikeOut => "Strike",
             _ => "Markup",
         };
-        return $"{kind} · p.{info.PageIndex + 1}";
+        return $"{group}{kind} · p.{info.PageIndex + 1}";
     }
 
     private void ToggleCalloutMode()
@@ -7517,7 +7526,21 @@ public sealed class PdfDocumentView : UserControl
         var alreadyInSelection = _selectedAnnots.Exists(a => SameAnnot(a, hit));
         if (!alreadyInSelection)
         {
-            ReplaceAnnotSelection(hit);
+            // Selecting one member of a group selects the whole group on that page.
+            if (!string.IsNullOrEmpty(hit.GroupId))
+            {
+                var members = _annotationItems
+                    .Where(a => a.PageIndex == hit.PageIndex
+                        && string.Equals(a.GroupId, hit.GroupId, StringComparison.Ordinal))
+                    .ToList();
+                _selectedAnnots.Clear();
+                _selectedAnnots.AddRange(members.Count > 0 ? members : [hit]);
+                _selectedAnnot = hit;
+            }
+            else
+            {
+                ReplaceAnnotSelection(hit);
+            }
         }
         else
         {
@@ -7545,6 +7568,89 @@ public sealed class PdfDocumentView : UserControl
         _status.Text = _selectedAnnots.Count > 1
             ? $"Selected {_selectedAnnots.Count} annotations. Drag to move together."
             : $"Selected {FormatAnnotationLabel(hit)}. Drag to move; handles resize.";
+    }
+
+    private async Task GroupSelectedAnnotationsAsync()
+    {
+        var members = _selectedAnnots.Count > 0
+            ? _selectedAnnots.ToList()
+            : TryGetSelectedAnnotation(out var one) ? [one] : [];
+        if (members.Count < 2)
+        {
+            _status.Text = "Select at least two annotations to group (Ctrl+click).";
+            return;
+        }
+
+        if (members.Select(m => m.PageIndex).Distinct().Count() > 1)
+        {
+            _status.Text = "Grouping is limited to annotations on the same page.";
+            return;
+        }
+
+        var groupId = Guid.NewGuid().ToString("N");
+        try
+        {
+            await _annotations.SetGroupAsync(
+                _document,
+                members.Select(m => (m.PageIndex, m.AnnotIndex)).ToList(),
+                groupId);
+            await RefreshAnnotationSidebarAsync();
+            RestoreSelectionAfterRefresh(members[0].PageIndex, members[0].AnnotIndex);
+            _status.Text = $"Grouped {members.Count} annotations.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Group failed: " + ex.Message;
+        }
+    }
+
+    private async Task UngroupSelectedAnnotationsAsync()
+    {
+        var members = _selectedAnnots.Count > 0
+            ? _selectedAnnots.ToList()
+            : TryGetSelectedAnnotation(out var one) ? [one] : [];
+        if (members.Count == 0)
+        {
+            _status.Text = "Select grouped annotation(s) to ungroup.";
+            return;
+        }
+
+        // Expand to full group if any member has a group id.
+        var groupIds = members
+            .Where(m => !string.IsNullOrEmpty(m.GroupId))
+            .Select(m => m.GroupId!)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (groupIds.Count == 0)
+        {
+            _status.Text = "Selection is not grouped.";
+            return;
+        }
+
+        var toClear = _annotationItems
+            .Where(a => a.GroupId is not null && groupIds.Contains(a.GroupId))
+            .Select(a => (a.PageIndex, a.AnnotIndex))
+            .ToList();
+        if (toClear.Count == 0)
+        {
+            toClear = members.Select(m => (m.PageIndex, m.AnnotIndex)).ToList();
+        }
+
+        try
+        {
+            await _annotations.SetGroupAsync(_document, toClear, groupId: null);
+            await RefreshAnnotationSidebarAsync();
+            if (members.Count > 0)
+            {
+                RestoreSelectionAfterRefresh(members[0].PageIndex, members[0].AnnotIndex);
+            }
+
+            _status.Text = $"Ungrouped {toClear.Count} annotation(s).";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Ungroup failed: " + ex.Message;
+        }
     }
 
     private void BeginAnnotResize(
