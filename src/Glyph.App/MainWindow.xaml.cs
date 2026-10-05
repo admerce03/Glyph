@@ -1160,7 +1160,7 @@ public sealed partial class MainWindow : Window
         var active = _workspace.ActiveDocument;
         if (active is null)
         {
-            StatusText.Text = "Open a document to save.";
+            StatusText.Text = DocumentSaveStatus.NoDocument;
             return;
         }
 
@@ -1198,7 +1198,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        StatusText.Text = "Open a document to save.";
+        StatusText.Text = DocumentSaveStatus.NoDocument;
     }
 
     /// <summary>Mark the active document session clean after a successful Save / Save As.</summary>
@@ -1228,8 +1228,7 @@ public sealed partial class MainWindow : Window
             }
         }
 
-        StatusText.Text = "Saved " + active.DisplayName
-            + (active.IsReadOnly ? " · read-only" : string.Empty);
+        StatusText.Text = DocumentSaveStatus.Saved(active.DisplayName, active.IsReadOnly);
         _ = _recentFiles.AddAsync(path);
         RefreshRecentList();
         _ = DiscardRecoveryAsync(previousPath);

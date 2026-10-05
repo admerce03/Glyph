@@ -23,7 +23,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-13 | Application and file handling | Warn when attempting to overwrite a read-only file. | M1/M9 | Tested | Save → Save As prompt; `ReadOnlySavePolicy` + `PathUtilities.IsPathReadOnly` unit tests |
 | F01-14 | Application and file handling | File → New from Clipboard. | M1/M9 | Tested | Menu + Ctrl+Shift+N; `ClipboardImageFileName` unit tests |
 | F01-15 | Application and file handling | File → Duplicate. | M1/M9 | Tested | File → Duplicate / Ctrl+Shift+D; `DocumentFileNamePolicy.SuggestDuplicatePath` unit tests |
-| F01-16 | Application and file handling | File → Save. | M1/M9 | Implemented | File → Save / Ctrl+S (PDF + image) |
+| F01-16 | Application and file handling | File → Save. | M1/M9 | Tested | File → Save / Ctrl+S; `DocumentSaveStatus` unit tests |
 | F01-17 | Application and file handling | File → Save As. | M1/M9 | Tested | File → Save As / Ctrl+Shift+S; `ImageEncodeFormatResolver` maps AVIF/JP2/HEIC |
 | F01-18 | Application and file handling | File → Export. | M1/M9 | Implemented | PDF Export toolbar; image Convert/Export |
 | F01-19 | Application and file handling | File → Rename. | M1/M9 | Tested | File → Rename…; `DocumentFileNamePolicy.EvaluateRename` unit tests |
@@ -52,9 +52,9 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-15 | Main window and interface | Dark mode. | M1/M9 | Tested | Theme preference Dark prefs round-trip |
 | F02-16 | Main window and interface | Light mode. | M1/M9 | Tested | Theme preference Light (default System + Dark round-trip) |
 | F02-17 | Main window and interface | Follow Windows system theme. | M1/M9 | Tested | Theme preference System default on missing prefs file |
-| F02-18 | Main window and interface | High-DPI scaling. | M1/M9 | Implemented | PerMonitorV2 declared in app.manifest |
+| F02-18 | Main window and interface | High-DPI scaling. | M1/M9 | Tested | `DpiAwarenessDeclaration` asserts PerMonitorV2 in app.manifest |
 | F02-19 | Main window and interface | Multi-monitor support. | M1/M9 | Tested | OS multi-monitor + Window → Move to Next Monitor; `MonitorCyclePolicy` unit tests |
-| F02-20 | Main window and interface | Per-monitor DPI awareness. | M1/M9 | Implemented | PerMonitorV2 declared in app.manifest |
+| F02-20 | Main window and interface | Per-monitor DPI awareness. | M1/M9 | Tested | Same `DpiAwarenessDeclaration` / app.manifest PerMonitorV2 check |
 | F02-21 | Main window and interface | Mouse support. | M1/M9 | Implemented | Pointer input throughout document and chrome UI |
 | F02-22 | Main window and interface | Precision touchpad gesture support where useful. | M1/M9 | Implemented | Two-finger ScrollViewer scroll + Ctrl+wheel / Manipulation Scale pinch (PDF + image) |
 | F02-23 | Main window and interface | Keyboard-first operation. | M1/M9 | Implemented | Menu accelerators + document Ctrl shortcuts |
