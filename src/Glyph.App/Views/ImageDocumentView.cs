@@ -36,6 +36,7 @@ public sealed class ImageDocumentView : UserControl
     private readonly Button _interactiveCropButton;
     private readonly Button _applyCropButton;
     private readonly Button _cancelCropButton;
+    private readonly ComboBox _cropAspectBox;
     private IReadOnlyList<string> _siblings = Array.Empty<string>();
     private DispatcherTimer? _slideshowTimer;
     private double _zoom = 1.0;
@@ -124,6 +125,14 @@ public sealed class ImageDocumentView : UserControl
         _interactiveCropButton = new Button { Content = "Crop…" };
         _applyCropButton = new Button { Content = "Apply crop", Visibility = Visibility.Collapsed };
         _cancelCropButton = new Button { Content = "Cancel crop", Visibility = Visibility.Collapsed };
+        _cropAspectBox = new ComboBox
+        {
+            Width = 110,
+            Visibility = Visibility.Collapsed,
+            ItemsSource = new[] { "Free", "Original", "1:1", "4:3", "3:2", "16:9" },
+            SelectedIndex = 0,
+        };
+        ToolTipService.SetToolTip(_cropAspectBox, "Crop aspect: free, original image ratio, or common presets");
         var resize = new Button { Content = "Resize" };
         var adjust = new Button { Content = "Adjust" };
         var meta = new Button { Content = "Meta" };
@@ -199,7 +208,7 @@ public sealed class ImageDocumentView : UserControl
             Children =
             {
                 _prevButton, _nextButton, _slideshowButton, zoomOut, zoomIn, fit, actual, rotateLeft, rotateRight, rotate180, orient, fullscreen, flipH, flipV,
-                _cropBox, crop, _interactiveCropButton, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, save, exportPng, exportJpeg, convert, _status,
+                _cropBox, crop, _interactiveCropButton, _cropAspectBox, _applyCropButton, _cancelCropButton, resize, adjust, meta, ocrButton, save, exportPng, exportJpeg, convert, _status,
             },
         };
 
@@ -576,10 +585,11 @@ public sealed class ImageDocumentView : UserControl
         _cropMode = true;
         _cropOverlay.IsHitTestVisible = true;
         _interactiveCropButton.Visibility = Visibility.Collapsed;
+        _cropAspectBox.Visibility = Visibility.Visible;
         _applyCropButton.Visibility = Visibility.Visible;
         _cancelCropButton.Visibility = Visibility.Visible;
         ClearCropSelection();
-        _status.Text = "Drag on the image to select a crop region.";
+        _status.Text = "Drag on the image to select a crop region (aspect from dropdown).";
     }
 
     private void ExitCropMode()
@@ -588,6 +598,7 @@ public sealed class ImageDocumentView : UserControl
         _cropDragging = false;
         _cropOverlay.IsHitTestVisible = false;
         _interactiveCropButton.Visibility = Visibility.Visible;
+        _cropAspectBox.Visibility = Visibility.Collapsed;
         _applyCropButton.Visibility = Visibility.Collapsed;
         _cancelCropButton.Visibility = Visibility.Collapsed;
         ClearCropSelection();
@@ -643,12 +654,9 @@ public sealed class ImageDocumentView : UserControl
 
     private void UpdateCropRect(Windows.Foundation.Point a, Windows.Foundation.Point b)
     {
-        var x = Math.Max(0, Math.Min(a.X, b.X));
-        var y = Math.Max(0, Math.Min(a.Y, b.Y));
-        var right = Math.Min(_displayWidth, Math.Max(a.X, b.X));
-        var bottom = Math.Min(_displayHeight, Math.Max(a.Y, b.Y));
-        var w = Math.Max(0, right - x);
-        var h = Math.Max(0, bottom - y);
+        var aspect = ResolveCropAspect();
+        var (x, y, w, h) = ImageCropAspect.Constrain(
+            a.X, a.Y, b.X, b.Y, _displayWidth, _displayHeight, aspect);
         Canvas.SetLeft(_cropRect, x);
         Canvas.SetTop(_cropRect, y);
         _cropRect.Width = w;
@@ -662,6 +670,19 @@ public sealed class ImageDocumentView : UserControl
             _cropBox.Text = $"{mapped.X},{mapped.Y},{mapped.Width},{mapped.Height}";
         }
     }
+
+    private double? ResolveCropAspect() =>
+        _cropAspectBox.SelectedIndex switch
+        {
+            1 => _document.PixelHeight > 0
+                ? _document.PixelWidth / (double)_document.PixelHeight
+                : null,
+            2 => 1.0,
+            3 => 4.0 / 3.0,
+            4 => 3.0 / 2.0,
+            5 => 16.0 / 9.0,
+            _ => null,
+        };
 
     private async Task ApplyInteractiveCropAsync()
     {

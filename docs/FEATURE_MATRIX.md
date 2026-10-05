@@ -433,7 +433,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-08 | Image viewing | AVIF where practical | M5 | Tested | Magick.NET decode; Open picker + `MagickImageDecoderFormatTests` |
 | F26-09 | Image viewing | ICO | M5 | Tested | Magick.NET decoder + open picker |
 | F26-10 | Image viewing | JPEG 2000 where practical | M5 | Tested | Magick.NET decode `.jp2`/`.j2k`; Open picker + decoder tests |
-| F26-11 | Image viewing | fast opening | M5 | Not Started |  |
+| F26-11 | Image viewing | fast opening | M5 | Implemented | `GetPixelsAsync(maxEdge)` caps decode (256–8192) so large files open without full decode |
 | F26-12 | Image viewing | zoom | M5 | Implemented | ImageDocumentView ± zoom |
 | F26-13 | Image viewing | pan | M5 | Implemented | ScrollViewer pan |
 | F26-14 | Image viewing | fit image | M5 | Implemented | Fit toolbar |
@@ -444,7 +444,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-19 | Image viewing | open group of images together | M5 | Implemented | Open With picker PickMultipleFilesAsync |
 | F26-20 | Image viewing | slideshow | M5 | Implemented | Slideshow toolbar: 3s loop through folder; Esc / Stop show; resumes across sibling opens via `ViewState.IsSlideshowActive` |
 | F26-21 | Image viewing | drag-and-drop navigation | M5 | Implemented | Shell drop opens images (`DropHost`); horizontal swipe on image → prev/next in folder |
-| F26-22 | Image viewing | high-resolution image support | M5 | Not Started |  |
+| F26-22 | Image viewing | high-resolution image support | M5 | Implemented | Same maxEdge progressive decode; zoom re-decodes up to 8192 edge |
 | F26-23 | Image viewing | alpha transparency | M5 | Implemented | BGRA32 decode via Magick → WriteableBitmap |
 | F26-24 | Image viewing | HDR display where Windows/display stack supports it | M5 | Not Started |  |
 | F26-25 | Image viewing | color-managed display | M5 | Not Started |  |
@@ -484,8 +484,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F29-11 | Smart object/background selection | Save extracted subject as separate image. | M8 | Not Started |  |
 | F30-01 | Image crop | Interactive crop box. | M5 | Implemented | Drag rectangle overlay (Crop…) |
 | F30-02 | Image crop | Free aspect ratio. | M5 | Implemented | Free drag selection |
-| F30-03 | Image crop | Original aspect ratio. | M5 | Not Started |  |
-| F30-04 | Image crop | Common presets: | M5 | Not Started |  |
+| F30-03 | Image crop | Original aspect ratio. | M5 | Tested | Crop… aspect dropdown → Original (`ImageCropAspect`) |
+| F30-04 | Image crop | Common presets: | M5 | Tested | Crop… aspect: 1:1, 4:3, 3:2, 16:9 (+ Free/Original) |
 | F30-05 | Image crop | Numeric width/height. | M5 | Implemented | Crop x,y,w,h text box |
 | F30-06 | Image crop | Apply crop. | M5 | Implemented | Crop / Apply crop → MagickImageProcessor.CropAsync |
 | F30-07 | Image crop | Undo. | M5 | Not Started |  |
