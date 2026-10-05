@@ -2126,47 +2126,16 @@ public sealed class ImageDocumentView : UserControl
 
         if (_selectionKind == ImageSelectionKind.Ellipse)
         {
-            var cx = left + (w / 2.0);
-            var cy = top + (h / 2.0);
-            var rx = w / 2.0;
-            var ry = h / 2.0;
-            if (rx <= 0 || ry <= 0)
-            {
-                return false;
-            }
-
-            var nx = (point.X - cx) / rx;
-            var ny = (point.Y - cy) / ry;
-            return (nx * nx) + (ny * ny) <= 1.0;
+            return ImageSelectionGeometry.ContainsInEllipse(point.X, point.Y, left, top, w, h);
         }
 
         if (IsLassoKind() && _lassoPolyline is { Points.Count: >= 3 })
         {
-            return PointInPolygon(point, _lassoPolyline.Points);
+            var verts = _lassoPolyline.Points.Select(p => (p.X, p.Y)).ToList();
+            return ImageSelectionGeometry.ContainsInPolygon(point.X, point.Y, verts);
         }
 
-        return point.X >= left
-            && point.Y >= top
-            && point.X <= left + w
-            && point.Y <= top + h;
-    }
-
-    private static bool PointInPolygon(Windows.Foundation.Point point, IList<Windows.Foundation.Point> polygon)
-    {
-        var inside = false;
-        for (int i = 0, j = polygon.Count - 1; i < polygon.Count; j = i++)
-        {
-            var pi = polygon[i];
-            var pj = polygon[j];
-            var intersect = ((pi.Y > point.Y) != (pj.Y > point.Y))
-                && (point.X < ((pj.X - pi.X) * (point.Y - pi.Y) / ((pj.Y - pi.Y) + double.Epsilon)) + pi.X);
-            if (intersect)
-            {
-                inside = !inside;
-            }
-        }
-
-        return inside;
+        return ImageSelectionGeometry.ContainsInRect(point.X, point.Y, left, top, w, h);
     }
 
     private void ClearCropSelection()

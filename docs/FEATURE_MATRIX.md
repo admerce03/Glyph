@@ -458,7 +458,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F27-08 | Animated images | inspect individual frames | M8 | Implemented | Step frames; Meta shows Animation entries |
 | F27-09 | Animated images | extract frame | M8 | Tested | ExtractFrameAsync BGRA for any index |
 | F27-10 | Animated images | save selected frame as image | M8 | Implemented | Save frame → PNG picker |
-| F28-01 | Image selection tools | Rectangular selection. | M5 | Implemented | Select toolbar → drag rectangle overlay |
+| F28-01 | Image selection tools | Rectangular selection. | M5 | Tested | Select toolbar → drag rectangle; `ImageSelectionGeometry.ContainsInRect` |
 | F28-02 | Image selection tools | Elliptical selection. | M5 | Tested | Select → Ellipse shape; extract/clear/move use oval mask |
 | F28-03 | Image selection tools | Freeform lasso. | M5 | Tested | Select → Lasso drag polyline; extract/clear/move use polygon mask |
 | F28-04 | Image selection tools | Smart lasso. | M5 | Implemented | Select → Smart; edge-snapping polyline (Sobel), polygon mask |
