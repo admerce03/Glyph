@@ -1106,6 +1106,116 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             });
     }
 
+    public Task<float?> GetBorderWidthAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
+                    if (page is null)
+                    {
+                        throw new InvalidOperationException($"Failed to load page {pageIndex}.");
+                    }
+
+                    try
+                    {
+                        var annot = fpdf_annot.FPDFPageGetAnnot(page, annotIndex);
+                        if (annot is null)
+                        {
+                            throw new InvalidOperationException($"Annotation {annotIndex} not found.");
+                        }
+
+                        try
+                        {
+                            var subtype = fpdf_annot.FPDFAnnotGetSubtype(annot);
+                            if (!SupportsBorderWidth(subtype))
+                            {
+                                return (float?)null;
+                            }
+
+                            if (PdfiumNative.AnnotGetBorder(
+                                    annot.__Instance,
+                                    out _,
+                                    out _,
+                                    out var width) == 0)
+                            {
+                                return null;
+                            }
+
+                            return width;
+                        }
+                        finally
+                        {
+                            fpdf_annot.FPDFPageCloseAnnot(annot);
+                        }
+                    }
+                    finally
+                    {
+                        fpdfview.FPDF_ClosePage(page);
+                    }
+                }
+            },
+            cancellationToken);
+    }
+
+    public Task SetBorderWidthAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        float borderWidthPoints,
+        CancellationToken cancellationToken = default)
+    {
+        if (borderWidthPoints <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(borderWidthPoints));
+        }
+
+        return MutateAnnotAsync(
+            document,
+            pageIndex,
+            annotIndex,
+            cancellationToken,
+            annot =>
+            {
+                var subtype = fpdf_annot.FPDFAnnotGetSubtype(annot);
+                if (!SupportsBorderWidth(subtype))
+                {
+                    throw new NotSupportedException(
+                        "Border width can only be changed on ink, rectangle, ellipse, and text box annotations.");
+                }
+
+                var hr = 0f;
+                var vr = 0f;
+                var existing = 0f;
+                if (PdfiumNative.AnnotGetBorder(annot.__Instance, out hr, out vr, out existing) == 0)
+                {
+                    hr = 0f;
+                    vr = 0f;
+                }
+
+                if (PdfiumNative.AnnotSetBorder(annot.__Instance, hr, vr, borderWidthPoints) == 0)
+                {
+                    throw new InvalidOperationException("Failed to set annotation border width.");
+                }
+            });
+    }
+
+    private static bool SupportsBorderWidth(int subtype) =>
+        subtype is PdfiumAnnotSubtypes.Ink
+            or PdfiumAnnotSubtypes.Square
+            or PdfiumAnnotSubtypes.Circle
+            or PdfiumAnnotSubtypes.FreeText;
+
     public Task MoveAsync(
         IPdfDocument document,
         int pageIndex,

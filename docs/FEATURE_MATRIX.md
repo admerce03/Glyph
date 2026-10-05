@@ -255,7 +255,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-29 | PDF annotations | change border color | M4 | Tested | Set on create + `SetColorAsync` |
 | F13-30 | PDF annotations | change fill color | M4 | Tested | InteriorColor on shape create |
 | F13-31 | PDF annotations | change opacity | M4 | Tested | `SetOpacityAsync` + sidebar Opacity slider |
-| F13-32 | PDF annotations | change line thickness | M4 | Tested | `borderWidthPoints` on ink/shape create |
+| F13-32 | PDF annotations | change line thickness | M4 | Tested | Create + sidebar Width → `SetBorderWidthAsync` (ink/shapes/text box) |
 | F13-33 | PDF annotations | change line style | M4 | Tested | Line/Arrow ink: Solid/Dashed/Dotted via segmented strokes |
 | F13-34 | PDF annotations | change arrowheads | M4 | Tested | Arrow tool: Open / Filled / Diamond ink heads |
 | F13-35 | PDF annotations | change font | M4 | Implemented | TextBox/Callout Font combo → DA resource (Helv/TiRo/Cour + bold/italic) |

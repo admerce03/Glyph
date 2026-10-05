@@ -395,6 +395,10 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(opacityAnnot, "Change selected annotation opacity");
         opacityAnnot.Click += async (_, _) => await SetSelectedAnnotationOpacityAsync();
         annotHeaderRow.Children.Add(opacityAnnot);
+        var widthAnnot = new Button { Content = "Width", Padding = new Thickness(6, 2, 6, 2) };
+        ToolTipService.SetToolTip(widthAnnot, "Change stroke or border width for ink and shapes");
+        widthAnnot.Click += async (_, _) => await SetSelectedAnnotationBorderWidthAsync();
+        annotHeaderRow.Children.Add(widthAnnot);
         annotHeaderRow.Children.Add(removeAnnot);
         Grid.SetRow(annotHeaderRow, 6);
         sidePanel.Children.Add(annotHeaderRow);
@@ -7460,6 +7464,76 @@ public sealed class PdfDocumentView : UserControl
         catch (Exception ex)
         {
             _status.Text = "Paste annotation failed: " + ex.Message;
+        }
+    }
+
+    private async Task SetSelectedAnnotationBorderWidthAsync()
+    {
+        var window = _ownerWindow
+            ?? App.CurrentApp.MainWindowInstance
+            ?? throw new InvalidOperationException("Main window unavailable for width dialog.");
+
+        if (!TryGetSelectedAnnotation(out var item))
+        {
+            _status.Text = "Select an ink or shape annotation to change width.";
+            return;
+        }
+
+        float initial = _drawStrokeWidth;
+        try
+        {
+            var current = await _annotations.GetBorderWidthAsync(_document, item.PageIndex, item.AnnotIndex);
+            if (current is > 0)
+            {
+                initial = current.Value;
+            }
+        }
+        catch
+        {
+            // Use default when read fails.
+        }
+
+        var widthBox = new NumberBox
+        {
+            Header = "Width (pt)",
+            Value = initial,
+            Minimum = 0.5,
+            Maximum = 24,
+            SmallChange = 0.5,
+            LargeChange = 1,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
+            Width = 280,
+        };
+        var dialog = new ContentDialog
+        {
+            Title = $"Stroke width — {FormatAnnotationLabel(item)}",
+            Content = widthBox,
+            PrimaryButtonText = "Apply",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = window.Content.XamlRoot,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var width = (float)(double.IsNaN(widthBox.Value) ? initial : Math.Clamp(widthBox.Value, 0.5, 24));
+
+        try
+        {
+            await _annotations.SetBorderWidthAsync(_document, item.PageIndex, item.AnnotIndex, width);
+            _cache.ClearDocument(_documentKey);
+            _cache.ClearDocument(_thumbnailKey);
+            await RenderVisibleAsync();
+            await RenderThumbnailsAsync();
+            await RefreshAnnotationSidebarAsync();
+            _status.Text = $"Stroke width set to {width:0.#} pt.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Width failed: " + ex.Message;
         }
     }
 

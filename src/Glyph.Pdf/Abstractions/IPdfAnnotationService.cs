@@ -130,6 +130,25 @@ public interface IPdfAnnotationService
         float opacity,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Reads stroke/border width in points when PDFium exposes it (ink, square, circle, FreeText).
+    /// </summary>
+    Task<float?> GetBorderWidthAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates stroke/border width in points for ink and shape annotations that support borders.
+    /// </summary>
+    Task SetBorderWidthAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        float borderWidthPoints,
+        CancellationToken cancellationToken = default);
+
     Task MoveAsync(
         IPdfDocument document,
         int pageIndex,

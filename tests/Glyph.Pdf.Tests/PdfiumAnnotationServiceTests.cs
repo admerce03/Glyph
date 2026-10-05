@@ -494,9 +494,14 @@ public class PdfiumAnnotationServiceTests
                     0,
                     PdfShapeKind.Line,
                     new PdfRect(80, 500, 180, 560),
-                    new PdfAnnotationColor(0, 128, 0));
+                    new PdfAnnotationColor(0, 128, 0),
+                    borderWidthPoints: 2f);
                 line.ShapeKind.Should().Be(PdfShapeKind.Line);
                 line.IsInk.Should().BeTrue();
+
+                (await annots.GetBorderWidthAsync(document, 0, line.AnnotIndex)).Should().BeApproximately(2f, 0.01f);
+                await annots.SetBorderWidthAsync(document, 0, line.AnnotIndex, 5f);
+                (await annots.GetBorderWidthAsync(document, 0, line.AnnotIndex)).Should().BeApproximately(5f, 0.01f);
 
                 var dashed = await annots.AddShapeAsync(
                     document,
