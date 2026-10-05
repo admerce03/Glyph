@@ -71,9 +71,18 @@ public sealed class PdfiumFormStore : IPdfFormStore
                                     var kind = MapKind(annot);
                                     var name = PdfiumAnnotStrings.GetString(annot, "T");
                                     var value = PdfiumAnnotStrings.GetString(annot, "V");
-                                    if (string.IsNullOrEmpty(value) && kind == PdfFormFieldKind.CheckBox)
+                                    if (kind is PdfFormFieldKind.CheckBox or PdfFormFieldKind.RadioButton)
                                     {
-                                        value = PdfiumAnnotStrings.GetString(annot, "AS");
+                                        // Widget appearance is authoritative for button state.
+                                        var appearance = PdfiumAnnotStrings.GetString(annot, "AS");
+                                        if (!string.IsNullOrEmpty(appearance))
+                                        {
+                                            value = appearance;
+                                        }
+                                        else if (string.IsNullOrEmpty(value))
+                                        {
+                                            value = "Off";
+                                        }
                                     }
                                     var bounds = ReadRect(annot);
                                     fields.Add(new PdfFormFieldInfo(
@@ -221,7 +230,7 @@ public sealed class PdfiumFormStore : IPdfFormStore
                                 throw new NotSupportedException("Target annotation is not a checkbox.");
                             }
 
-                            var onState = ResolveCheckBoxOnState(annot);
+                            var onState = ResolveButtonOnState(annot);
                             var state = isChecked ? onState : "Off";
                             if (!PdfiumAnnotStrings.SetString(annot, "V", state) ||
                                 !PdfiumAnnotStrings.SetString(annot, "AS", state))
@@ -240,6 +249,143 @@ public sealed class PdfiumFormStore : IPdfFormStore
                     {
                         fpdfview.FPDF_ClosePage(page);
                     }
+                }
+            },
+            cancellationToken);
+    }
+
+    public Task SetRadioButtonAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        ArgumentOutOfRangeException.ThrowIfNegative(pageIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(pageIndex, pdfium.PageCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(annotIndex);
+
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+
+                    string groupName;
+                    string onState;
+                    var selectedPage = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
+                    if (selectedPage is null)
+                    {
+                        throw new InvalidOperationException($"Failed to load page {pageIndex} for radio.");
+                    }
+
+                    try
+                    {
+                        var selectedAnnot = fpdf_annot.FPDFPageGetAnnot(selectedPage, annotIndex);
+                        if (selectedAnnot is null)
+                        {
+                            throw new ArgumentOutOfRangeException(nameof(annotIndex), "Annotation not found.");
+                        }
+
+                        try
+                        {
+                            if (fpdf_annot.FPDFAnnotGetSubtype(selectedAnnot) != PdfiumAnnotSubtypes.Widget)
+                            {
+                                throw new InvalidOperationException("Target annotation is not a form widget.");
+                            }
+
+                            if (MapKind(selectedAnnot) != PdfFormFieldKind.RadioButton)
+                            {
+                                throw new NotSupportedException("Target annotation is not a radio button.");
+                            }
+
+                            groupName = PdfiumAnnotStrings.GetString(selectedAnnot, "T");
+                            onState = ResolveButtonOnState(selectedAnnot);
+                        }
+                        finally
+                        {
+                            fpdf_annot.FPDFPageCloseAnnot(selectedAnnot);
+                        }
+                    }
+                    finally
+                    {
+                        fpdfview.FPDF_ClosePage(selectedPage);
+                    }
+
+                    // Mutual exclusion: select this widget; Off siblings with the same /T.
+                    for (var p = 0; p < pdfium.PageCount; p++)
+                    {
+                        var page = fpdfview.FPDF_LoadPage(pdfium.Handle, p);
+                        if (page is null)
+                        {
+                            continue;
+                        }
+
+                        try
+                        {
+                            var count = fpdf_annot.FPDFPageGetAnnotCount(page);
+                            for (var a = 0; a < count; a++)
+                            {
+                                var annot = fpdf_annot.FPDFPageGetAnnot(page, a);
+                                if (annot is null)
+                                {
+                                    continue;
+                                }
+
+                                try
+                                {
+                                    if (fpdf_annot.FPDFAnnotGetSubtype(annot) != PdfiumAnnotSubtypes.Widget)
+                                    {
+                                        continue;
+                                    }
+
+                                    if (MapKind(annot) != PdfFormFieldKind.RadioButton)
+                                    {
+                                        continue;
+                                    }
+
+                                    var name = PdfiumAnnotStrings.GetString(annot, "T");
+                                    if (!string.Equals(name, groupName, StringComparison.Ordinal))
+                                    {
+                                        continue;
+                                    }
+
+                                    var isSelected = p == pageIndex && a == annotIndex;
+                                    if (isSelected)
+                                    {
+                                        if (!PdfiumAnnotStrings.SetString(annot, "V", onState) ||
+                                            !PdfiumAnnotStrings.SetString(annot, "AS", onState))
+                                        {
+                                            throw new InvalidOperationException(
+                                                "Failed to set radio button /V and /AS.");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (!PdfiumAnnotStrings.SetString(annot, "AS", "Off") ||
+                                            !PdfiumAnnotStrings.SetString(annot, "V", "Off"))
+                                        {
+                                            throw new InvalidOperationException(
+                                                "Failed to clear sibling radio /V and /AS.");
+                                        }
+                                    }
+                                }
+                                finally
+                                {
+                                    fpdf_annot.FPDFPageCloseAnnot(annot);
+                                }
+                            }
+                        }
+                        finally
+                        {
+                            fpdfview.FPDF_ClosePage(page);
+                        }
+                    }
+
+                    pdfium.NotifyAnnotationsChanged();
                 }
             },
             cancellationToken);
@@ -332,13 +478,15 @@ public sealed class PdfiumFormStore : IPdfFormStore
             : (int)value;
     }
 
-    private static string ResolveCheckBoxOnState(FpdfAnnotationT annot)
+    private static string ResolveButtonOnState(FpdfAnnotationT annot)
     {
-        var current = PdfiumAnnotStrings.GetString(annot, "V");
-        if (!string.IsNullOrEmpty(current) &&
-            !string.Equals(current, "Off", StringComparison.Ordinal))
+        // Prefer this widget's export name (/DV, then non-Off /AS) over /V, which may
+        // reflect a previously selected sibling in the same radio group.
+        var defaults = PdfiumAnnotStrings.GetString(annot, "DV");
+        if (!string.IsNullOrEmpty(defaults) &&
+            !string.Equals(defaults, "Off", StringComparison.Ordinal))
         {
-            return current;
+            return defaults;
         }
 
         var appearance = PdfiumAnnotStrings.GetString(annot, "AS");
@@ -346,6 +494,13 @@ public sealed class PdfiumFormStore : IPdfFormStore
             !string.Equals(appearance, "Off", StringComparison.Ordinal))
         {
             return appearance;
+        }
+
+        var current = PdfiumAnnotStrings.GetString(annot, "V");
+        if (!string.IsNullOrEmpty(current) &&
+            !string.Equals(current, "Off", StringComparison.Ordinal))
+        {
+            return current;
         }
 
         return "Yes";

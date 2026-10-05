@@ -35,6 +35,16 @@ public interface IPdfFormStore
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Select a radio button widget. Sets its <c>/V</c> and <c>/AS</c> to the on-state name,
+    /// and turns off sibling radios that share the same field name.
+    /// </summary>
+    Task SetRadioButtonAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Focus the next (or previous) field in tab order. Returns the focused field, or null if none.
     /// </summary>
     Task<PdfFormFieldInfo?> FocusAdjacentAsync(
