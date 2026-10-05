@@ -37,7 +37,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-27 | Application and file handling | Do not silently overwrite originals by default. | M1/M9 | Tested | Autosave-to-original opt-in off by default (prefs default unit test) |
 | F02-01 | Main window and interface | Standard Windows title bar. | M1/M9 | Tested | WinUI AppWindow system title bar; `SystemTitleBarPolicy` unit tests |
 | F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | Tested | MenuBar File/Edit/View/Window; `ShellMenuCatalog` unit tests |
-| F02-03 | Main window and interface | Customizable toolbar. | M1/M9 | Tested | ToolbarCommands catalog + `ToolbarHiddenCommands` prefs unit tests (F54) |
+| F02-03 | Main window and interface | Customizable toolbar. | M1/M9 | Tested | ToolbarCommands catalog + hide/reorder prefs (`ToolbarOrderPolicy`) |
 | F02-04 | Main window and interface | Optional compact toolbar. | M1/M9 | Tested | `CompactToolbar` prefs round-trip unit test |
 | F02-05 | Main window and interface | Hide/show toolbar. | M1/M9 | Tested | View → Hide/Show Toolbar; `ToolbarVisibilityLabel` unit tests |
 | F02-06 | Main window and interface | Hide/show sidebar. | M1/M9 | Tested | View → Hide/Show Sidebar; `SidebarVisible` prefs round-trip |
@@ -747,25 +747,25 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F53-01 | Precision touchpad behavior | two-finger scroll | M1/M2 | Tested | ScrollViewer pan; `TouchpadGesturePolicy.TwoFingerScrollUsesScrollViewer` |
 | F53-02 | Precision touchpad behavior | pinch zoom on supported precision touchpads | M1/M2 | Tested | Ctrl+wheel + Manipulation Scale; `TouchpadGesturePolicy.PreferPinchZoom` |
 | F53-03 | Precision touchpad behavior | standard Windows touchpad gestures where they map naturally to application navigation | M1/M2 | Tested | Scroll/pinch map; `TouchpadGesturePolicy` (no custom touchscreen) |
-| F54-01 | Toolbar customization | sidebar | M1/M9 | Tested | Catalog id + `ToolbarHiddenCommands` prefs filter unit tests |
-| F54-02 | Toolbar customization | previous | M1/M9 | Tested | Catalog id + prefs hide list |
-| F54-03 | Toolbar customization | next | M1/M9 | Tested | Catalog id + prefs hide list |
-| F54-04 | Toolbar customization | page number | M1/M9 | Tested | Catalog id + prefs hide list |
-| F54-05 | Toolbar customization | zoom | M1/M9 | Tested | Catalog id + prefs hide list |
-| F54-06 | Toolbar customization | fit page | M1/M9 | Tested | Catalog id + prefs hide list |
-| F54-07 | Toolbar customization | fit width | M1/M9 | Tested | Catalog id + prefs hide list |
-| F54-08 | Toolbar customization | search | M1/M9 | Tested | Catalog id + prefs hide list |
-| F54-09 | Toolbar customization | markup | M1/M9 | Tested | Catalog id + prefs hide list |
-| F54-10 | Toolbar customization | highlight | M1/M9 | Tested | Catalog id + prefs hide list |
-| F54-11 | Toolbar customization | rotate | M1/M9 | Tested | Catalog id + prefs hide list |
-| F54-12 | Toolbar customization | crop | M1/M9 | Tested | Catalog id + prefs hide list |
-| F54-13 | Toolbar customization | signature | M1/M9 | Tested | Catalog id + prefs hide list |
-| F54-14 | Toolbar customization | print | M1/M9 | Tested | Catalog id + prefs hide list |
-| F54-15 | Toolbar customization | inspector | M1/M9 | Tested | Catalog id + prefs hide list |
-| F54-16 | Toolbar customization | share | M1/M9 | Tested | Catalog id + prefs hide list |
-| F54-17 | Toolbar customization | OCR | M1/M9 | Tested | Catalog id + prefs hide list |
-| F54-18 | Toolbar customization | default toolbar | M1/M9 | Tested | Empty `ToolbarHiddenCommands` = all visible (unit test) |
-| F54-19 | Toolbar customization | reset toolbar | M1/M9 | Tested | Clear hidden list round-trip unit test |
+| F54-01 | Toolbar customization | sidebar | M1/M9 | Tested | Catalog id + hide/reorder via `ToolbarHiddenCommands` / `ToolbarCommandOrder` (`ToolbarOrderPolicy`) |
+| F54-02 | Toolbar customization | previous | M1/M9 | Tested | Catalog id + prefs hide/↑↓ reorder |
+| F54-03 | Toolbar customization | next | M1/M9 | Tested | Catalog id + prefs hide/↑↓ reorder |
+| F54-04 | Toolbar customization | page number | M1/M9 | Tested | Catalog id + prefs hide/↑↓ reorder |
+| F54-05 | Toolbar customization | zoom | M1/M9 | Tested | Catalog id + prefs hide/↑↓ reorder |
+| F54-06 | Toolbar customization | fit page | M1/M9 | Tested | Catalog id + prefs hide/↑↓ reorder |
+| F54-07 | Toolbar customization | fit width | M1/M9 | Tested | Catalog id + prefs hide/↑↓ reorder |
+| F54-08 | Toolbar customization | search | M1/M9 | Tested | Catalog id + prefs hide/↑↓ reorder |
+| F54-09 | Toolbar customization | markup | M1/M9 | Tested | Catalog id + prefs hide/↑↓ reorder |
+| F54-10 | Toolbar customization | highlight | M1/M9 | Tested | Catalog id + prefs hide/↑↓ reorder |
+| F54-11 | Toolbar customization | rotate | M1/M9 | Tested | Catalog id + prefs hide/↑↓ reorder |
+| F54-12 | Toolbar customization | crop | M1/M9 | Tested | Catalog id + prefs hide/↑↓ reorder |
+| F54-13 | Toolbar customization | signature | M1/M9 | Tested | Catalog id + prefs hide/↑↓ reorder |
+| F54-14 | Toolbar customization | print | M1/M9 | Tested | Catalog id + prefs hide/↑↓ reorder |
+| F54-15 | Toolbar customization | inspector | M1/M9 | Tested | Catalog id + prefs hide/↑↓ reorder |
+| F54-16 | Toolbar customization | share | M1/M9 | Tested | Catalog id + prefs hide/↑↓ reorder |
+| F54-17 | Toolbar customization | OCR | M1/M9 | Tested | Catalog id + prefs hide/↑↓ reorder |
+| F54-18 | Toolbar customization | default toolbar | M1/M9 | Tested | Empty hidden + empty order = catalog default (`ToolbarOrderPolicy.IsDefault`) |
+| F54-19 | Toolbar customization | reset toolbar | M1/M9 | Tested | Clear hidden list + reset order; prefs Reset button |
 | F54-20 | Toolbar customization | compact icon mode | M1/M9 | Tested | `CompactToolbar` prefs round-trip unit test |
 | F55-01 | Preferences | theme | M1/M9 | Tested | Theme setting persisted; `JsonSettingsStoreTests` round-trip |
 | F55-02 | Preferences | restore previous session | M1/M9 | Tested | Preferences toggle; `JsonSettingsStore` + `JsonSessionStore` unit tests |
