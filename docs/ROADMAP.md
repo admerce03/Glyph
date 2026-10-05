@@ -251,7 +251,6 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 - `IOcrEngine` / `OcrRequest` / `OcrResult` abstractions in `Glyph.Ocr`
 - `WindowsOcrEngine` (Windows.Media.Ocr) registered in App DI; **OCR** toolbar on `ImageDocumentView` with Live Text word-box overlay (click/Ctrl+click select + Copy OCR)
-- `WindowsOcrEngine` (Windows.Media.Ocr) registered in App DI; **OCR** toolbar on `ImageDocumentView` with Live Text word-box overlay (click/Ctrl+click select + Copy OCR)
 - `UnsupportedOcrEngine` + Fake engine + overlay mapper + entity detector + text search coverage in `Glyph.Ocr.Tests` (Linux)
 - PDF **OCR** current/selected/entire document on `PdfDocumentView` (chooser → render → BGRA → engine + result dialog)
 - **Cancel OCR** + `n/m` status progress for multi-page PDF recognition

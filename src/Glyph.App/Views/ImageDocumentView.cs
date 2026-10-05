@@ -1691,6 +1691,159 @@ public sealed class ImageDocumentView : UserControl
         _status.Text = "OCR overlay cleared.";
     }
 
+    private void RebuildOcrOverlay()
+    {
+        _ocrOverlay.Children.Clear();
+        _ocrVisuals.Clear();
+
+        if (_ocrResult is null
+            || _ocrSourceWidth <= 0
+            || _ocrSourceHeight <= 0
+            || _displayWidth <= 0
+            || _displayHeight <= 0)
+        {
+            _ocrOverlay.IsHitTestVisible = false;
+            _copyOcrButton.Visibility = Visibility.Collapsed;
+            _clearOcrButton.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var index = 0;
+        foreach (var line in _ocrResult.Lines)
+        {
+            foreach (var word in line.Words)
+            {
+                var mapped = OcrOverlayMapper.MapToDisplay(
+                    word, _ocrSourceWidth, _ocrSourceHeight, _displayWidth, _displayHeight);
+                var wordIndex = index;
+                var rect = new Rectangle
+                {
+                    Width = mapped.Width,
+                    Height = mapped.Height,
+                    Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 64, 156, 255)),
+                    Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(180, 32, 120, 220)),
+                    StrokeThickness = 1,
+                    Tag = wordIndex,
+                };
+                Canvas.SetLeft(rect, mapped.X);
+                Canvas.SetTop(rect, mapped.Y);
+                rect.PointerPressed += OcrWord_PointerPressed;
+                _ocrOverlay.Children.Add(rect);
+                _ocrVisuals.Add((word, rect));
+                index++;
+            }
+        }
+
+        foreach (var selected in _selectedOcrIndices.ToList())
+        {
+            if (selected < 0 || selected >= _ocrVisuals.Count)
+            {
+                _selectedOcrIndices.Remove(selected);
+                continue;
+            }
+
+            ApplyOcrSelectionChrome(selected, selected: true);
+        }
+
+        var hasWords = _ocrVisuals.Count > 0;
+        _ocrOverlay.IsHitTestVisible = hasWords && !_cropMode;
+        _copyOcrButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
+        _clearOcrButton.Visibility = hasWords ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OcrWord_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is not Rectangle rect || rect.Tag is not int index)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        var ctrl = Microsoft.UI.Input.InputKeyboardSource
+            .GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+        if (!ctrl)
+        {
+            foreach (var selected in _selectedOcrIndices.ToList())
+            {
+                ApplyOcrSelectionChrome(selected, selected: false);
+            }
+
+            _selectedOcrIndices.Clear();
+        }
+
+        if (_selectedOcrIndices.Contains(index))
+        {
+            _selectedOcrIndices.Remove(index);
+            ApplyOcrSelectionChrome(index, selected: false);
+        }
+        else
+        {
+            _selectedOcrIndices.Add(index);
+            ApplyOcrSelectionChrome(index, selected: true);
+        }
+
+        _status.Text = _selectedOcrIndices.Count == 0
+            ? $"OCR ready — {_ocrVisuals.Count} word(s)."
+            : $"OCR selected {_selectedOcrIndices.Count} word(s).";
+    }
+
+    private void ApplyOcrSelectionChrome(int index, bool selected)
+    {
+        if (index < 0 || index >= _ocrVisuals.Count)
+        {
+            return;
+        }
+
+        var rect = _ocrVisuals[index].Visual;
+        rect.Fill = new SolidColorBrush(selected
+            ? Windows.UI.Color.FromArgb(90, 255, 200, 40)
+            : Windows.UI.Color.FromArgb(40, 64, 156, 255));
+        rect.Stroke = new SolidColorBrush(selected
+            ? Windows.UI.Color.FromArgb(220, 220, 140, 0)
+            : Windows.UI.Color.FromArgb(180, 32, 120, 220));
+    }
+
+    private void CopySelectedOcrText()
+    {
+        if (_ocrResult is null)
+        {
+            return;
+        }
+
+        string text;
+        if (_selectedOcrIndices.Count == 0)
+        {
+            text = _ocrResult.Text ?? string.Empty;
+        }
+        else
+        {
+            text = string.Join(
+                ' ',
+                _selectedOcrIndices.OrderBy(i => i)
+                    .Where(i => i >= 0 && i < _ocrVisuals.Count)
+                    .Select(i => _ocrVisuals[i].Word.Text));
+        }
+
+        var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+        package.SetText(text);
+        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+        _status.Text = _selectedOcrIndices.Count == 0
+            ? "All OCR text copied."
+            : $"Copied {_selectedOcrIndices.Count} OCR word(s).";
+    }
+
+    private void ClearOcrOverlay()
+    {
+        _ocrResult = null;
+        _ocrSourceWidth = 0;
+        _ocrSourceHeight = 0;
+        _selectedOcrIndices.Clear();
+        RebuildOcrOverlay();
+        _status.Text = "OCR overlay cleared.";
+    }
+
     private async Task SaveAsync()
     {
         try
