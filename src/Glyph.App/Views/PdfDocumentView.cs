@@ -3483,7 +3483,7 @@ public sealed class PdfDocumentView : UserControl
 
                 sections.Add(pages.Count == 1
                     ? body
-                    : $"--- Page {pageIndex + 1} ---\n{body}");
+                    : OcrResultDialog.PageSectionHeader(pageIndex, body));
                 ShowJobProgress(100.0 * (i + 1) / pages.Count);
             }
 
@@ -3498,18 +3498,16 @@ public sealed class PdfDocumentView : UserControl
                 Width = 480,
                 Height = 320,
             };
-            var copy = new Button { Content = "Copy text", Margin = new Thickness(0, 8, 0, 0) };
+            var copy = new Button { Content = OcrResultDialog.CopyButton, Margin = new Thickness(0, 8, 0, 0) };
             copy.Click += (_, _) =>
             {
                 var package = new DataPackage();
                 package.SetText(combined);
                 Clipboard.SetContent(package);
-                _status.Text = "OCR text copied.";
+                _status.Text = OcrResultDialog.TextCopied;
             };
 
-            var summary = pages.Count == 1
-                ? $"Page {pages[0] + 1} · {totalLines} line(s) · {totalWords} word(s)"
-                : $"{pages.Count} pages · {totalLines} line(s) · {totalWords} word(s)";
+            var summary = OcrResultDialog.Summary(pages.Count, pages[0], totalLines, totalWords);
 
             var panel = new StackPanel
             {
@@ -3524,27 +3522,21 @@ public sealed class PdfDocumentView : UserControl
 
             var dialog = new ContentDialog
             {
-                Title = pages.Count == 1 ? "OCR result" : "OCR results",
+                Title = OcrResultDialog.Title(pages.Count),
                 Content = panel,
                 CloseButtonText = "Close",
                 XamlRoot = XamlRoot,
             };
             await dialog.ShowAsync();
-            _status.Text = totalLines == 0
-                ? (pages.Count == 1
-                    ? $"OCR page {pages[0] + 1} — no text."
-                    : $"OCR {pages.Count} pages — no text.")
-                : (pages.Count == 1
-                    ? $"OCR page {pages[0] + 1} — {totalLines} line(s). Click words to select."
-                    : $"OCR {pages.Count} pages — {totalLines} line(s). Click words to select.");
+            _status.Text = OcrResultDialog.CompletionStatus(pages.Count, pages[0], totalLines);
         }
         catch (OperationCanceledException)
         {
-            _status.Text = "OCR cancelled.";
+            _status.Text = OcrResultDialog.Cancelled;
         }
         catch (Exception ex)
         {
-            _status.Text = "OCR failed: " + ex.Message;
+            _status.Text = OcrResultDialog.Failed(ex.Message);
         }
         finally
         {
