@@ -276,7 +276,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F15-03 | Notes | Collapse note. | M4 | Not Started | PDF Text annot is icon by default |
 | F15-04 | Notes | Expand note. | M4 | Not Started |  |
 | F15-05 | Notes | Move note icon. | M4 | Tested | `MoveAsync` API; drag UI later |
-| F15-06 | Notes | Change note color. | M4 | Tested | `SetColorAsync` API; picker UI later |
+| F15-06 | Notes | Change note color. | M4 | Tested | Create picker + sidebar Color → StickyNotePresets / `SetColorAsync` |
 | F15-07 | Notes | Edit. | M4 | Tested | `SetContentsAsync` API; edit dialog later |
 | F15-08 | Notes | Delete. | M4 | Implemented | Sidebar Delete |
 | F15-09 | Notes | Show note author. | M4 | Not Started |  |
