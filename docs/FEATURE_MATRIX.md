@@ -359,7 +359,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F20-09 | PDF forms | signatures where supported | M4 | Not Started |  |
 | F20-10 | PDF forms | tab-order navigation | M4 | Tested | `FocusAdjacentAsync` + Form dialog Next |
 | F20-11 | PDF forms | form-filling mode that overlays text fields manually. | M4 | Implemented | Form → Overlay draws clickable field boxes; Tab/Enter/Esc |
-| F20-12 | PDF forms | automatic font sizing | M4 | Not Started |  |
+| F20-12 | PDF forms | automatic font sizing | M4 | Tested | `SetTextValueAsync` rewrites text `/DA` to `0 Tf`; `PdfFormDefaultAppearance` |
 | F20-13 | PDF forms | remember recently entered values, optionally | M4 | Tested | `IFormValueHistory` JSON store; text edit dialog Recent values list |
 | F20-14 | PDF forms | user-defined profile for: | M4 | Tested | Name/Address/Email/Phone via `IFormAutofillProfileStore` |
 | F20-15 | PDF forms | optional AutoFill from that application profile | M4 | Tested | Form → AutoFill matches field names; skips non-empty |

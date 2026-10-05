@@ -17,12 +17,17 @@ public interface IPdfFormStore
         IPdfDocument document,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Sets the field <c>/V</c> value. When <paramref name="autoFontSize"/> is true (default)
+    /// and the widget is a text field, rewrites <c>/DA</c> to font size 0 so viewers auto-fit.
+    /// </summary>
     Task SetTextValueAsync(
         IPdfDocument document,
         int pageIndex,
         int annotIndex,
         string value,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        bool autoFontSize = true);
 
     /// <summary>
     /// Toggle a checkbox widget. Sets <c>/V</c> and <c>/AS</c> to the on-state name or <c>Off</c>.

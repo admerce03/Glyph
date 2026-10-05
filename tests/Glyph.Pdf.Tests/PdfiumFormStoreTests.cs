@@ -8,6 +8,102 @@ namespace Glyph.Pdf.Tests;
 public class PdfiumFormStoreTests
 {
     [Fact]
+    public async Task Set_text_enables_auto_font_size_in_da()
+    {
+        var path = CreateAcroFormPdf();
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-form-auto-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var forms = new PdfiumFormStore();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var fields = await forms.ListFieldsAsync(document);
+                var name = fields.Should().ContainSingle(f => f.Name == "Name").Subject;
+                name.UsesAutoFontSize.Should().BeFalse();
+                PdfFormDefaultAppearance.TryGetFontSize(name.DefaultAppearance).Should().Be(12f);
+
+                await forms.SetTextValueAsync(document, name.PageIndex, name.AnnotIndex, "Very Long Name That Should Shrink");
+                var after = await forms.ListFieldsAsync(document);
+                var updated = after.Should().ContainSingle(f => f.Name == "Name").Subject;
+                updated.Value.Should().Be("Very Long Name That Should Shrink");
+                updated.UsesAutoFontSize.Should().BeTrue();
+                PdfFormDefaultAppearance.TryGetFontSize(updated.DefaultAppearance).Should().Be(0f);
+                updated.DefaultAppearance.Should().Contain("/Helv");
+
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var fields = await forms.ListFieldsAsync(reopened);
+                var name = fields.Should().ContainSingle(f => f.Name == "Name").Subject;
+                name.UsesAutoFontSize.Should().BeTrue();
+                name.Value.Should().Be("Very Long Name That Should Shrink");
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Set_text_can_skip_auto_font_size()
+    {
+        var path = CreateAcroFormPdf();
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var forms = new PdfiumFormStore();
+
+            await using var document = await factory.OpenAsync(path);
+            var fields = await forms.ListFieldsAsync(document);
+            var city = fields.Should().ContainSingle(f => f.Name == "City").Subject;
+
+            await forms.SetTextValueAsync(
+                document,
+                city.PageIndex,
+                city.AnnotIndex,
+                "Paris",
+                autoFontSize: false);
+
+            var after = await forms.ListFieldsAsync(document);
+            var updated = after.Should().ContainSingle(f => f.Name == "City").Subject;
+            updated.Value.Should().Be("Paris");
+            updated.UsesAutoFontSize.Should().BeFalse();
+            PdfFormDefaultAppearance.TryGetFontSize(updated.DefaultAppearance).Should().Be(12f);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void Default_appearance_helpers_rewrite_and_fit()
+    {
+        PdfFormDefaultAppearance.WithAutoFontSize("/Helv 12 Tf 0 g")
+            .Should().Be("/Helv 0 Tf 0 g");
+        PdfFormDefaultAppearance.WithFontSize("/TiRo 18 Tf 0.1 0.2 0.3 rg", 9)
+            .Should().Be("/TiRo 9 Tf 0.1 0.2 0.3 rg");
+        PdfFormDefaultAppearance.WithAutoFontSize(null)
+            .Should().Be("/Helv 0 Tf 0 g");
+        PdfFormDefaultAppearance.UsesAutoFontSize("/Helv 0 Tf 0 g").Should().BeTrue();
+        PdfFormDefaultAppearance.UsesAutoFontSize("/Helv 12 Tf 0 g").Should().BeFalse();
+
+        var bounds = new PdfRect(0, 0, 100, 20);
+        var fit = PdfFormDefaultAppearance.ComputeFitSize(bounds, "Hi", multiline: false);
+        fit.Should().BeInRange(4f, 20f);
+    }
+
+    [Fact]
     public async Task List_and_set_text_field_round_trips_and_tab_order()
     {
         var path = CreateAcroFormPdf();

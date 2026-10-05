@@ -88,6 +88,7 @@ public sealed class PdfiumFormStore : IPdfFormStore
                                         }
                                     }
                                     var bounds = ReadRect(annot);
+                                    var da = PdfiumAnnotStrings.GetString(annot, "DA");
                                     fields.Add(new PdfFormFieldInfo(
                                         pageIndex,
                                         annotIndex,
@@ -95,7 +96,8 @@ public sealed class PdfiumFormStore : IPdfFormStore
                                         kind,
                                         value,
                                         bounds,
-                                        tab));
+                                        tab,
+                                        DefaultAppearance: string.IsNullOrEmpty(da) ? null : da));
                                     tab++;
                                 }
                                 finally
@@ -122,7 +124,8 @@ public sealed class PdfiumFormStore : IPdfFormStore
         int pageIndex,
         int annotIndex,
         string value,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool autoFontSize = true)
     {
         var pdfium = RequirePdfium(document);
         ArgumentOutOfRangeException.ThrowIfNegative(pageIndex);
@@ -172,6 +175,18 @@ public sealed class PdfiumFormStore : IPdfFormStore
                             if (!PdfiumAnnotStrings.SetString(annot, "V", value))
                             {
                                 throw new InvalidOperationException("Failed to set form field /V value.");
+                            }
+
+                            // F20-12: text fields get /DA with 0 Tf so viewers auto-fit the value.
+                            if (autoFontSize && kind == PdfFormFieldKind.TextField)
+                            {
+                                var da = PdfiumAnnotStrings.GetString(annot, "DA");
+                                var autoDa = PdfFormDefaultAppearance.WithAutoFontSize(da);
+                                if (!PdfiumAnnotStrings.SetString(annot, "DA", autoDa))
+                                {
+                                    throw new InvalidOperationException(
+                                        "Failed to set form field /DA for automatic font sizing.");
+                                }
                             }
 
                             pdfium.NotifyAnnotationsChanged();
