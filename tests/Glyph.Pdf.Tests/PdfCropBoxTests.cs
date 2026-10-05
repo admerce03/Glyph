@@ -28,4 +28,19 @@ public class PdfCropBoxTests
         m.RightPoints.Should().Be(12);
         m.BottomPoints.Should().Be(12);
     }
+
+    [Fact]
+    public void ClampMargin_keeps_min_remaining_extent()
+    {
+        // page 100, opposite 20, minSize 30 → max margin = 50
+        PdfCropMargins.ClampMargin(80, 100, 20, 30).Should().Be(50);
+        PdfCropMargins.ClampMargin(-5, 100, 20, 30).Should().Be(0);
+        PdfCropMargins.ClampMargin(10, 100, 20, 30).Should().Be(10);
+    }
+
+    [Fact]
+    public void ClampMargin_when_opposite_consumes_page_returns_zero()
+    {
+        PdfCropMargins.ClampMargin(10, 50, 40, 20).Should().Be(0);
+    }
 }

@@ -23,4 +23,11 @@ public readonly record struct PdfCropMargins(
     double BottomPoints)
 {
     public static PdfCropMargins Uniform(double points) => new(points, points, points, points);
+
+    /// <summary>
+    /// Clamps one margin so the remaining page extent keeps at least <paramref name="minSize"/>
+    /// after accounting for the opposite margin (interactive crop drag).
+    /// </summary>
+    public static double ClampMargin(double value, double pageExtent, double opposite, double minSize) =>
+        Math.Clamp(value, 0, Math.Max(0, pageExtent - opposite - minSize));
 }

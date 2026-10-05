@@ -11661,10 +11661,10 @@ public sealed class PdfDocumentView : UserControl
         switch (_cropDragHandle)
         {
             case "move":
-                left = ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, _cropDragStartRight, minSize);
-                right = ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
-                top = ClampMargin(_cropDragStartTop + dy, page.HeightPoints, _cropDragStartBottom, minSize);
-                bottom = ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
+                left = PdfCropMargins.ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, _cropDragStartRight, minSize);
+                right = PdfCropMargins.ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
+                top = PdfCropMargins.ClampMargin(_cropDragStartTop + dy, page.HeightPoints, _cropDragStartBottom, minSize);
+                bottom = PdfCropMargins.ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
                 // Keep width/height by shifting as a block.
                 left = _cropDragStartLeft + dx;
                 right = _cropDragStartRight - dx;
@@ -11688,32 +11688,32 @@ public sealed class PdfDocumentView : UserControl
 
                 break;
             case "w":
-                left = ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, right, minSize);
+                left = PdfCropMargins.ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, right, minSize);
                 break;
             case "e":
-                right = ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
+                right = PdfCropMargins.ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
                 break;
             case "n":
-                top = ClampMargin(_cropDragStartTop + dy, page.HeightPoints, bottom, minSize);
+                top = PdfCropMargins.ClampMargin(_cropDragStartTop + dy, page.HeightPoints, bottom, minSize);
                 break;
             case "s":
-                bottom = ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
+                bottom = PdfCropMargins.ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
                 break;
             case "nw":
-                left = ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, right, minSize);
-                top = ClampMargin(_cropDragStartTop + dy, page.HeightPoints, bottom, minSize);
+                left = PdfCropMargins.ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, right, minSize);
+                top = PdfCropMargins.ClampMargin(_cropDragStartTop + dy, page.HeightPoints, bottom, minSize);
                 break;
             case "ne":
-                right = ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
-                top = ClampMargin(_cropDragStartTop + dy, page.HeightPoints, bottom, minSize);
+                right = PdfCropMargins.ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
+                top = PdfCropMargins.ClampMargin(_cropDragStartTop + dy, page.HeightPoints, bottom, minSize);
                 break;
             case "sw":
-                left = ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, right, minSize);
-                bottom = ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
+                left = PdfCropMargins.ClampMargin(_cropDragStartLeft + dx, page.WidthPoints, right, minSize);
+                bottom = PdfCropMargins.ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
                 break;
             case "se":
-                right = ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
-                bottom = ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
+                right = PdfCropMargins.ClampMargin(_cropDragStartRight - dx, page.WidthPoints, left, minSize);
+                bottom = PdfCropMargins.ClampMargin(_cropDragStartBottom - dy, page.HeightPoints, top, minSize);
                 break;
         }
 
@@ -11724,8 +11724,6 @@ public sealed class PdfDocumentView : UserControl
         RedrawCropOverlay();
     }
 
-    private static double ClampMargin(double value, double pageExtent, double opposite, double minSize) =>
-        Math.Clamp(value, 0, Math.Max(0, pageExtent - opposite - minSize));
 
     private bool IsInsideCropRect(Windows.Foundation.Point pos)
     {
