@@ -1,3 +1,5 @@
+using Glyph.Core.Documents;
+
 namespace Glyph.Pdf.Abstractions;
 
 /// <summary>
@@ -6,7 +8,7 @@ namespace Glyph.Pdf.Abstractions;
 public static class PdfOptimizeDialogUi
 {
     public const string DialogTitle = "Optimize PDF";
-    public const string ApplyButton = "Apply";
+    public const string ApplyButton = DialogButtons.Apply;
     public const string CancelledStatus = "Optimize cancelled.";
     public const string OptimizingStatus = "Optimizing…";
     public const string FailedPrefix = "Optimize failed: ";

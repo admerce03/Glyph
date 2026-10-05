@@ -52,7 +52,7 @@ public static class PreferencesDialogUi
         "This permanently deletes all signatures in the local library.";
     public const string ClearButton = "Clear";
     public const string PrivacyHeader = "Privacy";
-    public const string CancelButton = "Cancel";
+    public const string CancelButton = DialogButtons.Cancel;
 
     public static IReadOnlyList<string> PdfLayoutLabels { get; } =
     [
