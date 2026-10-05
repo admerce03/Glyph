@@ -5929,7 +5929,7 @@ public sealed class PdfDocumentView : UserControl
             ?? App.CurrentApp.MainWindowInstance
             ?? throw new InvalidOperationException("Main window unavailable for stroke style dialog.");
 
-        float[] widths = [1f, 2f, 3f, 5f, 8f];
+        float[] widths = PdfStrokeWidthPresets.Points.ToArray();
         var colorList = new ListView
         {
             Height = 180,
@@ -5944,10 +5944,9 @@ public sealed class PdfDocumentView : UserControl
         {
             Height = 140,
             SelectionMode = ListViewSelectionMode.Single,
-            ItemsSource = widths.Select(w => $"{w:0} pt").ToList(),
+            ItemsSource = widths.Select(PdfStrokeWidthPresets.FormatLabel).ToList(),
         };
-        var currentWidth = Array.FindIndex(widths, w => Math.Abs(w - _drawStrokeWidth) < 0.01f);
-        widthList.SelectedIndex = currentWidth >= 0 ? currentWidth : 1;
+        widthList.SelectedIndex = PdfStrokeWidthPresets.DefaultSelectedIndex(_drawStrokeWidth);
 
         ComboBox? lineStyleBox = null;
         if (includeInkLineStyle)
@@ -9335,7 +9334,7 @@ public sealed class PdfDocumentView : UserControl
 
         await GoToPageAsync(_selectedAnnot.PageIndex, recordHistory: true);
         _status.Text = _selectedAnnots.Count == 1
-            ? $"Jumped to {PdfAnnotationListLabel.Format(_selectedAnnot)}."
+            ? AnnotationJumpStatus.JumpedTo(PdfAnnotationListLabel.Format(_selectedAnnot))
             : AnnotationMultiSelectPolicy.StatusAfterSelect(_selectedAnnots.Count);
     }
 

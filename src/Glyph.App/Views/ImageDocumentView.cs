@@ -649,14 +649,14 @@ public sealed class ImageDocumentView : UserControl
         var end = e.GetCurrentPoint(_scrollViewer).Position;
         var dx = end.X - _navStart.X;
         var dy = end.Y - _navStart.Y;
-        const double minSwipe = 80;
-        if (Math.Abs(dx) < minSwipe || Math.Abs(dx) < Math.Abs(dy) * 1.5)
+        var direction = ImageSwipeNavigation.Resolve(dx, dy);
+        var step = ImageSwipeNavigation.SiblingStep(direction);
+        if (step == 0)
         {
             return;
         }
 
-        // Swipe left → next; swipe right → previous (natural photo-viewer feel).
-        await NavigateSiblingAsync(dx < 0 ? 1 : -1);
+        await NavigateSiblingAsync(step);
     }
 
     private void ToggleSlideshow()

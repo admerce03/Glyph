@@ -270,7 +270,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F14-06 | Highlight workflow | Strikethrough selection. | M4 | Tested | `AddTextMarkupAsync(StrikeOut)`; Pdf.Tests |
 | F14-07 | Highlight workflow | Remove markup. | M4 | Tested | Sidebar Delete + `RemoveAsync`; markup remove unit test |
 | F14-08 | Highlight workflow | Annotation sidebar showing all: | M4 | Tested | Sidebar lists markup; `PdfAnnotationListLabel` Strike format |
-| F14-09 | Highlight workflow | Click annotation in sidebar to jump to it. | M4 | Implemented | Selection jumps to annotation page |
+| F14-09 | Highlight workflow | Click annotation in sidebar to jump to it. | M4 | Tested | Selection jumps to annotation page; `AnnotationJumpStatus` unit tests |
 | F15-01 | Notes | Add sticky note. | M4 | Tested | `AddStickyNoteAsync` + Note toolbar |
 | F15-02 | Notes | Enter note text. | M4 | Tested | ContentDialog on add; `AddStickyNoteAsync` contents round-trip |
 | F15-03 | Notes | Collapse note. | M4 | Tested | Sidebar Collapse; `StickyNoteExpandPolicy` unit tests |
@@ -316,8 +316,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F17-13 | Shapes | move | M4 | Tested | Same as F13-19 drag / `MoveAsync` |
 | F17-14 | Shapes | duplicate | M4 | Tested | Same as F13-22 `DuplicateAsync` |
 | F17-15 | Shapes | multi-select | M4 | Tested | Same Ctrl+click path as F13-27; `AnnotationMultiSelectPolicy` |
-| F17-16 | Shapes | border color | M4 | Implemented | Stroke picker when entering Rect/Ellipse/Line/Arrow |
-| F17-17 | Shapes | border width | M4 | Implemented | Width picker with stroke color dialog |
+| F17-16 | Shapes | border color | M4 | Tested | Stroke picker when entering shapes; `PdfStrokeWidthPresets` / StrokePresets |
+| F17-17 | Shapes | border width | M4 | Tested | Width picker presets via `PdfStrokeWidthPresets` |
 | F17-18 | Shapes | line style | M4 | Tested | Shape stroke dialog: Solid/Dashed/Dotted for Line/Arrow |
 | F17-19 | Shapes | fill color | M4 | Tested | Semi-transparent fill from stroke; `PdfShapeFillPolicy` unit tests |
 | F17-20 | Shapes | opacity | M4 | Tested | Sidebar Opacity → `SetOpacityAsync` (same path as F18-04) |
@@ -443,7 +443,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F26-18 | Image viewing | image list sidebar | M5 | Tested | Folder ListView; `ImageFolderNavigator.ListSiblings` unit tests |
 | F26-19 | Image viewing | open group of images together | M5 | Implemented | Open With picker PickMultipleFilesAsync |
 | F26-20 | Image viewing | slideshow | M5 | Tested | 3s folder loop; Esc stops; `SlideshowPolicy` unit tests |
-| F26-21 | Image viewing | drag-and-drop navigation | M5 | Implemented | Shell drop opens images (`DropHost`); horizontal swipe on image → prev/next in folder |
+| F26-21 | Image viewing | drag-and-drop navigation | M5 | Tested | Shell drop + horizontal swipe; `ImageSwipeNavigation` unit tests |
 | F26-22 | Image viewing | high-resolution image support | M5 | Tested | Progressive maxEdge decode up to 8192; `DecodeTargetEdge` unit tests |
 | F26-23 | Image viewing | alpha transparency | M5 | Implemented | BGRA32 decode via Magick → WriteableBitmap |
 | F26-24 | Image viewing | HDR display where Windows/display stack supports it | M5 | Deferred | Needs WinUI HDR display pipeline; revisit with F39 |
