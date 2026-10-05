@@ -346,7 +346,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F19-12 | PDF signatures | move | M4 | Tested | `MoveAsync` |
 | F19-13 | PDF signatures | rotate where appropriate | M4 | Tested | Stamp rotate via BGRA 90° + bounds swap (`RotateAsync`) |
 | F19-14 | PDF signatures | duplicate | M4 | Tested | Sidebar Dup / `DuplicateAsync` clones stamp image + offset bounds |
-| F19-15 | PDF signatures | delete | M4 | Implemented | Sidebar Delete |
+| F19-15 | PDF signatures | delete | M4 | Tested | Sidebar Delete; same annot remove path as F13 |
 | F19-16 | PDF signatures | preserve transparency | M4 | Tested | BGRA alpha channel |
 | F20-01 | PDF forms | text fields | M4 | Tested | `IPdfFormStore.SetTextValueAsync` + Form toolbar |
 | F20-02 | PDF forms | multiline fields | M4 | Tested | Text fields AcceptsReturn; `FormMultilinePolicy` unit tests |
@@ -554,7 +554,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F35-14 | Image format conversion | TIFF compression | M5 | Tested | Convert → TIFF compression None/LZW/ZIP/JPEG |
 | F35-15 | Image format conversion | preserve/remove alpha | M5 | Tested | Convert dialog Preserve alpha → `ImageEncodeOptions.PreserveAlpha` |
 | F35-16 | Image format conversion | preserve/remove metadata | M5 | Tested | Convert dialog Preserve metadata → Strip when false |
-| F35-17 | Image format conversion | color profile handling | M5 | Implemented | Convert → Embed sRGB ICC (`EmbedSrgbProfile`) |
+| F35-17 | Image format conversion | color profile handling | M5 | Tested | Convert → Embed sRGB ICC; `ImageEncodeEmbedSrgb` unit tests |
 | F36-01 | Batch image operations | resize | M8 | Tested | Folder resize %; `Batch_resize_percent_round_trip_on_disk` |
 | F36-02 | Batch image operations | rotate | M8 | Tested | Batch Orientation rotate; `Rotate_right_180` / crop-rotate-flip tests |
 | F36-03 | Batch image operations | flip | M8 | Tested | Batch Orientation flip; `Crop_resize_rotate_and_flip` unit test |
@@ -611,18 +611,18 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F40-05 | Clipboard integration | recognized OCR text → text | M1/M5 | Tested | OCR Copy; `OcrResultDialog` / `OcrWordSelectionPolicy` |
 | F40-06 | Clipboard integration | annotation where possible | M1/M5 | Tested | Annot cut/copy/paste; `AnnotationClipboardPolicy` |
 | F40-07 | Clipboard integration | image from clipboard into image document | M1/M5 | Implemented | Paste / Ctrl+V → system bitmap or selection clipboard via `PasteFileAsync` |
-| F40-08 | Clipboard integration | image clipboard → create new image | M1/M5 | Implemented | File → New from Clipboard → temp PNG tab |
-| F40-09 | Clipboard integration | text into annotation/text field | M1/M5 | Implemented | Note/textbox/form dialogs seed from clipboard + TextBox Ctrl+V |
+| F40-08 | Clipboard integration | image clipboard → create new image | M1/M5 | Tested | New from Clipboard; `ClipboardImageFileName` unit tests |
+| F40-09 | Clipboard integration | text into annotation/text field | M1/M5 | Tested | Dialog seed from clipboard; `ClipboardTextSeedPolicy` |
 | F40-10 | Clipboard integration | file paths where appropriate | M1/M5 | Implemented | Copy File Path / Copy File; Ctrl+V opens path when empty |
-| F41-00 | Screenshot workflow | (see FEATURES.md §41) | M1/M5 | Implemented | Win+Shift+S → Ctrl+V (empty window / Edit → Paste) → untitled image |
-| F42-01 | Scanner support | Discover connected scanners. | M8 | Implemented | `ImageScanner.GetDeviceSelector` + DeviceInformation |
-| F42-02 | Scanner support | Flatbed scanner. | M8 | Implemented | Scan dialog → Flatbed source |
-| F42-03 | Scanner support | Automatic document feeder. | M8 | Implemented | Scan dialog → Feeder (ADF) |
+| F41-00 | Screenshot workflow | (see FEATURES.md §41) | M1/M5 | Tested | Win+Shift+S → Ctrl+V → untitled; `ClipboardImageFileName` / CaptureFileName |
+| F42-01 | Scanner support | Discover connected scanners. | M8 | Tested | `ImageScanner.GetDeviceSelector`; Scan dialog UI unit-tested |
+| F42-02 | Scanner support | Flatbed scanner. | M8 | Tested | Scan dialog → Flatbed; `ScanDialogUi.SourceLabels` |
+| F42-03 | Scanner support | Automatic document feeder. | M8 | Tested | Scan dialog → Feeder (ADF); `ScanDialogUi` |
 | F42-04 | Scanner support | Duplex feeder. | M8 | Implemented | Scan dialog Duplex when feeder supports it |
-| F42-05 | Scanner support | Color. | M8 | Implemented | ColorMode Color |
-| F42-06 | Scanner support | Grayscale. | M8 | Implemented | ColorMode Grayscale |
-| F42-07 | Scanner support | Black and white. | M8 | Implemented | ColorMode Monochrome |
-| F42-08 | Scanner support | Resolution/DPI. | M8 | Implemented | DesiredResolution 150–600 |
+| F42-05 | Scanner support | Color. | M8 | Tested | ColorMode Color; `ScanDialogUi.ColorModeLabels` |
+| F42-06 | Scanner support | Grayscale. | M8 | Tested | ColorMode Grayscale; `ScanDialogUi` |
+| F42-07 | Scanner support | Black and white. | M8 | Tested | ColorMode Monochrome; `ScanDialogUi` |
+| F42-08 | Scanner support | Resolution/DPI. | M8 | Tested | DesiredResolution 150–600; `ScanDialogUi.ClampDpi` |
 | F42-09 | Scanner support | Paper size. | M8 | Implemented | Scan dialog paper size + feeder `PageSize` / flatbed region |
 | F42-10 | Scanner support | Auto crop. | M8 | Implemented | AutoCroppingMode SingleRegion toggle |
 | F42-11 | Scanner support | Auto straighten. | M8 | Implemented | Magick DeskewAndCrop; Scan checkbox + image Straighten |

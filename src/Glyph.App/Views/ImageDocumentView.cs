@@ -4131,7 +4131,7 @@ public sealed class ImageDocumentView : UserControl
             Content = "Preserve metadata (EXIF/IPTC/XMP)",
             IsChecked = !stripByDefault,
         };
-        var embedSrgb = new CheckBox { Content = "Embed sRGB ICC profile", IsChecked = false };
+        var embedSrgb = new CheckBox { Content = ImageEncodeEmbedSrgb.CheckboxLabel, IsChecked = false };
         var tiffCompression = new ComboBox
         {
             Header = "TIFF compression",

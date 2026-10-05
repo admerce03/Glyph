@@ -5241,7 +5241,7 @@ public sealed class PdfDocumentView : UserControl
     /// </summary>
     private static async Task SeedTextBoxFromClipboardAsync(TextBox box)
     {
-        if (box is null || !string.IsNullOrEmpty(box.Text))
+        if (box is null || !ClipboardTextSeedPolicy.ShouldSeed(box.Text))
         {
             return;
         }
@@ -5255,9 +5255,10 @@ public sealed class PdfDocumentView : UserControl
             }
 
             var text = await content.GetTextAsync();
-            if (!string.IsNullOrEmpty(text))
+            var seeded = ClipboardTextSeedPolicy.ApplyClipboardText(box.Text, text);
+            if (!ReferenceEquals(seeded, box.Text) && seeded is not null)
             {
-                box.Text = text;
+                box.Text = seeded;
             }
         }
         catch

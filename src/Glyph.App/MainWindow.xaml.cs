@@ -837,14 +837,14 @@ public sealed partial class MainWindow : Window
             {
                 Header = "Source",
                 Width = 320,
-                ItemsSource = new[] { "Flatbed", "Feeder (ADF)", "Auto" },
+                ItemsSource = ScanDialogUi.SourceLabels.ToList(),
                 SelectedIndex = 0,
             };
             var colorBox = new ComboBox
             {
                 Header = "Color",
                 Width = 320,
-                ItemsSource = new[] { "Color", "Grayscale", "Black and white" },
+                ItemsSource = ScanDialogUi.ColorModeLabels.ToList(),
                 SelectedIndex = 0,
             };
             var dpiBox = new ComboBox
@@ -899,12 +899,7 @@ public sealed partial class MainWindow : Window
             {
                 Header = "Destination",
                 Width = 320,
-                ItemsSource = new[]
-                {
-                    "Open as images",
-                    "New PDF",
-                    "Insert into current PDF",
-                },
+                ItemsSource = ScanDialogUi.DestinationLabels.ToList(),
                 SelectedIndex = 1,
             };
             var brightness = new Slider
@@ -926,7 +921,7 @@ public sealed partial class MainWindow : Window
 
             var dialog = new ContentDialog
             {
-                Title = "Scan",
+                Title = ScanDialogUi.Title,
                 Content = new ScrollViewer
                 {
                     Content = new StackPanel
@@ -939,14 +934,14 @@ public sealed partial class MainWindow : Window
                     },
                     MaxHeight = 480,
                 },
-                PrimaryButtonText = "Scan",
+                PrimaryButtonText = ScanDialogUi.PrimaryButton,
                 CloseButtonText = "Cancel",
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = Content.XamlRoot,
             };
             if (await dialog.ShowAsync() != ContentDialogResult.Primary)
             {
-                StatusText.Text = "Scan cancelled.";
+                StatusText.Text = ScanDialogUi.Cancelled;
                 return;
             }
 
@@ -968,6 +963,8 @@ public sealed partial class MainWindow : Window
             {
                 dpi = 300;
             }
+
+            dpi = (uint)ScanDialogUi.ClampDpi((int)dpi);
 
             var scanRoot = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "GlyphScans");
             Directory.CreateDirectory(scanRoot);
