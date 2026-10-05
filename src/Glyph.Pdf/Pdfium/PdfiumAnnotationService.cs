@@ -361,8 +361,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             throw new ArgumentOutOfRangeException(nameof(borderWidthPoints));
         }
 
-        // PDFium exposes GetLine but not SetLine; straight lines are stored as 2-point ink strokes.
-        if (kind == PdfShapeKind.Line)
+        // PDFium exposes GetLine but not SetLine; straight lines/arrows are ink strokes.
+        if (kind is PdfShapeKind.Line or PdfShapeKind.Arrow)
         {
             var dx = Math.Abs(bounds.Right - bounds.Left);
             var dy = Math.Abs(bounds.Top - bounds.Bottom);
@@ -371,7 +371,9 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                 throw new ArgumentException("Line endpoints must be distinct.", nameof(bounds));
             }
 
-            return AddLineAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, cancellationToken);
+            return kind == PdfShapeKind.Arrow
+                ? AddArrowAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, cancellationToken)
+                : AddLineAsInkAsync(document, pageIndex, bounds, borderColor, borderWidthPoints, cancellationToken);
         }
 
         if (bounds.Width < 1 || bounds.Height < 1)
@@ -1057,6 +1059,11 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                     var isSticky = subtype == PdfiumAnnotSubtypes.Text;
                     var isInk = subtype == PdfiumAnnotSubtypes.Ink;
                     var shapeKind = FromShapeSubtype(subtype);
+                    if (shapeKind is null && isInk)
+                    {
+                        shapeKind = FromInkShapeContents(contents);
+                    }
+
                     var isTextBox = subtype == PdfiumAnnotSubtypes.FreeText;
                     var isStamp = subtype == PdfiumAnnotSubtypes.Stamp;
                     results.Add(new PdfAnnotationInfo(
@@ -1179,17 +1186,180 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         float borderWidthPoints,
         CancellationToken cancellationToken)
     {
-        var created = await AddInkAsync(
+        var created = await AddLabeledInkAsync(
             document,
             pageIndex,
             [
-                new PdfPagePoint(bounds.Left, bounds.Bottom),
-                new PdfPagePoint(bounds.Right, bounds.Top),
+                [new PdfPagePoint(bounds.Left, bounds.Bottom), new PdfPagePoint(bounds.Right, bounds.Top)],
             ],
             borderColor,
             borderWidthPoints,
+            contents: "Line",
             cancellationToken);
-        return created with { ShapeKind = PdfShapeKind.Line };
+        return created with { ShapeKind = PdfShapeKind.Line, IsInk = true };
+    }
+
+    private async Task<PdfAnnotationInfo> AddArrowAsInkAsync(
+        IPdfDocument document,
+        int pageIndex,
+        PdfRect bounds,
+        PdfAnnotationColor borderColor,
+        float borderWidthPoints,
+        CancellationToken cancellationToken)
+    {
+        var start = new PdfPagePoint(bounds.Left, bounds.Bottom);
+        var end = new PdfPagePoint(bounds.Right, bounds.Top);
+        var dx = end.X - start.X;
+        var dy = end.Y - start.Y;
+        var length = Math.Sqrt((dx * dx) + (dy * dy));
+        var ux = dx / length;
+        var uy = dy / length;
+        var head = Math.Clamp(length * 0.22, 8.0, 28.0);
+        const double wingRadians = Math.PI / 7; // ~25.7°
+        var cos = Math.Cos(wingRadians);
+        var sin = Math.Sin(wingRadians);
+        // Wing tips: from tip back along shaft, rotated ±wing.
+        var backX = -ux * head;
+        var backY = -uy * head;
+        var wing1 = new PdfPagePoint(
+            end.X + (backX * cos) - (backY * sin),
+            end.Y + (backX * sin) + (backY * cos));
+        var wing2 = new PdfPagePoint(
+            end.X + (backX * cos) + (backY * sin),
+            end.Y + (-backX * sin) + (backY * cos));
+
+        var created = await AddLabeledInkAsync(
+            document,
+            pageIndex,
+            [
+                [start, end],
+                [end, wing1],
+                [end, wing2],
+            ],
+            borderColor,
+            borderWidthPoints,
+            contents: "Arrow",
+            cancellationToken);
+        return created with { ShapeKind = PdfShapeKind.Arrow, IsInk = true };
+    }
+
+    private Task<PdfAnnotationInfo> AddLabeledInkAsync(
+        IPdfDocument document,
+        int pageIndex,
+        IReadOnlyList<IReadOnlyList<PdfPagePoint>> strokes,
+        PdfAnnotationColor color,
+        float borderWidthPoints,
+        string contents,
+        CancellationToken cancellationToken)
+    {
+        var pdfium = RequirePdfium(document);
+        return Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
+                    if (page is null)
+                    {
+                        throw new InvalidOperationException($"Failed to load page {pageIndex} for ink shape.");
+                    }
+
+                    try
+                    {
+                        if (fpdf_annot.FPDFAnnotIsSupportedSubtype(PdfiumAnnotSubtypes.Ink) == 0)
+                        {
+                            throw new NotSupportedException("PDFium does not support ink annotations.");
+                        }
+
+                        var annot = fpdf_annot.FPDFPageCreateAnnot(page, PdfiumAnnotSubtypes.Ink);
+                        if (annot is null)
+                        {
+                            throw new InvalidOperationException("FPDFPage_CreateAnnot failed for ink shape.");
+                        }
+
+                        try
+                        {
+                            var allPoints = strokes.SelectMany(s => s).ToList();
+                            var minX = allPoints.Min(p => p.X);
+                            var minY = allPoints.Min(p => p.Y);
+                            var maxX = allPoints.Max(p => p.X);
+                            var maxY = allPoints.Max(p => p.Y);
+                            var pad = Math.Max(borderWidthPoints, 4f);
+                            var bounds = new PdfRect(minX - pad, minY - pad, maxX + pad, maxY + pad);
+                            using var rect = new FS_RECTF_();
+                            rect.Left = (float)bounds.Left;
+                            rect.Bottom = (float)bounds.Bottom;
+                            rect.Right = (float)bounds.Right;
+                            rect.Top = (float)bounds.Top;
+                            if (fpdf_annot.FPDFAnnotSetRect(annot, rect) == 0)
+                            {
+                                throw new InvalidOperationException("FPDFAnnot_SetRect failed for ink shape.");
+                            }
+
+                            if (fpdf_annot.FPDFAnnotSetColor(
+                                    annot,
+                                    FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_Color,
+                                    color.R,
+                                    color.G,
+                                    color.B,
+                                    color.A) == 0)
+                            {
+                                throw new InvalidOperationException("FPDFAnnot_SetColor failed for ink shape.");
+                            }
+
+                            if (PdfiumNative.AnnotSetBorder(annot.__Instance, 0, 0, borderWidthPoints) == 0)
+                            {
+                                throw new InvalidOperationException("FPDFAnnot_SetBorder failed for ink shape.");
+                            }
+
+                            if (!PdfiumAnnotStrings.SetString(annot, "Contents", contents))
+                            {
+                                throw new InvalidOperationException("Failed to set ink shape Contents.");
+                            }
+
+                            foreach (var stroke in strokes)
+                            {
+                                var points = stroke
+                                    .Select(p => new PdfiumNative.FsPointF { X = (float)p.X, Y = (float)p.Y })
+                                    .ToArray();
+                                if (PdfiumNative.AnnotAddInkStroke(annot.__Instance, points, (ulong)points.Length) < 0)
+                                {
+                                    throw new InvalidOperationException("FPDFAnnot_AddInkStroke failed for ink shape.");
+                                }
+                            }
+
+                            var index = fpdf_annot.FPDFPageGetAnnotIndex(page, annot);
+                            if (index < 0)
+                            {
+                                throw new InvalidOperationException("Created ink shape has no page index.");
+                            }
+
+                            pdfium.NotifyAnnotationsChanged();
+                            return new PdfAnnotationInfo(
+                                pageIndex,
+                                index,
+                                TextMarkupKind: null,
+                                bounds,
+                                color,
+                                Contents: contents,
+                                IsStickyNote: false,
+                                IsInk: true);
+                        }
+                        finally
+                        {
+                            fpdf_annot.FPDFPageCloseAnnot(annot);
+                        }
+                    }
+                    finally
+                    {
+                        fpdfview.FPDF_ClosePage(page);
+                    }
+                }
+            },
+            cancellationToken);
     }
 
     private static PdfShapeKind? FromShapeSubtype(int subtype) =>
@@ -1198,6 +1368,14 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             PdfiumAnnotSubtypes.Square => PdfShapeKind.Rectangle,
             PdfiumAnnotSubtypes.Circle => PdfShapeKind.Ellipse,
             PdfiumAnnotSubtypes.Line => PdfShapeKind.Line,
+            _ => null,
+        };
+
+    private static PdfShapeKind? FromInkShapeContents(string? contents) =>
+        contents switch
+        {
+            "Line" => PdfShapeKind.Line,
+            "Arrow" => PdfShapeKind.Arrow,
             _ => null,
         };
 

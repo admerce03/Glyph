@@ -8,4 +8,5 @@ public enum PdfShapeKind
     Rectangle = 0,
     Ellipse = 1,
     Line = 2,
+    Arrow = 3,
 }

@@ -307,6 +307,16 @@ public class PdfiumAnnotationServiceTests
                 line.ShapeKind.Should().Be(PdfShapeKind.Line);
                 line.IsInk.Should().BeTrue();
 
+                var arrow = await annots.AddShapeAsync(
+                    document,
+                    0,
+                    PdfShapeKind.Arrow,
+                    new PdfRect(200, 480, 320, 540),
+                    new PdfAnnotationColor(128, 0, 128));
+                arrow.ShapeKind.Should().Be(PdfShapeKind.Arrow);
+                arrow.IsInk.Should().BeTrue();
+                arrow.Contents.Should().Be("Arrow");
+
                 await editor.SaveAsync(document, outPath);
             }
 
@@ -315,7 +325,8 @@ public class PdfiumAnnotationServiceTests
                 var listed = await annots.ListAsync(reopened, 0);
                 listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Rectangle);
                 listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Ellipse);
-                listed.Should().Contain(a => a.IsInk);
+                listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Line && a.IsInk);
+                listed.Should().Contain(a => a.ShapeKind == PdfShapeKind.Arrow && a.IsInk);
             }
         }
         finally
