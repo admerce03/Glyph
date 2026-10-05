@@ -3306,7 +3306,7 @@ public sealed class PdfDocumentView : UserControl
 
     private async void ScrollViewer_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
-        if (!e.KeyModifiers.HasFlag(VirtualKeyModifiers.Control))
+        if (!WheelInputPolicy.PreferZoomOverScroll(e.KeyModifiers.HasFlag(VirtualKeyModifiers.Control)))
         {
             return;
         }

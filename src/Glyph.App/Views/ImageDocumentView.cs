@@ -1638,7 +1638,8 @@ public sealed class ImageDocumentView : UserControl
 
     private async void ScrollViewer_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
-        if (!e.KeyModifiers.HasFlag(Windows.System.VirtualKeyModifiers.Control))
+        if (!WheelInputPolicy.PreferZoomOverScroll(
+                e.KeyModifiers.HasFlag(Windows.System.VirtualKeyModifiers.Control)))
         {
             return;
         }

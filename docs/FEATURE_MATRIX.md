@@ -36,7 +36,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-26 | Application and file handling | Undo/redo history. | M1/M9 | Tested | Per-doc stacks: `PdfPageEditHistory`, AnnotationUndoStack, Magick checkpoints (unified app-wide later) |
 | F01-27 | Application and file handling | Do not silently overwrite originals by default. | M1/M9 | Tested | Autosave-to-original opt-in off by default (prefs default unit test) |
 | F02-01 | Main window and interface | Standard Windows title bar. | M1/M9 | Implemented | WinUI AppWindow system title bar |
-| F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | Implemented | MenuBar File/View/Window |
+| F02-02 | Main window and interface | Menu bar or equivalent command interface. | M1/M9 | Tested | MenuBar File/Edit/View/Window; `ShellMenuCatalog` unit tests |
 | F02-03 | Main window and interface | Customizable toolbar. | M1/M9 | Tested | ToolbarCommands catalog + `ToolbarHiddenCommands` prefs unit tests (F54) |
 | F02-04 | Main window and interface | Optional compact toolbar. | M1/M9 | Tested | `CompactToolbar` prefs round-trip unit test |
 | F02-05 | Main window and interface | Hide/show toolbar. | M1/M9 | Tested | View → Hide/Show Toolbar; `ToolbarVisibilityLabel` unit tests |
@@ -60,8 +60,8 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F02-23 | Main window and interface | Keyboard-first operation. | M1/M9 | Tested | Menu accelerators + document Ctrl shortcuts; `ShellKeyboardShortcuts` catalog unit tests |
 | F02-24 | Main window and interface | Accessibility through Windows UI Automation. | M1/M9 | Tested | AutomationProperties.Name on chrome; `ChromeAutomationNames` unit tests |
 | F03-01 | Sidebar modes | Page thumbnails | M2-M5 | Tested | Thumbnail strip; `ThumbnailWidthConstraints` clamp unit tests |
-| F03-02 | Sidebar modes | Table of contents | M2-M5 | Implemented | Outline TreeView when bookmarks present |
-| F03-03 | Sidebar modes | Search results | M2-M5 | Implemented | Find hits list under Search header |
+| F03-02 | Sidebar modes | Table of contents | M2-M5 | Tested | Outline TreeView; `SidebarModeCombo` Contents + `PdfOutlineTree` unit tests |
+| F03-03 | Sidebar modes | Search results | M2-M5 | Tested | Find hits under Search; `SidebarModeCombo.SearchIndex` unit tests |
 | F03-04 | Sidebar modes | Bookmarks | M2-M5 | Tested | PDF sidebar Bookmarks list; view-state bookmark round-trip |
 | F03-05 | Sidebar modes | Highlights and annotations | M2-M5 | Tested | PDF sidebar Annotations list; `PdfAnnotationListLabel` unit-tested |
 | F03-06 | Sidebar modes | Image list | M2-M5 | Tested | Image viewer folder sibling ListView; `ImageFolderNavigator` unit tests |
@@ -96,7 +96,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-17 | PDF viewing | Next page. | M2 | Tested | Next / Page Down; `PageLayoutCalculator.NextPageIndex` unit tests |
 | F04-18 | PDF viewing | First page. | M2 | Tested | First / Home; `PageLayoutCalculator.FirstPageIndex` unit tests |
 | F04-19 | PDF viewing | Last page. | M2 | Tested | Last / End; `PageLayoutCalculator.LastPageIndex` unit tests |
-| F04-20 | PDF viewing | Mouse-wheel scrolling. | M2 | Implemented | ScrollViewer wheel scrolling |
+| F04-20 | PDF viewing | Mouse-wheel scrolling. | M2 | Tested | ScrollViewer wheel; `WheelInputPolicy` leaves non-Ctrl wheel to scroll |
 | F04-21 | PDF viewing | Page Up/Page Down navigation. | M2 | Tested | Key handlers; `PageLayoutCalculator` Next/Previous unit tests |
 | F04-22 | PDF viewing | Fit page. | M2 | Tested | `PdfZoomCalculator.FitPage` + toolbar |
 | F04-23 | PDF viewing | Fit width. | M2 | Tested | `PdfZoomCalculator.FitWidth` + toolbar |
@@ -111,10 +111,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-32 | PDF viewing | Remember last viewed page, optionally. | M2 | Tested | `IDocumentViewStateStore` persists page on close/reopen |
 | F04-33 | PDF viewing | Remember zoom/layout per document, optionally. | M2 | Tested | Persists zoom + layout with page index |
 | F05-01 | PDF table of contents and navigation | Read embedded PDF outlines/bookmarks. | M2 | Tested | `IPdfOutlineService` / PDFium bookmarks |
-| F05-02 | PDF table of contents and navigation | Hierarchical table of contents. | M2 | Implemented | Nested `PdfOutlineNode` tree |
+| F05-02 | PDF table of contents and navigation | Hierarchical table of contents. | M2 | Tested | Nested `PdfOutlineNode`; `PdfOutlineTree` flatten/count unit tests |
 | F05-03 | PDF table of contents and navigation | Expand/collapse outline nodes. | M2 | Implemented | TreeView expand/collapse |
 | F05-04 | PDF table of contents and navigation | Click outline entry to navigate. | M2 | Implemented | Outline invoke → GoToPage |
-| F05-05 | PDF table of contents and navigation | Keyboard navigation. | M2 | Implemented | Page Up/Down/Home/End in viewer; outline Enter/Space + TreeView arrows |
+| F05-05 | PDF table of contents and navigation | Keyboard navigation. | M2 | Tested | Page Up/Down/Home/End via `PageLayoutCalculator`; outline Enter/Space |
 | F05-06 | PDF table of contents and navigation | Preserve embedded outline while editing when possible. | M2 | Tested | Rotate/page edits keep PDFium bookmarks (`Outline_survives_page_rotate_edit`) |
 | F05-07 | PDF table of contents and navigation | Show internal PDF links. | M2 | Tested | `IPdfLinkService` enumerates page links |
 | F05-08 | PDF table of contents and navigation | Support clickable: | M2 | Implemented | Click link rect → internal page jump |

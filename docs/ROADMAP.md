@@ -323,6 +323,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - PdfZoom ApplyManipulationScale + FindAllOpenPdfsStatus; F02-22 / F06-08 Tested
 - ShellKeyboardShortcuts + PdfSearchHighlightStyle; F02-23 / F06-09 / F06-15 Tested
 - DocumentExportFormats + ChromeAutomationNames; F01-18 / F02-24 / F56-01 Tested
+- ShellMenuCatalog + PdfOutlineTree + WheelInputPolicy; F02-02 / F03-02/03 / F04-20 / F05-02/05 Tested
 
 ---
 
