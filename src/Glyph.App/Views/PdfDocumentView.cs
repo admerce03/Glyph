@@ -3959,6 +3959,7 @@ public sealed class PdfDocumentView : UserControl
     private void ToggleCalloutMode()
     {
         ClearRedactionMode();
+        ClearCalloutTipEditMode();
         if (_inkMode)
         {
             _inkMode = false;
@@ -4725,7 +4726,12 @@ public sealed class PdfDocumentView : UserControl
 
         _calloutMode = false;
         CancelShapeDrag();
-        ClearCalloutTipEditMode();
+    }
+
+    private void ClearCalloutTipEditMode()
+    {
+        _calloutTipEditMode = false;
+        _calloutTipTarget = null;
     }
 
     private void ClearSignatureMode()
