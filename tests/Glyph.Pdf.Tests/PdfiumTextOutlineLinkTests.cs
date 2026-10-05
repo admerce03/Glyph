@@ -71,6 +71,40 @@ public class PdfiumTextOutlineLinkTests
     }
 
     [Fact]
+    public async Task Outline_survives_page_rotate_edit()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "outline-links.pdf");
+        File.Exists(path).Should().BeTrue();
+
+        var working = Path.Combine(Path.GetTempPath(), "glyph-outline-edit-" + Guid.NewGuid().ToString("N") + ".pdf");
+        File.Copy(path, working, overwrite: true);
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var outlines = new PdfiumOutlineService();
+            var editor = new PdfiumPageEditor();
+            await using var document = await factory.OpenAsync(working);
+
+            var before = await outlines.GetOutlineAsync(document);
+            before.Should().HaveCount(3);
+
+            await editor.RotatePagesAsync(document, [0], deltaDegrees: 90);
+
+            var after = await outlines.GetOutlineAsync(document);
+            after.Should().HaveCount(3);
+            after.Select(n => n.Title).Should().Equal(before.Select(n => n.Title));
+            after.Select(n => n.DestinationPageIndex).Should().Equal(before.Select(n => n.DestinationPageIndex));
+        }
+        finally
+        {
+            if (File.Exists(working))
+            {
+                File.Delete(working);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Link_service_reads_internal_link_destination()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "outline-links.pdf");
