@@ -245,7 +245,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-19 | PDF annotations | move | M4 | Tested | `MoveAsync` API + drag on page |
 | F13-20 | PDF annotations | resize | M4 | Tested | Selection handles → `MoveAsync` new bounds |
 | F13-21 | PDF annotations | rotate where appropriate | M4 | Not Started |  |
-| F13-22 | PDF annotations | duplicate | M4 | Not Started |  |
+| F13-22 | PDF annotations | duplicate | M4 | Tested | `DuplicateAsync` offset clone + sidebar Dup |
 | F13-23 | PDF annotations | delete | M4 | Tested | `RemoveAsync` by page/annot index |
 | F13-24 | PDF annotations | cut | M4 | Not Started |  |
 | F13-25 | PDF annotations | copy | M4 | Not Started |  |

@@ -857,6 +857,248 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             });
     }
 
+    public async Task<PdfAnnotationInfo> DuplicateAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        CancellationToken cancellationToken = default)
+    {
+        var pdfium = RequirePdfium(document);
+        ArgumentOutOfRangeException.ThrowIfNegative(pageIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(pageIndex, pdfium.PageCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(annotIndex);
+        const double offset = 12.0;
+
+        cancellationToken.ThrowIfCancellationRequested();
+        PdfiumLibrary.EnsureInitialized();
+
+        int subtype;
+        PdfRect bounds;
+        PdfAnnotationColor color = new(0, 0, 0);
+        string contents;
+        PdfTextMarkupKind? markupKind;
+        PdfShapeKind? shapeKind;
+        List<PdfQuad> quads = [];
+        List<List<PdfPagePoint>> inkStrokes = [];
+
+        lock (PdfiumSync.Gate)
+        {
+            pdfium.ThrowIfDisposed();
+            var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
+            if (page is null)
+            {
+                throw new InvalidOperationException($"Failed to load page {pageIndex} for duplicate.");
+            }
+
+            try
+            {
+                var annot = fpdf_annot.FPDFPageGetAnnot(page, annotIndex);
+                if (annot is null)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(annotIndex), "Annotation not found.");
+                }
+
+                try
+                {
+                    subtype = fpdf_annot.FPDFAnnotGetSubtype(annot);
+                    if (subtype == PdfiumAnnotSubtypes.Stamp)
+                    {
+                        throw new NotSupportedException(
+                            "Duplicating stamp/signature annotations is not supported yet.");
+                    }
+
+                    using var rect = new FS_RECTF_();
+                    if (fpdf_annot.FPDFAnnotGetRect(annot, rect) == 0)
+                    {
+                        throw new InvalidOperationException("Failed to read annotation bounds.");
+                    }
+
+                    bounds = new PdfRect(
+                        rect.Left + offset,
+                        rect.Bottom - offset,
+                        rect.Right + offset,
+                        rect.Top - offset);
+
+                    uint r = 0, g = 0, b = 0, a = 255;
+                    if (fpdf_annot.FPDFAnnotGetColor(
+                            annot,
+                            FPDFANNOT_COLORTYPE.FPDFANNOT_COLORTYPE_Color,
+                            ref r,
+                            ref g,
+                            ref b,
+                            ref a) != 0)
+                    {
+                        color = new PdfAnnotationColor((byte)r, (byte)g, (byte)b, (byte)a);
+                    }
+
+                    contents = PdfiumAnnotStrings.GetString(annot, "Contents");
+                    markupKind = FromSubtype(subtype);
+                    shapeKind = FromShapeSubtype(subtype);
+                    if (shapeKind is null && subtype == PdfiumAnnotSubtypes.Ink)
+                    {
+                        shapeKind = FromInkShapeContents(contents);
+                    }
+
+                    if (markupKind is not null)
+                    {
+                        var count = fpdf_annot.FPDFAnnotCountAttachmentPoints(annot);
+                        for (ulong i = 0; i < count; i++)
+                        {
+                            using var quad = new FS_QUADPOINTSF();
+                            if (fpdf_annot.FPDFAnnotGetAttachmentPoints(annot, i, quad) == 0)
+                            {
+                                continue;
+                            }
+
+                            quads.Add(new PdfQuad(
+                                quad.X1 + offset,
+                                quad.Y1 - offset,
+                                quad.X2 + offset,
+                                quad.Y2 - offset,
+                                quad.X3 + offset,
+                                quad.Y3 - offset,
+                                quad.X4 + offset,
+                                quad.Y4 - offset));
+                        }
+                    }
+
+                    if (subtype == PdfiumAnnotSubtypes.Ink)
+                    {
+                        var strokeCount = (uint)PdfiumNative.AnnotGetInkListCount(annot.__Instance);
+                        for (uint s = 0; s < strokeCount; s++)
+                        {
+                            var needed = PdfiumNative.AnnotGetInkListPath(annot.__Instance, s, IntPtr.Zero, 0);
+                            if (needed == 0)
+                            {
+                                continue;
+                            }
+
+                            var buffer = new PdfiumNative.FsPointF[needed];
+                            var handle = System.Runtime.InteropServices.GCHandle.Alloc(
+                                buffer,
+                                System.Runtime.InteropServices.GCHandleType.Pinned);
+                            try
+                            {
+                                var written = PdfiumNative.AnnotGetInkListPath(
+                                    annot.__Instance,
+                                    s,
+                                    handle.AddrOfPinnedObject(),
+                                    needed);
+                                if (written == 0)
+                                {
+                                    continue;
+                                }
+
+                                var stroke = new List<PdfPagePoint>((int)written);
+                                for (var i = 0; i < (int)written; i++)
+                                {
+                                    stroke.Add(new PdfPagePoint(
+                                        buffer[i].X + offset,
+                                        buffer[i].Y - offset));
+                                }
+
+                                if (stroke.Count >= 2)
+                                {
+                                    inkStrokes.Add(stroke);
+                                }
+                            }
+                            finally
+                            {
+                                handle.Free();
+                            }
+                        }
+                    }
+                }
+                finally
+                {
+                    fpdf_annot.FPDFPageCloseAnnot(annot);
+                }
+            }
+            finally
+            {
+                fpdfview.FPDF_ClosePage(page);
+            }
+        }
+
+        if (markupKind is { } mk)
+        {
+            if (quads.Count == 0)
+            {
+                quads.Add(PdfQuad.FromRect(bounds));
+            }
+
+            return await AddTextMarkupAsync(document, pageIndex, mk, quads, color, cancellationToken);
+        }
+
+        if (subtype == PdfiumAnnotSubtypes.Text)
+        {
+            return await AddStickyNoteAsync(
+                document,
+                pageIndex,
+                bounds.Left,
+                bounds.Bottom,
+                contents,
+                color,
+                cancellationToken);
+        }
+
+        if (subtype == PdfiumAnnotSubtypes.FreeText)
+        {
+            return await AddTextBoxAsync(
+                document,
+                pageIndex,
+                bounds,
+                contents,
+                color,
+                borderColor: color,
+                cancellationToken: cancellationToken);
+        }
+
+        if (subtype is PdfiumAnnotSubtypes.Square or PdfiumAnnotSubtypes.Circle)
+        {
+            var kind = subtype == PdfiumAnnotSubtypes.Square
+                ? PdfShapeKind.Rectangle
+                : PdfShapeKind.Ellipse;
+            return await AddShapeAsync(
+                document,
+                pageIndex,
+                kind,
+                bounds,
+                color,
+                fillColor: null,
+                cancellationToken: cancellationToken);
+        }
+
+        if (subtype == PdfiumAnnotSubtypes.Ink)
+        {
+            if (inkStrokes.Count == 0)
+            {
+                throw new InvalidOperationException("Ink annotation has no strokes to duplicate.");
+            }
+
+            if (shapeKind is PdfShapeKind.Line or PdfShapeKind.Arrow)
+            {
+                return await AddShapeAsync(
+                    document,
+                    pageIndex,
+                    shapeKind.Value,
+                    bounds,
+                    color,
+                    cancellationToken: cancellationToken);
+            }
+
+            var flat = inkStrokes.SelectMany(s => s).ToList();
+            if (flat.Count < 2)
+            {
+                flat = inkStrokes[0];
+            }
+
+            return await AddInkAsync(document, pageIndex, flat, color, cancellationToken: cancellationToken);
+        }
+
+        throw new NotSupportedException($"Duplicating annotation subtype {subtype} is not supported yet.");
+    }
+
     public Task<IReadOnlyList<PdfAnnotationInfo>> ListAsync(
         IPdfDocument document,
         int? pageIndex = null,

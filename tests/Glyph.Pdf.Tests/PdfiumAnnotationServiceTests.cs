@@ -427,6 +427,15 @@ public class PdfiumAnnotationServiceTests
                 note.Bounds.Width.Should().BeApproximately(60, 0.5);
                 note.Bounds.Height.Should().BeApproximately(60, 0.5);
 
+                var copy = await annots.DuplicateAsync(document, 0, note.AnnotIndex);
+                copy.IsStickyNote.Should().BeTrue();
+                copy.Contents.Should().Be("Edited note");
+                copy.Bounds.Left.Should().BeApproximately(note.Bounds.Left + 12, 0.5);
+                copy.Bounds.Bottom.Should().BeApproximately(note.Bounds.Bottom - 12, 0.5);
+
+                var afterDup = await annots.ListAsync(document, 0);
+                afterDup.Count(a => a.IsStickyNote).Should().Be(2);
+
                 await editor.SaveAsync(document, outPath);
             }
 
