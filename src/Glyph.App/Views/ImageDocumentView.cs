@@ -178,7 +178,7 @@ public sealed class ImageDocumentView : UserControl
         ToolTipService.SetToolTip(meta, "Image metadata, EXIF, and GPS");
         ToolTipService.SetToolTip(ocrButton, "Run offline OCR and select text over the image");
         ToolTipService.SetToolTip(_copyOcrButton, "Copy selected OCR words (or all recognized text)");
-        ToolTipService.SetToolTip(_ocrEntitiesButton, "Review detected URLs, emails, phones, dates, and times");
+        ToolTipService.SetToolTip(_ocrEntitiesButton, "Review detected URLs, emails, phones, addresses, dates, and times");
         ToolTipService.SetToolTip(_clearOcrButton, "Hide OCR word overlays");
         ToolTipService.SetToolTip(_ocrSearchBox, "Search recognized OCR text");
         ToolTipService.SetToolTip(_ocrFindButton, "Highlight OCR words matching the query");
@@ -1361,7 +1361,7 @@ public sealed class ImageDocumentView : UserControl
         var entities = OcrEntityDetector.Detect(_ocrResult.Text);
         if (entities.Count == 0)
         {
-            _status.Text = "No URLs, emails, phones, dates, or times detected.";
+            _status.Text = "No URLs, emails, phones, addresses, dates, or times detected.";
             return;
         }
 
@@ -1376,7 +1376,7 @@ public sealed class ImageDocumentView : UserControl
         };
 
         var copy = new Button { Content = "Copy value", Margin = new Thickness(0, 8, 8, 0) };
-        var open = new Button { Content = "Open / mail", Margin = new Thickness(0, 8, 8, 0) };
+        var open = new Button { Content = "Open / act", Margin = new Thickness(0, 8, 8, 0) };
         var searchWeb = new Button { Content = "Search web", Margin = new Thickness(0, 8, 0, 0) };
         copy.Click += (_, _) =>
         {
@@ -1562,9 +1562,20 @@ public sealed class ImageDocumentView : UserControl
                     await Windows.System.Launcher.LaunchUriAsync(new Uri("mailto:" + entity.Value));
                     _status.Text = "Opened mail compose.";
                     break;
-                case OcrEntityKind.Phone:
+                case OcrEntityKind.Address:
+                {
+                    var maps = "https://www.bing.com/maps?q=" + Uri.EscapeDataString(entity.Value);
+                    await Windows.System.Launcher.LaunchUriAsync(new Uri(maps));
+                    _status.Text = "Opened address in Maps.";
+                    break;
+                }
                 case OcrEntityKind.Date:
+                    await CreateCalendarFromOcrAsync(entity);
+                    break;
                 case OcrEntityKind.Time:
+                    await CreateCalendarFromOcrAsync(entity);
+                    break;
+                case OcrEntityKind.Phone:
                 default:
                 {
                     var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
@@ -1579,6 +1590,38 @@ public sealed class ImageDocumentView : UserControl
         {
             _status.Text = "Entity action failed: " + ex.Message;
         }
+    }
+
+    private async Task CreateCalendarFromOcrAsync(OcrEntity entity)
+    {
+        string ics;
+        if (entity.Kind == OcrEntityKind.Date
+            && OcrCalendarInvite.TryParseDate(entity.Value, out var date))
+        {
+            ics = OcrCalendarInvite.BuildAllDayEvent(date, "Glyph OCR: " + entity.Value);
+        }
+        else if (entity.Kind == OcrEntityKind.Time
+            && OcrCalendarInvite.TryParseTime(entity.Value, out var time))
+        {
+            var start = DateTime.Today.Add(time);
+            ics = OcrCalendarInvite.BuildTimedEvent(start, TimeSpan.FromHours(1), "Glyph OCR: " + entity.Value);
+        }
+        else
+        {
+            var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            package.SetText(entity.Value);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+            _status.Text = $"Copied {entity.Kind} (could not parse for calendar).";
+            return;
+        }
+
+        var path = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(),
+            "glyph-ocr-" + Guid.NewGuid().ToString("N") + ".ics");
+        await System.IO.File.WriteAllTextAsync(path, ics);
+        var file = await Windows.Storage.StorageFile.GetFileFromPathAsync(path);
+        await Windows.System.Launcher.LaunchFileAsync(file);
+        _status.Text = "Opened calendar invite.";
     }
 
     private void ClearOcrOverlay()
