@@ -797,7 +797,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F56-04 | Accessibility | Screen-reader labels. | M9 | Implemented | Toolbar/search/annot/signature controls mirror ToolTips as Name |
 | F56-05 | Accessibility | High-contrast mode. | M9 | Implemented | WinUI ThemeResources follow system high-contrast |
 | F56-06 | Accessibility | Windows text scaling. | M9 | Implemented | WinUI layout scales with system text size / XamlRoot |
-| F56-07 | Accessibility | Logical tab order. | M9 | In Progress | Menus + document IsTabStop; toolbar TabIndex polish open |
+| F56-07 | Accessibility | Logical tab order. | M9 | Implemented | Menu → sidebar → tabs TabIndex; document views IsTabStop |
 | F56-08 | Accessibility | Descriptive names for toolbar icons. | M9 | Implemented | PDF/image toolbars set AutomationProperties.Name |
 | F56-09 | Accessibility | Custom description/alt text for images where PDF/image format supports it. | M9 | Implemented | IPTC/EXIF description → AutomationProperties.Name on image |
 | F56-10 | Accessibility | Signature descriptions. | M9 | Implemented | Library Description + stamp `/Contents` for a11y |
