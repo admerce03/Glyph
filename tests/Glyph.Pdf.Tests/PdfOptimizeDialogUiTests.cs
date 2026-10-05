@@ -29,4 +29,13 @@ public class PdfOptimizeDialogUiTests
         status.Should().Contain("1 KB");
         status.Should().Contain("Save to keep");
     }
+
+    [Fact]
+    public void Progress_and_button_labels()
+    {
+        PdfOptimizeDialogUi.ApplyButton.Should().Be("Apply");
+        PdfOptimizeDialogUi.OptimizingStatus.Should().Contain("Optimizing");
+        PdfOptimizeDialogUi.FailedStatus("x").Should().Be("Optimize failed: x");
+        PdfOptimizeDialogUi.CancelledStatus.Should().Contain("cancelled");
+    }
 }

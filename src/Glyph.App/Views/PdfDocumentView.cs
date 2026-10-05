@@ -1897,7 +1897,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        _status.Text = "Reordering…";
+        _status.Text = PageEditStatus.Reordering;
         await RunPageEditAsync(() => _pageEditor.ReorderPagesAsync(_document, order));
 
         var remap = new Dictionary<int, int>();
@@ -1918,7 +1918,7 @@ public sealed class PdfDocumentView : UserControl
             await GoToPageAsync(_pageSelection.SelectedIndexes.Min(), recordHistory: false);
         }
 
-        _status.Text = "Pages reordered.";
+        _status.Text = PageEditStatus.PagesReordered;
     }
 
     private async Task InsertPagesFromDocumentAsync(
@@ -1969,7 +1969,7 @@ public sealed class PdfDocumentView : UserControl
 
         if (totalInserted == 0)
         {
-            _status.Text = "No pages to insert.";
+            _status.Text = PageEditStatus.NoPagesToInsert;
             return;
         }
 
@@ -2598,7 +2598,7 @@ public sealed class PdfDocumentView : UserControl
         }
         catch (Exception ex)
         {
-            _status.Text = "Paste pages failed: " + ex.Message;
+            _status.Text = PageEditStatus.FormatPastePagesFailed(ex.Message);
         }
         finally
         {
@@ -4659,7 +4659,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        _status.Text = "Rotating…";
+        _status.Text = PageEditStatus.Rotating;
         await RunPageEditAsync(() => _pageEditor.RotatePagesAsync(_document, indexes, deltaDegrees));
         await ReloadAfterPageEditAsync();
         _status.Text = $"Rotated {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")}.";
@@ -4675,11 +4675,11 @@ public sealed class PdfDocumentView : UserControl
 
         if (indexes.Count >= _document.PageCount)
         {
-            _status.Text = "Cannot delete every page.";
+            _status.Text = PageEditStatus.CannotDeleteEveryPage;
             return;
         }
 
-        _status.Text = "Deleting…";
+        _status.Text = PageEditStatus.Deleting;
         await RunPageEditAsync(() => _pageEditor.DeletePagesAsync(_document, indexes));
         await ReloadAfterPageEditAsync();
         _status.Text = $"Deleted {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")}.";
@@ -4726,7 +4726,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        _status.Text = "Reordering…";
+        _status.Text = PageEditStatus.Reordering;
         await RunPageEditAsync(() => _pageEditor.ReorderPagesAsync(_document, order));
         // Remap selection to new indexes.
         var remap = new Dictionary<int, int>();
@@ -4748,7 +4748,7 @@ public sealed class PdfDocumentView : UserControl
             await GoToPageAsync(moved[0], recordHistory: false);
         }
 
-        _status.Text = "Pages reordered.";
+        _status.Text = PageEditStatus.PagesReordered;
     }
 
     private List<int> SelectedOrCurrentPages() =>
@@ -4758,7 +4758,7 @@ public sealed class PdfDocumentView : UserControl
     {
         var insertAt = SelectedOrCurrentPages().DefaultIfEmpty(CurrentPageIndex).Max() + 1;
         var template = _document.GetPage(Math.Clamp(CurrentPageIndex, 0, _document.PageCount - 1));
-        _status.Text = "Inserting blank page…";
+        _status.Text = PageEditStatus.InsertingBlankPage;
         await RunPageEditAsync(() => _pageEditor.InsertBlankPageAsync(
             _document,
             insertAt,
@@ -4767,7 +4767,7 @@ public sealed class PdfDocumentView : UserControl
         _pageSelection.SelectOnly(insertAt);
         await ReloadAfterPageEditAsync();
         await GoToPageAsync(insertAt, recordHistory: true);
-        _status.Text = "Inserted blank page.";
+        _status.Text = PageEditStatus.InsertedBlankPage;
     }
 
     private async Task DuplicateSelectedAsync()
@@ -4778,7 +4778,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        _status.Text = "Duplicating…";
+        _status.Text = PageEditStatus.Duplicating;
         await RunPageEditAsync(() => _pageEditor.DuplicatePagesAsync(_document, indexes));
         await ReloadAfterPageEditAsync();
         _status.Text = $"Duplicated {indexes.Count} page{(indexes.Count == 1 ? string.Empty : "s")}.";
@@ -11093,7 +11093,7 @@ public sealed class PdfDocumentView : UserControl
         _status.Text = "Undoing…";
         await _editHistory.UndoAsync(_document, _pageEditor);
         await ReloadAfterPageEditAsync();
-        _status.Text = "Undid page edit.";
+        _status.Text = PageEditStatus.UndidPageEdit;
     }
 
     private async Task RedoPageEditAsync()
@@ -11107,7 +11107,7 @@ public sealed class PdfDocumentView : UserControl
         _status.Text = "Redoing…";
         await _editHistory.RedoAsync(_document, _pageEditor);
         await ReloadAfterPageEditAsync();
-        _status.Text = "Redid page edit.";
+        _status.Text = PageEditStatus.RedidPageEdit;
     }
 
     private async Task ExtractSelectedAsync()
@@ -11255,7 +11255,7 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
-            _status.Text = "Cropping…";
+            _status.Text = PageEditStatus.Cropping;
             await RunPageEditAsync(() => _pageEditor.CropPagesAsync(_document, indexes, margins));
             CancelCropMode();
             await ReloadAfterPageEditAsync();
@@ -11296,11 +11296,11 @@ public sealed class PdfDocumentView : UserControl
             }
 
             var before = _document.PageCount;
-            _status.Text = files.Count == 1 ? "Merging PDF…" : $"Merging {files.Count} PDFs…";
+            _status.Text = PageEditStatus.FormatMerging(files.Count);
             await RunPageEditAsync(() => _pageEditor.MergeDocumentsAsync(_document, opened, insertAt));
             await ReloadAfterPageEditAsync();
             var added = _document.PageCount - before;
-            _status.Text = added == 1 ? "Merged 1 page." : $"Merged {added} pages.";
+            _status.Text = PageEditStatus.FormatMerged(added);
             if (added > 0)
             {
                 await GoToPageAsync(insertAt, recordHistory: true);
@@ -11338,7 +11338,7 @@ public sealed class PdfDocumentView : UserControl
         var ranges = PdfSplitRanges.BuildRanges(_document.PageCount, splitBefore);
         if (ranges.Count < 2)
         {
-            _status.Text = "Split would produce a single document.";
+            _status.Text = PageEditStatus.SplitWouldBeSingle;
             return;
         }
 
@@ -11353,11 +11353,11 @@ public sealed class PdfDocumentView : UserControl
         var folder = await picker.PickSingleFolderAsync();
         if (folder is null)
         {
-            _status.Text = "Split cancelled.";
+            _status.Text = PageEditStatus.SplitCancelled;
             return;
         }
 
-        _status.Text = $"Splitting into {ranges.Count} PDFs…";
+        _status.Text = PageEditStatus.FormatSplitting(ranges.Count);
         var parts = await _pageEditor.SplitDocumentAsync(_document, splitBefore);
         try
         {
@@ -11369,7 +11369,7 @@ public sealed class PdfDocumentView : UserControl
                 await _pageEditor.SaveAsync(parts[i], file.Path);
             }
 
-            _status.Text = $"Split into {parts.Count} PDFs in {folder.Name}.";
+            _status.Text = PageEditStatus.FormatSplitDone(parts.Count, folder.Name);
         }
         finally
         {
@@ -11562,7 +11562,7 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
-            _status.Text = "Cropping…";
+            _status.Text = PageEditStatus.Cropping;
             await RunPageEditAsync(() => _pageEditor.CropPagesAsync(_document, indexes, margins));
             await ReloadAfterPageEditAsync();
             _status.Text = indexes.Count == 1
@@ -12792,7 +12792,7 @@ public sealed class PdfDocumentView : UserControl
         {
             Title = PdfOptimizeDialogUi.DialogTitle,
             Content = panel,
-            PrimaryButtonText = "Apply",
+            PrimaryButtonText = PdfOptimizeDialogUi.ApplyButton,
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
@@ -12806,7 +12806,7 @@ public sealed class PdfDocumentView : UserControl
 
         try
         {
-            _status.Text = "Optimizing…";
+            _status.Text = PdfOptimizeDialogUi.OptimizingStatus;
             ShowJobProgress(0, determinate: false);
             var result = await _optimize.OptimizeAsync(_document, BuildOptions());
             _cache.ClearDocument(_documentKey);

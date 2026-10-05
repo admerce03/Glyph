@@ -6,7 +6,9 @@ namespace Glyph.Pdf.Abstractions;
 public static class PdfOptimizeDialogUi
 {
     public const string DialogTitle = "Optimize PDF";
+    public const string ApplyButton = "Apply";
     public const string CancelledStatus = "Optimize cancelled.";
+    public const string OptimizingStatus = "Optimizing…";
     public const string FailedPrefix = "Optimize failed: ";
     public const string JpegQualityHeader = "JPEG quality";
     public const string StripAttachmentsLabel = "Remove embedded files";
