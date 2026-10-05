@@ -29,6 +29,9 @@ public sealed class MagickImageDocument : IImageDocument
         _animationIterations = frames.Count > 1
             ? checked((int)frames[0].AnimationIterations)
             : 1;
+        ColorManagedDisplay = true;
+        SoftProofProfile = null;
+        DisplayRenderingIntent = ImageRenderingIntent.Perceptual;
     }
 
     public string? Path { get; set; }
@@ -44,6 +47,12 @@ public sealed class MagickImageDocument : IImageDocument
     public int CurrentFrameIndex => _frameIndex;
 
     public int AnimationIterations => _animationIterations;
+
+    public bool ColorManagedDisplay { get; set; }
+
+    public ImageColorProfileKind? SoftProofProfile { get; set; }
+
+    public ImageRenderingIntent DisplayRenderingIntent { get; set; }
 
     internal MagickImage Native
     {
@@ -108,7 +117,13 @@ public sealed class MagickImageDocument : IImageDocument
             () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                return ToBgraBuffer(_frames[frameIndex], maxEdge: null);
+                // Extract returns stored pixels (no display color management).
+                return ToBgraBuffer(
+                    _frames[frameIndex],
+                    maxEdge: null,
+                    colorManagedDisplay: false,
+                    softProof: null,
+                    renderingIntent: ImageRenderingIntent.Perceptual);
             },
             cancellationToken);
     }
@@ -117,11 +132,14 @@ public sealed class MagickImageDocument : IImageDocument
     {
         ThrowIfDisposed();
         var frame = Current;
+        var managed = ColorManagedDisplay;
+        var softProof = SoftProofProfile;
+        var intent = DisplayRenderingIntent;
         return Task.Run(
             () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                return ToBgraBuffer(frame, maxEdge);
+                return ToBgraBuffer(frame, maxEdge, managed, softProof, intent);
             },
             cancellationToken);
     }
@@ -173,9 +191,14 @@ public sealed class MagickImageDocument : IImageDocument
         checkpoint.Dispose();
     }
 
-    private static ImagePixelBuffer ToBgraBuffer(MagickImage source, int? maxEdge)
+    private static ImagePixelBuffer ToBgraBuffer(
+        MagickImage source,
+        int? maxEdge,
+        bool colorManagedDisplay,
+        ImageColorProfileKind? softProof,
+        ImageRenderingIntent renderingIntent)
     {
-        using var clone = source.Clone();
+        using var clone = (MagickImage)source.Clone();
         if (maxEdge is int edge && edge > 0)
         {
             var longest = Math.Max(clone.Width, clone.Height);
@@ -190,11 +213,65 @@ public sealed class MagickImageDocument : IImageDocument
         }
 
         clone.AutoOrient();
+        if (colorManagedDisplay)
+        {
+            ApplyDisplayColorManagement(clone, softProof, renderingIntent);
+        }
+
         // Emit 8-bit BGRA32 even when Magick.NET is built as Q16.
         clone.Depth = 8;
         clone.ColorType = ColorType.TrueColorAlpha;
         var pixels = clone.ToByteArray(MagickFormat.Bgra);
         return new ImagePixelBuffer(checked((int)clone.Width), checked((int)clone.Height), pixels);
+    }
+
+    private static void ApplyDisplayColorManagement(
+        MagickImage image,
+        ImageColorProfileKind? softProof,
+        ImageRenderingIntent renderingIntent)
+    {
+        var source = image.GetColorProfile();
+        if (source is null && softProof is null)
+        {
+            return;
+        }
+
+        image.RenderingIntent = renderingIntent switch
+        {
+            ImageRenderingIntent.Relative => RenderingIntent.Relative,
+            ImageRenderingIntent.Saturation => RenderingIntent.Saturation,
+            ImageRenderingIntent.Absolute => RenderingIntent.Absolute,
+            _ => RenderingIntent.Perceptual,
+        };
+
+        var srgb = ColorProfiles.SRGB;
+        if (softProof is ImageColorProfileKind proofKind)
+        {
+            var proof = proofKind == ImageColorProfileKind.AdobeRgb
+                ? ColorProfiles.AdobeRGB1998
+                : ColorProfiles.SRGB;
+            if (source is not null)
+            {
+                image.TransformColorSpace(source, proof);
+            }
+            else
+            {
+                image.SetProfile(proof);
+            }
+
+            // Soft-proof simulation: proof space → sRGB for the display buffer.
+            if (!ReferenceEquals(proof, srgb))
+            {
+                image.TransformColorSpace(proof, srgb);
+            }
+
+            return;
+        }
+
+        if (source is not null)
+        {
+            image.TransformColorSpace(source, srgb);
+        }
     }
 
     private void EnsureFrameIndex(int frameIndex)

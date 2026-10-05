@@ -595,14 +595,14 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F38-04 | GPS metadata | Remove GPS metadata. | M5/M8 | Tested | RemoveGpsMetadataAsync |
 | F38-05 | GPS metadata | Optional embedded map later. | M5/M8 | Not Started |  |
 | F39-01 | Color management | Detect embedded ICC profile. | M8 | Tested | `HasIccProfile` via Magick `GetColorProfile`; Meta shows ICC |
-| F39-02 | Color management | Honor embedded profile while displaying. | M8 | Not Started |  |
+| F39-02 | Color management | Honor embedded profile while displaying. | M8 | Tested | GetPixelsAsync transforms ICC → sRGB for display (toggle in Meta) |
 | F39-03 | Color management | Assign ICC profile. | M8 | Tested | Meta → Assign sRGB; `AssignColorProfileAsync` |
 | F39-04 | Color management | Convert between profiles. | M8 | Tested | Meta → Convert → sRGB; `ConvertColorProfileAsync` (sRGB/Adobe RGB) |
-| F39-05 | Color management | Use monitor profile. | M8 | Not Started |  |
-| F39-06 | Color management | Soft-proof through another ICC profile. | M8 | Not Started |  |
-| F39-07 | Color management | Toggle soft proof. | M8 | Not Started |  |
-| F39-08 | Color management | Gamut-warning option, advanced. | M8 | Not Started |  |
-| F39-09 | Color management | Rendering intent selection: | M8 | Not Started |  |
+| F39-05 | Color management | Use monitor profile. | M8 | Deferred | Needs WinUI/monitor ICC plumbing; sRGB display is interim |
+| F39-06 | Color management | Soft-proof through another ICC profile. | M8 | Implemented | Meta → Soft-proof Adobe RGB (proof → sRGB display) |
+| F39-07 | Color management | Toggle soft proof. | M8 | Implemented | Meta soft-proof checkbox |
+| F39-08 | Color management | Gamut-warning option, advanced. | M8 | Deferred | Needs gamut visualization overlay |
+| F39-09 | Color management | Rendering intent selection: | M8 | Implemented | Meta Intent combo (Perceptual/Relative/Saturation/Absolute) |
 | F40-01 | Clipboard integration | PDF text → text | M1/M5 | Not Started |  |
 | F40-02 | Clipboard integration | PDF region → bitmap | M1/M5 | Not Started |  |
 | F40-03 | Clipboard integration | image selection → image | M1/M5 | Implemented | Copy sel / Ctrl+C with selection → clipboard PNG |

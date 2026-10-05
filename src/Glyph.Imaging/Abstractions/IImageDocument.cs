@@ -29,6 +29,23 @@ public interface IImageDocument : IAsyncDisposable, IDisposable
     int AnimationIterations { get; }
 
     /// <summary>
+    /// When true (default), <see cref="GetPixelsAsync"/> converts embedded ICC to sRGB
+    /// (or through <see cref="SoftProofProfile"/>) for display without mutating stored pixels.
+    /// </summary>
+    bool ColorManagedDisplay { get; set; }
+
+    /// <summary>
+    /// Optional soft-proof destination profile. Display path is source → proof → sRGB.
+    /// Null disables soft proof (source → sRGB when color-managed).
+    /// </summary>
+    ImageColorProfileKind? SoftProofProfile { get; set; }
+
+    /// <summary>
+    /// Rendering intent used when transforming for display / soft proof (F39-09).
+    /// </summary>
+    ImageRenderingIntent DisplayRenderingIntent { get; set; }
+
+    /// <summary>
     /// Returns BGRA32 pixels for the full image (or a downscaled preview when
     /// <paramref name="maxEdge"/> is set). May decode lazily on first call.
     /// </summary>

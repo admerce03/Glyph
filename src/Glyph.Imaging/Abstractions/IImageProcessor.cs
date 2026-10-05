@@ -204,3 +204,12 @@ public enum ImageColorProfileKind
     Srgb = 0,
     AdobeRgb = 1,
 }
+
+/// <summary>ICC rendering intent for display / soft-proof transforms.</summary>
+public enum ImageRenderingIntent
+{
+    Perceptual = 0,
+    Relative = 1,
+    Saturation = 2,
+    Absolute = 3,
+}

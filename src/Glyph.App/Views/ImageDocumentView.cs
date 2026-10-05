@@ -3755,6 +3755,79 @@ public sealed class ImageDocumentView : UserControl
             };
             actions.Children.Add(assignSrgb);
             actions.Children.Add(convertSrgb);
+
+            var colorManaged = new CheckBox
+            {
+                Content = "Color-managed display (ICC → sRGB)",
+                IsChecked = _document.ColorManagedDisplay,
+            };
+            colorManaged.Checked += async (_, _) =>
+            {
+                _document.ColorManagedDisplay = true;
+                await RefreshAsync();
+                _status.Text = "Color-managed display on.";
+            };
+            colorManaged.Unchecked += async (_, _) =>
+            {
+                _document.ColorManagedDisplay = false;
+                await RefreshAsync();
+                _status.Text = "Color-managed display off.";
+            };
+            var softProof = new CheckBox
+            {
+                Content = "Soft-proof Adobe RGB",
+                IsChecked = _document.SoftProofProfile == ImageColorProfileKind.AdobeRgb,
+            };
+            softProof.Checked += async (_, _) =>
+            {
+                _document.SoftProofProfile = ImageColorProfileKind.AdobeRgb;
+                _document.ColorManagedDisplay = true;
+                colorManaged.IsChecked = true;
+                await RefreshAsync();
+                _status.Text = "Soft-proof Adobe RGB on.";
+            };
+            softProof.Unchecked += async (_, _) =>
+            {
+                _document.SoftProofProfile = null;
+                await RefreshAsync();
+                _status.Text = "Soft-proof off.";
+            };
+            var intentBox = new ComboBox
+            {
+                Width = 160,
+                ItemsSource = new[] { "Perceptual", "Relative", "Saturation", "Absolute" },
+                SelectedIndex = (int)_document.DisplayRenderingIntent,
+            };
+            intentBox.SelectionChanged += async (_, _) =>
+            {
+                if (intentBox.SelectedIndex < 0)
+                {
+                    return;
+                }
+
+                _document.DisplayRenderingIntent = (ImageRenderingIntent)intentBox.SelectedIndex;
+                await RefreshAsync();
+                _status.Text = "Rendering intent: " + intentBox.SelectedItem;
+            };
+            var colorPanel = new StackPanel
+            {
+                Spacing = 6,
+                Children =
+                {
+                    colorManaged,
+                    softProof,
+                    new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        Spacing = 8,
+                        Children =
+                        {
+                            new TextBlock { Text = "Intent", VerticalAlignment = VerticalAlignment.Center },
+                            intentBox,
+                        },
+                    },
+                },
+            };
             if (info.GpsLatitude is double lat && info.GpsLongitude is double lon)
             {
                 var coords = $"{lat:0.######}, {lon:0.######}";
@@ -3811,6 +3884,7 @@ public sealed class ImageDocumentView : UserControl
                         Visibility = HasDescriptiveMetadata(info) ? Visibility.Visible : Visibility.Collapsed,
                     },
                     list,
+                    colorPanel,
                     actions,
                 },
             };
