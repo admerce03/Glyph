@@ -9100,19 +9100,19 @@ public sealed class PdfDocumentView : UserControl
         var page = _document.GetPage(pageIndex);
         foreach (var mark in marks)
         {
-            var left = mark.Bounds.Left * _scale;
-            var top = (page.HeightPoints - mark.Bounds.Top) * _scale;
-            var width = mark.Bounds.Width * _scale;
-            var height = mark.Bounds.Height * _scale;
-            if (width < 1 || height < 1)
+            if (!PdfRedactionOverlayLayout.TryMapToCanvas(
+                    mark.Bounds,
+                    page.HeightPoints,
+                    _scale,
+                    out var mapped))
             {
                 continue;
             }
 
             var rect = new Microsoft.UI.Xaml.Shapes.Rectangle
             {
-                Width = width,
-                Height = height,
+                Width = mapped.Width,
+                Height = mapped.Height,
                 Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(160, 0, 0, 0)),
                 Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(230, 200, 40, 40)),
                 StrokeThickness = 1.5,
@@ -9120,8 +9120,8 @@ public sealed class PdfDocumentView : UserControl
             };
             ToolTipService.SetToolTip(rect, "Click to remove pending redaction");
             rect.PointerPressed += PendingRedactionRect_PointerPressed;
-            Canvas.SetLeft(rect, left);
-            Canvas.SetTop(rect, top);
+            Canvas.SetLeft(rect, mapped.Left);
+            Canvas.SetTop(rect, mapped.Top);
             overlay.Children.Add(rect);
 
             if (!string.IsNullOrWhiteSpace(mark.Label))
@@ -9133,8 +9133,8 @@ public sealed class PdfDocumentView : UserControl
                     Foreground = new SolidColorBrush(Colors.White),
                     IsHitTestVisible = false,
                 };
-                Canvas.SetLeft(label, left + 4);
-                Canvas.SetTop(label, top + 2);
+                Canvas.SetLeft(label, mapped.Left + 4);
+                Canvas.SetTop(label, mapped.Top + 2);
                 overlay.Children.Add(label);
             }
         }

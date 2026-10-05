@@ -365,7 +365,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F20-15 | PDF forms | optional AutoFill from that application profile | M4 | Tested | Form → AutoFill matches field names; skips non-empty |
 | F21-01 | Redaction | Mark text for redaction. | M7 | Tested | `MarkTextRegion` + undo/remove pending unit tests |
 | F21-02 | Redaction | Mark rectangular areas for redaction. | M7 | Tested | `MarkRectangle` + pending store unit tests |
-| F21-03 | Redaction | Preview pending redactions. | M7 | Implemented | Overlay canvas; `GetPending` exposes bounds/label for draw (`GetPending_exposes_bounds_and_label_for_preview`) |
+| F21-03 | Redaction | Preview pending redactions. | M7 | Tested | Overlay canvas + `PdfRedactionOverlayLayout.TryMapToCanvas` unit tests |
 | F21-04 | Redaction | Remove pending redaction. | M7 | Tested | `RemovePending` / `UndoLastPending` unit tests |
 | F21-05 | Redaction | Apply redactions permanently. | M7 | Tested | `ApplyAsync` unit tests (text/image/annot sanitize) |
 | F21-06 | Redaction | Remove underlying text/image data, not merely cover it visually. | M7 | Tested | Black page object + remove intersecting text/images; search empty after apply |

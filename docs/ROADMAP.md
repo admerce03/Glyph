@@ -297,7 +297,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - FreeText Align / `/Q` quadding via post-save dict patch (F13-38 / F16-15)
 - Bookmarks → PDF `/Outlines` export (F09-08)
 - Password-protect write blocked on ADR-015 (Needs approval)
-- Local polish (+11+ on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
+- Local polish (+13 on `cursor/m7-redaction-50da`) parked while Actions billing empty-step CI; push when jobs have real steps
 
 ---
 
@@ -378,9 +378,9 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | PDF page manipulation | §10–12 | M3 | Implemented |
 | PDF annotations/markup | §13–19 | M4 | Implemented |
 | PDF forms | §20 | M4 | Implemented |
-| Redaction | §21 | M7 | Implemented (mark/preview/apply + sanitize options; password-write separate) |
+| Redaction | §21 | M7 | Tested (mark/preview/apply + sanitize + confirm copy; password-write separate) |
 | Flattening | §22 | M4 | Tested (`FlattenAsync` / FPDFPage_Flatten) |
-| PDF security | §23 | M7 | In Progress (open + info/permissions; write-protect blocked on ADR-015) |
+| PDF security | §23 | M7 | In Progress (open + info/permissions/advisory Tested; write-protect blocked on ADR-015) |
 | Optimization | §24 | M7 | Implemented (presets + downsample + JPEG quality + estimate + page export/ICC; font subset/linearize → ADR-016) |
 | PDF metadata | §25 | M7 | Implemented (read + edit title/author/subject/keywords/creator/producer) |
 | Image viewing/editing | §26–35 | M5 | Implemented (HDR/HEIF deferred) |
