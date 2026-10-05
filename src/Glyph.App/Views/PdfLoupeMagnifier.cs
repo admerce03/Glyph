@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices.WindowsRuntime;
+using Glyph.Core.Pdf;
 using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace Glyph.App.Views;
@@ -8,8 +9,8 @@ namespace Glyph.App.Views;
 /// </summary>
 internal static class PdfLoupeMagnifier
 {
-    public const double DefaultZoom = 3.0;
-    public const double PopupSizeDip = 168;
+    public const double DefaultZoom = PdfLoupeSampleRegion.DefaultZoom;
+    public const double PopupSizeDip = PdfLoupeSampleRegion.PopupSizeDip;
 
     /// <summary>
     /// Maps PDF page-space bounds (bottom-left origin) onto a top-left bitmap and returns a scaled crop.
@@ -25,58 +26,29 @@ internal static class PdfLoupeMagnifier
         double zoom,
         int outSize)
     {
-        if (source.PixelWidth <= 0 || source.PixelHeight <= 0 || pageWidthPoints <= 0 || pageHeightPoints <= 0)
+        if (outSize < 16)
         {
             return null;
         }
 
-        if (outSize < 16 || zoom < 1.0)
+        var sample = PdfLoupeSampleRegion.Resolve(
+            source.PixelWidth,
+            source.PixelHeight,
+            pageWidthPoints,
+            pageHeightPoints,
+            left,
+            bottom,
+            right,
+            top,
+            zoom);
+        if (sample is null)
         {
             return null;
         }
 
-        var sx = source.PixelWidth / pageWidthPoints;
-        var sy = source.PixelHeight / pageHeightPoints;
-        var srcLeft = (int)Math.Floor(Math.Min(left, right) * sx);
-        var srcRight = (int)Math.Ceiling(Math.Max(left, right) * sx);
-        var srcTop = (int)Math.Floor((pageHeightPoints - Math.Max(bottom, top)) * sy);
-        var srcBottom = (int)Math.Ceiling((pageHeightPoints - Math.Min(bottom, top)) * sy);
-
-        srcLeft = Math.Clamp(srcLeft, 0, source.PixelWidth - 1);
-        srcRight = Math.Clamp(srcRight, srcLeft + 1, source.PixelWidth);
-        srcTop = Math.Clamp(srcTop, 0, source.PixelHeight - 1);
-        srcBottom = Math.Clamp(srcBottom, srcTop + 1, source.PixelHeight);
-
-        var regionW = srcRight - srcLeft;
-        var regionH = srcBottom - srcTop;
-        if (regionW < 1 || regionH < 1)
-        {
-            return null;
-        }
-
-        // At DefaultZoom, crop roughly the loupe interior; higher zoom → smaller sample.
-        var sampleHalf = Math.Max(regionW, regionH) * 0.5 / Math.Max(1.0, zoom / DefaultZoom);
-        var cx = (srcLeft + srcRight) * 0.5;
-        var cy = (srcTop + srcBottom) * 0.5;
-        var sampleLeft = (int)Math.Floor(cx - sampleHalf);
-        var sampleTop = (int)Math.Floor(cy - sampleHalf);
-        var sampleSize = Math.Max(2, (int)Math.Ceiling(sampleHalf * 2));
-        sampleLeft = Math.Clamp(sampleLeft, 0, Math.Max(0, source.PixelWidth - sampleSize));
-        sampleTop = Math.Clamp(sampleTop, 0, Math.Max(0, source.PixelHeight - sampleSize));
-        if (sampleLeft + sampleSize > source.PixelWidth)
-        {
-            sampleSize = source.PixelWidth - sampleLeft;
-        }
-
-        if (sampleTop + sampleSize > source.PixelHeight)
-        {
-            sampleSize = Math.Min(sampleSize, source.PixelHeight - sampleTop);
-        }
-
-        if (sampleSize < 2)
-        {
-            return null;
-        }
+        var sampleLeft = sample.Value.Left;
+        var sampleTop = sample.Value.Top;
+        var sampleSize = sample.Value.Size;
 
         var srcPixels = new byte[source.PixelWidth * source.PixelHeight * 4];
         using (var stream = source.PixelBuffer.AsStream())

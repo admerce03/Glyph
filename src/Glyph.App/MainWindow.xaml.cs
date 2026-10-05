@@ -687,7 +687,7 @@ public sealed partial class MainWindow : Window
             using var stream = await bitmapRef.OpenReadAsync();
             var folder = await StorageFolder.GetFolderFromPathAsync(
                 System.IO.Path.GetTempPath());
-            var fileName = $"Clipboard-{DateTime.Now:yyyyMMdd-HHmmss}.png";
+            var fileName = ClipboardImageFileName.ForTimestamp(DateTime.Now);
             var file = await folder.CreateFileAsync(fileName, CreationCollisionOption.GenerateUniqueName);
 
             using (var outStream = await file.OpenAsync(FileAccessMode.ReadWrite))
@@ -1137,19 +1137,22 @@ public sealed partial class MainWindow : Window
 
     private async Task ShowActivePropertiesAsync()
     {
-        if (DocumentTabs.SelectedItem is TabViewItem { Content: PdfDocumentView pdfView })
+        var kind = DocumentPropertiesRouting.For(_workspace.ActiveDocument?.Kind ?? DocumentKind.Unknown);
+        if (kind == DocumentPropertiesKind.PdfInfo
+            && DocumentTabs.SelectedItem is TabViewItem { Content: PdfDocumentView pdfView })
         {
             await pdfView.ShowPropertiesAsync();
             return;
         }
 
-        if (DocumentTabs.SelectedItem is TabViewItem { Content: ImageDocumentView imageView })
+        if (kind == DocumentPropertiesKind.ImageMetadata
+            && DocumentTabs.SelectedItem is TabViewItem { Content: ImageDocumentView imageView })
         {
             await imageView.ShowPropertiesAsync();
             return;
         }
 
-        StatusText.Text = "Open a document to view properties.";
+        StatusText.Text = DocumentPropertiesRouting.NoDocumentStatus;
     }
 
     private async Task SaveActiveDocumentAsync(bool saveAs)
@@ -2220,7 +2223,7 @@ public sealed partial class MainWindow : Window
     /// <summary>One-shot cold-start timing from <see cref="App.OnLaunched"/> (F57-01).</summary>
     public void ReportStartupDuration(long elapsedMilliseconds)
     {
-        StatusText.Text = $"Ready — started in {elapsedMilliseconds} ms. File → Open or drop files here";
+        StatusText.Text = StartupReadyStatus.Format(elapsedMilliseconds);
     }
 
     private bool TabHasUnsavedEdits(DocumentId id)

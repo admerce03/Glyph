@@ -21,14 +21,14 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-11 | Application and file handling | Normal Windows long-path and Unicode filename support. | M1/M9 | Tested | Unicode + `\\?\` long-path prefix unit tests |
 | F01-12 | Application and file handling | Read-only file detection. | M1/M9 | Tested | Sets session.IsReadOnly; Execute blocked (DocumentSession unit test) |
 | F01-13 | Application and file handling | Warn when attempting to overwrite a read-only file. | M1/M9 | Tested | Save → Save As prompt; `ReadOnlySavePolicy` + `PathUtilities.IsPathReadOnly` unit tests |
-| F01-14 | Application and file handling | File → New from Clipboard. | M1/M9 | Implemented | Menu + Ctrl+Shift+N; clipboard → temp PNG image tab |
+| F01-14 | Application and file handling | File → New from Clipboard. | M1/M9 | Tested | Menu + Ctrl+Shift+N; `ClipboardImageFileName` unit tests |
 | F01-15 | Application and file handling | File → Duplicate. | M1/M9 | Tested | File → Duplicate / Ctrl+Shift+D; `DocumentFileNamePolicy.SuggestDuplicatePath` unit tests |
 | F01-16 | Application and file handling | File → Save. | M1/M9 | Implemented | File → Save / Ctrl+S (PDF + image) |
 | F01-17 | Application and file handling | File → Save As. | M1/M9 | Tested | File → Save As / Ctrl+Shift+S; `ImageEncodeFormatResolver` maps AVIF/JP2/HEIC |
 | F01-18 | Application and file handling | File → Export. | M1/M9 | Implemented | PDF Export toolbar; image Convert/Export |
 | F01-19 | Application and file handling | File → Rename. | M1/M9 | Tested | File → Rename…; `DocumentFileNamePolicy.EvaluateRename` unit tests |
 | F01-20 | Application and file handling | File → Move. | M1/M9 | Tested | File → Move… FolderPicker; `DocumentMovePolicy` same-folder/overwrite unit tests |
-| F01-21 | Application and file handling | File → Properties. | M1/M9 | Implemented | File → Properties / Ctrl+I → PDF Info or image Meta |
+| F01-21 | Application and file handling | File → Properties. | M1/M9 | Tested | File → Properties / Ctrl+I; `DocumentPropertiesRouting` PDF Info vs image Meta |
 | F01-22 | Application and file handling | Close: | M1/M9 | Tested | Close Tab / Close All; `DocumentClosePolicy` dirty-prompt unit tests |
 | F01-23 | Application and file handling | Unsaved-change prompt where appropriate. | M1/M9 | Tested | Close tab dirty / HasUnsavedEdits; `MarkDirty`/`MarkClean` unit tests |
 | F01-24 | Application and file handling | Optional autosave. | M1/M9 | Tested | Preferences → Auto-save to original; `AutoSaveToOriginal` prefs round-trip |
@@ -106,7 +106,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F04-27 | PDF viewing | Ctrl+mouse wheel zoom. | M2 | Tested | Ctrl+wheel → `ApplyWheelZoom` unit tests |
 | F04-28 | PDF viewing | Pinch-to-zoom on supported precision touchpads. | M2 | Tested | Ctrl+wheel + Manipulation Scale; same zoom clamp path |
 | F04-29 | PDF viewing | Rectangular zoom-to-area. | M2 | Tested | Zoom ▭ drag rectangle; `PdfZoomCalculator.ZoomToArea` unit tests |
-| F04-30 | PDF viewing | Magnifier/loupe tool. | M2 | Implemented | Glass toolbar: cursor-follow magnifier over page bitmaps |
+| F04-30 | PDF viewing | Magnifier/loupe tool. | M2 | Tested | Glass toolbar loupe; `PdfLoupeSampleRegion` PDF→bitmap sample unit tests |
 | F04-31 | PDF viewing | Presentation/slideshow mode. | M2 | Tested | Present: fullscreen, hide chrome, single-page fit; ←/→; `PresentationModeDefaults` 8s auto-advance + status copy |
 | F04-32 | PDF viewing | Remember last viewed page, optionally. | M2 | Tested | `IDocumentViewStateStore` persists page on close/reopen |
 | F04-33 | PDF viewing | Remember zoom/layout per document, optionally. | M2 | Tested | Persists zoom + layout with page index |
@@ -802,7 +802,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F56-09 | Accessibility | Custom description/alt text for images where PDF/image format supports it. | M9 | Implemented | IPTC/EXIF description → AutomationProperties.Name on image |
 | F56-10 | Accessibility | Signature descriptions. | M9 | Implemented | Library Description + stamp `/Contents` for a11y |
 | F56-11 | Accessibility | Zoom without breaking UI layout. | M9 | Implemented | Document zoom scales page bitmaps; chrome uses layout panels |
-| F57-01 | Performance behavior | very fast startup | M2+/M9 | Implemented | Cold-start Stopwatch to first window; status + Debug/ILogger ms |
+| F57-01 | Performance behavior | very fast startup | M2+/M9 | Tested | Cold-start Stopwatch; `StartupReadyStatus` unit tests |
 | F57-02 | Performance behavior | fast first-page PDF display | M2+/M9 | Implemented | Visible-page render before off-screen thumbs |
 | F57-03 | Performance behavior | render visible pages before off-screen pages | M2+/M9 | Tested | Visible-page biased render + LRU cache (`ContinuousPageWindow` + `PageRenderCache`) |
 | F57-04 | Performance behavior | asynchronous thumbnail generation | M2+/M9 | Implemented | Async render; near-current pages first; Yield between thumbs |
