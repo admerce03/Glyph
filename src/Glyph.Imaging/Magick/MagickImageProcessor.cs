@@ -434,12 +434,12 @@ public sealed class MagickImageProcessor : IImageProcessor
 
     public Task FlattenMarkupAsync(
         IImageDocument document,
-        IReadOnlyList<ImageMarkupStroke> strokes,
+        ImageMarkupLayer layer,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(strokes);
+        ArgumentNullException.ThrowIfNull(layer);
         var magick = RequireMagick(document);
-        if (strokes.Count == 0)
+        if (layer.IsEmpty)
         {
             return Task.CompletedTask;
         }
@@ -448,7 +448,7 @@ public sealed class MagickImageProcessor : IImageProcessor
             () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                foreach (var stroke in strokes)
+                foreach (var stroke in layer.Strokes)
                 {
                     if (stroke.Points.Count < 2)
                     {
@@ -468,8 +468,69 @@ public sealed class MagickImageProcessor : IImageProcessor
                         .Polyline(coords)
                         .Draw(magick.Native);
                 }
+
+                foreach (var shape in layer.Shapes)
+                {
+                    DrawMarkupShape(magick.Native, shape);
+                }
             },
             cancellationToken);
+    }
+
+    private static void DrawMarkupShape(MagickImage image, ImageMarkupShape shape)
+    {
+        var color = MagickColor.FromRgba(shape.R, shape.G, shape.B, shape.A);
+        var drawables = new Drawables()
+            .StrokeColor(color)
+            .StrokeWidth(shape.WidthPixels)
+            .StrokeLineCap(LineCap.Round)
+            .StrokeLineJoin(LineJoin.Round)
+            .FillColor(MagickColors.Transparent);
+
+        var x1 = shape.X1;
+        var y1 = shape.Y1;
+        var x2 = shape.X2;
+        var y2 = shape.Y2;
+        switch (shape.Kind)
+        {
+            case ImageMarkupShapeKind.Rectangle:
+                drawables.Rectangle(
+                    Math.Min(x1, x2),
+                    Math.Min(y1, y2),
+                    Math.Max(x1, x2),
+                    Math.Max(y1, y2));
+                break;
+            case ImageMarkupShapeKind.Ellipse:
+            {
+                var left = Math.Min(x1, x2);
+                var top = Math.Min(y1, y2);
+                var right = Math.Max(x1, x2);
+                var bottom = Math.Max(y1, y2);
+                var originX = (left + right) / 2.0;
+                var originY = (top + bottom) / 2.0;
+                var radiusX = Math.Max(0.5, (right - left) / 2.0);
+                var radiusY = Math.Max(0.5, (bottom - top) / 2.0);
+                drawables.Ellipse(originX, originY, radiusX, radiusY, 0, 360);
+                break;
+            }
+            case ImageMarkupShapeKind.Line:
+                drawables.Line(x1, y1, x2, y2);
+                break;
+            case ImageMarkupShapeKind.Arrow:
+            {
+                drawables.Line(x1, y1, x2, y2);
+                var angle = Math.Atan2(y2 - y1, x2 - x1);
+                var head = Math.Max(8, shape.WidthPixels * 4);
+                var a1 = angle + Math.PI - (Math.PI / 6);
+                var a2 = angle + Math.PI + (Math.PI / 6);
+                drawables
+                    .Line(x2, y2, x2 + (head * Math.Cos(a1)), y2 + (head * Math.Sin(a1)))
+                    .Line(x2, y2, x2 + (head * Math.Cos(a2)), y2 + (head * Math.Sin(a2)));
+                break;
+            }
+        }
+
+        drawables.Draw(image);
     }
 
     private static MagickImageDocument RequireMagick(IImageDocument document)

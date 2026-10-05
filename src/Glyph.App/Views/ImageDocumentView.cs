@@ -56,6 +56,9 @@ public sealed class ImageDocumentView : UserControl
     private DispatcherTimer? _slideshowTimer;
     private readonly List<IImageEditCheckpoint> _editUndoStack = [];
     private readonly List<ImageMarkupStroke> _markupStrokes = [];
+    private readonly List<ImageMarkupShape> _markupShapes = [];
+    private readonly List<bool> _markupUndoWasShape = [];
+    private ImageMarkupShapeKind? _markupShapeTool;
     private const int MaxEditUndo = 12;
     private double _zoom = 1.0;
     private bool _loaded;
@@ -77,6 +80,7 @@ public sealed class ImageDocumentView : UserControl
     private ImagePixelBuffer? _selectionClipboard;
     private readonly List<Windows.Foundation.Point> _drawPoints = [];
     private Polyline? _activeDrawPolyline;
+    private Shape? _activeShapePreview;
     private Windows.UI.Color _drawColor = Windows.UI.Color.FromArgb(255, 220, 20, 60);
     private double _drawWidthPixels = 3;
     private int _displayWidth;
@@ -644,9 +648,9 @@ public sealed class ImageDocumentView : UserControl
             .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
         if (ctrl && e.Key == Windows.System.VirtualKey.Z)
         {
-            if (_markupStrokes.Count > 0)
+            if (_markupStrokes.Count > 0 || _markupShapes.Count > 0)
             {
-                UndoMarkupStroke();
+                UndoMarkupItem();
             }
             else
             {
@@ -2136,15 +2140,16 @@ public sealed class ImageDocumentView : UserControl
 
     private async Task<bool> EnsureMarkupFlattenedAsync()
     {
-        if (_markupStrokes.Count == 0)
+        if (_markupStrokes.Count == 0 && _markupShapes.Count == 0)
         {
             return true;
         }
 
+        var total = _markupStrokes.Count + _markupShapes.Count;
         var dialog = new ContentDialog
         {
             Title = "Flatten markup?",
-            Content = $"{_markupStrokes.Count} markup stroke(s) will be baked into pixels before saving.",
+            Content = $"{total} markup item(s) will be baked into pixels before saving.",
             PrimaryButtonText = "Flatten & continue",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
@@ -2179,6 +2184,13 @@ public sealed class ImageDocumentView : UserControl
             ExitSelectionMode(keepSelection: false);
         }
 
+        var toolBox = new ComboBox
+        {
+            Header = "Tool",
+            Width = 200,
+            ItemsSource = new[] { "Freehand", "Rectangle", "Ellipse", "Line", "Arrow" },
+            SelectedIndex = 0,
+        };
         var widthSlider = new Slider
         {
             Header = "Stroke width (px)",
@@ -2195,7 +2207,7 @@ public sealed class ImageDocumentView : UserControl
             ItemsSource = new[] { "Red", "Black", "White", "Yellow", "Blue", "Green" },
             SelectedIndex = 0,
         };
-        var panel = new StackPanel { Spacing = 8, Children = { colorBox, widthSlider } };
+        var panel = new StackPanel { Spacing = 8, Children = { toolBox, colorBox, widthSlider } };
         var dialog = new ContentDialog
         {
             Title = "Draw markup",
@@ -2220,17 +2232,27 @@ public sealed class ImageDocumentView : UserControl
             _ => Windows.UI.Color.FromArgb(255, 220, 20, 60),
         };
         _drawWidthPixels = widthSlider.Value;
+        _markupShapeTool = toolBox.SelectedIndex switch
+        {
+            1 => ImageMarkupShapeKind.Rectangle,
+            2 => ImageMarkupShapeKind.Ellipse,
+            3 => ImageMarkupShapeKind.Line,
+            4 => ImageMarkupShapeKind.Arrow,
+            _ => null,
+        };
         _drawMode = true;
         _markupOverlay.IsHitTestVisible = true;
         _drawButton.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(60, 220, 20, 60));
         UpdateFlattenButtonVisibility();
-        _status.Text = "Draw mode — drag to ink (Esc exits; Ctrl+Z undoes stroke).";
+        var toolName = toolBox.SelectedItem as string ?? "Freehand";
+        _status.Text = $"{toolName} markup — drag on image (Esc exits; Ctrl+Z undoes).";
     }
 
     private void ExitDrawMode()
     {
         _drawMode = false;
         _drawDragging = false;
+        _markupShapeTool = null;
         _drawPoints.Clear();
         if (_activeDrawPolyline is not null)
         {
@@ -2238,54 +2260,78 @@ public sealed class ImageDocumentView : UserControl
             _activeDrawPolyline = null;
         }
 
+        ClearActiveShapePreview();
         _markupOverlay.IsHitTestVisible = false;
         _drawButton.Background = null;
         UpdateFlattenButtonVisibility();
     }
 
     private void UpdateFlattenButtonVisibility() =>
-        _flattenMarkupButton.Visibility = _markupStrokes.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        _flattenMarkupButton.Visibility =
+            _markupStrokes.Count > 0 || _markupShapes.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
     private async Task FlattenMarkupAsync()
     {
-        if (_markupStrokes.Count == 0)
+        if (_markupStrokes.Count == 0 && _markupShapes.Count == 0)
         {
-            _status.Text = "No markup strokes to flatten.";
+            _status.Text = "No markup to flatten.";
             return;
         }
 
-        var snapshot = _markupStrokes.ToList();
+        var layer = new ImageMarkupLayer(_markupStrokes.ToList(), _markupShapes.ToList());
         await MutateAsync(
-            () => _processor.FlattenMarkupAsync(_document, snapshot),
-            $"Flattened {snapshot.Count} markup stroke(s).");
+            () => _processor.FlattenMarkupAsync(_document, layer),
+            $"Flattened {layer.Count} markup item(s).");
         _markupStrokes.Clear();
+        _markupShapes.Clear();
+        _markupUndoWasShape.Clear();
         RebuildMarkupOverlay();
         UpdateFlattenButtonVisibility();
-        if (_drawMode)
-        {
-            // Stay in draw mode with empty overlay.
-        }
     }
 
-    private void UndoMarkupStroke()
+    private void UndoMarkupItem()
     {
-        if (_markupStrokes.Count == 0)
+        if (_markupUndoWasShape.Count == 0)
         {
             return;
         }
 
-        _markupStrokes.RemoveAt(_markupStrokes.Count - 1);
+        var wasShape = _markupUndoWasShape[^1];
+        _markupUndoWasShape.RemoveAt(_markupUndoWasShape.Count - 1);
+        if (wasShape)
+        {
+            if (_markupShapes.Count > 0)
+            {
+                _markupShapes.RemoveAt(_markupShapes.Count - 1);
+            }
+        }
+        else if (_markupStrokes.Count > 0)
+        {
+            _markupStrokes.RemoveAt(_markupStrokes.Count - 1);
+        }
+
         RebuildMarkupOverlay();
         UpdateFlattenButtonVisibility();
-        _status.Text = _markupStrokes.Count == 0
-            ? "Markup stroke undone."
-            : $"Markup stroke undone ({_markupStrokes.Count} left).";
+        var remaining = _markupStrokes.Count + _markupShapes.Count;
+        _status.Text = remaining == 0
+            ? "Markup undone."
+            : $"Markup undone ({remaining} left).";
+    }
+
+    private void ClearActiveShapePreview()
+    {
+        if (_activeShapePreview is not null)
+        {
+            _markupOverlay.Children.Remove(_activeShapePreview);
+            _activeShapePreview = null;
+        }
     }
 
     private void RebuildMarkupOverlay()
     {
         _markupOverlay.Children.Clear();
         _activeDrawPolyline = null;
+        _activeShapePreview = null;
         if (_displayWidth <= 0 || _document.PixelWidth <= 0)
         {
             return;
@@ -2309,6 +2355,111 @@ public sealed class ImageDocumentView : UserControl
 
             _markupOverlay.Children.Add(poly);
         }
+
+        foreach (var shape in _markupShapes)
+        {
+            AddShapeVisual(shape, scaleX, scaleY);
+        }
+    }
+
+    private void AddShapeVisual(ImageMarkupShape shape, double scaleX, double scaleY)
+    {
+        var brush = new SolidColorBrush(Windows.UI.Color.FromArgb(shape.A, shape.R, shape.G, shape.B));
+        var thickness = Math.Max(1, shape.WidthPixels * ((scaleX + scaleY) / 2.0));
+        var x1 = shape.X1 * scaleX;
+        var y1 = shape.Y1 * scaleY;
+        var x2 = shape.X2 * scaleX;
+        var y2 = shape.Y2 * scaleY;
+        switch (shape.Kind)
+        {
+            case ImageMarkupShapeKind.Rectangle:
+            {
+                var rect = new Rectangle
+                {
+                    Stroke = brush,
+                    StrokeThickness = thickness,
+                    Fill = null,
+                    Width = Math.Abs(x2 - x1),
+                    Height = Math.Abs(y2 - y1),
+                    IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(rect, Math.Min(x1, x2));
+                Canvas.SetTop(rect, Math.Min(y1, y2));
+                _markupOverlay.Children.Add(rect);
+                break;
+            }
+            case ImageMarkupShapeKind.Ellipse:
+            {
+                var ellipse = new Ellipse
+                {
+                    Stroke = brush,
+                    StrokeThickness = thickness,
+                    Fill = null,
+                    Width = Math.Abs(x2 - x1),
+                    Height = Math.Abs(y2 - y1),
+                    IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(ellipse, Math.Min(x1, x2));
+                Canvas.SetTop(ellipse, Math.Min(y1, y2));
+                _markupOverlay.Children.Add(ellipse);
+                break;
+            }
+            case ImageMarkupShapeKind.Line:
+            case ImageMarkupShapeKind.Arrow:
+            {
+                var line = new Line
+                {
+                    X1 = x1,
+                    Y1 = y1,
+                    X2 = x2,
+                    Y2 = y2,
+                    Stroke = brush,
+                    StrokeThickness = thickness,
+                    IsHitTestVisible = false,
+                };
+                _markupOverlay.Children.Add(line);
+                if (shape.Kind == ImageMarkupShapeKind.Arrow)
+                {
+                    AddArrowHeadVisual(x1, y1, x2, y2, brush, thickness);
+                }
+
+                break;
+            }
+        }
+    }
+
+    private void AddArrowHeadVisual(
+        double x1,
+        double y1,
+        double x2,
+        double y2,
+        Brush brush,
+        double thickness)
+    {
+        var angle = Math.Atan2(y2 - y1, x2 - x1);
+        var head = Math.Max(8, thickness * 4);
+        var a1 = angle + Math.PI - (Math.PI / 6);
+        var a2 = angle + Math.PI + (Math.PI / 6);
+        _markupOverlay.Children.Add(new Line
+        {
+            X1 = x2,
+            Y1 = y2,
+            X2 = x2 + (head * Math.Cos(a1)),
+            Y2 = y2 + (head * Math.Sin(a1)),
+            Stroke = brush,
+            StrokeThickness = thickness,
+            IsHitTestVisible = false,
+        });
+        _markupOverlay.Children.Add(new Line
+        {
+            X1 = x2,
+            Y1 = y2,
+            X2 = x2 + (head * Math.Cos(a2)),
+            Y2 = y2 + (head * Math.Sin(a2)),
+            Stroke = brush,
+            StrokeThickness = thickness,
+            IsHitTestVisible = false,
+        });
     }
 
     private void MarkupOverlay_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -2320,35 +2471,107 @@ public sealed class ImageDocumentView : UserControl
 
         _drawDragging = true;
         _drawPoints.Clear();
+        ClearActiveShapePreview();
         var point = e.GetCurrentPoint(_markupOverlay).Position;
         _drawPoints.Add(point);
-        var scale = _displayWidth > 0 && _document.PixelWidth > 0
-            ? (_displayWidth / (double)_document.PixelWidth)
-            : 1.0;
-        _activeDrawPolyline = new Polyline
+        if (_markupShapeTool is null)
         {
-            Stroke = new SolidColorBrush(_drawColor),
-            StrokeThickness = Math.Max(1, _drawWidthPixels * scale),
-            Fill = null,
-            IsHitTestVisible = false,
-        };
-        _activeDrawPolyline.Points.Add(point);
-        _markupOverlay.Children.Add(_activeDrawPolyline);
+            var scale = _displayWidth > 0 && _document.PixelWidth > 0
+                ? (_displayWidth / (double)_document.PixelWidth)
+                : 1.0;
+            _activeDrawPolyline = new Polyline
+            {
+                Stroke = new SolidColorBrush(_drawColor),
+                StrokeThickness = Math.Max(1, _drawWidthPixels * scale),
+                Fill = null,
+                IsHitTestVisible = false,
+            };
+            _activeDrawPolyline.Points.Add(point);
+            _markupOverlay.Children.Add(_activeDrawPolyline);
+        }
+
         _markupOverlay.CapturePointer(e.Pointer);
         e.Handled = true;
     }
 
     private void MarkupOverlay_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
-        if (!_drawDragging || _activeDrawPolyline is null)
+        if (!_drawDragging)
         {
             return;
         }
 
         var point = e.GetCurrentPoint(_markupOverlay).Position;
+        if (_markupShapeTool is { } kind)
+        {
+            UpdateShapePreview(kind, _drawPoints[0], point);
+            e.Handled = true;
+            return;
+        }
+
+        if (_activeDrawPolyline is null)
+        {
+            return;
+        }
+
         _drawPoints.Add(point);
         _activeDrawPolyline.Points.Add(point);
         e.Handled = true;
+    }
+
+    private void UpdateShapePreview(ImageMarkupShapeKind kind, Windows.Foundation.Point a, Windows.Foundation.Point b)
+    {
+        ClearActiveShapePreview();
+        var brush = new SolidColorBrush(_drawColor);
+        var scale = _displayWidth > 0 && _document.PixelWidth > 0
+            ? (_displayWidth / (double)_document.PixelWidth)
+            : 1.0;
+        var thickness = Math.Max(1, _drawWidthPixels * scale);
+        Shape preview;
+        if (kind is ImageMarkupShapeKind.Line or ImageMarkupShapeKind.Arrow)
+        {
+            preview = new Line
+            {
+                X1 = a.X,
+                Y1 = a.Y,
+                X2 = b.X,
+                Y2 = b.Y,
+                Stroke = brush,
+                StrokeThickness = thickness,
+                IsHitTestVisible = false,
+            };
+        }
+        else if (kind == ImageMarkupShapeKind.Ellipse)
+        {
+            preview = new Ellipse
+            {
+                Stroke = brush,
+                StrokeThickness = thickness,
+                Fill = null,
+                Width = Math.Abs(b.X - a.X),
+                Height = Math.Abs(b.Y - a.Y),
+                IsHitTestVisible = false,
+            };
+            Canvas.SetLeft(preview, Math.Min(a.X, b.X));
+            Canvas.SetTop(preview, Math.Min(a.Y, b.Y));
+        }
+        else
+        {
+            preview = new Rectangle
+            {
+                Stroke = brush,
+                StrokeThickness = thickness,
+                Fill = null,
+                Width = Math.Abs(b.X - a.X),
+                Height = Math.Abs(b.Y - a.Y),
+                IsHitTestVisible = false,
+            };
+            Canvas.SetLeft(preview, Math.Min(a.X, b.X));
+            Canvas.SetTop(preview, Math.Min(a.Y, b.Y));
+        }
+
+        _activeShapePreview = preview;
+        _markupOverlay.Children.Add(preview);
     }
 
     private void MarkupOverlay_PointerReleased(object sender, PointerRoutedEventArgs e)
@@ -2360,14 +2583,52 @@ public sealed class ImageDocumentView : UserControl
 
         _drawDragging = false;
         try { _markupOverlay.ReleasePointerCapture(e.Pointer); } catch { /* ignore */ }
-        if (_drawPoints.Count >= 2
-            && _displayWidth > 0
-            && _displayHeight > 0
-            && _document.PixelWidth > 0
-            && _document.PixelHeight > 0)
+        var end = e.GetCurrentPoint(_markupOverlay).Position;
+        if (_displayWidth <= 0
+            || _displayHeight <= 0
+            || _document.PixelWidth <= 0
+            || _document.PixelHeight <= 0)
         {
-            var scaleX = _document.PixelWidth / (double)_displayWidth;
-            var scaleY = _document.PixelHeight / (double)_displayHeight;
+            ClearActiveShapePreview();
+            if (_activeDrawPolyline is not null)
+            {
+                _markupOverlay.Children.Remove(_activeDrawPolyline);
+                _activeDrawPolyline = null;
+            }
+
+            _drawPoints.Clear();
+            e.Handled = true;
+            return;
+        }
+
+        var scaleX = _document.PixelWidth / (double)_displayWidth;
+        var scaleY = _document.PixelHeight / (double)_displayHeight;
+        if (_markupShapeTool is { } kind && _drawPoints.Count >= 1)
+        {
+            ClearActiveShapePreview();
+            var start = _drawPoints[0];
+            if (Math.Abs(end.X - start.X) >= 2 || Math.Abs(end.Y - start.Y) >= 2)
+            {
+                var shape = new ImageMarkupShape(
+                    kind,
+                    start.X * scaleX,
+                    start.Y * scaleY,
+                    end.X * scaleX,
+                    end.Y * scaleY,
+                    _drawColor.A,
+                    _drawColor.R,
+                    _drawColor.G,
+                    _drawColor.B,
+                    _drawWidthPixels);
+                _markupShapes.Add(shape);
+                _markupUndoWasShape.Add(true);
+                RebuildMarkupOverlay();
+                UpdateFlattenButtonVisibility();
+                _status.Text = $"Markup {kind} added ({_markupStrokes.Count + _markupShapes.Count} total).";
+            }
+        }
+        else if (_drawPoints.Count >= 2)
+        {
             var docPoints = _drawPoints
                 .Select(p => new ImageMarkupPoint(p.X * scaleX, p.Y * scaleY))
                 .ToList();
@@ -2378,8 +2639,9 @@ public sealed class ImageDocumentView : UserControl
                 _drawColor.G,
                 _drawColor.B,
                 _drawWidthPixels));
+            _markupUndoWasShape.Add(false);
             UpdateFlattenButtonVisibility();
-            _status.Text = $"Markup stroke added ({_markupStrokes.Count} total).";
+            _status.Text = $"Markup stroke added ({_markupStrokes.Count + _markupShapes.Count} total).";
         }
         else if (_activeDrawPolyline is not null)
         {
@@ -2404,9 +2666,10 @@ public sealed class ImageDocumentView : UserControl
             }
         }
 
-        if (_markupStrokes.Count > 0)
+        var markupCount = _markupStrokes.Count + _markupShapes.Count;
+        if (markupCount > 0)
         {
-            baseStatus += $" · {_markupStrokes.Count} markup";
+            baseStatus += $" · {markupCount} markup";
         }
 
         _status.Text = baseStatus;

@@ -73,11 +73,11 @@ public interface IImageProcessor
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Bakes freehand markup strokes into pixel data (document pixel space).
+    /// Bakes freehand strokes and shape markup into pixel data (document pixel space).
     /// </summary>
     Task FlattenMarkupAsync(
         IImageDocument document,
-        IReadOnlyList<ImageMarkupStroke> strokes,
+        ImageMarkupLayer layer,
         CancellationToken cancellationToken = default);
 }
 

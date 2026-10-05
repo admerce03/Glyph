@@ -152,7 +152,31 @@ public class MagickImageProcessorTests
                 g: 0,
                 b: 0,
                 widthPixels: 2);
-            await processor.FlattenMarkupAsync(document, [stroke]);
+            var rect = new ImageMarkupShape(
+                ImageMarkupShapeKind.Rectangle,
+                4,
+                4,
+                18,
+                14,
+                255,
+                0,
+                128,
+                255,
+                2);
+            var arrow = new ImageMarkupShape(
+                ImageMarkupShapeKind.Arrow,
+                5,
+                20,
+                30,
+                8,
+                255,
+                0,
+                200,
+                0,
+                2);
+            await processor.FlattenMarkupAsync(
+                document,
+                new ImageMarkupLayer([stroke], [rect, arrow]));
             document.PixelWidth.Should().Be(40);
             document.PixelHeight.Should().Be(30);
         }
