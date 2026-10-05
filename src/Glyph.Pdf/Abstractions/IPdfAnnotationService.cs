@@ -76,6 +76,7 @@ public interface IPdfAnnotationService
         float fontSizePoints = 12f,
         string fontResourceName = "Helv",
         bool underline = false,
+        PdfTextQuadding quadding = PdfTextQuadding.Left,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -94,6 +95,18 @@ public interface IPdfAnnotationService
         string fontResourceName = "Helv",
         float pointerWidthPoints = 1.5f,
         bool underline = false,
+        PdfTextQuadding quadding = PdfTextQuadding.Left,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Set FreeText <c>/Q</c> quadding (left/center/right). Uses a post-save dict patch
+    /// because PDFium has GetNumberValue but no SetNumberValue.
+    /// </summary>
+    Task<PdfAnnotationInfo> SetTextQuaddingAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        PdfTextQuadding quadding,
         CancellationToken cancellationToken = default);
 
     /// <summary>

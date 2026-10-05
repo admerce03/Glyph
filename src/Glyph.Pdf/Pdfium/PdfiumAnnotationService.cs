@@ -654,6 +654,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         float fontSizePoints = 12f,
         string fontResourceName = "Helv",
         bool underline = false,
+        PdfTextQuadding quadding = PdfTextQuadding.Left,
         CancellationToken cancellationToken = default)
     {
         var pdfium = RequirePdfium(document);
@@ -791,17 +792,33 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             },
             cancellationToken).ConfigureAwait(false);
 
-        if (!underline)
+        if (!underline && quadding == PdfTextQuadding.Left)
         {
             return created;
         }
 
-        return await SetUnderlineAsync(
-            document,
-            pageIndex,
-            created.AnnotIndex,
-            underline: true,
-            cancellationToken).ConfigureAwait(false);
+        var result = created;
+        if (underline)
+        {
+            result = await SetUnderlineAsync(
+                document,
+                pageIndex,
+                result.AnnotIndex,
+                underline: true,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        if (quadding != PdfTextQuadding.Left)
+        {
+            result = await SetTextQuaddingAsync(
+                document,
+                pageIndex,
+                result.AnnotIndex,
+                quadding,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        return result;
     }
 
     public async Task<PdfAnnotationInfo> AddCalloutAsync(
@@ -817,6 +834,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         string fontResourceName = "Helv",
         float pointerWidthPoints = 1.5f,
         bool underline = false,
+        PdfTextQuadding quadding = PdfTextQuadding.Left,
         CancellationToken cancellationToken = default)
     {
         borderColor ??= new PdfAnnotationColor(40, 40, 40);
@@ -847,6 +865,7 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
             fontSizePoints,
             fontResourceName,
             underline,
+            quadding,
             cancellationToken);
 
         // Mark as callout via Subj so list/reload can recognize it.
@@ -916,6 +935,131 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
         }
 
         return int.TryParse(contents.AsSpan(GlyphTextUnderlinePrefix.Length), out ownerIndex);
+    }
+
+    public async Task<PdfAnnotationInfo> SetTextQuaddingAsync(
+        IPdfDocument document,
+        int pageIndex,
+        int annotIndex,
+        PdfTextQuadding quadding,
+        CancellationToken cancellationToken = default)
+    {
+        if (quadding is < PdfTextQuadding.Left or > PdfTextQuadding.Right)
+        {
+            throw new ArgumentOutOfRangeException(nameof(quadding));
+        }
+
+        var listed = await ListAsync(document, pageIndex, cancellationToken).ConfigureAwait(false);
+        _ = listed.FirstOrDefault(a => a.AnnotIndex == annotIndex && a.IsTextBox)
+            ?? throw new InvalidOperationException("Target annotation is not a FreeText text box.");
+
+        var marker = "GlyphQ" + Guid.NewGuid().ToString("N");
+        await MutateAnnotAsync(
+            document,
+            pageIndex,
+            annotIndex,
+            cancellationToken,
+            annot =>
+            {
+                if (!PdfiumAnnotStrings.SetString(annot, "NM", marker))
+                {
+                    throw new InvalidOperationException("Failed to set FreeText NM marker for quadding.");
+                }
+            }).ConfigureAwait(false);
+
+        var pdfium = RequirePdfium(document);
+        await Task.Run(
+            () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    pdfium.ThrowIfDisposed();
+                    var bytes = PdfiumDocumentSaver.SaveToBytes(pdfium.Handle, flags: 0);
+                    var patched = PdfFreeTextQuaddingPatcher.Apply(bytes, marker, (int)quadding);
+                    pdfium.ReplaceFromBytes(patched);
+                    pdfium.NotifyAnnotationsChanged();
+                }
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        listed = await ListAsync(document, pageIndex, cancellationToken).ConfigureAwait(false);
+        return FindByNameMarker(document, pageIndex, marker, listed)
+            ?? throw new InvalidOperationException("FreeText missing after quadding patch.");
+    }
+
+    private PdfAnnotationInfo? FindByNameMarker(
+        IPdfDocument document,
+        int pageIndex,
+        string marker,
+        IReadOnlyList<PdfAnnotationInfo> listed)
+    {
+        var pdfium = RequirePdfium(document);
+        PdfiumLibrary.EnsureInitialized();
+        lock (PdfiumSync.Gate)
+        {
+            pdfium.ThrowIfDisposed();
+            var page = fpdfview.FPDF_LoadPage(pdfium.Handle, pageIndex);
+            if (page is null)
+            {
+                return null;
+            }
+
+            try
+            {
+                foreach (var info in listed.Where(a => a.IsTextBox))
+                {
+                    var annot = fpdf_annot.FPDFPageGetAnnot(page, info.AnnotIndex);
+                    if (annot is null)
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        var nm = PdfiumAnnotStrings.GetString(annot, "NM");
+                        if (string.Equals(nm, marker, StringComparison.Ordinal))
+                        {
+                            return info with { TextQuadding = ReadQuadding(annot) };
+                        }
+                    }
+                    finally
+                    {
+                        fpdf_annot.FPDFPageCloseAnnot(annot);
+                    }
+                }
+            }
+            finally
+            {
+                fpdfview.FPDF_ClosePage(page);
+            }
+        }
+
+        return null;
+    }
+
+    private static PdfTextQuadding? ReadQuadding(FpdfAnnotationT annot)
+    {
+        if (fpdf_annot.FPDFAnnotHasKey(annot, "Q") == 0)
+        {
+            return PdfTextQuadding.Left;
+        }
+
+        float value = 0;
+        if (fpdf_annot.FPDFAnnotGetNumberValue(annot, "Q", ref value) == 0)
+        {
+            return null;
+        }
+
+        var q = (int)Math.Round(value);
+        return q switch
+        {
+            0 => PdfTextQuadding.Left,
+            1 => PdfTextQuadding.Center,
+            2 => PdfTextQuadding.Right,
+            _ => null,
+        };
     }
 
     public async Task<PdfAnnotationInfo> SetUnderlineAsync(
@@ -2087,6 +2231,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                             "1",
                             StringComparison.Ordinal);
 
+                    PdfTextQuadding? textQuadding = isTextBox ? ReadQuadding(annot) : null;
+
                     PdfPagePoint? endpointA = null;
                     PdfPagePoint? endpointB = null;
                     if (TryParseLineEndpoints(PdfiumAnnotStrings.GetString(annot, GlyphLineEndsKey), out var ea, out var eb))
@@ -2112,7 +2258,8 @@ public sealed class PdfiumAnnotationService : IPdfAnnotationService
                         groupId,
                         isUnderlined,
                         endpointA,
-                        endpointB));
+                        endpointB,
+                        textQuadding));
                 }
                 finally
                 {

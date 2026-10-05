@@ -325,6 +325,77 @@ public class PdfiumAnnotationServiceTests
     }
 
     [Fact]
+    public async Task Text_box_quadding_center_survives_save()
+    {
+        var path = CreateTextPdf("Quadding host page");
+        var outPath = Path.Combine(Path.GetTempPath(), "glyph-q-out-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var factory = new PdfiumDocumentFactory();
+            var annots = new PdfiumAnnotationService();
+            var editor = new PdfiumPageEditor();
+
+            await using (var document = await factory.OpenAsync(path))
+            {
+                var created = await annots.AddTextBoxAsync(
+                    document,
+                    0,
+                    new PdfRect(72, 640, 280, 720),
+                    "Centered",
+                    new PdfAnnotationColor(20, 20, 20),
+                    quadding: PdfTextQuadding.Center);
+                created.IsTextBox.Should().BeTrue();
+                created.TextQuadding.Should().Be(PdfTextQuadding.Center);
+
+                await editor.SaveAsync(document, outPath);
+            }
+
+            await using (var reopened = await factory.OpenAsync(outPath))
+            {
+                var listed = await annots.ListAsync(reopened, 0);
+                var box = listed.Should().ContainSingle(a => a.IsTextBox && a.Contents == "Centered").Subject;
+                box.TextQuadding.Should().Be(PdfTextQuadding.Center);
+
+                var pdfium = (PdfiumDocument)reopened;
+                PdfiumLibrary.EnsureInitialized();
+                lock (PdfiumSync.Gate)
+                {
+                    var page = PDFiumCore.fpdfview.FPDF_LoadPage(pdfium.Handle, 0);
+                    page.Should().NotBeNull();
+                    try
+                    {
+                        var annot = PDFiumCore.fpdf_annot.FPDFPageGetAnnot(page, box.AnnotIndex);
+                        annot.Should().NotBeNull();
+                        try
+                        {
+                            PDFiumCore.fpdf_annot.FPDFAnnotHasKey(annot!, "Q").Should().NotBe(0);
+                            float q = -1;
+                            PDFiumCore.fpdf_annot.FPDFAnnotGetNumberValue(annot!, "Q", ref q).Should().NotBe(0);
+                            q.Should().Be(1f);
+                        }
+                        finally
+                        {
+                            PDFiumCore.fpdf_annot.FPDFPageCloseAnnot(annot);
+                        }
+                    }
+                    finally
+                    {
+                        PDFiumCore.fpdfview.FPDF_ClosePage(page);
+                    }
+                }
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+            if (File.Exists(outPath))
+            {
+                File.Delete(outPath);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Text_box_underline_persists_and_can_toggle_off()
     {
         var path = CreateTextPdf("Underline host page");

@@ -20,7 +20,8 @@ public sealed record PdfAnnotationInfo(
     string? GroupId = null,
     bool IsUnderlined = false,
     PdfPagePoint? EndpointA = null,
-    PdfPagePoint? EndpointB = null)
+    PdfPagePoint? EndpointB = null,
+    PdfTextQuadding? TextQuadding = null)
 {
     /// <summary>
     /// True when this annotation exposes line/arrow endpoint handles instead of box handles.

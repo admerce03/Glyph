@@ -261,7 +261,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F13-35 | PDF annotations | change font | M4 | Implemented | TextBox/Callout Font combo → DA resource (Helv/TiRo/Cour + bold/italic) |
 | F13-36 | PDF annotations | change font size | M4 | Implemented | TextBox/Callout dialog NumberBox → `fontSizePoints` |
 | F13-37 | PDF annotations | change text color | M4 | Implemented | TextBox/Callout dialog StrokePresets → `textColor` / DA |
-| F13-38 | PDF annotations | change text alignment | M4 | Blocked | PDFium has no `FPDFAnnot_SetNumberValue` for FreeText `/Q` (Quadding) |
+| F13-38 | PDF annotations | change text alignment | M4 | Tested | FreeText `/Q` via post-save dict patch (PDFium has GetNumberValue only); text box/callout Align UI |
 | F14-01 | Highlight workflow | Select text and apply highlight. | M4 | Implemented | Selection quads → Highlight toolbar |
 | F14-02 | Highlight workflow | Persistent highlight mode: | M4 | Implemented | Highlight toggles mode; Esc exits; color remembered |
 | F14-03 | Highlight workflow | Multiple highlight colors. | M4 | Tested | Yellow/Green/Pink/Blue/Orange picker |
@@ -298,7 +298,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F16-12 | Text boxes and callouts | Background/fill color. | M4 | Implemented | `fillColor` → InteriorColor; TextBox dialog picker |
 | F16-13 | Text boxes and callouts | Border. | M4 | Tested | Border color + width on create |
 | F16-14 | Text boxes and callouts | Opacity. | M4 | Implemented | Sidebar Opacity → `SetOpacityAsync` |
-| F16-15 | Text boxes and callouts | Alignment. | M4 | Blocked | Same Quadding limitation as F13-38 |
+| F16-15 | Text boxes and callouts | Alignment. | M4 | Tested | Same `/Q` quadding path as F13-38 |
 | F16-16 | Text boxes and callouts | Callout pointer. | M4 | Tested | Ink pointer from tip to nearest box edge |
 | F16-17 | Text boxes and callouts | Move pointer separately from text box. | M4 | Tested | Sidebar Tip → click page; `SetCalloutTipAsync` rebuilds ink pointer |
 | F17-01 | Shapes | line | M4 | Tested | Same as F13-05 Line draw mode |

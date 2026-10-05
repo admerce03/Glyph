@@ -5481,6 +5481,13 @@ public sealed class PdfDocumentView : UserControl
         var boldCheck = new CheckBox { Content = "Bold", IsChecked = false };
         var italicCheck = new CheckBox { Content = "Italic", IsChecked = false };
         var underlineCheck = new CheckBox { Content = "Underline", IsChecked = false };
+        var alignBox = new ComboBox
+        {
+            Header = "Align",
+            ItemsSource = new[] { "Left", "Center", "Right" },
+            SelectedIndex = 0,
+            Width = 220,
+        };
         var textColorList = new ListView
         {
             Height = 100,
@@ -5496,6 +5503,7 @@ public sealed class PdfDocumentView : UserControl
                 box,
                 fontSizeBox,
                 fontFamilyBox,
+                alignBox,
                 new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
@@ -5528,6 +5536,7 @@ public sealed class PdfDocumentView : UserControl
             (PdfFreeTextFontFamily)Math.Clamp(fontFamilyBox.SelectedIndex, 0, 2),
             boldCheck.IsChecked == true,
             italicCheck.IsChecked == true);
+        var quadding = (PdfTextQuadding)Math.Clamp(alignBox.SelectedIndex, 0, 2);
 
         try
         {
@@ -5544,7 +5553,8 @@ public sealed class PdfDocumentView : UserControl
                 fontSizePoints: fontSize,
                 fontResourceName: fontResource,
                 pointerWidthPoints: _drawStrokeWidth,
-                underline: underlineCheck.IsChecked == true);
+                underline: underlineCheck.IsChecked == true,
+                quadding: quadding);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);
             await RenderVisibleAsync();
@@ -9350,6 +9360,13 @@ public sealed class PdfDocumentView : UserControl
         var boldCheck = new CheckBox { Content = "Bold", IsChecked = false };
         var italicCheck = new CheckBox { Content = "Italic", IsChecked = false };
         var underlineCheck = new CheckBox { Content = "Underline", IsChecked = false };
+        var alignBox = new ComboBox
+        {
+            Header = "Align",
+            ItemsSource = new[] { "Left", "Center", "Right" },
+            SelectedIndex = 0,
+            Width = 220,
+        };
         var textColorList = new ListView
         {
             Height = 100,
@@ -9379,6 +9396,7 @@ public sealed class PdfDocumentView : UserControl
                 box,
                 fontSizeBox,
                 fontFamilyBox,
+                alignBox,
                 new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
@@ -9427,6 +9445,7 @@ public sealed class PdfDocumentView : UserControl
             (PdfFreeTextFontFamily)Math.Clamp(fontFamilyBox.SelectedIndex, 0, 2),
             boldCheck.IsChecked == true,
             italicCheck.IsChecked == true);
+        var quadding = (PdfTextQuadding)Math.Clamp(alignBox.SelectedIndex, 0, 2);
 
         var page = _document.GetPage(CurrentPageIndex);
         var width = Math.Min(240, page.WidthPoints * 0.45);
@@ -9448,7 +9467,8 @@ public sealed class PdfDocumentView : UserControl
                 fillColor: fill,
                 fontSizePoints: fontSize,
                 fontResourceName: fontResource,
-                underline: underlineCheck.IsChecked == true);
+                underline: underlineCheck.IsChecked == true,
+                quadding: quadding);
             RememberAnnotationForUndo(created);
             _cache.ClearDocument(_documentKey);
             _cache.ClearDocument(_thumbnailKey);

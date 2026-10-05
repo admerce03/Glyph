@@ -21,7 +21,7 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M1 | Application shell and basic file opening | **Implemented** (CI green; interactive screenshot pending) | M0 |
 | M2 | Core PDF viewer | **Implemented** (+ post-core Zoom ▭ / Glass / Present) | M1 |
 | M3 | Core PDF page manipulation | **Implemented** (CI green; §11 cross-doc DnD screen recording pending) | M2 |
-| M4 | PDF markup and editing | **Implemented** (matrix-complete; Quadding `/Q` blocked on PDFium) | M2 (forms/security touch M7) |
+| M4 | PDF markup and editing | **Implemented** (matrix-complete; Quadding `/Q` via dict patch) | M2 (forms/security touch M7) |
 | M5 | Image viewer/editor | **Implemented** (matrix-complete; HDR/HEIF deferred) | M1 (shares shell/DnD with M3) |
 | M6 | OCR and scanned-document capabilities | **In Progress** (PRs #62–#66 stacked; Actions billing blocks CI/merge) | M2, M5 |
 | M7 | Redaction, PDF security, optimization, metadata | **In Progress** (redact/optimize/metadata shipped; password-write → ADR-015) | M2–M4 |
@@ -356,7 +356,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 - Prefs, toolbar customization, session restore, crash recovery, version snapshots, a11y Names, cold-start timing shipped in matrix
 - MSIX / file associations still Deferred (ADR-012)
-- Matrix: essentially no In Progress rows left; remaining Blocked = ADR-015 password-write + PDFium Quadding `/Q`; F64-00 is product framing
+- Matrix: essentially no In Progress rows left; remaining Blocked = ADR-015 password-write; F64-00 is product framing
 
 ---
 
@@ -374,7 +374,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | OCR / Live Text | §8 | M6 | In Progress (PR stack #62–#66; billing blocks merge) |
 | User bookmarks | §9 | M2/M4 | Implemented (app-local view-state; PDF outline export deferred) |
 | PDF page manipulation | §10–12 | M3 | Implemented |
-| PDF annotations/markup | §13–19 | M4 | Implemented (Quadding `/Q` blocked) |
+| PDF annotations/markup | §13–19 | M4 | Implemented |
 | PDF forms | §20 | M4 | Implemented |
 | Redaction | §21 | M7 | Implemented (mark/preview/apply + sanitize options; password-write separate) |
 | Flattening | §22 | M4 | Tested (`FlattenAsync` / FPDFPage_Flatten) |
