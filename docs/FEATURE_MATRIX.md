@@ -275,7 +275,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F15-02 | Notes | Enter note text. | M4 | Tested | ContentDialog on add; `AddStickyNoteAsync` contents round-trip |
 | F15-03 | Notes | Collapse note. | M4 | Tested | Sidebar Collapse; `StickyNoteExpandPolicy` unit tests |
 | F15-04 | Notes | Expand note. | M4 | Tested | Sidebar Expand / select; `StickyNoteExpandPolicy` unit tests |
-| F15-05 | Notes | Move note icon. | M4 | Tested | `MoveAsync` API; drag UI later |
+| F15-05 | Notes | Move note icon. | M4 | Tested | Sticky note drag on page → `MoveAsync` (`BeginAnnotDrag`) |
 | F15-06 | Notes | Change note color. | M4 | Tested | Create picker + sidebar Color → StickyNotePresets / `SetColorAsync` |
 | F15-07 | Notes | Edit. | M4 | Tested | Sidebar Edit → `SetContentsAsync`; sticky edit unit test |
 | F15-08 | Notes | Delete. | M4 | Tested | Sidebar Delete → `RemoveAsync`; markup remove unit test |
