@@ -13,6 +13,8 @@ public class PerformanceBehaviorPolicyTests
         PerformanceBehaviorPolicy.IsOutsideMaterializedWindow(0, 50, 100).Should().BeTrue();
         PerformanceBehaviorPolicy.IsOutsideMaterializedWindow(50, 50, 100).Should().BeFalse();
         PerformanceBehaviorPolicy.CancelOcrButton.Should().Contain("Cancel");
+        PerformanceBehaviorPolicy.ProgressSurfaces.Should().Contain("Scanning");
+        PerformanceBehaviorPolicy.PageRenderCacheCapacity.Should().Be(32);
     }
 }
 

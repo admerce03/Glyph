@@ -29,5 +29,9 @@ public static class PerformanceBehaviorPolicy
         "Export",
         "Optimize",
         "Batch images",
+        "Scanning",
     ];
+
+    /// <summary>Bounded LRU page-bitmap cache capacity (F57-10 / F58-05).</summary>
+    public const int PageRenderCacheCapacity = 32;
 }

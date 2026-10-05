@@ -21,4 +21,12 @@ public class PageRenderCacheTests
         cache.TryGet("doc", 0, 1.0, out _).Should().BeTrue();
         cache.TryGet("doc", 2, 1.0, out _).Should().BeTrue();
     }
+
+    [Fact]
+    public void Default_capacity_matches_performance_policy()
+    {
+        PageRenderCache.DefaultCapacity.Should().Be(32);
+        var cache = new PageRenderCache();
+        cache.Capacity.Should().Be(PageRenderCache.DefaultCapacity);
+    }
 }

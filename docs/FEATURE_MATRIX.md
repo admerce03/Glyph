@@ -812,15 +812,15 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F57-07 | Performance behavior | GPU acceleration where appropriate | M2+/M9 | Deferred | Win2D/Composition not adopted; `GpuAccelerationPolicy` |
 | F57-08 | Performance behavior | smooth scrolling | M2+/M9 | Tested | Continuous: page sync + `IntermediateScrollThrottle` (72ms) while flinging; settle render on idle |
 | F57-09 | Performance behavior | large-document virtualization | M2+/M9 | Tested | Visible window; `PerformanceBehaviorPolicy.IsOutsideMaterializedWindow` |
-| F57-10 | Performance behavior | low memory usage | M2+/M9 | Tested | Bounded `PageRenderCache` (capacity 32); same coverage as F58-05 |
+| F57-10 | Performance behavior | low memory usage | M2+/M9 | Tested | Bounded `PageRenderCache` (`DefaultCapacity` 32); same coverage as F58-05 |
 | F57-11 | Performance behavior | unload distant PDF pages | M2+/M9 | Tested | Distant Source clear; `ContinuousPageWindow` / LRU |
 | F57-12 | Performance behavior | cancel long-running operations | M2+/M9 | Tested | Cancel OCR/search; `PerformanceBehaviorPolicy.CancelOcrButton` |
-| F57-13 | Performance behavior | progress indicator for: | M2+/M9 | Tested | ProgressBar surfaces; `PerformanceBehaviorPolicy.ProgressSurfaces` |
+| F57-13 | Performance behavior | progress indicator for: | M2+/M9 | Tested | ProgressBar surfaces; `PerformanceBehaviorPolicy.ProgressSurfaces` (OCR/Export/Optimize/Batch/Scanning) |
 | F58-01 | Large-document handling | PDFs with thousands of pages. | M2+/M9 | Tested | Page virtualization via `ContinuousPageWindow` + on-demand render/cache |
 | F58-02 | Large-document handling | Very large raster images. | M2+/M9 | Tested | Display decode capped (max edge 8192); `ImageZoomCalculator.DecodeTargetEdge` |
 | F58-03 | Large-document handling | Progressive rendering. | M2+/M9 | Tested | Image viewer low-res then refine; `NeedsProgressivePreview` unit tests |
 | F58-04 | Large-document handling | Avoid loading entire PDF rasterized into memory. | M2+/M9 | Tested | Visible-window render only + LRU `PageRenderCache` |
-| F58-05 | Large-document handling | Efficient page cache. | M2+/M9 | Tested | `PageRenderCache` LRU (capacity 32) |
+| F58-05 | Large-document handling | Efficient page cache. | M2+/M9 | Tested | `PageRenderCache` LRU (`DefaultCapacity` 32; DI uses same) |
 | F58-06 | Large-document handling | Search indexing in background. | M2+/M9 | Tested | Same as F57-05; `IPdfTextSearchService.WarmIndexAsync` |
 | F58-07 | Large-document handling | Partial OCR. | M2+/M9 | Tested | OCR selected/current via `OcrPageRangeChooser`; not whole-doc by default |
 | F58-08 | Large-document handling | Cancelable operations. | M2+/M9 | Tested | Search/OCR cancel; `PerformanceBehaviorPolicy.CancelOcrButton` |

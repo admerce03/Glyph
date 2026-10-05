@@ -7,7 +7,7 @@ namespace Glyph.Core.Documents;
 public static class ShellMenuCatalog
 {
     public static IReadOnlyList<string> TopLevelMenus { get; } =
-        ["File", "Edit", "View", "Window"];
+        ["File", "Edit", "View", "Window", "Help"];
 
     public static IReadOnlyList<string> FileCommands { get; } =
     [
@@ -21,6 +21,12 @@ public static class ShellMenuCatalog
         "New Window",
         "Close Tab",
         "Exit",
+    ];
+
+    public static IReadOnlyList<string> HelpCommands { get; } =
+    [
+        "Check for Updates…",
+        "About Glyph",
     ];
 
     public static bool DeclaresMenus(string mainWindowXaml) =>

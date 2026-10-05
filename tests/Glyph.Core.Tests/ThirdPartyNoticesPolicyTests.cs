@@ -21,6 +21,7 @@ public class ThirdPartyNoticesPolicyTests
         text.Should().Contain("ImageMagick");
         text.Should().Contain("PdfPig");
         text.Should().Contain("Apache");
+        text.Should().NotContain("CommunityToolkit.Mvvm");
     }
 
     private static string FindRepoRoot()
