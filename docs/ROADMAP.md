@@ -303,6 +303,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Page drop accept/copy helpers + ink dash preview pattern extracted
 - M3 insert prepend/append + text reading-order helpers unit-tested (F10-09/11/12, F07-03)
 - Page paste/drag-out/registry helpers moved to Core/Pdf with tests (F10-24, F11-07/09)
+- Cross-window page drop same-doc semantics via `PageDragSemantics` (F11-08)
 
 ---
 

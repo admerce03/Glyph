@@ -212,7 +212,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F11-05 | Preview-style PDF drag-and-drop workflows | visible insertion indicator | M3 | Tested | Orange before/after border; `PageDropPlacement.HighlightThickness` unit tests |
 | F11-06 | Preview-style PDF drag-and-drop workflows | insert entire PDF at drop location. | M3 | Tested | Explorer `.pdf` StorageItems → insert; `AcceptsDrop`/`PreferCopyOperation`/`Caption` |
 | F11-07 | Preview-style PDF drag-and-drop workflows | create a new PDF containing those selected pages. | M3 | Tested | Deferred StorageItems + `PageExtractFileNames.TempPdfPath` unit test |
-| F11-08 | Preview-style PDF drag-and-drop workflows | different windows | M3 | Implemented | File → New Window; per-window workspace + shared page drag registry |
+| F11-08 | Preview-style PDF drag-and-drop workflows | different windows | M3 | Tested | File → New Window + `PageDragSemantics`/`PdfPageDragRegistry` unit tests |
 | F11-09 | Preview-style PDF drag-and-drop workflows | different tabs | M3 | Tested | Cross-tab insert via `PdfPageDragRegistry` unit tests |
 | F12-01 | PDF crop | Rectangular page crop. | M3 | Tested | CropBox rectangle via margins / absolute box; `PdfCropBox`/`PdfCropMargins` unit tests |
 | F12-02 | PDF crop | Visual crop handles. | M3 | Tested | Interactive overlay handles; `PdfCropMargins.ClampMargin` unit-tested |
@@ -828,7 +828,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F59-03 | Multi-document workflow | drag tabs between windows | M1/M3 | Implemented | `CanDragTabs` + `AllowDropTabs` cross-window; drop outside → new window |
 | F59-04 | Multi-document workflow | drag PDF pages between documents | M1/M3 | Tested | Cross-tab/window insert via `PdfPageDragRegistry` unit tests |
 | F59-05 | Multi-document workflow | drag images between compatible contexts | M1/M3 | Implemented | Image surface drag exposes file via deferred StorageItems; window drop opens |
-| F59-06 | Multi-document workflow | copy/paste between documents | M1/M3 | Implemented | Ctrl+C/V pages via `PdfPageClipboard` |
+| F59-06 | Multi-document workflow | copy/paste between documents | M1/M3 | Tested | Ctrl+C/V pages via `PdfPageClipboard` extract/open unit tests |
 | F59-07 | Multi-document workflow | side-by-side windows using Windows Snap | M1/M3 | Implemented | Multi-window shell; Snap is OS-native |
 | F59-08 | Multi-document workflow | maintain independent undo history for each document | M1/M3 | Tested | Per-view `PdfPageEditHistory`; history unit tests |
 | F59-09 | Multi-document workflow | retain per-document page/zoom position | M1/M3 | Implemented | Per-document `PdfViewState` persistence |

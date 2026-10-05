@@ -314,7 +314,7 @@ public sealed class PdfDocumentView : UserControl
         _layoutMode = _viewState.PageLayout;
         CurrentPageIndex = Math.Clamp(_viewState.CurrentPageIndex, 0, Math.Max(0, document.PageCount - 1));
         _pageSelection.SelectOnly(CurrentPageIndex);
-        _documentKey = document.Path ?? document.GetHashCode().ToString("X");
+        _documentKey = PageDragSemantics.DocumentKey(document.Path, document.GetHashCode());
         _thumbnailKey = _documentKey + "|thumb";
 
         _continuousHost = new StackPanel { Spacing = 12, Padding = new Thickness(12) };
@@ -1802,7 +1802,7 @@ public sealed class PdfDocumentView : UserControl
     private async Task HandleThumbnailDropAsync(DragEventArgs e, int insertBefore)
     {
         ClearDropHighlight();
-        insertBefore = Math.Clamp(insertBefore, 0, _document.PageCount);
+        insertBefore = PageInsertIndex.Clamp(insertBefore, _document.PageCount);
 
         try
         {
@@ -1811,9 +1811,7 @@ public sealed class PdfDocumentView : UserControl
                 var text = await e.DataView.GetTextAsync();
                 if (PageDragPayload.TryParse(text, out var payload) && payload is not null)
                 {
-                    var sameDocument = string.IsNullOrEmpty(payload.DocumentKey)
-                        || string.Equals(payload.DocumentKey, _documentKey, StringComparison.Ordinal);
-                    if (sameDocument)
+                    if (PageDragSemantics.IsSameDocument(payload.DocumentKey, _documentKey))
                     {
                         await ReorderFromDragAsync(payload.PageIndexes.ToList(), insertBefore);
                         e.Handled = true;
