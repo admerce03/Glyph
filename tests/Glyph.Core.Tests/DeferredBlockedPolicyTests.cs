@@ -41,6 +41,10 @@ public class PackagingDeferredPolicyTests
         yaml.Should().Contain("AllowDevelopmentWithoutDevLicense");
         yaml.Should().Contain("win-arm64");
         yaml.Should().Contain("glyph-msix-layout-arm64");
+        yaml.Should().Contain("interactive-verify.ps1 -StatusOnly");
+        yaml.Should().Contain("-DownloadArtifact -PackageDir artifacts/msix-ci-smoke");
+        yaml.Should().Contain("actions: read");
+        yaml.Should().Contain("GH_TOKEN");
     }
 
     [Fact]
