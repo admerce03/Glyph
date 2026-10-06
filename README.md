@@ -6,7 +6,7 @@ Authoritative product scope: [`docs/FEATURES.md`](docs/FEATURES.md).
 
 ## Current status
 
-Milestones **M0–M8** are matrix-**Tested** on `main` (password-write via ADR-015 Accept A / PdfSharp; HDR/HEIF/ML and packaging associations Deferred). **M9** is In Progress (test-signed x64+arm64 MSIX + CI sideload/association probe + `interactive-verify.ps1` / docs/proof kit + session restore multi-window+bounds + Find relevance/any-word/Match case + Find options prefs/Preferences live-apply + multi-window Find sync + live recent/snapshot capacity + annot defaults/Author button + crash-recovery interval live-apply + toolbar F54 live prefs + shortcuts/updates/bg Find + ShellMenu/a11y/notices; tip `#135` + ADR-015 A. Explorer UserChoice + interactive demos + Store signing still open).
+Milestones **M0–M8** are matrix-**Tested** on `main` (password-write via ADR-015 Accept A / PdfSharp; HDR/HEIF/ML and packaging associations Deferred). **M9** is In Progress (test-signed x64+arm64 MSIX + CI sideload/association probe + `interactive-verify.ps1` / docs/proof kit + session restore multi-window+bounds + Find relevance/any-word/Match case + Find options prefs/Preferences live-apply + multi-window Find sync + live recent/snapshot capacity + annot defaults/Author button + crash-recovery interval live-apply + toolbar F54 live prefs + shortcuts/updates/bg Find + ShellMenu/a11y/notices + ADR-015 A password-write; tip `#137`. Explorer UserChoice + interactive demos + Store signing still open).
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) and [`docs/FEATURE_MATRIX.md`](docs/FEATURE_MATRIX.md).
 
