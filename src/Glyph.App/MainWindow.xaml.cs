@@ -3412,7 +3412,7 @@ public sealed partial class MainWindow : Window
             if (ext is ".png" or ".jpg" or ".jpeg" or ".gif" or ".bmp" or ".tif" or ".tiff" or ".webp")
             {
                 var file = await StorageFile.GetFileFromPathAsync(snapshotPath);
-                await using var ras = await file.OpenReadAsync();
+                using var ras = await file.OpenReadAsync();
                 var bmp = new BitmapImage();
                 await bmp.SetSourceAsync(ras);
                 thumb.Source = bmp;
