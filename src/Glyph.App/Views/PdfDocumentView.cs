@@ -132,6 +132,7 @@ public sealed class PdfDocumentView : UserControl
     private long _lastIntermediateRenderTick;
     private bool _loaded;
     private bool _suppressThumbnailNav;
+    private bool _suppressFindPrefPersist;
     private IReadOnlyList<PdfSearchHit> _hits = [];
     private int _activeHitIndex = -1;
     private IReadOnlyList<PdfAnnotationInfo> _annotationItems = [];
@@ -10619,6 +10620,11 @@ public sealed class PdfDocumentView : UserControl
 
     private async Task PersistFindOptionsAsync()
     {
+        if (_suppressFindPrefPersist)
+        {
+            return;
+        }
+
         try
         {
             var store = App.Services.GetService<ISettingsStore>();
@@ -10636,6 +10642,37 @@ public sealed class PdfDocumentView : UserControl
         catch
         {
             // Preference persist is best-effort.
+        }
+    }
+
+    /// <summary>Re-apply Find Match-case / Any-word / sort from Preferences without reopening.</summary>
+    public void ApplyFindOptions(AppSettings? settings)
+    {
+        if (settings is null)
+        {
+            return;
+        }
+
+        FindOptionsPolicy.ApplyTo(
+            settings.FindCaseSensitive,
+            settings.FindAnyWord,
+            settings.FindSortByRelevance,
+            out var findCase,
+            out var findAny,
+            out var findSortIndex);
+        _suppressFindPrefPersist = true;
+        try
+        {
+            _caseSensitiveBox.IsChecked = findCase;
+            _anyWordBox.IsChecked = findAny;
+            if (_searchSortBox.SelectedIndex != findSortIndex)
+            {
+                _searchSortBox.SelectedIndex = findSortIndex;
+            }
+        }
+        finally
+        {
+            _suppressFindPrefPersist = false;
         }
     }
 

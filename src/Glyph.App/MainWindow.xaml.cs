@@ -3349,6 +3349,7 @@ public sealed partial class MainWindow : Window
         App.CurrentApp.ApplyThemePreference(settings.Theme);
         ApplyShellKeyboardShortcuts();
         ApplyToolbarCustomizationToOpenDocuments(settings);
+        ApplyFindOptionsToOpenDocuments(settings);
         ConfigureRecoveryTimer();
         await PersistSessionAsync();
         StatusText.Text = AppShellStatus.PreferencesSaved;
@@ -3366,6 +3367,17 @@ public sealed partial class MainWindow : Window
                 case ImageDocumentView imageView:
                     imageView.ApplyToolbarCustomization(settings);
                     break;
+            }
+        }
+    }
+
+    private void ApplyFindOptionsToOpenDocuments(AppSettings settings)
+    {
+        foreach (var tab in DocumentTabs.TabItems.OfType<TabViewItem>())
+        {
+            if (tab.Content is PdfDocumentView pdfView)
+            {
+                pdfView.ApplyFindOptions(settings);
             }
         }
     }

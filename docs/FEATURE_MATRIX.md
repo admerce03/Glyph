@@ -121,16 +121,16 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F05-09 | PDF table of contents and navigation | Back/forward navigation history within the document. | M2 | Tested | `DocumentNavigationHistory` + Back/Fwd buttons |
 | F06-01 | PDF search | Full-text search. | M2/M6 | Tested | `IPdfTextSearchService` + PdfPig adapter; covered by Pdf.Tests |
 | F06-02 | PDF search | Case-insensitive search. | M2/M6 | Tested | Default `OrdinalIgnoreCase` |
-| F06-03 | PDF search | Optional case-sensitive search. | M2/M6 | Tested | `PdfSearchOptions.CaseSensitive` + toolbar Aa + Find-all Match case; prefs `FindCaseSensitive` (`FindOptionsPolicy` + Preferences) |
+| F06-03 | PDF search | Optional case-sensitive search. | M2/M6 | Tested | `PdfSearchOptions.CaseSensitive` + toolbar Aa + Find-all Match case; prefs `FindCaseSensitive` (`FindOptionsPolicy` + Preferences live-apply) |
 | F06-04 | PDF search | Exact phrase search. | M2/M6 | Tested | Default exact-phrase substring match |
-| F06-05 | PDF search | Any-word search. | M2/M6 | Tested | `ExactPhrase: false` tokenized match; toolbar Any + Find-all-open-PDFs Any word toggles; prefs `FindAnyWord` (`FindOptionsPolicy` + Preferences); `PdfPageTextSearch` / Pdf.Tests |
+| F06-05 | PDF search | Any-word search. | M2/M6 | Tested | `ExactPhrase: false` tokenized match; toolbar Any + Find-all-open-PDFs Any word toggles; prefs `FindAnyWord` (`FindOptionsPolicy` + Preferences live-apply); `PdfPageTextSearch` / Pdf.Tests |
 | F06-06 | PDF search | Search all occurrences. | M2/M6 | Tested | Collects every hit per page |
 | F06-07 | PDF search | Search current PDF. | M2/M6 | Tested | Current document path |
 | F06-08 | PDF search | Search all open PDFs. | M2/M6 | Tested | Edit → Find in all open PDFs; `FindAllOpenPdfsStatus` unit tests |
 | F06-09 | PDF search | Highlight matches on pages. | M2/M6 | Tested | Gold overlays; `PdfSearchHighlightStyle` ARGB unit tests |
 | F06-10 | PDF search | Results sidebar. | M2/M6 | Tested | Results list; `PdfSearchSnippet` pads match context with ellipsis |
 | F06-11 | PDF search | Show contextual snippets around matches. | M2/M6 | Tested | Snippet around match |
-| F06-12 | PDF search | Sort results by: | M2/M6 | Tested | Page order + relevance via `PdfSearchHitOrder` (sidebar + Find all open PDFs combo); prefs `FindSortByRelevance` (`FindOptionsPolicy` + Preferences) |
+| F06-12 | PDF search | Sort results by: | M2/M6 | Tested | Page order + relevance via `PdfSearchHitOrder` (sidebar + Find all open PDFs combo); prefs `FindSortByRelevance` (`FindOptionsPolicy` + Preferences live-apply) |
 | F06-13 | PDF search | Next match. | M2/M6 | Tested | Toolbar next; `PdfSearchHitNav.WrapIndex` unit tests |
 | F06-14 | PDF search | Previous match. | M2/M6 | Tested | Toolbar previous; same wrap helper |
 | F06-15 | PDF search | Clear search. | M2/M6 | Tested | Clear + Escape; `PdfSearchHighlightStyle.ClearedStatus` unit tests |
