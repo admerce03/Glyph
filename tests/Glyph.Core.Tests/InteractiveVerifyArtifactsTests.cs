@@ -41,6 +41,10 @@ public class InteractiveVerifyArtifactsTests
         orchestrator.Should().Contain("gh run download $runId");
         orchestrator.Should().NotContain("gh run download --repo $Repo --branch",
             because: "gh run download has no --branch flag; pin a main run id first");
+        orchestrator.Should().NotContain("if (-not $hasMsix -and $DownloadArtifact)",
+            because: "-DownloadArtifact must always refresh tip packaging, not skip when a stale local MSIX exists");
+        orchestrator.Should().Contain("Always refresh: a stale local layout must not skip tip packaging.");
+        orchestrator.Should().Contain("gh run download errors on existing extracted files");
         orchestrator.Should().Contain("Store/production signing");
         orchestrator.Should().NotContain("ADR-015 (A/C/D)",
             because: "ADR-015 Accept A landed; orchestrator must not still escalate A/C/D");

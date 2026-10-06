@@ -9,8 +9,9 @@
   UserChoice, opens Default apps Settings, and prints the capture checklist for
   docs/proof/ artifacts. Does not flip matrix rows — that waits on attached proof.
 
-  On Linux/macOS, -DownloadArtifact prefetches and validates the CI package layout
-  (no sideload). Combine with -StatusOnly to report docs/proof capture gaps.
+  On Linux/macOS, -DownloadArtifact always refreshes (clears stale local Glyph
+  layout) and validates the latest successful main CI package (no sideload).
+  Combine with -StatusOnly to report docs/proof capture gaps.
 
 .NOTES
   Sideload / Explorer defaults require Windows. Prefer a green main CI artifact
@@ -156,6 +157,11 @@ function Invoke-DownloadMsixArtifact {
         throw '-DownloadArtifact requires the GitHub CLI (gh) on PATH.'
     }
 
+    # Always refresh: a stale local layout must not skip tip packaging.
+    # gh run download errors on existing extracted files (e.g. third-party notices).
+    if (Test-Path -LiteralPath $Dir) {
+        Get-ChildItem -LiteralPath $Dir -Force | Remove-Item -Recurse -Force
+    }
     New-Item -ItemType Directory -Force -Path $Dir | Out-Null
 
     Write-Host "Resolving latest successful main CI run ($Repo)…"
@@ -185,7 +191,8 @@ $dir = Resolve-PackageDir -PackageDir $PackageDir
 $hasMsix = Test-HasMsixPackage -Dir $dir
 
 # Prefetch works on any OS (Linux agents / operator prep before Windows sideload).
-if (-not $hasMsix -and $DownloadArtifact) {
+# Always refresh when -DownloadArtifact is set (do not keep a stale local layout).
+if ($DownloadArtifact) {
     Invoke-DownloadMsixArtifact -Dir $dir -Repo $Repo
     $hasMsix = Test-HasMsixPackage -Dir $dir
 }
