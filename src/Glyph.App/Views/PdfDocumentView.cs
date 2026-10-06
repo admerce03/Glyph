@@ -111,6 +111,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly TextBox _searchBox;
     private readonly TextBox _gotoBox;
     private readonly CheckBox _caseSensitiveBox;
+    private readonly CheckBox _anyWordBox;
     private readonly ComboBox _searchSortBox;
     private readonly ComboBox _layoutBox;
     private readonly TextBlock _status;
@@ -366,6 +367,8 @@ public sealed class PdfDocumentView : UserControl
         _searchBox.KeyDown += SearchBox_KeyDown;
         _caseSensitiveBox = new CheckBox { Content = PdfViewerChromeLabels.Aa, VerticalAlignment = VerticalAlignment.Center };
         ToolTipService.SetToolTip(_caseSensitiveBox, PdfViewerTooltips.MatchCase);
+        _anyWordBox = new CheckBox { Content = PdfViewerChromeLabels.AnyWord, VerticalAlignment = VerticalAlignment.Center };
+        ToolTipService.SetToolTip(_anyWordBox, PdfViewerTooltips.MatchAnyWord);
         _searchSortBox = new ComboBox
         {
             Width = 120,
@@ -937,7 +940,7 @@ public sealed class PdfDocumentView : UserControl
             redact, info, optimizeButton, protectButton, export, print, share, sidebarToggle, camera, sign, formFill, ink, freeform, eraser, rect,
             roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, fullscreen, undoEdit, redoEdit,
             _layoutBox, _gotoBox,
-            _caseSensitiveBox, _searchSortBox, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton,
+            _caseSensitiveBox, _anyWordBox, _searchSortBox, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton,
             _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch,
             removeAnnot, duplicateAnnot, copyAnnot, cutAnnot, pasteAnnot, editAnnot, authorAnnot,
             expandNote, collapseNote, exportNotes, underlineAnnot, colorAnnot, fillAnnot, tipAnnot,
@@ -1056,7 +1059,7 @@ public sealed class PdfDocumentView : UserControl
                 undoEdit, redoEdit,
                 rotateLeft, rotateRight, deletePages, moveUp, moveDown, insertBlank, duplicate, extract, merge, split, crop,
                 highlight, underline, strikeout, stickyNote, textBox, callout, flatten, redact, info, optimizeButton, protectButton, export, print, share, camera, sign, formFill, ink, freeform, polygon, eraser, rect, roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, fullscreen,
-                _searchBox, _caseSensitiveBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _jobProgress, _status,
+                _searchBox, _caseSensitiveBox, _anyWordBox, searchButton, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton, _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch, _jobProgress, _status,
             },
         };
         ToolbarCommandApplicator.Tag(sidebarToggle, ToolbarCommands.Sidebar);
@@ -1079,6 +1082,7 @@ public sealed class PdfDocumentView : UserControl
         }
         ToolbarCommandApplicator.Tag(_searchBox, ToolbarCommands.Search);
         ToolbarCommandApplicator.Tag(_caseSensitiveBox, ToolbarCommands.Search);
+        ToolbarCommandApplicator.Tag(_anyWordBox, ToolbarCommands.Search);
         ToolbarCommandApplicator.Tag(searchButton, ToolbarCommands.Search);
         ToolbarCommandApplicator.Tag(findSelection, ToolbarCommands.Search);
         ToolbarCommandApplicator.Tag(clearSearch, ToolbarCommands.Search);
@@ -4119,10 +4123,11 @@ public sealed class PdfDocumentView : UserControl
         _status.Text = PdfFindStatus.Searching;
         _searchQuery = query.Trim();
         _searchCaseSensitive = _caseSensitiveBox.IsChecked == true;
+        var exactPhrase = _anyWordBox.IsChecked != true;
 
         var options = new PdfSearchOptions(
             CaseSensitive: _searchCaseSensitive,
-            ExactPhrase: true);
+            ExactPhrase: exactPhrase);
 
         var result = await _searchCoordinator.SearchAsync(_document.Path, query, options);
         if (result.Status == PdfSearchStatus.Cancelled)
@@ -4132,7 +4137,11 @@ public sealed class PdfDocumentView : UserControl
 
         ShowSidebarMode(SidebarModeCombo.SearchIndex); // Search results panel
 
-        var ocrHits = PdfPageTextSearch.Find(_ocrPageTexts, query, _searchCaseSensitive);
+        var ocrHits = PdfPageTextSearch.Find(
+            _ocrPageTexts,
+            query,
+            _searchCaseSensitive,
+            exactPhrase);
         var merged = PdfPageTextSearch.Merge(result.Hits, ocrHits);
         var usedOcr = ocrHits.Count > 0;
         var status = result.Status;

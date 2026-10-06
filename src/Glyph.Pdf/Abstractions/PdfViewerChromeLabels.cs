@@ -6,6 +6,7 @@ namespace Glyph.Pdf.Abstractions;
 public static class PdfViewerChromeLabels
 {
     public const string Aa = "Aa";
+    public const string AnyWord = "Any";
     public const string Find = "Find";
     public const string FindSelection = "Find sel";
     public const string Ocr = "OCR";

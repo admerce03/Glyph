@@ -32,6 +32,23 @@ public class PdfPageTextSearchTests
     }
 
     [Fact]
+    public void Find_any_word_matches_each_token()
+    {
+        var pages = new Dictionary<int, string>
+        {
+            [0] = "alpha beta gamma",
+            [1] = "only gamma here",
+        };
+
+        var phrase = PdfPageTextSearch.Find(pages, "alpha gamma", exactPhrase: true);
+        phrase.Should().BeEmpty();
+
+        var any = PdfPageTextSearch.Find(pages, "alpha gamma", exactPhrase: false);
+        any.Select(h => (h.PageIndex, h.MatchLength)).Should().BeEquivalentTo(
+            new[] { (0, 5), (0, 5), (1, 5) });
+    }
+
+    [Fact]
     public void Find_returns_empty_for_blank_query_or_texts()
     {
         PdfPageTextSearch.Find(new Dictionary<int, string> { [0] = "abc" }, "  ").Should().BeEmpty();

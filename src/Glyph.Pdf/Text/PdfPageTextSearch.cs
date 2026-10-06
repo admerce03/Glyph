@@ -8,7 +8,8 @@ public static class PdfPageTextSearch
     public static IReadOnlyList<PdfSearchHit> Find(
         IReadOnlyDictionary<int, string> pageTexts,
         string query,
-        bool caseSensitive = false)
+        bool caseSensitive = false,
+        bool exactPhrase = true)
     {
         if (pageTexts.Count == 0 || string.IsNullOrWhiteSpace(query))
         {
@@ -19,6 +20,14 @@ public static class PdfPageTextSearch
         var comparison = caseSensitive
             ? StringComparison.Ordinal
             : StringComparison.OrdinalIgnoreCase;
+        var needles = exactPhrase
+            ? new[] { trimmed }
+            : trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (needles.Length == 0)
+        {
+            return [];
+        }
+
         var hits = new List<PdfSearchHit>();
 
         foreach (var pageIndex in pageTexts.Keys.OrderBy(i => i))
@@ -29,25 +38,16 @@ public static class PdfPageTextSearch
                 continue;
             }
 
-            var start = 0;
-            while (start < text.Length)
+            foreach (var needle in needles)
             {
-                var index = text.IndexOf(trimmed, start, comparison);
-                if (index < 0)
-                {
-                    break;
-                }
-
-                hits.Add(new PdfSearchHit(
-                    pageIndex,
-                    BuildSnippet(text, index, trimmed.Length),
-                    index,
-                    trimmed.Length));
-                start = index + Math.Max(1, trimmed.Length);
+                CollectHits(hits, pageIndex, text, needle, comparison);
             }
         }
 
-        return hits;
+        return hits
+            .OrderBy(h => h.PageIndex)
+            .ThenBy(h => h.MatchStart)
+            .ToArray();
     }
 
     /// <summary>
@@ -85,6 +85,31 @@ public static class PdfPageTextSearch
         }
 
         return merged;
+    }
+
+    private static void CollectHits(
+        List<PdfSearchHit> hits,
+        int pageIndex,
+        string text,
+        string needle,
+        StringComparison comparison)
+    {
+        var start = 0;
+        while (start < text.Length)
+        {
+            var index = text.IndexOf(needle, start, comparison);
+            if (index < 0)
+            {
+                break;
+            }
+
+            hits.Add(new PdfSearchHit(
+                pageIndex,
+                BuildSnippet(text, index, needle.Length),
+                index,
+                needle.Length));
+            start = index + Math.Max(1, needle.Length);
+        }
     }
 
     private static string BuildSnippet(string text, int matchStart, int matchLength)

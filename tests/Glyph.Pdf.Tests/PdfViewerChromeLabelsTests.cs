@@ -13,6 +13,8 @@ public class PdfViewerChromeLabelsTests
         PdfViewerChromeLabels.FindSelection.Should().NotBeNullOrEmpty();
         PdfViewerChromeLabels.SortPageOrder.Should().Be("Page order");
         PdfViewerChromeLabels.SortRelevance.Should().Be("Relevance");
+        PdfViewerChromeLabels.AnyWord.Should().Be("Any");
         PdfViewerChromeLabels.Aa.Should().Be("Aa");
+        PdfViewerTooltips.MatchAnyWord.Should().Contain("any word");
     }
 }
