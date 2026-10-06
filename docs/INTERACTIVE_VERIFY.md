@@ -8,7 +8,9 @@ Related: [`PACKAGING.md`](PACKAGING.md) (MSIX sideload), [`ROADMAP.md`](ROADMAP.
 § Remaining to close M9, ADR-012 (Explorer UserChoice) in [`DECISIONS.md`](DECISIONS.md).
 ADR-015 Accept A (PdfSharp password-write) has landed — see §6 for Protect regression.
 Linux CI smokes `-DownloadArtifact` (run-id resolve + `glyph-msix-layout` + cert) so the
-#141 `gh run download --branch` regression cannot return unnoticed.
+#141 `gh run download --branch` regression cannot return unnoticed. `-DownloadArtifact`
+always clears the package dir and refreshes tip packaging (#149) — do not rely on a
+stale local `artifacts/msix`.
 
 ## Quick start (Windows)
 
