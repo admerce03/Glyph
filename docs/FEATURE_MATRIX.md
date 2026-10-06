@@ -123,11 +123,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F06-02 | PDF search | Case-insensitive search. | M2/M6 | Tested | Default `OrdinalIgnoreCase` |
 | F06-03 | PDF search | Optional case-sensitive search. | M2/M6 | Tested | `PdfSearchOptions.CaseSensitive` + UI toggle |
 | F06-04 | PDF search | Exact phrase search. | M2/M6 | Tested | Default exact-phrase substring match |
-<<<<<<< HEAD
-| F06-05 | PDF search | Any-word search. | M2/M6 | Tested | `ExactPhrase: false` tokenized match; toolbar Any toggle + `PdfPageTextSearch` / Pdf.Tests |
-=======
-| F06-05 | PDF search | Any-word search. | M2/M6 | Tested | `ExactPhrase: false` tokenized match; Find-all-open-PDFs Any word toggle + Pdf.Tests |
->>>>>>> b499936 (M9: any-word option for Find in all open PDFs (F06-05))
+| F06-05 | PDF search | Any-word search. | M2/M6 | Tested | `ExactPhrase: false` tokenized match; toolbar Any + Find-all-open-PDFs Any word toggles; `PdfPageTextSearch` / Pdf.Tests |
 | F06-06 | PDF search | Search all occurrences. | M2/M6 | Tested | Collects every hit per page |
 | F06-07 | PDF search | Search current PDF. | M2/M6 | Tested | Current document path |
 | F06-08 | PDF search | Search all open PDFs. | M2/M6 | Tested | Edit → Find in all open PDFs; `FindAllOpenPdfsStatus` unit tests |
