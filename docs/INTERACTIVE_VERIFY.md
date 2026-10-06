@@ -7,10 +7,25 @@ roadmap / matrix notes and flip Deferred rows where applicable.
 Related: [`PACKAGING.md`](PACKAGING.md) (MSIX sideload), [`ROADMAP.md`](ROADMAP.md)
 § Remaining to close M9, ADR-012 / ADR-015 in [`DECISIONS.md`](DECISIONS.md).
 
+## Quick start (Windows)
+
+```powershell
+# Download latest main CI x64 MSIX, sideload, probe UserChoice, open Default apps
+./scripts/interactive-verify.ps1 -DownloadArtifact
+
+# Or use a package you already have / just published:
+./scripts/interactive-verify.ps1 -PackageDir artifacts/msix
+./scripts/interactive-verify.ps1 -PublishIfMissing   # local publish if missing
+./scripts/interactive-verify.ps1 -StatusOnly         # which docs/proof files exist
+```
+
+Then complete the capture steps below and drop files under [`docs/proof/`](proof/README.md).
+
 ## 0. Prerequisites
 
 1. Download the latest `glyph-msix-layout` artifact from a green `main` CI run
    (or build locally: `./scripts/publish-msix.ps1 -Configuration Release -Runtime win-x64 -TestSign`).
+   Prefer `./scripts/interactive-verify.ps1 -DownloadArtifact` when `gh` is available.
 2. Confirm `artifacts/msix/Glyph.App_*.msix` and `Glyph.CI.TestSign.cer` exist.
 3. Enable **Settings → Privacy & security → For developers → Developer Mode**.
 
@@ -20,6 +35,8 @@ Windows CI already sideloads the test-signed package and probes installed `uap:F
 associations. This section is the remaining **interactive** Explorer default-app proof.
 
 ```powershell
+./scripts/interactive-verify.ps1 -DownloadArtifact
+# equivalent lower-level helpers:
 ./scripts/install-msix-test.ps1 -PackageDir artifacts/msix -Force
 ./scripts/install-msix-test.ps1 -VerifyOnly -ProbeUserDefaults -OpenDefaultApps
 ```

@@ -2,6 +2,7 @@ namespace Glyph.Core.Documents;
 
 /// <summary>
 /// Expected artifact paths for Windows interactive verify (M9 / INTERACTIVE_VERIFY.md).
+/// Operator entrypoint: <c>scripts/interactive-verify.ps1</c>.
 /// </summary>
 public static class InteractiveVerifyArtifacts
 {
@@ -19,4 +20,7 @@ public static class InteractiveVerifyArtifacts
     ];
 
     public const string ChecklistDoc = "docs/INTERACTIVE_VERIFY.md";
+
+    /// <summary>Windows one-command orchestrator (download/sideload/probe + checklist).</summary>
+    public const string OrchestratorScript = "scripts/interactive-verify.ps1";
 }

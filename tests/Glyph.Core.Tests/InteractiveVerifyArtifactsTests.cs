@@ -21,8 +21,10 @@ public class InteractiveVerifyArtifactsTests
             checklist.Should().Contain(path, because: path);
         }
 
+        checklist.Should().Contain("interactive-verify.ps1");
         Directory.Exists(Path.Combine(root, InteractiveVerifyArtifacts.ProofDirectory)).Should().BeTrue();
         File.Exists(Path.Combine(root, InteractiveVerifyArtifacts.ProofDirectory, "README.md")).Should().BeTrue();
+        File.Exists(Path.Combine(root, InteractiveVerifyArtifacts.OrchestratorScript)).Should().BeTrue();
     }
 
     private static string FindRepoRoot()
