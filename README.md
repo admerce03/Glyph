@@ -6,7 +6,7 @@ Authoritative product scope: [`docs/FEATURES.md`](docs/FEATURES.md).
 
 ## Current status
 
-Milestones **M0–M8** are matrix-**Tested** on `main` (password-write Blocked on ADR-015; HDR/HEIF/ML and packaging associations Deferred). **M9** is In Progress (test-signed MSIX + sideload/PACKAGING+INTERACTIVE_VERIFY guides + shortcuts/updates/bg Find + PDF/image toolbar F54 live prefs + chrome toggles + Theme/remember page·zoom prefs + ShellMenu catalog + notices; Explorer verify + ADR-015 + demos + Store signing still open).
+Milestones **M0–M8** are matrix-**Tested** on `main` (password-write Blocked on ADR-015; HDR/HEIF/ML and packaging associations Deferred). **M9** is In Progress (test-signed x64+arm64 MSIX + CI sideload/association probe + `interactive-verify.ps1` / docs/proof kit + session restore multi-window+bounds + Find relevance/any-word/Match case + toolbar F54 live prefs + shortcuts/updates/bg Find + ShellMenu/a11y/notices; tip `#124`. Explorer UserChoice + ADR-015 Accept + interactive demos + Store signing still open).
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) and [`docs/FEATURE_MATRIX.md`](docs/FEATURE_MATRIX.md).
 
