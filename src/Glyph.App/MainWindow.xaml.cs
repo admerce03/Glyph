@@ -338,6 +338,12 @@ public sealed partial class MainWindow : Window
         }
 
         var box = new TextBox { PlaceholderText = FindAllOpenPdfsStatus.QueryPlaceholder, Width = 360 };
+        var anyWordBox = new CheckBox
+        {
+            Content = FindAllOpenPdfsStatus.AnyWordLabel,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        ToolTipService.SetToolTip(anyWordBox, FindAllOpenPdfsStatus.AnyWordTooltip);
         var sortBox = new ComboBox
         {
             Width = 160,
@@ -352,7 +358,7 @@ public sealed partial class MainWindow : Window
         var dialogBody = new StackPanel
         {
             Spacing = 8,
-            Children = { box, sortBox },
+            Children = { box, anyWordBox, sortBox },
         };
         var dialog = new ContentDialog
         {
@@ -375,13 +381,17 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        var options = new PdfSearchOptions(
+            CaseSensitive: false,
+            ExactPhrase: anyWordBox.IsChecked != true);
+
         StatusText.Text = FindAllOpenPdfsStatus.Searching(pdfs.Count);
         var hits = new List<(DocumentSession Doc, PdfSearchHit Hit)>();
         foreach (var doc in pdfs)
         {
             try
             {
-                var result = await _pdfSearch.SearchAsync(doc.Path!, query);
+                var result = await _pdfSearch.SearchAsync(doc.Path!, query, options);
                 if (result.Status == PdfSearchStatus.Cancelled)
                 {
                     StatusText.Text = FindAllOpenPdfsStatus.Cancelled;
