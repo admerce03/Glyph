@@ -69,6 +69,8 @@ Test certs are for CI and Developer Mode only. Closing the M9 installer gate for
 
 Escalate before wiring production secrets or changing Publisher identity.
 
+ROADMAP M9 completion criteria split CI packaging (done) from Explorer UserChoice and this Store/signing decision — see [`ROADMAP.md`](ROADMAP.md) § Milestone 9.
+
 ## Related paths
 
 | Path | Role |

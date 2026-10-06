@@ -382,7 +382,9 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 ### Completion criteria
 
 - [x] Matrix has no blank/unknown rows
-- [ ] Installer produces a clean-machine runnable build (test-signed `.msix` on CI + **CI sideload/association probe**; **Explorer UserChoice / double-click verify still required**)
+- [x] Test-signed installer on CI (x64+arm64 `.msix` + `Glyph.CI.TestSign.cer` + x64 sideload/association probe)
+- [ ] Explorer UserChoice / double-click file-association verify (Windows interactive — F01-06/07; see [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md))
+- [ ] Production / Store signing decision (**A** EV/OV · **B** Partner Center · **C** sideload-only Preview — see [`PACKAGING.md`](PACKAGING.md))
 - [x] Accessibility smoke pass (policy + automation Names)
 - [x] Performance checklist for representative paths (visible-page bias, page cache, bg text index)
 
@@ -390,6 +392,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 1. **Windows interactive** — on a Developer Mode host run [`scripts/interactive-verify.ps1`](../scripts/interactive-verify.ps1) (`-DownloadArtifact` / `-PublishIfMissing` / `-StatusOnly`), then complete [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md) + [`docs/proof/`](proof/README.md): Explorer defaults (F01-06/07); M1/M2 screenshots; M3 §11 DnD recording. ADR-015 Accept A (PdfSharp) landed — Protect password-write is Tested.
 2. **Production / Store signing** — distribution decision (test cert is CI/Developer Mode only); options catalogued in [`PACKAGING.md`](PACKAGING.md) / [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md).
+
+Do **not** mark M9 **Tested** until both external items above are done (or **C** is explicitly accepted with associations remaining Deferred).
 
 ### Progress notes
 

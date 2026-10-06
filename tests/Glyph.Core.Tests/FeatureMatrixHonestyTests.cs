@@ -34,6 +34,23 @@ public class FeatureMatrixHonestyTests
         int.Parse(audit.Groups[4].Value).Should().Be(blocked);
     }
 
+    [Fact]
+    public void Roadmap_m9_completion_criteria_split_ci_from_external_gates()
+    {
+        var root = FindRepoRoot();
+        var roadmap = File.ReadAllText(Path.Combine(root, "docs", "ROADMAP.md"));
+
+        // CI packaging is done; do not conflate it with Explorer UserChoice / Store signing.
+        roadmap.Should().Contain(
+            "- [x] Test-signed installer on CI (x64+arm64 `.msix` + `Glyph.CI.TestSign.cer` + x64 sideload/association probe)");
+        roadmap.Should().Contain("- [ ] Explorer UserChoice / double-click file-association verify");
+        roadmap.Should().Contain("- [ ] Production / Store signing decision");
+        roadmap.Should().Contain("Do **not** mark M9 **Tested** until both external items above are done");
+        roadmap.Should().NotContain(
+            "Installer produces a clean-machine runnable build (test-signed `.msix` on CI + **CI sideload/association probe**)",
+            because: "conflated installer checkbox hid that CI packaging already shipped");
+    }
+
     private static string FindRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
