@@ -2726,18 +2726,21 @@ public sealed partial class MainWindow : Window
             _recoveryTimer = null;
         }
 
-        if (seconds <= 0)
+        if (!CrashRecoveryIntervalPolicy.IsEnabled(seconds))
         {
             return;
         }
 
         _recoveryTimer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromSeconds(Math.Clamp(seconds, 15, 3600)),
+            Interval = TimeSpan.FromSeconds(CrashRecoveryIntervalPolicy.ClampActiveSeconds(seconds)),
         };
         _recoveryTimer.Tick += RecoveryTimer_Tick;
         _recoveryTimer.Start();
     }
+
+    /// <summary>Re-apply Preferences crash-recovery interval to this window's timer (F55-21).</summary>
+    public void ApplyCrashRecoveryInterval() => ConfigureRecoveryTimer();
 
     private async void RecoveryTimer_Tick(object? sender, object e)
     {
@@ -3351,9 +3354,10 @@ public sealed partial class MainWindow : Window
         App.CurrentApp.ApplyShellKeyboardShortcutsToAllWindows();
         App.CurrentApp.ApplyToolbarCustomizationToAllWindows(settings);
         App.CurrentApp.ApplyFindOptionsToAllWindows(settings);
+        App.CurrentApp.ApplyAnnotationDefaultsToAllWindows(settings);
+        App.CurrentApp.ApplyCrashRecoveryIntervalToAllWindows();
         // Capacity providers read ISettingsStore.Current; refresh so a lower recent count trims the sidebar now.
         RefreshRecentList();
-        ConfigureRecoveryTimer();
         await PersistSessionAsync();
         StatusText.Text = AppShellStatus.PreferencesSaved;
     }
@@ -3381,6 +3385,17 @@ public sealed partial class MainWindow : Window
             if (tab.Content is PdfDocumentView pdfView)
             {
                 pdfView.ApplyFindOptions(settings);
+            }
+        }
+    }
+
+    public void ApplyAnnotationDefaultsToOpenDocuments(AppSettings settings)
+    {
+        foreach (var tab in DocumentTabs.TabItems.OfType<TabViewItem>())
+        {
+            if (tab.Content is PdfDocumentView pdfView)
+            {
+                pdfView.ApplyAnnotationDefaults(settings);
             }
         }
     }

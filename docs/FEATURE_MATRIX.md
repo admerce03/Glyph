@@ -280,7 +280,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F15-07 | Notes | Edit. | M4 | Tested | Sidebar Edit → `SetContentsAsync`; sticky edit unit test |
 | F15-08 | Notes | Delete. | M4 | Tested | Sidebar Delete → `RemoveAsync`; markup remove unit test |
 | F15-09 | Notes | Show note author. | M4 | Tested | Sidebar label `/T`; `PdfAnnotationListLabel` author unit test |
-| F15-10 | Notes | Configurable annotation author name. | M4 | Tested | Author button + sticky `/T`; prefs `AnnotationAuthor` round-trip (F55-10) |
+| F15-10 | Notes | Configurable annotation author name. | M4 | Tested | Author button + sticky `/T`; prefs `AnnotationAuthor` live-apply to open tabs (F55-10) |
 | F15-11 | Notes | Optional date/time metadata. | M4 | Tested | Sticky notes set `/CreationDate` and `/M`; `PdfDateFormat` unit tests |
 | F15-12 | Notes | Show all notes in sidebar. | M4 | Tested | Annotations list; `PdfAnnotationListLabel` Note format + ListAsync |
 | F15-13 | Notes | Print notes optionally. | M4 | Tested | Annotations → Export notes → printable `.txt`; `PdfNotesExportTests` |
@@ -710,7 +710,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F49-14 | Undo and redo | Ctrl+Z | M1-M4 | Tested | `UndoStackTests` + PDF redaction→annot→form→page edit order |
 | F49-15 | Undo and redo | Ctrl+Y / Ctrl+Shift+Z | M1-M4 | Tested | `PdfPageEditHistory` redo + `UndoStackTests` Redo |
 | F50-01 | Autosave and recovery | edits remain in memory until Save. | M1/M9 | Tested | Default; AutoSaveToOriginal opt-in off by default (prefs) |
-| F50-02 | Autosave and recovery | periodic crash-recovery snapshot. | M1/M9 | Tested | `FileCrashRecoveryStore.SaveSnapshotAsync` round-trip unit test |
+| F50-02 | Autosave and recovery | periodic crash-recovery snapshot. | M1/M9 | Tested | `FileCrashRecoveryStore.SaveSnapshotAsync` round-trip; interval live-apply across windows (F55-21) |
 | F50-03 | Autosave and recovery | closing unsaved file prompts user. | M1/M9 | Tested | Close tab dirty prompt; `DocumentClosePolicy` title/prompt unit tests |
 | F50-04 | Autosave and recovery | automatically save changes to original document. | M1/M9 | Tested | AutoSaveToOriginal saves every dirty open tab (`AutosaveTabPolicy`); prefs round-trip |
 | F50-05 | Autosave and recovery | reopen recovered document after crash. | M1/M9 | Tested | `ListAsync` returns recovery paths; startup prompt opens them |
@@ -776,7 +776,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-07 | Preferences | remember last page | M1/M9 | Tested | Preferences toggle (default ON); `DocumentViewRestorePolicy` + `JsonDocumentViewStateStore` / settings round-trip |
 | F55-08 | Preferences | remember zoom | M1/M9 | Tested | Preferences toggle (default ON); `DocumentViewRestorePolicy` + view-state / settings round-trip |
 | F55-09 | Preferences | open PDF in tabs/windows | M1/M9 | Tested | Preferences → Open each file in a separate window; prefs round-trip |
-| F55-10 | Preferences | annotation author | M1/M9 | Tested | Preferences + PDF Author button; trimmed prefs round-trip |
+| F55-10 | Preferences | annotation author | M1/M9 | Tested | Preferences + PDF Author button; live-apply to open tabs via `ApplyAnnotationDefaults` |
 | F55-11 | Preferences | OCR behavior | M1/M9 | Tested | Preferred BCP-47 language; `Save_and_load_round_trips_ocr_language` |
 | F55-12 | Preferences | autosave behavior | M1/M9 | Tested | Auto-save to original checkbox; all dirty tabs; settings round-trip |
 | F55-13 | Preferences | open multiple images in same window or separate windows | M1/M9 | Tested | Same as F55-09 — Open each file in a separate window prefs |
@@ -784,10 +784,10 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-15 | Preferences | default interpolation | M1/M9 | Tested | NearestNeighbor/Bilinear/Bicubic/Auto normalize unit test |
 | F55-16 | Preferences | color management | M1/M9 | Tested | Color-managed display default prefs round-trip |
 | F55-17 | Preferences | animation autoplay | M1/M9 | Tested | Preferences toggle; settings round-trip |
-| F55-18 | Preferences | default annotation colors | M1/M9 | Tested | Highlight/stroke/sticky colors; settings round-trip |
-| F55-19 | Preferences | default line width | M1/M9 | Tested | Default stroke width NumberBox; settings round-trip |
+| F55-18 | Preferences | default annotation colors | M1/M9 | Tested | Highlight/stroke/sticky colors; Preferences live-apply to open PDF tabs (`ApplyAnnotationDefaultsToAllWindows`) |
+| F55-19 | Preferences | default line width | M1/M9 | Tested | Default stroke width NumberBox; Preferences live-apply to open PDF tabs |
 | F55-20 | Preferences | signature handling | M1/M9 | Tested | Library save/delete/reorder/descriptions; `SignatureLibraryUi` |
-| F55-21 | Preferences | crash recovery interval | M1/M9 | Tested | Seconds NumberBox; clamped 0–3600 in `JsonSettingsStore` |
+| F55-21 | Preferences | crash recovery interval | M1/M9 | Tested | Seconds NumberBox; clamped 0–3600; live-apply to all windows via `ApplyCrashRecoveryIntervalToAllWindows` |
 | F55-22 | Preferences | local-only OCR preference | M1/M9 | Tested | Always on-device; `LocalOnlyOcr` asserted true in OCR settings test |
 | F55-23 | Preferences | clear recent files | M1/M9 | Tested | File → Clear Recent; `ClearAsync_empties_persisted_list` |
 | F55-24 | Preferences | clear saved signatures | M1/M9 | Tested | Preferences → Clear saved signatures (`ClearAllAsync` unit test) |
