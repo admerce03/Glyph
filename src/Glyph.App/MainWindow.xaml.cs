@@ -1359,23 +1359,31 @@ public sealed partial class MainWindow : Window
         StatusText.Text = DocumentSaveStatus.NoDocument;
     }
 
-    /// <summary>Mark the active document session clean after a successful Save / Save As.</summary>
+    /// <summary>Mark the matching document session clean after a successful Save / Save As.</summary>
     public void NotifyActiveDocumentSaved(string path)
     {
-        var active = _workspace.ActiveDocument;
-        if (active is null)
+        // Prefer the session whose path matches the written file so inactive-tab autosave
+        // does not clear the wrong (active) document.
+        var session = _workspace.Documents.FirstOrDefault(d =>
+                !string.IsNullOrWhiteSpace(d.Path)
+                && string.Equals(d.Path, path, StringComparison.OrdinalIgnoreCase))
+            ?? _workspace.ActiveDocument;
+        if (session is null)
         {
             return;
         }
 
-        var previousPath = active.Path;
-        active.Path = path;
-        active.DisplayName = System.IO.Path.GetFileName(path);
-        active.IsReadOnly = PathUtilities.IsPathReadOnly(path);
-        active.MarkClean();
-        if (DocumentTabs.SelectedItem is TabViewItem tab)
+        var previousPath = session.Path;
+        session.Path = path;
+        session.DisplayName = System.IO.Path.GetFileName(path);
+        session.IsReadOnly = PathUtilities.IsPathReadOnly(path);
+        session.MarkClean();
+
+        var tab = DocumentTabs.TabItems.OfType<TabViewItem>()
+            .FirstOrDefault(t => t.Tag is DocumentId id && id.Equals(session.Id));
+        if (tab is not null)
         {
-            tab.Header = active.DisplayName + (active.IsReadOnly ? " (read-only)" : string.Empty);
+            tab.Header = session.DisplayName + (session.IsReadOnly ? " (read-only)" : string.Empty);
             if (tab.Content is PdfDocumentView pdfView)
             {
                 pdfView.ClearUnsavedEdits();
@@ -1386,7 +1394,7 @@ public sealed partial class MainWindow : Window
             }
         }
 
-        StatusText.Text = DocumentSaveStatus.Saved(active.DisplayName, active.IsReadOnly);
+        StatusText.Text = DocumentSaveStatus.Saved(session.DisplayName, session.IsReadOnly);
         _ = _recentFiles.AddAsync(path);
         RefreshRecentList();
         _ = DiscardRecoveryAsync(previousPath);
@@ -2609,13 +2617,28 @@ public sealed partial class MainWindow : Window
 
             if (autoSave && !session.IsReadOnly && !PathUtilities.IsPathReadOnly(session.Path))
             {
-                if (ReferenceEquals(DocumentTabs.SelectedItem, tab))
+                try
                 {
-                    await SaveActiveDocumentAsync(saveAs: false);
+                    if (tab.Content is PdfDocumentView pdfView)
+                    {
+                        await pdfView.SaveDocumentAsync(saveAs: false);
+                    }
+                    else if (tab.Content is ImageDocumentView imageView)
+                    {
+                        await imageView.SaveDocumentAsync(saveAs: false);
+                    }
+                    else if (ReferenceEquals(DocumentTabs.SelectedItem, tab))
+                    {
+                        await SaveActiveDocumentAsync(saveAs: false);
+                    }
+                    else
+                    {
+                        await WriteTabRecoveryAsync(tab, session.Path);
+                    }
                 }
-                else if (tab.Content is PdfDocumentView or ImageDocumentView)
+                catch (Exception ex)
                 {
-                    // Autosave only the active tab via the public save path; others get a recovery snapshot.
+                    _logger.LogWarning(ex, "Autosave failed for {Path}; writing recovery snapshot", session.Path);
                     await WriteTabRecoveryAsync(tab, session.Path);
                 }
 

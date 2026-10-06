@@ -86,6 +86,47 @@ public class PackagingDeferredPolicyTests
     }
 }
 
+public class AutosaveTabPolicyTests
+{
+    [Fact]
+    public void Autosave_covers_every_dirty_open_tab()
+    {
+        AutosaveTabPolicy.SavesAllDirtyOpenTabs.Should().BeTrue();
+        AutosaveTabPolicy.ActiveTabOnly.Should().BeFalse();
+        AutosaveTabPolicy.PreferenceKey.Should().Be("AutoSaveToOriginal");
+        AutosaveTabPolicy.Reason.Should().Contain("every dirty");
+    }
+
+    [Fact]
+    public void Main_window_autosave_pass_saves_inactive_tabs()
+    {
+        var root = FindRepoRoot();
+        var path = Path.Combine(root, "src", "Glyph.App", "MainWindow.xaml.cs");
+        File.Exists(path).Should().BeTrue(path);
+        var text = File.ReadAllText(path);
+        text.Should().NotContain("Autosave only the active tab");
+        text.Should().Contain("Autosave failed for");
+        // Session clean-up resolves by saved path so inactive-tab autosave is correct.
+        text.Should().Contain("inactive-tab autosave");
+    }
+
+    private static string FindRepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "Glyph.sln")))
+            {
+                return dir.FullName;
+            }
+
+            dir = dir.Parent;
+        }
+
+        throw new InvalidOperationException("Repo root not found from " + AppContext.BaseDirectory);
+    }
+}
+
 public class PdfOptimizeDeferredPolicyTests
 {
     [Fact]

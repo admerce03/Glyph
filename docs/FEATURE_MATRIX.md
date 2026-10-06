@@ -31,7 +31,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-21 | Application and file handling | File → Properties. | M1/M9 | Tested | File → Properties / Ctrl+I; `DocumentPropertiesRouting` PDF Info vs image Meta |
 | F01-22 | Application and file handling | Close: | M1/M9 | Tested | Close Tab / Close All; `DocumentClosePolicy` dirty-prompt unit tests |
 | F01-23 | Application and file handling | Unsaved-change prompt where appropriate. | M1/M9 | Tested | Close tab dirty / HasUnsavedEdits; `MarkDirty`/`MarkClean` unit tests |
-| F01-24 | Application and file handling | Optional autosave. | M1/M9 | Tested | Preferences → Auto-save to original; `AutoSaveToOriginal` prefs round-trip |
+| F01-24 | Application and file handling | Optional autosave. | M1/M9 | Tested | Preferences → Auto-save to original; all dirty tabs (`AutosaveTabPolicy`) |
 | F01-25 | Application and file handling | Crash-recovery copy. | M1/M9 | Tested | `FileCrashRecoveryStore` SaveSnapshot/List/Discard unit tests |
 | F01-26 | Application and file handling | Undo/redo history. | M1/M9 | Tested | Per-doc stacks: `PdfPageEditHistory`, AnnotationUndoStack, Magick checkpoints (unified app-wide later) |
 | F01-27 | Application and file handling | Do not silently overwrite originals by default. | M1/M9 | Tested | Autosave-to-original opt-in off by default (prefs default unit test) |
@@ -712,7 +712,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F50-01 | Autosave and recovery | edits remain in memory until Save. | M1/M9 | Tested | Default; AutoSaveToOriginal opt-in off by default (prefs) |
 | F50-02 | Autosave and recovery | periodic crash-recovery snapshot. | M1/M9 | Tested | `FileCrashRecoveryStore.SaveSnapshotAsync` round-trip unit test |
 | F50-03 | Autosave and recovery | closing unsaved file prompts user. | M1/M9 | Tested | Close tab dirty prompt; `DocumentClosePolicy` title/prompt unit tests |
-| F50-04 | Autosave and recovery | automatically save changes to original document. | M1/M9 | Tested | Preferences AutoSaveToOriginal prefs round-trip |
+| F50-04 | Autosave and recovery | automatically save changes to original document. | M1/M9 | Tested | AutoSaveToOriginal saves every dirty open tab (`AutosaveTabPolicy`); prefs round-trip |
 | F50-05 | Autosave and recovery | reopen recovered document after crash. | M1/M9 | Tested | `ListAsync` returns recovery paths; startup prompt opens them |
 | F50-06 | Autosave and recovery | never silently discard recovery data. | M1/M9 | Tested | Recover / Keep / Discard; `CrashRecoveryPromptUi` unit tests |
 | F50-07 | Autosave and recovery | remove recovery copy after successful save/close. | M1/M9 | Tested | `DiscardAsync` / `DiscardAllAsync` unit tests |
@@ -778,7 +778,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-09 | Preferences | open PDF in tabs/windows | M1/M9 | Tested | Preferences → Open each file in a separate window; prefs round-trip |
 | F55-10 | Preferences | annotation author | M1/M9 | Tested | Preferences + PDF Author button; trimmed prefs round-trip |
 | F55-11 | Preferences | OCR behavior | M1/M9 | Tested | Preferred BCP-47 language; `Save_and_load_round_trips_ocr_language` |
-| F55-12 | Preferences | autosave behavior | M1/M9 | Tested | Auto-save to original checkbox; settings round-trip |
+| F55-12 | Preferences | autosave behavior | M1/M9 | Tested | Auto-save to original checkbox; all dirty tabs; settings round-trip |
 | F55-13 | Preferences | open multiple images in same window or separate windows | M1/M9 | Tested | Same as F55-09 — Open each file in a separate window prefs |
 | F55-14 | Preferences | 100% zoom meaning | M1/M9 | Tested | Pixels vs Print normalized in `JsonSettingsStore` unit test |
 | F55-15 | Preferences | default interpolation | M1/M9 | Tested | NearestNeighbor/Bilinear/Bicubic/Auto normalize unit test |
