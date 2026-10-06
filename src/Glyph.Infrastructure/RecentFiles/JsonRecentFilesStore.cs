@@ -11,17 +11,22 @@ public sealed class JsonRecentFilesStore : IRecentFilesStore
     };
 
     private readonly string _filePath;
-    private readonly int _capacity;
+    private readonly Func<int> _capacityProvider;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private List<RecentFileEntry>? _cache;
 
     public JsonRecentFilesStore(string filePath, int capacity = 20)
+        : this(filePath, () => capacity)
+    {
+    }
+
+    public JsonRecentFilesStore(string filePath, Func<int> capacityProvider)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
-        ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
+        ArgumentNullException.ThrowIfNull(capacityProvider);
 
         _filePath = filePath;
-        _capacity = capacity;
+        _capacityProvider = capacityProvider;
     }
 
     public IReadOnlyList<RecentFileEntry> GetRecent()
@@ -52,11 +57,7 @@ public sealed class JsonRecentFilesStore : IRecentFilesStore
             var items = LoadUnlocked();
             items.RemoveAll(e => string.Equals(e.Path, fullPath, StringComparison.OrdinalIgnoreCase));
             items.Insert(0, entry);
-            if (items.Count > _capacity)
-            {
-                items.RemoveRange(_capacity, items.Count - _capacity);
-            }
-
+            TrimUnlocked(persistIfTrimmed: false);
             _cache = items;
             await SaveUnlockedAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -80,10 +81,13 @@ public sealed class JsonRecentFilesStore : IRecentFilesStore
         }
     }
 
+    private int ResolveCapacity() => Math.Clamp(_capacityProvider(), 1, 100);
+
     private List<RecentFileEntry> LoadUnlocked()
     {
         if (_cache is not null)
         {
+            TrimUnlocked(persistIfTrimmed: true);
             return _cache;
         }
 
@@ -103,7 +107,40 @@ public sealed class JsonRecentFilesStore : IRecentFilesStore
             _cache = [];
         }
 
+        TrimUnlocked(persistIfTrimmed: true);
         return _cache;
+    }
+
+    private void TrimUnlocked(bool persistIfTrimmed)
+    {
+        if (_cache is null)
+        {
+            return;
+        }
+
+        var capacity = ResolveCapacity();
+        if (_cache.Count <= capacity)
+        {
+            return;
+        }
+
+        _cache.RemoveRange(capacity, _cache.Count - capacity);
+        if (persistIfTrimmed)
+        {
+            SaveUnlocked();
+        }
+    }
+
+    private void SaveUnlocked()
+    {
+        var directory = System.IO.Path.GetDirectoryName(_filePath);
+        if (!string.IsNullOrEmpty(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var json = JsonSerializer.Serialize(_cache ?? [], JsonOptions);
+        File.WriteAllText(_filePath, json);
     }
 
     private async Task SaveUnlockedAsync(CancellationToken cancellationToken)

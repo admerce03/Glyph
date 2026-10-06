@@ -40,15 +40,23 @@ public sealed class FileVersionSnapshotStore : IVersionSnapshotStore
     };
 
     private readonly string _root;
-    private readonly int _capacity;
+    private readonly Func<int> _capacityProvider;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     public FileVersionSnapshotStore(string rootDirectory, int capacity = 5)
+        : this(rootDirectory, () => capacity)
+    {
+    }
+
+    public FileVersionSnapshotStore(string rootDirectory, Func<int> capacityProvider)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(rootDirectory);
+        ArgumentNullException.ThrowIfNull(capacityProvider);
         _root = rootDirectory;
-        _capacity = Math.Clamp(capacity, 1, 50);
+        _capacityProvider = capacityProvider;
     }
+
+    private int ResolveCapacity() => Math.Clamp(_capacityProvider(), 1, 50);
 
     public async Task<VersionSnapshotEntry?> CaptureAsync(string originalPath, CancellationToken cancellationToken = default)
     {
@@ -165,7 +173,7 @@ public sealed class FileVersionSnapshotStore : IVersionSnapshotStore
     private async Task TrimOverflowAsync(string folder, CancellationToken cancellationToken)
     {
         var entries = await ReadFolderAsync(folder, cancellationToken).ConfigureAwait(false);
-        foreach (var old in entries.Skip(_capacity))
+        foreach (var old in entries.Skip(ResolveCapacity()))
         {
             try
             {
