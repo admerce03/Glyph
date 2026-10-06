@@ -87,7 +87,11 @@ public class JsonSessionStoreTests
             var store = new JsonSessionStore(storePath);
 
             await store.UpsertWindowAsync("win-a", [fileA, fileB], activeIndex: 1);
-            await store.UpsertWindowAsync("win-b", [fileC], activeIndex: 0);
+            await store.UpsertWindowAsync(
+                "win-b",
+                [fileC],
+                activeIndex: 0,
+                new SessionWindowBounds { X = 40, Y = 60, Width = 900, Height = 700, IsMaximized = false });
 
             var loaded = await store.TryLoadAsync();
             loaded.Should().NotBeNull();
@@ -95,7 +99,13 @@ public class JsonSessionStoreTests
             loaded.Windows.Select(w => w.Id).Should().BeEquivalentTo(["win-a", "win-b"]);
             loaded.Windows.Single(w => w.Id == "win-a").ActiveIndex.Should().Be(1);
             loaded.Windows.Single(w => w.Id == "win-a").Paths.Should().HaveCount(2);
-            loaded.Windows.Single(w => w.Id == "win-b").Paths.Should().Equal(Path.GetFullPath(fileC));
+            var winB = loaded.Windows.Single(w => w.Id == "win-b");
+            winB.Paths.Should().Equal(Path.GetFullPath(fileC));
+            winB.X.Should().Be(40);
+            winB.Y.Should().Be(60);
+            winB.Width.Should().Be(900);
+            winB.Height.Should().Be(700);
+            winB.IsMaximized.Should().BeFalse();
             loaded.Paths.Should().HaveCount(3);
 
             await store.UpsertWindowAsync("win-a", [], activeIndex: 0);
@@ -162,7 +172,7 @@ public class JsonSessionStoreTests
         var names = typeof(SessionState).GetProperties().Select(p => p.Name).OrderBy(n => n).ToArray();
         names.Should().Equal("ActiveIndex", "Paths", "UpdatedAtUtc", "Windows");
         typeof(SessionWindowState).GetProperties().Select(p => p.Name).OrderBy(n => n)
-            .Should().Equal("ActiveIndex", "Id", "Paths");
+            .Should().Equal("ActiveIndex", "Height", "Id", "IsMaximized", "Paths", "Width", "X", "Y");
     }
 
     [Fact]

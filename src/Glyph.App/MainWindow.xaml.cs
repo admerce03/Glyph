@@ -2452,6 +2452,7 @@ public sealed partial class MainWindow : Window
 
             var primary = state.Windows[0];
             AdoptSessionWindowId(primary.Id);
+            ApplySessionWindowBounds(primary);
             StatusText.Text = AppShellStatus.FormatRestoringTabs(
                 state.Windows.Sum(w => w.Paths.Count));
 
@@ -2463,6 +2464,7 @@ public sealed partial class MainWindow : Window
                 var windowState = state.Windows[i];
                 var window = App.CurrentApp.OpenNewWindow();
                 window.AdoptSessionWindowId(windowState.Id);
+                window.ApplySessionWindowBounds(windowState);
                 await window.RestoreSessionWindowAsync(windowState.Paths, windowState.ActiveIndex);
                 await window.PersistSessionAsync();
             }
@@ -2482,6 +2484,72 @@ public sealed partial class MainWindow : Window
         if (!string.IsNullOrWhiteSpace(windowId))
         {
             _sessionWindowId = windowId;
+        }
+    }
+
+    internal void ApplySessionWindowBounds(SessionWindowState windowState)
+    {
+        ArgumentNullException.ThrowIfNull(windowState);
+        if (!SessionWindowBoundsPolicy.HasUsableBounds(windowState.Width, windowState.Height)
+            && !windowState.IsMaximized)
+        {
+            return;
+        }
+
+        try
+        {
+            if (windowState.IsMaximized)
+            {
+                if (AppWindow.Presenter is OverlappedPresenter maximized)
+                {
+                    maximized.Maximize();
+                }
+
+                return;
+            }
+
+            var areas = EnumerateDisplayAreas()
+                .Select(a => (a.WorkArea.X, a.WorkArea.Y, a.WorkArea.Width, a.WorkArea.Height))
+                .ToList();
+            var (x, y, width, height) = SessionWindowBoundsPolicy.ClampToWorkAreas(
+                windowState.X,
+                windowState.Y,
+                windowState.Width,
+                windowState.Height,
+                areas);
+            AppWindow.MoveAndResize(new RectInt32(x, y, width, height));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to apply session window bounds");
+        }
+    }
+
+    private SessionWindowBounds? CaptureSessionWindowBounds()
+    {
+        try
+        {
+            var isMaximized = AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Maximized };
+            var pos = AppWindow.Position;
+            var size = AppWindow.Size;
+            if (!isMaximized && !SessionWindowBoundsPolicy.HasUsableBounds(size.Width, size.Height))
+            {
+                return null;
+            }
+
+            return new SessionWindowBounds
+            {
+                X = pos.X,
+                Y = pos.Y,
+                Width = size.Width,
+                Height = size.Height,
+                IsMaximized = isMaximized,
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to capture session window bounds");
+            return null;
         }
     }
 
@@ -2542,7 +2610,11 @@ public sealed partial class MainWindow : Window
                 }
             }
 
-            await _sessionStore.UpsertWindowAsync(_sessionWindowId, paths, activeIndex);
+            await _sessionStore.UpsertWindowAsync(
+                _sessionWindowId,
+                paths,
+                activeIndex,
+                CaptureSessionWindowBounds());
         }
         catch (Exception ex)
         {
