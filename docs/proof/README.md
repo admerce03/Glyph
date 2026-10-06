@@ -14,6 +14,7 @@ Also attach Explorer default-app screenshots for F01-06/07 when flipping those m
 Double-click fixtures: [`samples/`](samples/README.md) (`sample.pdf`, `sample.png`).
 
 ```powershell
-./scripts/interactive-verify.ps1 -StatusOnly   # which expected files exist
-./scripts/interactive-verify.ps1 -VerifyOnly -OpenSamples
+./scripts/interactive-verify.ps1 -StatusOnly              # which expected files exist
+./scripts/interactive-verify.ps1 -DownloadArtifact        # Linux/Windows: prefetch CI MSIX
+./scripts/interactive-verify.ps1 -VerifyOnly -OpenSamples # Windows after defaults set
 ```

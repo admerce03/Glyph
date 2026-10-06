@@ -23,6 +23,16 @@ ADR-015 Accept A (PdfSharp password-write) has landed — see §6 for Protect re
 ./scripts/interactive-verify.ps1 -StatusOnly         # which docs/proof files exist
 ```
 
+## Quick start (Linux / agent prep)
+
+Prefetch and validate the CI package without Windows (needs `gh` + network). Sideload still requires a Developer Mode Windows host.
+
+```bash
+pwsh ./scripts/interactive-verify.ps1 -DownloadArtifact          # fetch + assert .msix + .cer
+pwsh ./scripts/interactive-verify.ps1 -DownloadArtifact -StatusOnly  # prefetch + proof gaps
+pwsh ./scripts/interactive-verify.ps1 -StatusOnly                # proof gaps only (CI)
+```
+
 Sample fixtures for double-click / DnD: [`docs/proof/samples/sample.pdf`](proof/samples/sample.pdf)
 (2 pages) and [`docs/proof/samples/sample.png`](proof/samples/sample.png).
 

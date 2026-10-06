@@ -21,7 +21,10 @@ public static class InteractiveVerifyArtifacts
 
     public const string ChecklistDoc = "docs/INTERACTIVE_VERIFY.md";
 
-    /// <summary>Windows one-command orchestrator (download/sideload/probe + checklist).</summary>
+    /// <summary>
+    /// Interactive verify orchestrator: Linux-safe -DownloadArtifact / -StatusOnly;
+    /// Windows sideload/probe + checklist.
+    /// </summary>
     public const string OrchestratorScript = "scripts/interactive-verify.ps1";
 
     public const string SamplesDirectory = "docs/proof/samples";
