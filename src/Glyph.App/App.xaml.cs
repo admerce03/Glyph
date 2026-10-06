@@ -80,6 +80,16 @@ public partial class App : Application
         }
     }
 
+    /// <summary>Re-apply annotation author / default highlight+stroke colors / stroke width across all windows.</summary>
+    public void ApplyAnnotationDefaultsToAllWindows(AppSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        foreach (var window in _windows)
+        {
+            window.ApplyAnnotationDefaultsToOpenDocuments(settings);
+        }
+    }
+
     /// <summary>Re-apply F54 toolbar hide/reorder prefs across all Glyph windows.</summary>
     public void ApplyToolbarCustomizationToAllWindows(AppSettings settings)
     {

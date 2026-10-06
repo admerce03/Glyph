@@ -306,11 +306,6 @@ public sealed class PdfDocumentView : UserControl
         _onEdited = onEdited;
         _viewState = viewState ?? new DocumentViewState();
         var settings = TryGetSettings();
-        if (!string.IsNullOrWhiteSpace(settings?.AnnotationAuthor))
-        {
-            _annotationAuthor = settings.AnnotationAuthor.Trim();
-        }
-
         ApplyAnnotationDefaults(settings);
         if (settings is not null)
         {
@@ -10692,28 +10687,30 @@ public sealed class PdfDocumentView : UserControl
         }
     }
 
-    private void ApplyAnnotationDefaults(AppSettings? settings)
+    /// <summary>
+    /// Re-apply Preferences annotation author / default highlight+stroke colors / stroke width
+    /// without reopening the tab (F55-10 / F55-18 / F55-19).
+    /// </summary>
+    public void ApplyAnnotationDefaults(AppSettings? settings)
     {
         if (settings is null)
         {
             return;
         }
 
-        var highlight = PdfAnnotationColor.HighlightPresets
-            .FirstOrDefault(p => string.Equals(p.Name, settings.DefaultHighlightColor, StringComparison.OrdinalIgnoreCase));
-        if (!string.IsNullOrEmpty(highlight.Name))
+        _annotationAuthor = AnnotationDefaultsPolicy.ResolveAuthor(settings.AnnotationAuthor, _annotationAuthor);
+
+        if (AnnotationDefaultsPolicy.TryResolveHighlight(settings.DefaultHighlightColor, out var highlight))
         {
-            _highlightModeColor = highlight.Color;
+            _highlightModeColor = highlight;
         }
 
-        var stroke = PdfAnnotationColor.StrokePresets
-            .FirstOrDefault(p => string.Equals(p.Name, settings.DefaultStrokeColor, StringComparison.OrdinalIgnoreCase));
-        if (!string.IsNullOrEmpty(stroke.Name))
+        if (AnnotationDefaultsPolicy.TryResolveStroke(settings.DefaultStrokeColor, out var stroke))
         {
-            _drawStrokeColor = stroke.Color;
+            _drawStrokeColor = stroke;
         }
 
-        _drawStrokeWidth = (float)Math.Clamp(settings.DefaultStrokeWidthPoints, 0.5, 12);
+        _drawStrokeWidth = AnnotationDefaultsPolicy.ClampStrokeWidthPoints(settings.DefaultStrokeWidthPoints);
     }
 
     private UIElement BuildPagesHeader()

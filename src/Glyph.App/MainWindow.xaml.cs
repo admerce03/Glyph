@@ -3351,6 +3351,7 @@ public sealed partial class MainWindow : Window
         App.CurrentApp.ApplyShellKeyboardShortcutsToAllWindows();
         App.CurrentApp.ApplyToolbarCustomizationToAllWindows(settings);
         App.CurrentApp.ApplyFindOptionsToAllWindows(settings);
+        App.CurrentApp.ApplyAnnotationDefaultsToAllWindows(settings);
         // Capacity providers read ISettingsStore.Current; refresh so a lower recent count trims the sidebar now.
         RefreshRecentList();
         ConfigureRecoveryTimer();
@@ -3381,6 +3382,17 @@ public sealed partial class MainWindow : Window
             if (tab.Content is PdfDocumentView pdfView)
             {
                 pdfView.ApplyFindOptions(settings);
+            }
+        }
+    }
+
+    public void ApplyAnnotationDefaultsToOpenDocuments(AppSettings settings)
+    {
+        foreach (var tab in DocumentTabs.TabItems.OfType<TabViewItem>())
+        {
+            if (tab.Content is PdfDocumentView pdfView)
+            {
+                pdfView.ApplyAnnotationDefaults(settings);
             }
         }
     }
