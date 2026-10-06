@@ -710,7 +710,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F49-14 | Undo and redo | Ctrl+Z | M1-M4 | Tested | `UndoStackTests` + PDF redaction→annot→form→page edit order |
 | F49-15 | Undo and redo | Ctrl+Y / Ctrl+Shift+Z | M1-M4 | Tested | `PdfPageEditHistory` redo + `UndoStackTests` Redo |
 | F50-01 | Autosave and recovery | edits remain in memory until Save. | M1/M9 | Tested | Default; AutoSaveToOriginal opt-in off by default (prefs) |
-| F50-02 | Autosave and recovery | periodic crash-recovery snapshot. | M1/M9 | Tested | `FileCrashRecoveryStore.SaveSnapshotAsync` round-trip unit test |
+| F50-02 | Autosave and recovery | periodic crash-recovery snapshot. | M1/M9 | Tested | `FileCrashRecoveryStore.SaveSnapshotAsync` round-trip; interval live-apply across windows (F55-21) |
 | F50-03 | Autosave and recovery | closing unsaved file prompts user. | M1/M9 | Tested | Close tab dirty prompt; `DocumentClosePolicy` title/prompt unit tests |
 | F50-04 | Autosave and recovery | automatically save changes to original document. | M1/M9 | Tested | AutoSaveToOriginal saves every dirty open tab (`AutosaveTabPolicy`); prefs round-trip |
 | F50-05 | Autosave and recovery | reopen recovered document after crash. | M1/M9 | Tested | `ListAsync` returns recovery paths; startup prompt opens them |
@@ -787,7 +787,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-18 | Preferences | default annotation colors | M1/M9 | Tested | Highlight/stroke/sticky colors; Preferences live-apply to open PDF tabs (`ApplyAnnotationDefaultsToAllWindows`) |
 | F55-19 | Preferences | default line width | M1/M9 | Tested | Default stroke width NumberBox; Preferences live-apply to open PDF tabs |
 | F55-20 | Preferences | signature handling | M1/M9 | Tested | Library save/delete/reorder/descriptions; `SignatureLibraryUi` |
-| F55-21 | Preferences | crash recovery interval | M1/M9 | Tested | Seconds NumberBox; clamped 0–3600 in `JsonSettingsStore` |
+| F55-21 | Preferences | crash recovery interval | M1/M9 | Tested | Seconds NumberBox; clamped 0–3600; live-apply to all windows via `ApplyCrashRecoveryIntervalToAllWindows` |
 | F55-22 | Preferences | local-only OCR preference | M1/M9 | Tested | Always on-device; `LocalOnlyOcr` asserted true in OCR settings test |
 | F55-23 | Preferences | clear recent files | M1/M9 | Tested | File → Clear Recent; `ClearAsync_empties_persisted_list` |
 | F55-24 | Preferences | clear saved signatures | M1/M9 | Tested | Preferences → Clear saved signatures (`ClearAllAsync` unit test) |

@@ -109,6 +109,15 @@ public partial class App : Application
         }
     }
 
+    /// <summary>Re-apply crash-recovery interval to every Glyph window's autosave timer (F55-21).</summary>
+    public void ApplyCrashRecoveryIntervalToAllWindows()
+    {
+        foreach (var window in _windows)
+        {
+            window.ApplyCrashRecoveryInterval();
+        }
+    }
+
     public void CloseAllWindows()
     {
         foreach (var window in _windows.ToArray())
