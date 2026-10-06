@@ -9,8 +9,12 @@
   UserChoice, opens Default apps Settings, and prints the capture checklist for
   docs/proof/ artifacts. Does not flip matrix rows — that waits on attached proof.
 
+  On Linux/macOS, -DownloadArtifact prefetches and validates the CI package layout
+  (no sideload). Combine with -StatusOnly to report docs/proof capture gaps.
+
 .NOTES
-  Requires Windows. Prefer a green main CI artifact over a local publish.
+  Sideload / Explorer defaults require Windows. Prefer a green main CI artifact
+  over a local publish.
 #>
 [CmdletBinding()]
 param(
@@ -20,10 +24,10 @@ param(
     # Repo (owner/name) for gh run download when -DownloadArtifact is set
     [string]$Repo = 'admerce03/Glyph',
 
-    # Download latest successful main glyph-msix-layout artifact via gh
+    # Download latest successful main glyph-msix-layout artifact via gh (any OS)
     [switch]$DownloadArtifact,
 
-    # Local publish when no package is present (slow)
+    # Local publish when no package is present (slow; Windows)
     [switch]$PublishIfMissing,
 
     # Skip Add-AppxPackage; only probe + print checklist
@@ -32,7 +36,7 @@ param(
     # Skip opening ms-settings:defaultapps
     [switch]$SkipOpenDefaultApps,
 
-    # Only report which docs/proof files exist
+    # Only report which docs/proof files exist (any OS; may follow -DownloadArtifact)
     [switch]$StatusOnly,
 
     # After sideload, open sample.pdf / sample.png via Explorer (current defaults)
@@ -49,6 +53,34 @@ $proofExpected = @(
     'docs/proof/m2-pdf-viewer.png',
     'docs/proof/m3-page-dnd.mp4'
 )
+
+function Test-IsWindowsHost {
+    return ($IsWindows -or $env:OS -eq 'Windows_NT')
+}
+
+function Resolve-PackageDir {
+    param([string]$PackageDir)
+    if ([System.IO.Path]::IsPathRooted($PackageDir)) {
+        return $PackageDir
+    }
+
+    return [System.IO.Path]::GetFullPath((Join-Path $repoRoot $PackageDir))
+}
+
+function Test-HasMsixPackage {
+    param([string]$Dir)
+    if (-not (Test-Path -LiteralPath $Dir)) {
+        return $false
+    }
+
+    return @(Get-ChildItem -Path $Dir -Filter 'Glyph.App_*.msix' -Recurse -ErrorAction SilentlyContinue).Count -gt 0
+}
+
+function Test-HasTestSignCert {
+    param([string]$Dir)
+    $cer = Join-Path $Dir 'Glyph.CI.TestSign.cer'
+    return (Test-Path -LiteralPath $cer)
+}
 
 function Show-ProofStatus {
     Write-Host ''
@@ -114,11 +146,64 @@ function Open-SampleFiles {
     Start-Process explorer.exe -ArgumentList $png
 }
 
+function Invoke-DownloadMsixArtifact {
+    param(
+        [Parameter(Mandatory)][string]$Dir,
+        [Parameter(Mandatory)][string]$Repo
+    )
+
+    if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+        throw '-DownloadArtifact requires the GitHub CLI (gh) on PATH.'
+    }
+
+    New-Item -ItemType Directory -Force -Path $Dir | Out-Null
+
+    Write-Host "Resolving latest successful main CI run ($Repo)…"
+    $runId = gh run list --repo $Repo --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId'
+    if ([string]::IsNullOrWhiteSpace($runId) -or $runId -eq 'null') {
+        throw "No successful main CI run found for $Repo (gh run list)."
+    }
+
+    Write-Host "Downloading glyph-msix-layout from run $runId…"
+    # gh run download has no --branch flag; pin the run id from main above.
+    gh run download $runId --repo $Repo --name glyph-msix-layout --dir $Dir
+
+    if (-not (Test-HasMsixPackage -Dir $Dir)) {
+        throw "Download finished but no Glyph.App_*.msix under $Dir."
+    }
+
+    if (-not (Test-HasTestSignCert -Dir $Dir)) {
+        throw "Download finished but Glyph.CI.TestSign.cer missing under $Dir."
+    }
+
+    $msix = @(Get-ChildItem -Path $Dir -Filter 'Glyph.App_*.msix' -Recurse)[0]
+    Write-Host ("Package OK: {0}" -f $msix.FullName)
+    Write-Host ("Cert OK:    {0}" -f (Join-Path $Dir 'Glyph.CI.TestSign.cer'))
+}
+
+$dir = Resolve-PackageDir -PackageDir $PackageDir
+$hasMsix = Test-HasMsixPackage -Dir $dir
+
+# Prefetch works on any OS (Linux agents / operator prep before Windows sideload).
+if (-not $hasMsix -and $DownloadArtifact) {
+    Invoke-DownloadMsixArtifact -Dir $dir -Repo $Repo
+    $hasMsix = Test-HasMsixPackage -Dir $dir
+}
+
 # Filesystem-only proof status works on any OS (Linux CI / agents included).
 if ($StatusOnly) {
     $missing = Show-ProofStatus
     Open-SampleFiles
     Show-CaptureChecklist
+    if ($hasMsix) {
+        Write-Host ''
+        Write-Host ("MSIX package present under {0}" -f $dir)
+    }
+    elseif ($DownloadArtifact) {
+        Write-Host ''
+        Write-Host 'No MSIX package after -DownloadArtifact (unexpected).'
+    }
+
     if ($missing -gt 0) {
         Write-Host ("Proof incomplete: {0} expected capture(s) missing." -f $missing)
         exit 2
@@ -128,34 +213,23 @@ if ($StatusOnly) {
     exit 0
 }
 
-if (-not $IsWindows -and $env:OS -ne 'Windows_NT') {
-    throw 'interactive-verify.ps1 requires Windows for sideload / Explorer defaults (use -StatusOnly on Linux).'
-}
-
-if ([System.IO.Path]::IsPathRooted($PackageDir)) {
-    $dir = $PackageDir
-}
-else {
-    $dir = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $PackageDir))
-}
-
-$hasMsix = @(Get-ChildItem -Path $dir -Filter 'Glyph.App_*.msix' -Recurse -ErrorAction SilentlyContinue).Count -gt 0
-
-if (-not $hasMsix -and $DownloadArtifact) {
-    if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-        throw '-DownloadArtifact requires the GitHub CLI (gh) on PATH.'
+if (-not (Test-IsWindowsHost)) {
+    if ($hasMsix) {
+        Write-Host ("Non-Windows host: MSIX layout ready under {0}" -f $dir)
+        Write-Host 'Re-run on a Developer Mode Windows host for sideload / Explorer defaults:'
+        Write-Host '  ./scripts/interactive-verify.ps1 -PackageDir artifacts/msix'
+        Write-Host '  ./scripts/interactive-verify.ps1 -DownloadArtifact'
+        Show-CaptureChecklist
+        exit 0
     }
 
-    New-Item -ItemType Directory -Force -Path $dir | Out-Null
-    Write-Host "Downloading glyph-msix-layout from latest successful main CI ($Repo)…"
-    gh run download --repo $Repo --branch main --name glyph-msix-layout --dir $dir
-    $hasMsix = @(Get-ChildItem -Path $dir -Filter 'Glyph.App_*.msix' -Recurse -ErrorAction SilentlyContinue).Count -gt 0
+    throw 'interactive-verify.ps1 requires Windows for sideload / Explorer defaults (use -StatusOnly or -DownloadArtifact on Linux).'
 }
 
 if (-not $hasMsix -and $PublishIfMissing) {
     Write-Host 'No MSIX found — publishing test-signed win-x64 package locally…'
     & (Join-Path $PSScriptRoot 'publish-msix.ps1') -Configuration Release -Runtime win-x64 -TestSign -Output $PackageDir
-    $hasMsix = @(Get-ChildItem -Path $dir -Filter 'Glyph.App_*.msix' -Recurse -ErrorAction SilentlyContinue).Count -gt 0
+    $hasMsix = Test-HasMsixPackage -Dir $dir
 }
 
 if (-not $VerifyOnly -and -not $hasMsix) {

@@ -27,11 +27,20 @@ public class InteractiveVerifyArtifactsTests
         File.Exists(Path.Combine(root, InteractiveVerifyArtifacts.OrchestratorScript)).Should().BeTrue();
 
         var orchestrator = File.ReadAllText(Path.Combine(root, InteractiveVerifyArtifacts.OrchestratorScript));
+        var downloadIdx = orchestrator.IndexOf("Invoke-DownloadMsixArtifact", StringComparison.Ordinal);
         var statusOnlyIdx = orchestrator.IndexOf("if ($StatusOnly)", StringComparison.Ordinal);
         var windowsGateIdx = orchestrator.IndexOf("requires Windows for sideload", StringComparison.Ordinal);
-        statusOnlyIdx.Should().BeGreaterThan(0);
+        downloadIdx.Should().BeGreaterThan(0);
+        statusOnlyIdx.Should().BeGreaterThan(downloadIdx,
+            because: "-DownloadArtifact must run before -StatusOnly so Linux can prefetch then report proof");
         windowsGateIdx.Should().BeGreaterThan(statusOnlyIdx,
             because: "-StatusOnly must run before the Windows-only gate so Linux agents can report proof status");
+        orchestrator.Should().Contain("-DownloadArtifact on Linux");
+        orchestrator.Should().Contain("Glyph.CI.TestSign.cer");
+        orchestrator.Should().Contain("gh run list");
+        orchestrator.Should().Contain("gh run download $runId");
+        orchestrator.Should().NotContain("gh run download --repo $Repo --branch",
+            because: "gh run download has no --branch flag; pin a main run id first");
         orchestrator.Should().Contain("Store/production signing");
         orchestrator.Should().NotContain("ADR-015 (A/C/D)",
             because: "ADR-015 Accept A landed; orchestrator must not still escalate A/C/D");
