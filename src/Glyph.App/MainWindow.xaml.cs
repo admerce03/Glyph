@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.App.Capture;
 using Glyph.App.Scanning;
 using Glyph.App.Sharing;
@@ -3412,10 +3411,8 @@ public sealed partial class MainWindow : Window
             var ext = System.IO.Path.GetExtension(snapshotPath).ToLowerInvariant();
             if (ext is ".png" or ".jpg" or ".jpeg" or ".gif" or ".bmp" or ".tif" or ".tiff" or ".webp")
             {
-                await using var stream = File.OpenRead(snapshotPath);
-                var ras = new InMemoryRandomAccessStream();
-                await RandomAccessStream.CopyAsync(stream.AsInputStream(), ras);
-                ras.Seek(0);
+                var file = await StorageFile.GetFileFromPathAsync(snapshotPath);
+                await using var ras = await file.OpenReadAsync();
                 var bmp = new BitmapImage();
                 await bmp.SetSourceAsync(ras);
                 thumb.Source = bmp;
