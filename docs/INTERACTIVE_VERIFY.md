@@ -13,11 +13,17 @@ Related: [`PACKAGING.md`](PACKAGING.md) (MSIX sideload), [`ROADMAP.md`](ROADMAP.
 # Download latest main CI x64 MSIX, sideload, probe UserChoice, open Default apps
 ./scripts/interactive-verify.ps1 -DownloadArtifact
 
+# After setting Glyph as default, launch fixtures:
+./scripts/interactive-verify.ps1 -VerifyOnly -OpenSamples
+
 # Or use a package you already have / just published:
 ./scripts/interactive-verify.ps1 -PackageDir artifacts/msix
 ./scripts/interactive-verify.ps1 -PublishIfMissing   # local publish if missing
 ./scripts/interactive-verify.ps1 -StatusOnly         # which docs/proof files exist
 ```
+
+Sample fixtures for double-click / DnD: [`docs/proof/samples/sample.pdf`](proof/samples/sample.pdf)
+(2 pages) and [`docs/proof/samples/sample.png`](proof/samples/sample.png).
 
 Then complete the capture steps below and drop files under [`docs/proof/`](proof/README.md).
 
@@ -46,8 +52,8 @@ Then manually confirm:
 | Step | Expected | Evidence |
 | --- | --- | --- |
 | Settings → Apps → Default apps | Glyph listed for `.pdf` and declared image types (or Open with → Glyph) | Screenshot |
-| Double-click sample `.pdf` | Opens in Glyph | Screenshot or short clip |
-| Double-click sample `.png`/`.jpg` | Opens in Glyph | Screenshot or short clip |
+| Double-click sample `.pdf` | Opens in Glyph | Screenshot or short clip — use `docs/proof/samples/sample.pdf` |
+| Double-click sample `.png`/`.jpg` | Opens in Glyph | Screenshot or short clip — use `docs/proof/samples/sample.png` |
 | Reboot + `-VerifyOnly` (optional) | Associations still present | Log snippet |
 
 When all pass, update FEATURE_MATRIX F01-06/07 from Deferred → Tested with this
