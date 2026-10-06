@@ -97,3 +97,16 @@ jobs:
 
       - name: Test core
         run: ./scripts/test.sh --core-only --configuration Release
+
+      - name: Interactive verify status (proof kit)
+        run: |
+          set +e
+          pwsh ./scripts/interactive-verify.ps1 -StatusOnly
+          code=$?
+          set -e
+          # Exit 0 = all expected captures present; 2 = some missing (normal until Windows interactive).
+          if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then
+            echo "Unexpected interactive-verify -StatusOnly exit: $code" >&2
+            exit "$code"
+          fi
+          echo "interactive-verify -StatusOnly exit=$code (0=complete, 2=captures pending)"

@@ -99,6 +99,47 @@ public class PdfSharpSecurityServiceTests
 
             await using var reopened = await _factory.OpenAsync(path, "open-secret");
             reopened.IsEncrypted.Should().BeTrue();
+
+            var info = new PdfiumDocumentInfoService().GetInfo(reopened);
+            info.IsEncrypted.Should().BeTrue();
+            info.Permissions.CanPrint.Should().BeFalse();
+            info.Permissions.CanCopy.Should().BeFalse();
+            info.Permissions.CanModify.Should().BeFalse();
+            info.Permissions.CanAnnotate.Should().BeFalse();
+        }
+        finally
+        {
+            TryDelete(path);
+        }
+    }
+
+    [Fact]
+    public async Task Protect_preserves_sticky_note_annotations()
+    {
+        var path = CreateTempPlainPdf();
+        try
+        {
+            var annots = new PdfiumAnnotationService();
+            await using (var document = await _factory.OpenAsync(path))
+            {
+                var created = await annots.AddStickyNoteAsync(
+                    document,
+                    pageIndex: 0,
+                    xPoints: 72,
+                    yPoints: 700,
+                    contents: "Survive encrypt",
+                    color: PdfAnnotationColor.StickyNoteYellow,
+                    author: "Glyph");
+                created.IsStickyNote.Should().BeTrue();
+
+                (await _sut.SetOpenPasswordAsync(document, "secret")).Succeeded.Should().BeTrue();
+            }
+
+            await using var reopened = await _factory.OpenAsync(path, "secret");
+            var listed = await annots.ListAsync(reopened, 0);
+            var note = listed.Should().ContainSingle(a => a.IsStickyNote).Subject;
+            note.Contents.Should().Be("Survive encrypt");
+            note.Author.Should().Be("Glyph");
         }
         finally
         {

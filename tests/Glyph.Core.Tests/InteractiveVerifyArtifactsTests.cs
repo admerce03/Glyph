@@ -32,6 +32,9 @@ public class InteractiveVerifyArtifactsTests
         statusOnlyIdx.Should().BeGreaterThan(0);
         windowsGateIdx.Should().BeGreaterThan(statusOnlyIdx,
             because: "-StatusOnly must run before the Windows-only gate so Linux agents can report proof status");
+        orchestrator.Should().Contain("Store/production signing");
+        orchestrator.Should().NotContain("ADR-015 (A/C/D)",
+            because: "ADR-015 Accept A landed; orchestrator must not still escalate A/C/D");
 
         InteractiveVerifyArtifacts.SampleRelativePaths.Should().Equal(
             InteractiveVerifyArtifacts.SamplePdf,

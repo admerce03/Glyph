@@ -5,7 +5,8 @@ Windows 10/11 machine with Developer Mode enabled, then attach artifacts to the
 roadmap / matrix notes and flip Deferred rows where applicable.
 
 Related: [`PACKAGING.md`](PACKAGING.md) (MSIX sideload), [`ROADMAP.md`](ROADMAP.md)
-§ Remaining to close M9, ADR-012 / ADR-015 in [`DECISIONS.md`](DECISIONS.md).
+§ Remaining to close M9, ADR-012 (Explorer UserChoice) in [`DECISIONS.md`](DECISIONS.md).
+ADR-015 Accept A (PdfSharp password-write) has landed — see §6 for Protect regression.
 
 ## Quick start (Windows)
 
