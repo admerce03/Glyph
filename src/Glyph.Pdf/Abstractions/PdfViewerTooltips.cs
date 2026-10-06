@@ -6,6 +6,7 @@ namespace Glyph.Pdf.Abstractions;
 public static class PdfViewerTooltips
 {
     public const string MatchCase = "Match case";
+    public const string MatchAnyWord = "Match any word (not exact phrase)";
     public const string SearchForTheCurrentlySelectedText = "Search for the currently selected text";
     public const string RunOfflineOcrOnSelectedPages = "Run offline OCR on selected pages or the entire PDF";
     public const string CancelTheInFlightOcrJob = "Cancel the in-flight OCR job";
