@@ -14,6 +14,8 @@ public static class PdfViewerChromeLabels
     public const string OcrToPdf = "OCR→PDF";
     public const string Entities = "Entities";
     public const string Clear = "Clear";
+    public const string SortPageOrder = "Page order";
+    public const string SortRelevance = "Relevance";
     public const string NavPrev = "◁";
     public const string NavNext = "▷";
     public const string Plus = "+";

@@ -35,6 +35,64 @@ public class PdfSearchHitOrderTests
         ordered.Select(h => (h.Page, h.Occ))
             .Should().Equal((0, 0), (0, 1), (1, 0), (2, 0));
     }
+
+    [Fact]
+    public void Supports_page_order_and_relevance()
+    {
+        PdfSearchHitOrder.SupportsPageOrder.Should().BeTrue();
+        PdfSearchHitOrder.SupportsRelevance.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ScoreRelevance_prefers_whole_word_over_substring()
+    {
+        var whole = PdfSearchHitOrder.ScoreRelevance("cat", "the cat sat", matchStart: 4, matchLength: 3);
+        var part = PdfSearchHitOrder.ScoreRelevance("cat", "concatenate", matchStart: 3, matchLength: 3);
+        whole.Should().BeGreaterThan(part);
+    }
+
+    [Fact]
+    public void ByRelevance_orders_whole_word_before_substring()
+    {
+        var hits = new[]
+        {
+            (Snippet: "concatenate more", Start: 3, Len: 3, Page: 0),
+            (Snippet: "the cat sat", Start: 4, Len: 3, Page: 2),
+            (Snippet: "a cat!", Start: 2, Len: 3, Page: 1),
+        };
+
+        var ordered = PdfSearchHitOrder.ByRelevance(
+            hits,
+            "cat",
+            h => h.Snippet,
+            h => h.Start,
+            h => h.Len,
+            h => h.Page);
+
+        ordered[0].Snippet.Should().BeOneOf("the cat sat", "a cat!");
+        ordered.Last().Snippet.Should().Be("concatenate more");
+    }
+
+    [Fact]
+    public void Apply_relevance_mode_uses_relevance_order()
+    {
+        var hits = new[]
+        {
+            (Snippet: "concatenate", Start: 3, Len: 3, Page: 0),
+            (Snippet: "cat", Start: 0, Len: 3, Page: 5),
+        };
+
+        var ordered = PdfSearchHitOrder.Apply(
+            PdfSearchHitOrder.SortMode.Relevance,
+            hits,
+            "cat",
+            h => h.Snippet,
+            h => h.Start,
+            h => h.Len,
+            h => h.Page);
+
+        ordered[0].Snippet.Should().Be("cat");
+    }
 }
 
 public class OutlineExpandPolicyTests
