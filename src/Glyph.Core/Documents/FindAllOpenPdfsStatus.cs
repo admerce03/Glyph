@@ -10,6 +10,8 @@ public static class FindAllOpenPdfsStatus
     public const string QueryPlaceholder = "Search all open PDFs";
     public const string AnyWordLabel = "Any word";
     public const string AnyWordTooltip = "Match any word (not exact phrase)";
+    public const string MatchCaseLabel = "Match case";
+    public const string MatchCaseTooltip = "Case-sensitive search across open PDFs";
     public const string NoDocuments = "No open PDF documents to search.";
     public const string EmptyQuery = "Enter search text.";
     public const string Cancelled = "Search cancelled.";
