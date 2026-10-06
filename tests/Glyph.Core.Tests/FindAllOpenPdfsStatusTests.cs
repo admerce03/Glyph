@@ -16,5 +16,7 @@ public class FindAllOpenPdfsStatusTests
         FindAllOpenPdfsStatus.QueryPlaceholder.Should().Contain("Search");
         FindAllOpenPdfsStatus.AnyWordLabel.Should().Be("Any word");
         FindAllOpenPdfsStatus.AnyWordTooltip.Should().Contain("any word");
+        FindAllOpenPdfsStatus.MatchCaseLabel.Should().Be("Match case");
+        FindAllOpenPdfsStatus.MatchCaseTooltip.Should().Contain("Case-sensitive");
     }
 }

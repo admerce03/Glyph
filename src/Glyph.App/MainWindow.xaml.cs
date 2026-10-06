@@ -344,6 +344,12 @@ public sealed partial class MainWindow : Window
             VerticalAlignment = VerticalAlignment.Center,
         };
         ToolTipService.SetToolTip(anyWordBox, FindAllOpenPdfsStatus.AnyWordTooltip);
+        var matchCaseBox = new CheckBox
+        {
+            Content = FindAllOpenPdfsStatus.MatchCaseLabel,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        ToolTipService.SetToolTip(matchCaseBox, FindAllOpenPdfsStatus.MatchCaseTooltip);
         var sortBox = new ComboBox
         {
             Width = 160,
@@ -358,7 +364,7 @@ public sealed partial class MainWindow : Window
         var dialogBody = new StackPanel
         {
             Spacing = 8,
-            Children = { box, anyWordBox, sortBox },
+            Children = { box, anyWordBox, matchCaseBox, sortBox },
         };
         var dialog = new ContentDialog
         {
@@ -382,7 +388,7 @@ public sealed partial class MainWindow : Window
         }
 
         var options = new PdfSearchOptions(
-            CaseSensitive: false,
+            CaseSensitive: matchCaseBox.IsChecked == true,
             ExactPhrase: anyWordBox.IsChecked != true);
 
         StatusText.Text = FindAllOpenPdfsStatus.Searching(pdfs.Count);
