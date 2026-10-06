@@ -100,12 +100,12 @@ Not a capture task — escalate before wiring secrets:
 
 See [`PACKAGING.md`](PACKAGING.md) § Production / Store signing.
 
-## 6. ADR-015 password-write (product decision)
+## 6. ADR-015 password-write (Accepted A)
 
-Protect toolbar remains blocked until ADR-015 is Accepted:
+Protect toolbar uses PdfSharp MIT write-encrypt (`PdfSharpSecurityService`):
 
-- **A** — PdfSharp MIT write-encrypt (preferred)
-- **C** — commercial SDK
-- **D** — keep Blocked
+1. Open a PDF → Protect → set open password (optional owner + restrict checkboxes) → Save.
+2. Reopen without password → prompt; wrong password fails; correct password opens.
+3. Protect → Remove protection → Save → opens without password.
 
-Reply on the agent thread / issue with A, C, or D. No write-encrypt lands before that.
+Automated coverage: `PdfSharpSecurityServiceTests`. See [`DECISIONS.md`](DECISIONS.md) ADR-015.

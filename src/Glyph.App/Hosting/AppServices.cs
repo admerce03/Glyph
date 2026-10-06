@@ -72,7 +72,7 @@ internal static class AppServices
         services.AddSingleton<IPdfAnnotationService, PdfiumAnnotationService>();
         services.AddSingleton<IPdfRedactionService, PdfiumRedactionService>();
         services.AddSingleton<IPdfDocumentInfoService, PdfiumDocumentInfoService>();
-        services.AddSingleton<IPdfSecurityService, BlockedPdfSecurityService>();
+        services.AddSingleton<IPdfSecurityService, PdfSharpSecurityService>();
         services.AddSingleton<IPdfImageJpegEncoder, MagickPdfImageJpegEncoder>();
         services.AddSingleton<IPdfExportService, PdfPageImageExportService>();
         services.AddSingleton<IPdfOptimizeService>(sp =>

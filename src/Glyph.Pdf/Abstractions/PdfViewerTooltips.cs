@@ -74,6 +74,7 @@ public static class PdfViewerTooltips
     public const string FlattenAnnotationsIntoPageContentPermanent = "Flatten annotations into page content (permanent)";
     public const string DocumentMetadataEncryptionAndPermissions = "Document metadata, encryption, and permissions";
     public const string PasswordProtectPermissionsBlocked = "Password-protect / permissions (blocked — ADR-015)";
+    public const string PasswordProtectPermissions = "Password-protect / permissions";
     public const string DownsampleImagesShrinkPdfPresets = "Downsample images / shrink PDF (presets)";
     public const string ExportSelectedCurrentPageSAs = "Export selected/current page(s) as PNG, JPEG, WebP, TIFF, BMP, GIF, AVIF, or JPEG 2000";
     public const string PrintCurrentSelectedRangeOrAll = "Print current, selected, range, or all pages (Ctrl+P)";
