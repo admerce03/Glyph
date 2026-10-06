@@ -55,7 +55,7 @@ Then manually confirm:
 Until those steps pass on a real Windows host, keep F01-06/07 **Deferred** (CI already covers install + manifest association probe).
 
 Full interactive proof checklist (associations + M1/M2 screenshots + M3 §11 DnD
-recording + Store signing / ADR-015 escalate): [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md).
+recording + Store signing): [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md). ADR-015 Accept A (PdfSharp password-write) has landed.
 
 ## Production / Store signing (open)
 
