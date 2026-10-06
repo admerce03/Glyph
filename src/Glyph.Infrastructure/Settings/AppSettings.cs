@@ -93,6 +93,15 @@ public sealed class AppSettings
     /// </summary>
     public bool? RememberZoom { get; set; }
 
+    /// <summary>Last Find Match-case toggle (F06-03); toolbar + Find-all share this.</summary>
+    public bool FindCaseSensitive { get; set; }
+
+    /// <summary>Last Find Any-word toggle (F06-05); when false, exact phrase.</summary>
+    public bool FindAnyWord { get; set; }
+
+    /// <summary>Last Find sort mode (F06-12); true = relevance, false = page order.</summary>
+    public bool FindSortByRelevance { get; set; }
+
     /// <summary>
     /// Image 100% zoom meaning (F55-14): "Pixels" = 1 device pixel per image pixel;
     /// "Print" = match physical size using image DPI vs screen DPI.

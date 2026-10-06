@@ -107,6 +107,36 @@ public class JsonSettingsStoreTests
     }
 
     [Fact]
+    public async Task Save_and_load_round_trips_find_options()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-settings-find-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new JsonSettingsStore(path);
+            await store.SaveAsync(new AppSettings
+            {
+                FindCaseSensitive = true,
+                FindAnyWord = true,
+                FindSortByRelevance = true,
+            });
+
+            var settings = await new JsonSettingsStore(path).LoadAsync();
+            settings.FindCaseSensitive.Should().BeTrue();
+            settings.FindAnyWord.Should().BeTrue();
+            settings.FindSortByRelevance.Should().BeTrue();
+            FindOptionsPolicy.SortComboIndex(settings.FindSortByRelevance)
+                .Should().Be(FindOptionsPolicy.SortRelevanceIndex);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Load_missing_remember_view_prefs_means_null_default_on()
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-settings-remember-missing-" + Guid.NewGuid().ToString("N") + ".json");
@@ -118,6 +148,9 @@ public class JsonSettingsStoreTests
             settings.RememberZoom.Should().BeNull();
             DocumentViewRestorePolicy.EffectiveRememberLastPage(settings.RememberLastPage).Should().BeTrue();
             DocumentViewRestorePolicy.EffectiveRememberZoom(settings.RememberZoom).Should().BeTrue();
+            settings.FindCaseSensitive.Should().BeFalse();
+            settings.FindAnyWord.Should().BeFalse();
+            settings.FindSortByRelevance.Should().BeFalse();
         }
         finally
         {

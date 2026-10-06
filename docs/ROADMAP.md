@@ -394,14 +394,14 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Progress notes
 
-- Prefs, toolbar hide+↑↓ reorder (F54) on PDF **and** image viewers with live apply to open tabs (`ToolbarCommandApplicator`), toolbar show/hide persisted (`ToolbarVisible`) + Ctrl+Shift+U/B chrome shortcuts, shortcut customization (F52-23), check-for-updates (F55-04), remember last page/zoom prefs toggles (F55-07/08, default ON), Theme in Preferences (F55-01), session restore (multi-window tab path lists + bounds; `SessionRestorePolicy`), find relevance sort + any-word + Match case in toolbar and Find-all-open-PDFs (F06-12 / F06-05 / F06-03), full `ShellMenuCatalog` File/Edit/View/Window/Help vs XAML (F02-02), Help chrome Automation Names (F02-24 / F56), status chrome subtitle (no Milestone badge), page-cache `DefaultCapacity` 32 aligned with DI, crash recovery, version snapshots (+ list thumbnails), cold-start timing, background Find index (F57-05/F58-06), image Live Text overlay restore shipped in matrix
+- Prefs, toolbar hide+↑↓ reorder (F54) on PDF **and** image viewers with live apply to open tabs (`ToolbarCommandApplicator`), toolbar show/hide persisted (`ToolbarVisible`) + Ctrl+Shift+U/B chrome shortcuts, shortcut customization (F52-23), check-for-updates (F55-04), remember last page/zoom prefs toggles (F55-07/08, default ON), Theme in Preferences (F55-01), session restore (multi-window tab path lists + bounds; `SessionRestorePolicy`), find relevance sort + any-word + Match case in toolbar and Find-all-open-PDFs with persisted Find options (`FindOptionsPolicy`; F06-12 / F06-05 / F06-03), full `ShellMenuCatalog` File/Edit/View/Window/Help vs XAML (F02-02), Help chrome Automation Names (F02-24 / F56), status chrome subtitle (no Milestone badge), page-cache `DefaultCapacity` 32 aligned with DI, crash recovery, version snapshots (+ list thumbnails), cold-start timing, background Find index (F57-05/F58-06), image Live Text overlay restore shipped in matrix
 - Third-party notices: `THIRD_PARTY_NOTICES.md` shipped with the app (About) and MSIX publish output (AGENTS.md / ADR-003); unused CommunityToolkit.Mvvm pin removed
 - CI: push + PR for the same branch share a concurrency group (`head_ref || ref_name`) so Windows runners are not double-queued
 - MSIX: Windows CI produces test-signed `Glyph.App_*.msix` + `Glyph.CI.TestSign.cer` for **win-x64** and **win-arm64**, enables AppModelUnlock sideloading on the x64 runner, and runs `install-msix-test.ps1 -Force -ProbeUserDefaults` (manifest association probe). Operator guide: [`PACKAGING.md`](PACKAGING.md). F01-06/07 remain Deferred until Explorer UserChoice / double-click verification (ADR-012). **Blocked:** ADR-015 password-write (Needs approval, prefer Option A PdfSharp).
 - Interactive proof kit (#107): `docs/proof/README.md` + `InteractiveVerifyArtifacts` path helpers; sideload script dumps HKCU UserChoice ProgIds and can open Default apps Settings
 - Interactive verify orchestrator: `scripts/interactive-verify.ps1` downloads CI MSIX (or publishes locally), sideloads, probes UserChoice, opens Default apps, and reports `docs/proof` status; fixtures in `docs/proof/samples/` (`sample.pdf` / `sample.png`, `-OpenSamples`)
-- Recent tip: multi-tab autosave (#114), snapshot thumbs (#115), multi-window session (#116), find relevance (#117), session bounds (#118), any-word Find toolbar (#119) + Find-all (#120), Find-all Match case (#123), ROADMAP tip (#124)
-- Matrix audit (2026-10-06 tip `#124`): 881 rows — 862 Tested / 12 Deferred / 7 Blocked (all Blocked = ADR-015 password-write); zero Not Started / In Progress / Implemented; autonomous polish exhausted pending ADR-015 Accept + Windows INTERACTIVE_VERIFY + Store signing
+- Recent tip: multi-tab autosave (#114), snapshot thumbs (#115), multi-window session (#116), find relevance (#117), session bounds (#118), any-word Find toolbar (#119) + Find-all (#120), Find-all Match case (#123), ROADMAP tip (#124/#125), Find options prefs persist
+- Matrix audit (2026-10-06 tip `#125` + Find prefs): 881 rows — 862 Tested / 12 Deferred / 7 Blocked (all Blocked = ADR-015 password-write); zero Not Started / In Progress / Implemented; remaining M9 close = ADR-015 Accept + Windows INTERACTIVE_VERIFY + Store signing
 - Interactive proof debt: Explorer UserChoice defaults, M1 shell screenshot, M2 viewer screenshots, M3 §11 cross-doc DnD recording — checklist in [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md) / [`docs/proof/`](proof/README.md)
 - Deferred catalogs unit-tested (`PackagingDeferredPolicy`, `PdfOptimizeDeferredPolicy`, `ImageAdvancedDeferredPolicy`, …)
 
@@ -416,7 +416,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Sidebar modes | §3 | M2–M5 | Tested (mode ComboBox + panels) |
 | PDF viewing | §4 | M2 | Tested (incl. Zoom ▭ / Glass / Present) |
 | PDF TOC/links | §5 | M2 | Tested |
-| PDF search | §6 | M2, M6 | Tested (page order + relevance sort; any-word + Match case on Find-all) |
+| PDF search | §6 | M2, M6 | Tested (page order + relevance sort; any-word + Match case on Find-all; Find options prefs persist) |
 | PDF text interaction | §7 | M2, M6 | Tested |
 | OCR / Live Text | §8 | M6 | Tested (PRs #62–#66; offline OCR/Live Text/entities/OCR→PDF) |
 | User bookmarks | §9 | M2/M4 | Tested (app-local + export to PDF `/Outlines`) |
