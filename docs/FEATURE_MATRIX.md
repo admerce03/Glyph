@@ -380,12 +380,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F22-05 | PDF annotation flattening | text boxes | M4 | Tested | Same flatten path |
 | F22-06 | PDF annotation flattening | drawings | M4 | Tested | Ink strokes included in flatten |
 | F23-01 | PDF security | Open encrypted PDFs. | M7 | Tested | Password prompt; `PdfPasswordPromptUi` + OpenPdfWithPasswordAsync / fixture |
-| F23-02 | PDF security | Create password-protected PDFs. | M7 | Tested | ADR-015 Accept A; `PdfSharpSecurityService` + Protect dialog |
-| F23-03 | PDF security | Set document-open password. | M7 | Tested | `PdfSharpSecurityService.SetOpenPasswordAsync` + PDFium reopen round-trip |
-| F23-04 | PDF security | Set permissions/owner password where PDF standard permits. | M7 | Tested | `SetPermissionsAsync` / optional owner on `SetOpenPasswordAsync` |
-| F23-05 | PDF security | Restrict: printing/editing/copying/annotation/page extraction | M7 | Tested | `PdfSecurityPermissions` → PdfSharp `Permit*` flags; Protect dialog checkboxes |
-| F23-06 | PDF security | Change existing permissions where credentials permit. | M7 | Tested | Re-apply via `SetOpenPasswordAsync` / `SetPermissionsAsync` on open docs |
-| F23-07 | PDF security | Remove protection when authorized. | M7 | Tested | `RemoveProtectionAsync` PDFium ImportPages strip + unit tests |
+| F23-02 | PDF security | Create password-protected PDFs. | M7 | Tested | ADR-015 Accept A; `PdfSharpSecurityService` + Protect dialog (`PdfSecurityWriteApplyPolicy`) |
+| F23-03 | PDF security | Set document-open password. | M7 | Tested | `SetOpenPasswordAsync` + PDFium reopen round-trip |
+| F23-04 | PDF security | Set permissions/owner password where PDF standard permits. | M7 | Tested | `SetPermissionsAsync` / owner on `SetOpenPasswordAsync`; Protect owner-only path |
+| F23-05 | PDF security | Restrict: printing/editing/copying/annotation/page extraction | M7 | Tested | `PdfSecurityPermissions` → PdfSharp `Permit*`; Info `CanPrint`/`CanCopy` assert after RestrictAll |
+| F23-06 | PDF security | Change existing permissions where credentials permit. | M7 | Tested | Re-apply via Protect / `SetPermissionsAsync` on open docs |
+| F23-07 | PDF security | Remove protection when authorized. | M7 | Tested | `RemoveProtectionAsync` PDFium ImportPages strip; sticky-note survival across protect |
 | F23-08 | PDF security | Display encryption information. | M7 | Tested | Info dialog + status; `PdfDocumentPermissions.StatusBarEncryptedSuffix` / `InfoEncryptedLine` |
 | F23-09 | PDF security | Warn about limitations of PDF permission enforcement. | M7 | Tested | `PdfDocumentPermissions.AdvisoryNotice` / `EncryptedAdvisoryStatus` + Info dialog |
 | F24-01 | PDF optimization and compression | Lossless | M7 | Tested | `Lossless_full_rewrite_succeeds` + FromPreset disables downsample |

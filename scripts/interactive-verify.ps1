@@ -83,7 +83,7 @@ function Show-CaptureChecklist {
     Write-Host '5. Cross-doc page DnD (open sample.pdf twice / duplicate) → docs/proof/m3-page-dnd.mp4 (~30s)'
     Write-Host ''
     Write-Host 'Full checklist: docs/INTERACTIVE_VERIFY.md'
-    Write-Host 'Still escalate separately: ADR-015 (A/C/D) and Store/production signing.'
+    Write-Host 'Still escalate separately: Store/production signing (ADR-015 Accept A landed).'
 }
 
 function Open-SampleFiles {

@@ -12901,17 +12901,17 @@ public sealed class PdfDocumentView : UserControl
         };
         var restrictCopy = new CheckBox
         {
-            Content = "Restrict copying / extraction",
+            Content = PdfSecurityWriteUiCopy.RestrictCopyLabel,
             IsChecked = false,
         };
         var restrictPrint = new CheckBox
         {
-            Content = "Restrict printing",
+            Content = PdfSecurityWriteUiCopy.RestrictPrintLabel,
             IsChecked = false,
         };
         var restrictEdit = new CheckBox
         {
-            Content = "Restrict editing / annotations",
+            Content = PdfSecurityWriteUiCopy.RestrictEditLabel,
             IsChecked = false,
         };
 
@@ -12971,13 +12971,14 @@ public sealed class PdfDocumentView : UserControl
             }
 
             var openPassword = openBox.Password ?? string.Empty;
-            if (string.IsNullOrEmpty(openPassword))
+            var ownerPassword = ownerBox.Password ?? string.Empty;
+            var decision = PdfSecurityWriteApplyPolicy.Decide(openPassword, ownerPassword);
+            if (decision.Kind == PdfSecurityWriteApplyPolicy.Kind.Invalid)
             {
-                _status.Text = PdfSecurityWriteUiCopy.StatusFailedPrefix + "Open password must not be empty.";
+                _status.Text = PdfSecurityWriteUiCopy.StatusFailedPrefix + decision.FailureMessage;
                 return;
             }
 
-            var ownerPassword = string.IsNullOrEmpty(ownerBox.Password) ? null : ownerBox.Password;
             var permissions = PdfSecurityPermissions.AllowAll with
             {
                 PermitExtractContent = restrictCopy.IsChecked != true,
@@ -12988,13 +12989,28 @@ public sealed class PdfDocumentView : UserControl
                 PermitAssembleDocument = restrictEdit.IsChecked != true,
             };
 
-            var applied = await _security.SetOpenPasswordAsync(
-                _document,
-                openPassword,
-                ownerPassword,
-                permissions);
+            PdfSecurityWriteResult applied;
+            string successStatus;
+            if (decision.Kind == PdfSecurityWriteApplyPolicy.Kind.SetPermissions)
+            {
+                applied = await _security.SetPermissionsAsync(
+                    _document,
+                    decision.OwnerPassword!,
+                    permissions);
+                successStatus = PdfSecurityWriteUiCopy.StatusPermissionsApplied;
+            }
+            else
+            {
+                applied = await _security.SetOpenPasswordAsync(
+                    _document,
+                    decision.UserPassword!,
+                    decision.OwnerPassword,
+                    permissions);
+                successStatus = PdfSecurityWriteUiCopy.StatusApplied;
+            }
+
             _status.Text = applied.Succeeded
-                ? PdfSecurityWriteUiCopy.StatusApplied
+                ? successStatus
                 : PdfSecurityWriteUiCopy.StatusFailedPrefix + applied.Message;
             if (applied.Succeeded)
             {
