@@ -338,10 +338,26 @@ public sealed partial class MainWindow : Window
         }
 
         var box = new TextBox { PlaceholderText = FindAllOpenPdfsStatus.QueryPlaceholder, Width = 360 };
+        var sortBox = new ComboBox
+        {
+            Width = 160,
+            ItemsSource = new[]
+            {
+                PdfViewerChromeLabels.SortPageOrder,
+                PdfViewerChromeLabels.SortRelevance,
+            },
+            SelectedIndex = 0,
+        };
+        ToolTipService.SetToolTip(sortBox, PdfViewerTooltips.SortFindResults);
+        var dialogBody = new StackPanel
+        {
+            Spacing = 8,
+            Children = { box, sortBox },
+        };
         var dialog = new ContentDialog
         {
             Title = FindAllOpenPdfsStatus.DialogTitle,
-            Content = box,
+            Content = dialogBody,
             PrimaryButtonText = FindAllOpenPdfsStatus.SearchButton,
             CloseButtonText = PreferencesDialogUi.CancelButton,
             DefaultButton = ContentDialogButton.Primary,
@@ -389,14 +405,25 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        // F06-12: page order within each document; documents keep workspace tab order.
+        // F06-12: page order (workspace + page) or relevance across open PDFs.
+        var sortMode = sortBox.SelectedIndex == 1
+            ? PdfSearchHitOrder.SortMode.Relevance
+            : PdfSearchHitOrder.SortMode.PageOrder;
         var docOrder = _workspace.Documents
             .Select((d, i) => (d.Id, i))
             .ToDictionary(t => t.Id, t => t.i);
-        hits = PdfSearchHitOrder.ByPageThenOccurrence(
-            hits,
-            h => docOrder.GetValueOrDefault(h.Doc.Id, int.MaxValue),
-            h => h.Hit.PageIndex).ToList();
+        hits = (sortMode == PdfSearchHitOrder.SortMode.Relevance
+            ? PdfSearchHitOrder.ByRelevance(
+                hits,
+                query,
+                h => h.Hit.Snippet,
+                h => h.Hit.MatchStart,
+                h => h.Hit.MatchLength,
+                h => h.Hit.PageIndex)
+            : PdfSearchHitOrder.ByPageThenOccurrence(
+                hits,
+                h => docOrder.GetValueOrDefault(h.Doc.Id, int.MaxValue),
+                h => h.Hit.PageIndex)).ToList();
 
         var list = new ListView
         {

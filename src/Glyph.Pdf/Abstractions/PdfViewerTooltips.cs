@@ -15,6 +15,7 @@ public static class PdfViewerTooltips
     public const string ExportOcrDPagesAsA = "Export OCR'd pages as a searchable PDF with invisible text";
     public const string ReviewDetectedUrlsEmailsPhonesAddresses = "Review detected URLs, emails, phones, addresses, dates, and times in OCR text";
     public const string ClearSearchResults = "Clear search results";
+    public const string SortFindResults = "Sort find results by page order or relevance";
     public const string PreviousMatch = "Previous match";
     public const string NextMatch = "Next match";
     public const string AddBookmarkAtCurrentPage = "Add bookmark at current page";

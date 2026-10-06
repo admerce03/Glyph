@@ -111,6 +111,7 @@ public sealed class PdfDocumentView : UserControl
     private readonly TextBox _searchBox;
     private readonly TextBox _gotoBox;
     private readonly CheckBox _caseSensitiveBox;
+    private readonly ComboBox _searchSortBox;
     private readonly ComboBox _layoutBox;
     private readonly TextBlock _status;
     private readonly Dictionary<int, IReadOnlyList<PdfTextChar>> _pageChars = new();
@@ -365,6 +366,19 @@ public sealed class PdfDocumentView : UserControl
         _searchBox.KeyDown += SearchBox_KeyDown;
         _caseSensitiveBox = new CheckBox { Content = PdfViewerChromeLabels.Aa, VerticalAlignment = VerticalAlignment.Center };
         ToolTipService.SetToolTip(_caseSensitiveBox, PdfViewerTooltips.MatchCase);
+        _searchSortBox = new ComboBox
+        {
+            Width = 120,
+            VerticalAlignment = VerticalAlignment.Center,
+            ItemsSource = new[]
+            {
+                PdfViewerChromeLabels.SortPageOrder,
+                PdfViewerChromeLabels.SortRelevance,
+            },
+            SelectedIndex = 0,
+        };
+        ToolTipService.SetToolTip(_searchSortBox, PdfViewerTooltips.SortFindResults);
+        _searchSortBox.SelectionChanged += async (_, _) => await ResortSearchHitsAsync();
         var searchButton = new Button { Content = PdfViewerChromeLabels.Find };
         searchButton.Click += async (_, _) => await RunSearchAsync();
         var findSelection = new Button { Content = PdfViewerChromeLabels.FindSelection };
@@ -492,11 +506,21 @@ public sealed class PdfDocumentView : UserControl
             Margin = new Thickness(8, 8, 8, 4),
         };
 
-        var searchHeader = new TextBlock
+        var searchHeader = new StackPanel
         {
-            Text = PdfViewerTextLabels.Search,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
             Margin = new Thickness(8, 8, 8, 4),
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = PdfViewerTextLabels.Search,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+                _searchSortBox,
+            },
         };
 
         var annotHeaderRow = new StackPanel
@@ -913,7 +937,7 @@ public sealed class PdfDocumentView : UserControl
             redact, info, optimizeButton, protectButton, export, print, share, sidebarToggle, camera, sign, formFill, ink, freeform, eraser, rect,
             roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, fullscreen, undoEdit, redoEdit,
             _layoutBox, _gotoBox,
-            _caseSensitiveBox, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton,
+            _caseSensitiveBox, _searchSortBox, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton,
             _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch,
             removeAnnot, duplicateAnnot, copyAnnot, cutAnnot, pasteAnnot, editAnnot, authorAnnot,
             expandNote, collapseNote, exportNotes, underlineAnnot, colorAnnot, fillAnnot, tipAnnot,
@@ -4158,7 +4182,7 @@ public sealed class PdfDocumentView : UserControl
             message = PdfTextInteractionUi.NoMatchesInTextOrOcr;
         }
 
-        _hits = merged;
+        _hits = ApplySearchHitSort(merged, _searchQuery, _searchCaseSensitive);
         _activeHitIndex = _hits.Count > 0 ? 0 : -1;
         if (status is PdfSearchStatus.EmptyQuery or PdfSearchStatus.NoMatches or PdfSearchStatus.NoExtractableText)
         {
@@ -4168,6 +4192,40 @@ public sealed class PdfDocumentView : UserControl
                 overlay.Children.Clear();
             }
         }
+
+        BindSearchResultsList(ocrHits);
+        _status.Text = PdfSearchStatusText.Format(status, _hits.Count, message);
+
+        if (_activeHitIndex >= 0)
+        {
+            _searchResults.SelectedIndex = _activeHitIndex;
+            await GoToPageAsync(_hits[_activeHitIndex].PageIndex, recordHistory: true);
+        }
+
+        await RefreshSearchHighlightsAsync();
+    }
+
+    private PdfSearchHitOrder.SortMode CurrentSearchSortMode =>
+        _searchSortBox.SelectedIndex == 1
+            ? PdfSearchHitOrder.SortMode.Relevance
+            : PdfSearchHitOrder.SortMode.PageOrder;
+
+    private IReadOnlyList<PdfSearchHit> ApplySearchHitSort(
+        IEnumerable<PdfSearchHit> hits,
+        string query,
+        bool caseSensitive) =>
+        PdfSearchHitOrder.Apply(
+            CurrentSearchSortMode,
+            hits,
+            query,
+            h => h.Snippet,
+            h => h.MatchStart,
+            h => h.MatchLength,
+            h => h.PageIndex,
+            caseSensitive: caseSensitive);
+
+    private void BindSearchResultsList(IReadOnlyList<PdfSearchHit> ocrHits)
+    {
         _searchResults.ItemsSource = _hits
             .Select(h =>
             {
@@ -4180,13 +4238,37 @@ public sealed class PdfDocumentView : UserControl
                 return $"p.{h.PageIndex + 1}{ocrTag}: {h.Snippet}";
             })
             .ToList();
+    }
 
-        _status.Text = PdfSearchStatusText.Format(status, _hits.Count, message);
+    private async Task ResortSearchHitsAsync()
+    {
+        if (_hits.Count == 0 || string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            return;
+        }
 
+        var previous = _activeHitIndex >= 0 && _activeHitIndex < _hits.Count
+            ? _hits[_activeHitIndex]
+            : null;
+        _hits = ApplySearchHitSort(_hits, _searchQuery, _searchCaseSensitive);
+        if (previous is not null)
+        {
+            var idx = _hits.ToList().FindIndex(h =>
+                h.PageIndex == previous.PageIndex
+                && h.MatchStart == previous.MatchStart
+                && h.MatchLength == previous.MatchLength);
+            _activeHitIndex = idx >= 0 ? idx : 0;
+        }
+        else
+        {
+            _activeHitIndex = _hits.Count > 0 ? 0 : -1;
+        }
+
+        // OCR tags unknown on re-sort — show page + snippet only.
+        BindSearchResultsList([]);
         if (_activeHitIndex >= 0)
         {
             _searchResults.SelectedIndex = _activeHitIndex;
-            await GoToPageAsync(_hits[_activeHitIndex].PageIndex, recordHistory: true);
         }
 
         await RefreshSearchHighlightsAsync();

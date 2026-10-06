@@ -130,7 +130,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F06-09 | PDF search | Highlight matches on pages. | M2/M6 | Tested | Gold overlays; `PdfSearchHighlightStyle` ARGB unit tests |
 | F06-10 | PDF search | Results sidebar. | M2/M6 | Tested | Results list; `PdfSearchSnippet` pads match context with ellipsis |
 | F06-11 | PDF search | Show contextual snippets around matches. | M2/M6 | Tested | Snippet around match |
-| F06-12 | PDF search | Sort results by: | M2/M6 | Tested | Page order via `PdfSearchHitOrder`; relevance sort deferred |
+| F06-12 | PDF search | Sort results by: | M2/M6 | Tested | Page order + relevance via `PdfSearchHitOrder` (sidebar + Find all open PDFs combo) |
 | F06-13 | PDF search | Next match. | M2/M6 | Tested | Toolbar next; `PdfSearchHitNav.WrapIndex` unit tests |
 | F06-14 | PDF search | Previous match. | M2/M6 | Tested | Toolbar previous; same wrap helper |
 | F06-15 | PDF search | Clear search. | M2/M6 | Tested | Clear + Escape; `PdfSearchHighlightStyle.ClearedStatus` unit tests |
