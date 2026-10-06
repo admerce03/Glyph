@@ -3149,6 +3149,21 @@ public sealed partial class MainWindow : Window
             Content = PreferencesDialogUi.RememberZoom,
             IsChecked = DocumentViewRestorePolicy.EffectiveRememberZoom(settings.RememberZoom),
         };
+        var findCaseBox = new CheckBox
+        {
+            Content = PreferencesDialogUi.FindCaseSensitive,
+            IsChecked = settings.FindCaseSensitive,
+        };
+        var findAnyWordBox = new CheckBox
+        {
+            Content = PreferencesDialogUi.FindAnyWord,
+            IsChecked = settings.FindAnyWord,
+        };
+        var findRelevanceBox = new CheckBox
+        {
+            Content = PreferencesDialogUi.FindSortByRelevance,
+            IsChecked = settings.FindSortByRelevance,
+        };
         var zoom100Box = new ComboBox
         {
             Header = PreferencesDialogUi.ImageZoom100Header,
@@ -3247,6 +3262,7 @@ public sealed partial class MainWindow : Window
                 highlightColorBox, strokeColorBox, stickyColorBox, strokeWidthBox,
                 animationAutoplayBox, stripMetadataBox, layoutBox, defaultZoomBox,
                 rememberLastPageBox, rememberZoomBox,
+                findCaseBox, findAnyWordBox, findRelevanceBox,
                 zoom100Box, interpolationBox, colorManagedBox, localOcrNote, ocrLanguageBox,
                 privacyHeader, clearRecentButton, clearSignaturesButton, checkUpdatesButton,
             },
@@ -3321,6 +3337,9 @@ public sealed partial class MainWindow : Window
         settings.DefaultZoom = Math.Clamp(defaultZoomBox.Value, 0.1, 8);
         settings.RememberLastPage = rememberLastPageBox.IsChecked == true;
         settings.RememberZoom = rememberZoomBox.IsChecked == true;
+        settings.FindCaseSensitive = findCaseBox.IsChecked == true;
+        settings.FindAnyWord = findAnyWordBox.IsChecked == true;
+        settings.FindSortByRelevance = findRelevanceBox.IsChecked == true;
         settings.Zoom100Meaning = PreferencesDialogUi.Zoom100Setting(zoom100Box.SelectedIndex);
         settings.DefaultInterpolation = PreferencesDialogUi.InterpolationSetting(interpolationBox.SelectedIndex);
         settings.ColorManagedDisplayDefault = colorManagedBox.IsChecked == true;
@@ -3330,6 +3349,7 @@ public sealed partial class MainWindow : Window
         App.CurrentApp.ApplyThemePreference(settings.Theme);
         ApplyShellKeyboardShortcuts();
         ApplyToolbarCustomizationToOpenDocuments(settings);
+        ApplyFindOptionsToOpenDocuments(settings);
         ConfigureRecoveryTimer();
         await PersistSessionAsync();
         StatusText.Text = AppShellStatus.PreferencesSaved;
@@ -3347,6 +3367,17 @@ public sealed partial class MainWindow : Window
                 case ImageDocumentView imageView:
                     imageView.ApplyToolbarCustomization(settings);
                     break;
+            }
+        }
+    }
+
+    private void ApplyFindOptionsToOpenDocuments(AppSettings settings)
+    {
+        foreach (var tab in DocumentTabs.TabItems.OfType<TabViewItem>())
+        {
+            if (tab.Content is PdfDocumentView pdfView)
+            {
+                pdfView.ApplyFindOptions(settings);
             }
         }
     }

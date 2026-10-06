@@ -25,6 +25,9 @@ public class PreferencesDialogUiTests
         PreferencesDialogUi.ThemeSetting(1).Should().Be("Light");
         PreferencesDialogUi.RememberLastPage.Should().Contain("last page");
         PreferencesDialogUi.RememberZoom.Should().Contain("zoom");
+        PreferencesDialogUi.FindCaseSensitive.Should().Contain("Match case");
+        PreferencesDialogUi.FindAnyWord.Should().Contain("Any word");
+        PreferencesDialogUi.FindSortByRelevance.Should().Contain("relevance");
         PreferencesDialogUi.ToolbarCommandsHeader.Should().Contain("reorder");
         PreferencesDialogUi.ToolbarCommandsHeader.Should().Contain("open documents");
         PreferencesDialogUi.MoveToolbarCommandUp.Should().Be("↑");

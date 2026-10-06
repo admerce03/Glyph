@@ -46,6 +46,12 @@ public static class PreferencesDialogUi
         "Remember last page when reopening PDFs";
     public const string RememberZoom =
         "Remember zoom when reopening documents";
+    public const string FindCaseSensitive =
+        "Find: Match case (default)";
+    public const string FindAnyWord =
+        "Find: Any word (default; off = exact phrase)";
+    public const string FindSortByRelevance =
+        "Find: Sort by relevance (default; off = page order)";
     public const string ImageZoom100Header = "Image 100% zoom means";
     public const string DefaultInterpolationHeader = "Default resize interpolation";
     public const string ColorManagedDisplay =
