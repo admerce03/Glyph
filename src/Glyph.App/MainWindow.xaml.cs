@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.WindowsRuntime;
 using Glyph.App.Capture;
 using Glyph.App.Scanning;
 using Glyph.App.Sharing;
@@ -18,6 +19,7 @@ using Glyph.Ocr.Abstractions;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Rendering;
 using Glyph.Pdf.Text;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -25,8 +27,10 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Graphics;
+using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
@@ -3231,13 +3235,57 @@ public sealed partial class MainWindow : Window
         var list = new ListView
         {
             SelectionMode = ListViewSelectionMode.Single,
-            Width = 460,
-            MaxHeight = 280,
-            ItemsSource = entries
-                .Select(e => $"{e.SavedAtUtc.ToLocalTime():g} · {ByteSizeFormat.Format(e.ByteLength)}")
-                .ToList(),
+            Width = 520,
+            MaxHeight = 360,
         };
-        list.SelectedIndex = 0;
+
+        foreach (var entry in entries)
+        {
+            var thumb = new Image
+            {
+                Width = VersionSnapshotThumbnailPolicy.ThumbEdgePixels,
+                Height = VersionSnapshotThumbnailPolicy.ThumbEdgePixels,
+                Stretch = Stretch.UniformToFill,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            var placeholder = new FontIcon
+            {
+                Glyph = "\uE8A5",
+                FontSize = 28,
+                Width = VersionSnapshotThumbnailPolicy.ThumbEdgePixels,
+                Height = VersionSnapshotThumbnailPolicy.ThumbEdgePixels,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            var thumbHost = new Grid
+            {
+                Width = VersionSnapshotThumbnailPolicy.ThumbEdgePixels,
+                Height = VersionSnapshotThumbnailPolicy.ThumbEdgePixels,
+                Children = { placeholder, thumb },
+            };
+            thumb.Visibility = Visibility.Collapsed;
+
+            var caption = new TextBlock
+            {
+                Text = $"{entry.SavedAtUtc.ToLocalTime():g} · {ByteSizeFormat.Format(entry.ByteLength)}",
+                VerticalAlignment = VerticalAlignment.Center,
+                TextWrapping = TextWrapping.WrapWholeWords,
+                Margin = new Thickness(12, 0, 0, 0),
+            };
+            var row = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 4,
+                Children = { thumbHost, caption },
+                Tag = entry,
+            };
+            list.Items.Add(row);
+            _ = LoadVersionSnapshotThumbAsync(entry.SnapshotPath, thumb, placeholder);
+        }
+
+        if (list.Items.Count > 0)
+        {
+            list.SelectedIndex = 0;
+        }
 
         string? action = null;
         var openCopy = new Button { Content = AppShellStatus.OpenAsCopyButton, Margin = new Thickness(0, 0, 8, 0) };
@@ -3275,12 +3323,11 @@ public sealed partial class MainWindow : Window
         };
 
         await dialog.ShowAsync();
-        if (action is null || list.SelectedIndex < 0 || list.SelectedIndex >= entries.Count)
+        if (action is null || list.SelectedItem is not StackPanel { Tag: VersionSnapshotEntry chosen })
         {
             return;
         }
 
-        var chosen = entries[list.SelectedIndex];
         if (!File.Exists(chosen.SnapshotPath))
         {
             StatusText.Text = AppShellStatus.SnapshotMissing;
@@ -3350,6 +3397,80 @@ public sealed partial class MainWindow : Window
             File.Copy(chosen.SnapshotPath, path, overwrite: true);
             await OpenPathAsync(path);
             StatusText.Text = AppShellStatus.FormatRestoredSnapshot(chosen.SavedAtUtc.ToLocalTime().ToString("g"));
+        }
+    }
+
+    private static async Task LoadVersionSnapshotThumbAsync(string snapshotPath, Image thumb, FontIcon placeholder)
+    {
+        try
+        {
+            if (!File.Exists(snapshotPath))
+            {
+                return;
+            }
+
+            var ext = System.IO.Path.GetExtension(snapshotPath).ToLowerInvariant();
+            if (ext is ".png" or ".jpg" or ".jpeg" or ".gif" or ".bmp" or ".tif" or ".tiff" or ".webp")
+            {
+                await using var stream = File.OpenRead(snapshotPath);
+                var ras = new InMemoryRandomAccessStream();
+                await RandomAccessStream.CopyAsync(stream.AsInputStream(), ras);
+                ras.Seek(0);
+                var bmp = new BitmapImage();
+                await bmp.SetSourceAsync(ras);
+                thumb.Source = bmp;
+                thumb.Visibility = Visibility.Visible;
+                placeholder.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            if (ext != ".pdf")
+            {
+                return;
+            }
+
+            var factory = App.Services.GetService<IPdfDocumentFactory>();
+            var renderer = App.Services.GetService<IPdfRenderer>();
+            if (factory is null || renderer is null)
+            {
+                return;
+            }
+
+            await using var document = await factory.OpenAsync(snapshotPath);
+            if (document.PageCount < 1)
+            {
+                return;
+            }
+
+            using var render = await renderer.RenderPageAsync(
+                document,
+                0,
+                new PdfRenderRequest(
+                    Scale: 0.25,
+                    MaxWidthPixels: VersionSnapshotThumbnailPolicy.ThumbEdgePixels,
+                    MaxHeightPixels: VersionSnapshotThumbnailPolicy.ThumbEdgePixels));
+            var pixels = render.Pixels.ToArray();
+            using var encoded = new InMemoryRandomAccessStream();
+            var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, encoded);
+            encoder.SetPixelData(
+                BitmapPixelFormat.Bgra8,
+                BitmapAlphaMode.Premultiplied,
+                (uint)render.Width,
+                (uint)render.Height,
+                96,
+                96,
+                pixels);
+            await encoder.FlushAsync();
+            encoded.Seek(0);
+            var pdfBmp = new BitmapImage();
+            await pdfBmp.SetSourceAsync(encoded);
+            thumb.Source = pdfBmp;
+            thumb.Visibility = Visibility.Visible;
+            placeholder.Visibility = Visibility.Collapsed;
+        }
+        catch
+        {
+            // Keep FontIcon placeholder when preview fails (encrypted PDF, missing codecs, …).
         }
     }
 }

@@ -717,7 +717,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F50-06 | Autosave and recovery | never silently discard recovery data. | M1/M9 | Tested | Recover / Keep / Discard; `CrashRecoveryPromptUi` unit tests |
 | F50-07 | Autosave and recovery | remove recovery copy after successful save/close. | M1/M9 | Tested | `DiscardAsync` / `DiscardAllAsync` unit tests |
 | F51-01 | Optional version snapshots | optional automatic local snapshots. | M9 | Tested | Opt-in prefs round-trip + `FileVersionSnapshotStore.CaptureAsync` unit tests |
-| F51-02 | Optional version snapshots | show: | M9 | Tested | `ListAsync` returns time/size; File → Version Snapshots UI |
+| F51-02 | Optional version snapshots | show: | M9 | Tested | List UI shows time + size + thumbnail (`VersionSnapshotThumbnailPolicy`; image preview / PDF page-1 raster) |
 | F51-03 | Optional version snapshots | restore snapshot. | M9 | Tested | Snapshot bytes restore via File.Copy; store capture preserves bytes unit test |
 | F51-04 | Optional version snapshots | open snapshot as copy. | M9 | Tested | Sibling copy of snapshot path; capture byte-preservation unit test |
 | F51-05 | Optional version snapshots | delete snapshots. | M9 | Tested | `DeleteAsync` / `DeleteAllAsync` unit tests |

@@ -86,6 +86,47 @@ public class PackagingDeferredPolicyTests
     }
 }
 
+public class VersionSnapshotThumbnailPolicyTests
+{
+    [Fact]
+    public void Snapshot_list_shows_time_size_and_thumbs()
+    {
+        VersionSnapshotThumbnailPolicy.ShowsTimestamp.Should().BeTrue();
+        VersionSnapshotThumbnailPolicy.ShowsFileSize.Should().BeTrue();
+        VersionSnapshotThumbnailPolicy.ShowsImageFilePreview.Should().BeTrue();
+        VersionSnapshotThumbnailPolicy.ShowsPdfFirstPagePreview.Should().BeTrue();
+        VersionSnapshotThumbnailPolicy.ThumbEdgePixels.Should().BeGreaterThan(0);
+        VersionSnapshotThumbnailPolicy.Reason.Should().Contain("thumbnail");
+    }
+
+    [Fact]
+    public void Main_window_loads_snapshot_thumbs()
+    {
+        var root = FindRepoRoot();
+        var path = Path.Combine(root, "src", "Glyph.App", "MainWindow.xaml.cs");
+        File.Exists(path).Should().BeTrue(path);
+        var text = File.ReadAllText(path);
+        text.Should().Contain("LoadVersionSnapshotThumbAsync");
+        text.Should().Contain("VersionSnapshotThumbnailPolicy");
+    }
+
+    private static string FindRepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "Glyph.sln")))
+            {
+                return dir.FullName;
+            }
+
+            dir = dir.Parent;
+        }
+
+        throw new InvalidOperationException("Repo root not found from " + AppContext.BaseDirectory);
+    }
+}
+
 public class AutosaveTabPolicyTests
 {
     [Fact]
