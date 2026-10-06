@@ -7,6 +7,8 @@ roadmap / matrix notes and flip Deferred rows where applicable.
 Related: [`PACKAGING.md`](PACKAGING.md) (MSIX sideload), [`ROADMAP.md`](ROADMAP.md)
 § Remaining to close M9, ADR-012 (Explorer UserChoice) in [`DECISIONS.md`](DECISIONS.md).
 ADR-015 Accept A (PdfSharp password-write) has landed — see §6 for Protect regression.
+Linux CI smokes `-DownloadArtifact` (run-id resolve + `glyph-msix-layout` + cert) so the
+#141 `gh run download --branch` regression cannot return unnoticed.
 
 ## Quick start (Windows)
 

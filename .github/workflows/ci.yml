@@ -11,6 +11,11 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
+# Artifact download smoke needs actions:read; contents for checkout.
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   windows:
     name: Windows build & test
@@ -110,3 +115,15 @@ jobs:
             exit "$code"
           fi
           echo "interactive-verify -StatusOnly exit=$code (0=complete, 2=captures pending)"
+
+      # Regression guard for #141: gh run download has no --branch; orchestrator must
+      # resolve a successful main run id and fetch glyph-msix-layout (+ cert).
+      - name: Interactive verify DownloadArtifact smoke
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          pwsh ./scripts/interactive-verify.ps1 -DownloadArtifact -PackageDir artifacts/msix-ci-smoke
+          test -f artifacts/msix-ci-smoke/Glyph.CI.TestSign.cer
+          find artifacts/msix-ci-smoke -name 'Glyph.App_*.msix' | grep -q .
+          echo "DownloadArtifact smoke OK"
