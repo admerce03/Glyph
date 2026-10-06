@@ -1,9 +1,8 @@
 using Glyph.Core.Pdf;
 using Glyph.Pdf.Abstractions;
 using Glyph.Pdf.Pdfium;
-using PdfSharp.Pdf;
-using PdfSharp.Pdf.IO;
 using PDFiumCore;
+using PdfSharp.Pdf.IO;
 
 namespace Glyph.Pdf.Security;
 
