@@ -25,6 +25,15 @@ public class InteractiveVerifyArtifactsTests
         Directory.Exists(Path.Combine(root, InteractiveVerifyArtifacts.ProofDirectory)).Should().BeTrue();
         File.Exists(Path.Combine(root, InteractiveVerifyArtifacts.ProofDirectory, "README.md")).Should().BeTrue();
         File.Exists(Path.Combine(root, InteractiveVerifyArtifacts.OrchestratorScript)).Should().BeTrue();
+
+        InteractiveVerifyArtifacts.SampleRelativePaths.Should().Equal(
+            InteractiveVerifyArtifacts.SamplePdf,
+            InteractiveVerifyArtifacts.SamplePng);
+        foreach (var sample in InteractiveVerifyArtifacts.SampleRelativePaths)
+        {
+            File.Exists(Path.Combine(root, sample)).Should().BeTrue(sample);
+            checklist.Should().Contain(sample, because: sample);
+        }
     }
 
     private static string FindRepoRoot()

@@ -33,7 +33,10 @@ param(
     [switch]$SkipOpenDefaultApps,
 
     # Only report which docs/proof files exist
-    [switch]$StatusOnly
+    [switch]$StatusOnly,
+
+    # After sideload, open sample.pdf / sample.png via Explorer (current defaults)
+    [switch]$OpenSamples
 )
 
 $ErrorActionPreference = 'Stop'
@@ -76,17 +79,48 @@ function Show-CaptureChecklist {
     Write-Host ''
     Write-Host '=== Remaining interactive captures ==='
     Write-Host '1. Settings → Apps → Default apps: set Glyph for .pdf and image types; screenshot.'
-    Write-Host '2. Double-click sample .pdf and .png/.jpg → opens in Glyph; screenshot or short clip.'
+    Write-Host '2. Double-click samples (after setting defaults):'
+    Write-Host '     docs\proof\samples\sample.pdf'
+    Write-Host '     docs\proof\samples\sample.png'
     Write-Host '3. Shell with ≥2 tabs → save docs/proof/m1-shell-tabs.png'
-    Write-Host '4. Multi-page PDF viewer → save docs/proof/m2-pdf-viewer.png'
-    Write-Host '5. Cross-doc page DnD (+ optional Explorer insert / Ctrl+C/V) → docs/proof/m3-page-dnd.mp4 (~30s)'
+    Write-Host '4. Multi-page PDF viewer (sample.pdf has 2 pages) → save docs/proof/m2-pdf-viewer.png'
+    Write-Host '5. Cross-doc page DnD (open sample.pdf twice / duplicate) → docs/proof/m3-page-dnd.mp4 (~30s)'
     Write-Host ''
     Write-Host 'Full checklist: docs/INTERACTIVE_VERIFY.md'
     Write-Host 'Still escalate separately: ADR-015 (A/C/D) and Store/production signing.'
 }
 
+function Open-SampleFiles {
+    param([switch]$Launch)
+
+    $pdf = Join-Path $repoRoot 'docs\proof\samples\sample.pdf'
+    $png = Join-Path $repoRoot 'docs\proof\samples\sample.png'
+    if (-not (Test-Path -LiteralPath $pdf) -or -not (Test-Path -LiteralPath $png)) {
+        Write-Warning 'docs/proof/samples fixtures missing — skip sample open.'
+        return
+    }
+
+    Write-Host ''
+    Write-Host 'Sample fixtures:'
+    Write-Host "  $pdf"
+    Write-Host "  $png"
+    if (-not $Launch) {
+        return
+    }
+
+    if ($env:GITHUB_ACTIONS -eq 'true' -or $env:CI -eq 'true') {
+        Write-Host 'Skipping sample Explorer launch on CI.'
+        return
+    }
+
+    Write-Host 'Opening sample.pdf / sample.png via Explorer (uses current defaults)…'
+    Start-Process explorer.exe -ArgumentList $pdf
+    Start-Process explorer.exe -ArgumentList $png
+}
+
 if ($StatusOnly) {
     $missing = Show-ProofStatus
+    Open-SampleFiles
     Show-CaptureChecklist
     if ($missing -gt 0) {
         Write-Host ("Proof incomplete: {0} expected capture(s) missing." -f $missing)
@@ -149,5 +183,9 @@ Write-Host "Running install-msix-test.ps1 $($installArgs.Keys -join ', ')…"
 & $install @installArgs
 
 Show-ProofStatus | Out-Null
+Open-SampleFiles -Launch:$OpenSamples
 Show-CaptureChecklist
 Write-Host 'Sideload/probe step done. Complete captures above, then update FEATURE_MATRIX / ROADMAP.'
+if (-not $OpenSamples) {
+    Write-Host 'Tip: re-run with -OpenSamples after setting Glyph as default to launch the fixtures.'
+}

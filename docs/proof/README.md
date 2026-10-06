@@ -11,7 +11,9 @@ Do not commit large binaries unless closing the interactive gate in a dedicated 
 | `m3-page-dnd.mp4` | M3 §11 cross-doc DnD (keep short) |
 
 Also attach Explorer default-app screenshots for F01-06/07 when flipping those matrix rows.
+Double-click fixtures: [`samples/`](samples/README.md) (`sample.pdf`, `sample.png`).
 
 ```powershell
 ./scripts/interactive-verify.ps1 -StatusOnly   # which expected files exist
+./scripts/interactive-verify.ps1 -VerifyOnly -OpenSamples
 ```
