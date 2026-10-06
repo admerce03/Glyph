@@ -23,7 +23,7 @@ internal sealed class PdfiumDocument : IPdfDocument
 
     public int PageCount => _pages.Count;
 
-    public bool IsEncrypted { get; }
+    public bool IsEncrypted { get; private set; }
 
     public event EventHandler? PagesChanged;
 
@@ -65,7 +65,7 @@ internal sealed class PdfiumDocument : IPdfDocument
         RebuildPages();
     }
 
-    internal void ReplaceFromBytes(byte[] pdfBytes)
+    internal void ReplaceFromBytes(byte[] pdfBytes, string? password = null)
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(pdfBytes);
@@ -78,7 +78,7 @@ internal sealed class PdfiumDocument : IPdfDocument
         FpdfDocumentT? handle;
         try
         {
-            handle = fpdfview.FPDF_LoadMemDocument(pin.AddrOfPinnedObject(), pdfBytes.Length, null);
+            handle = fpdfview.FPDF_LoadMemDocument(pin.AddrOfPinnedObject(), pdfBytes.Length, password);
         }
         catch
         {
@@ -89,7 +89,10 @@ internal sealed class PdfiumDocument : IPdfDocument
         if (handle is null)
         {
             pin.Free();
-            throw new InvalidOperationException("Failed to reload PDF from memory snapshot.");
+            throw new InvalidOperationException(
+                password is null
+                    ? "Failed to reload PDF from memory snapshot."
+                    : "Failed to reload encrypted PDF from memory snapshot (password rejected).");
         }
 
         ReplaceHandle(handle);
@@ -100,6 +103,7 @@ internal sealed class PdfiumDocument : IPdfDocument
 
         _memoryPin = pin;
         _memoryOwner = pdfBytes;
+        IsEncrypted = password is not null;
     }
 
     internal void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);

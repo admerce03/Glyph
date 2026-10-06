@@ -20,6 +20,7 @@ public class ThirdPartyNoticesPolicyTests
         text.Should().Contain("Magick.NET");
         text.Should().Contain("ImageMagick");
         text.Should().Contain("PdfPig");
+        text.Should().Contain("PDFsharp");
         text.Should().Contain("Apache");
         text.Should().NotContain("CommunityToolkit.Mvvm");
     }

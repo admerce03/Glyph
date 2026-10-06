@@ -95,7 +95,7 @@ Key abstractions:
 - `IPdfPageEditor` (insert/delete/reorder/rotate/extract/merge/split)
 - `IPdfAnnotationService`
 - `IPdfFormStore`
-- `IPdfSecurityService` (write-protect blocked on ADR-015; `BlockedPdfSecurityService`)
+- `IPdfSecurityService` (ADR-015 Accept A; `PdfSharpSecurityService` write-encrypt; `BlockedPdfSecurityService` stub for tests)
 - `IPdfExportService` (page → image; app host implements with Magick/WIC)
 
 ### 4.4 Imaging subsystem (`Glyph.Imaging`)

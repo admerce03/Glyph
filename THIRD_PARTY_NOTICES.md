@@ -73,6 +73,18 @@ when present in the NuGet cache during publish.
 
 ---
 
+## PDFsharp
+
+**Use:** PDF password / permission write-encrypt (`IPdfSecurityService` / ADR-015 Accept A).  
+**License:** MIT  
+**Source:** https://github.com/empira/PDFsharp · https://docs.pdfsharp.net/  
+**Package:** `PDFsharp` (pinned in `Directory.Packages.props`)
+
+PDFium remains the sole renderer and open path (ADR-003). PDFsharp is confined to the
+security adapter that applies the Standard Security Handler on save.
+
+---
+
 ## Microsoft Windows App SDK / WinUI
 
 **Use:** Native Windows UI shell.  

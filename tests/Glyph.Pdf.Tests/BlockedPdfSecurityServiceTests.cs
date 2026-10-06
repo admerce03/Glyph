@@ -15,7 +15,6 @@ public class BlockedPdfSecurityServiceTests
         _sut.WriteProtectSupported.Should().BeFalse();
         _sut.BlockingAdr.Should().Be("ADR-015");
         _sut.UnavailableReason.Should().Contain("ADR-015");
-        _sut.UnavailableReason.Should().Be(PdfPasswordWriteBlockedPolicy.Reason);
     }
 
     [Fact]
@@ -69,6 +68,7 @@ public class PdfSecurityWriteUiCopyTests
         PdfSecurityWriteUiCopy.DialogBody().Should().Contain("ADR-015");
         PdfSecurityWriteUiCopy.DialogBody().Should().Contain("PdfSharp");
         PdfSecurityWriteUiCopy.DialogBody().Should().Contain("Opening encrypted");
+        PdfSecurityWriteUiCopy.DialogBodyBlocked().Should().Contain("Accept A");
         PdfSecurityWriteUiCopy.StatusBlocked.Should().Contain("ADR-015");
     }
 }

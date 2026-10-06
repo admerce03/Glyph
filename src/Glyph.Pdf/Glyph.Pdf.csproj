@@ -14,5 +14,6 @@
   <ItemGroup>
     <PackageReference Include="PDFiumCore" />
     <PackageReference Include="PdfPig" />
+    <PackageReference Include="PDFsharp" />
   </ItemGroup>
 </Project>

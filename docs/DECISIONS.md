@@ -28,8 +28,8 @@ M7 §24 asks for font subsetting and linearize / Fast Web View. PDFiumCore expos
 
 ## ADR-015 — PDF password-protect write path (no PDFium encrypt API)
 
-**Status:** Needs approval (Milestone 7)  
-**Date:** 2026-10-05
+**Status:** Accepted — Option A (PdfSharp MIT)  
+**Date:** 2026-10-05 · **Accepted:** 2026-10-06
 
 ### Context
 
@@ -46,27 +46,22 @@ PDFiumCore’s save path is `FPDF_SaveAsCopy` / `FPDF_SaveWithVersion` only — 
 | **C. Commercial PDF SDK encrypt** | License a commercial engine solely for security write | Fastest “correct” encrypt UX | Cost + licensing — product escalate |
 | **D. Defer write-protect past M7 Preview** | Keep open + Info only; matrix rows stay Blocked | Zero risk now | §23 incomplete for Preview if protect is in-scope |
 
-### Proposed decision (pending approval)
+### Decision
 
-1. **Do not** implement password-write until this ADR is Accepted.
-2. Prefer **Option A** (PdfSharp MIT, pinned centrally) behind a narrow `IPdfSecurityService` (set/change/remove protection + permission flags). Keep PDFium as the sole renderer/open path (ADR-003).
-3. Reject **Option B** as a default — too easy to get wrong for Preview.
-4. **Option C** only if A fails interoperability testing and licensing cost is approved.
-5. First slice after approval: user (open) password round-trip testable with existing `encrypted.pdf` open path; then owner/permissions with the existing Info advisory warning (F23-09).
+**Accept Option A** (PdfSharp MIT, package `PDFsharp` 6.2.4, pinned in `Directory.Packages.props`).
 
-### Needs approval
+1. `PdfSharpSecurityService` implements `IPdfSecurityService` (set/change/remove protection + permission flags). DI registers it in place of `BlockedPdfSecurityService`.
+2. PDFium remains the sole renderer/open path (ADR-003). PdfSharp is confined to the security adapter.
+3. PDFium `SaveAsCopy` preserves encryption; removal strips protection by importing pages into a fresh PDFium document, then saving.
+4. Reject **Option B** as a default. **Option C** only if A fails interoperability and licensing cost is approved. **Option D** superseded by Accept A.
 
-- Adding a second PDF write stack (architecture).
-- Shipping document encryption UX (major product/security behavior).
-- Any move to a commercial SDK (cost/licensing).
+### Consequences
 
-**Escalation (blocking M7/M9 password-protect + F45-09):** reply with Accept **A** (PdfSharp), **C** (commercial vendor), or **D** (keep Blocked). No password-write implementation will land until ADR-015 is Accepted.
-
-### Consequences (if A accepted)
-
-- New package pin in `Directory.Packages.props`; confine types to `Glyph.Pdf` security adapter.
-- Automated round-trips: protect → reopen with PDFium password → wrong password fails → remove protection.
-- Matrix F23-02–F23-07 move from Blocked → Implemented/Tested only after those tests land.
+- Package pin `PDFsharp` 6.2.4 (MIT); notices in `THIRD_PARTY_NOTICES.md`.
+- Automated round-trips: protect → reopen with PDFium password → wrong password fails → remove protection (`PdfSharpSecurityServiceTests`).
+- Matrix F23-02–F23-07 / F45-09: Blocked → Tested.
+- Protect toolbar dialog offers open/owner password + restrict checkboxes and remove-protection when encrypted.
+- `BlockedPdfSecurityService` retained as an explicit blocked stub for regression tests only.
 
 ---
 

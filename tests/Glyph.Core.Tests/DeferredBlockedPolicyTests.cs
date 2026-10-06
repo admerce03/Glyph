@@ -182,12 +182,16 @@ public class PdfOptimizeDeferredPolicyTests
 public class PdfPasswordWriteBlockedPolicyTests
 {
     [Fact]
-    public void Write_encrypt_blocked()
+    public void Write_encrypt_accepted_option_a()
     {
-        PdfPasswordWriteBlockedPolicy.CreatePasswordProtectedSupported.Should().BeFalse();
-        PdfPasswordWriteBlockedPolicy.SetOpenPasswordSupported.Should().BeFalse();
+        PdfPasswordWriteBlockedPolicy.CreatePasswordProtectedSupported.Should().BeTrue();
+        PdfPasswordWriteBlockedPolicy.SetOpenPasswordSupported.Should().BeTrue();
+        PdfPasswordWriteBlockedPolicy.SetOwnerPermissionsSupported.Should().BeTrue();
+        PdfPasswordWriteBlockedPolicy.RemoveProtectionSupported.Should().BeTrue();
         PdfPasswordWriteBlockedPolicy.Adr.Should().Be("ADR-015");
-        PdfPasswordWriteBlockedPolicy.Reason.Should().Contain("ADR-015");
+        PdfPasswordWriteBlockedPolicy.AcceptedOption.Should().Be("A");
+        PdfPasswordWriteBlockedPolicy.Reason.Should().Contain("Accept A");
+        PdfPasswordWriteBlockedPolicy.Reason.Should().Contain("PdfSharp");
     }
 }
 

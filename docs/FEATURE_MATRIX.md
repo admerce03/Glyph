@@ -380,12 +380,12 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F22-05 | PDF annotation flattening | text boxes | M4 | Tested | Same flatten path |
 | F22-06 | PDF annotation flattening | drawings | M4 | Tested | Ink strokes included in flatten |
 | F23-01 | PDF security | Open encrypted PDFs. | M7 | Tested | Password prompt; `PdfPasswordPromptUi` + OpenPdfWithPasswordAsync / fixture |
-| F23-02 | PDF security | Create password-protected PDFs. | M7 | Blocked | ADR-015; `IPdfSecurityService` / `BlockedPdfSecurityService` + Protect toolbar dialog |
-| F23-03 | PDF security | Set document-open password. | M7 | Blocked | ADR-015; `BlockedPdfSecurityService.SetOpenPasswordAsync` |
-| F23-04 | PDF security | Set permissions/owner password where PDF standard permits. | M7 | Blocked | ADR-015; `PdfPasswordWriteBlockedPolicy` |
-| F23-05 | PDF security | Restrict: printing/editing/copying/annotation/page extraction | M7 | Blocked | ADR-015; `PdfPasswordWriteBlockedPolicy` |
-| F23-06 | PDF security | Change existing permissions where credentials permit. | M7 | Blocked | ADR-015; `PdfPasswordWriteBlockedPolicy` |
-| F23-07 | PDF security | Remove protection when authorized. | M7 | Blocked | ADR-015; `BlockedPdfSecurityService.RemoveProtectionAsync` |
+| F23-02 | PDF security | Create password-protected PDFs. | M7 | Tested | ADR-015 Accept A; `PdfSharpSecurityService` + Protect dialog |
+| F23-03 | PDF security | Set document-open password. | M7 | Tested | `PdfSharpSecurityService.SetOpenPasswordAsync` + PDFium reopen round-trip |
+| F23-04 | PDF security | Set permissions/owner password where PDF standard permits. | M7 | Tested | `SetPermissionsAsync` / optional owner on `SetOpenPasswordAsync` |
+| F23-05 | PDF security | Restrict: printing/editing/copying/annotation/page extraction | M7 | Tested | `PdfSecurityPermissions` → PdfSharp `Permit*` flags; Protect dialog checkboxes |
+| F23-06 | PDF security | Change existing permissions where credentials permit. | M7 | Tested | Re-apply via `SetOpenPasswordAsync` / `SetPermissionsAsync` on open docs |
+| F23-07 | PDF security | Remove protection when authorized. | M7 | Tested | `RemoveProtectionAsync` PDFium ImportPages strip + unit tests |
 | F23-08 | PDF security | Display encryption information. | M7 | Tested | Info dialog + status; `PdfDocumentPermissions.StatusBarEncryptedSuffix` / `InfoEncryptedLine` |
 | F23-09 | PDF security | Warn about limitations of PDF permission enforcement. | M7 | Tested | `PdfDocumentPermissions.AdvisoryNotice` / `EncryptedAdvisoryStatus` + Info dialog |
 | F24-01 | PDF optimization and compression | Lossless | M7 | Tested | `Lossless_full_rewrite_succeeds` + FromPreset disables downsample |
@@ -667,7 +667,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F45-06 | Exporting | metadata preservation | M5-M9 | Tested | PDF Info Title/Author → `PdfPageImageExportOptions` Title/Author on page export |
 | F45-07 | Exporting | color profile | M5-M9 | Tested | PDF page Export embeds sRGB ICC (`EmbedSrgbProfile`; PNG `preserve-iCCP`); JP2 may drop profile |
 | F45-08 | Exporting | transparency | M5-M9 | Tested | `DocumentExportFormats.FlattensTransparency` (JPEG/JP2/BMP/GIF) |
-| F45-09 | Exporting | PDF security | M5-M9 | Blocked | ADR-015; `PdfPasswordWriteBlockedPolicy` |
+| F45-09 | Exporting | PDF security | M5-M9 | Tested | ADR-015 Accept A; same `PdfSharpSecurityService` write path |
 | F45-10 | Exporting | annotation flattening | M5-M9 | Tested | Raster export; `DocumentExportFormats.AnnotationsFlattenedInRasterExport` |
 | F46-01 | Sharing and Windows integration | Windows Share UI where available | M9 | Tested | File → Share…; `DocumentShareStatus` + DataTransferManagerInterop |
 | F46-02 | Sharing and Windows integration | Open containing folder | M9 | Tested | File → Show in Explorer; `DocumentShareStatus` |

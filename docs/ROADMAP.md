@@ -24,9 +24,9 @@ Per-requirement tracking: [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md).
 | M4 | PDF markup and editing | **Tested** (matrix-complete; Quadding `/Q` via dict patch) | M2 (forms/security touch M7) |
 | M5 | Image viewer/editor | **Tested** (matrix-complete; HDR/HEIF deferred) | M1 (shares shell/DnD with M3) |
 | M6 | OCR and scanned-document capabilities | **Tested** (PRs #62–#66 merged; offline OCR/Live Text/entities) | M2, M5 |
-| M7 | Redaction, PDF security, optimization, metadata | **Tested** (#67; password-write → ADR-015) | M2–M4 |
+| M7 | Redaction, PDF security, optimization, metadata | **Tested** (#67 + ADR-015 Accept A PdfSharp) | M2–M4 |
 | M8 | Batch ops, scanner, color management, advanced | **Tested** (hardware validation TBD; ML subject deferred) | M5–M7 |
-| M9 | Performance, polish, a11y, installer, audit | **In Progress** (packaging x64+arm64+CI sideload probe+session+Find/annot/Author/capacity/recovery live prefs+toolbar F54+proof kit; tip `#135`; Explorer UserChoice + ADR-015 TBD — see INTERACTIVE_VERIFY / docs/proof) | M1–M8 core paths |
+| M9 | Performance, polish, a11y, installer, audit | **In Progress** (packaging x64+arm64+CI sideload probe+session+Find/annot/Author/capacity/recovery live prefs+toolbar F54+proof kit+ADR-015 A; tip `#135`; Explorer UserChoice TBD — see INTERACTIVE_VERIFY / docs/proof) | M1–M8 core paths |
 
 M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behind separate interfaces. M3 remains the highest-priority Preview-differentiator after viewing works.
 
@@ -274,12 +274,12 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ## Milestone 7 — Redaction, PDF security, optimization, metadata
 
-**Status:** Tested (write-protect → ADR-015) · Depends on M2–M4 (landed via #67)
+**Status:** Tested (ADR-015 Accept A PdfSharp write-protect) · Depends on M2–M4 (landed via #67)
 
 ### Scope (`FEATURES.md` §21, §23–25)
 
 - True redaction (content removal) — mark/preview/apply, find-matches, annotation sanitize
-- Password open + Info encryption/permissions display; write-protect deferred pending ADR-015
+- Password open + Info encryption/permissions display; write-protect via PdfSharp (ADR-015 Accept A)
 - Optimization presets + custom controls + page image export
 - Metadata view/edit (version, page size, fonts, title/author/subject/keywords/creator/producer)
 
@@ -288,7 +288,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Redacted text not extractable after apply
 - Optimization size estimate within reasonable tolerance
 - Tests for security round-trips and metadata edits
-- ADR-015 approved before shipping password-protect / permission-write
+- ADR-015 Accept A shipped (`PdfSharpSecurityService` + matrix F23-02…07 / F45-09 Tested)
 
 ### Progress notes
 
@@ -298,10 +298,10 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - Page Export → PNG/JPEG/WebP/TIFF/BMP/GIF/AVIF/JP2 with DPI/quality, Title/Author metadata, sRGB ICC (F45-07), alpha where codec allows
 - FreeText Align / `/Q` quadding via post-save dict patch (F13-38 / F16-15)
 - Bookmarks → PDF `/Outlines` export (F09-08)
-- Password-protect write blocked on ADR-015 (Needs approval); `IPdfSecurityService` / `BlockedPdfSecurityService` + Protect toolbar dialog surface the block
+- Password-protect write: ADR-015 Accept A — `PdfSharpSecurityService` (PDFsharp MIT) behind `IPdfSecurityService`; Protect dialog set/remove + permission checkboxes; PDFium page-import strips encryption on remove
 - Landed on main via squash-merge #67 (`364011d`); Magick text/callout font fallback + WebcamCapture preview + OemComma accelerator fixes included
 - Local polish (+238 extracts) + Format verify / IDE0005 CI hardening shipped with #67
-- FEATURE_MATRIX: no Implemented/In Progress rows; Blocked = ADR-015 password-write; Deferred catalogs unit-tested (`PackagingDeferredPolicy`, `PdfOptimizeDeferredPolicy`, `ImageAdvancedDeferredPolicy`, …)
+- FEATURE_MATRIX: no Implemented/In Progress/Blocked rows for M7 security; Deferred catalogs unit-tested (`PackagingDeferredPolicy`, `PdfOptimizeDeferredPolicy`, `ImageAdvancedDeferredPolicy`, …)
 - Print N-up/scale/rotate/center extracted to `PrintSheetLayout`; scroll throttle + presentation defaults unit-tested
 - Search result snippets unified via `PdfSearchSnippet` (F06-10)
 - Page drop accept/copy helpers + ink dash preview pattern extracted
@@ -388,20 +388,19 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Remaining to close M9 (external)
 
-1. **ADR-015** — Accept Option A (PdfSharp MIT write-encrypt), C (commercial), or D (defer). Until Accepted, F23-02–07 / F45-09 stay **Blocked**.
-2. **Windows interactive** — on a Developer Mode host run [`scripts/interactive-verify.ps1`](../scripts/interactive-verify.ps1) (`-DownloadArtifact` / `-PublishIfMissing` / `-StatusOnly`), then complete [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md) + [`docs/proof/`](proof/README.md): Explorer defaults (F01-06/07); M1/M2 screenshots; M3 §11 DnD recording.
-3. **Production / Store signing** — distribution decision (test cert is CI/Developer Mode only); options catalogued in [`PACKAGING.md`](PACKAGING.md) / [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md).
+1. **Windows interactive** — on a Developer Mode host run [`scripts/interactive-verify.ps1`](../scripts/interactive-verify.ps1) (`-DownloadArtifact` / `-PublishIfMissing` / `-StatusOnly`), then complete [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md) + [`docs/proof/`](proof/README.md): Explorer defaults (F01-06/07); M1/M2 screenshots; M3 §11 DnD recording. ADR-015 Accept A (PdfSharp) landed — Protect password-write is Tested.
+2. **Production / Store signing** — distribution decision (test cert is CI/Developer Mode only); options catalogued in [`PACKAGING.md`](PACKAGING.md) / [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md).
 
 ### Progress notes
 
 - Prefs, toolbar hide+↑↓ reorder (F54) on PDF **and** image viewers with live apply to open tabs (`ToolbarCommandApplicator`), toolbar show/hide persisted (`ToolbarVisible`) + Ctrl+Shift+U/B chrome shortcuts, shortcut customization (F52-23), check-for-updates (F55-04), remember last page/zoom prefs toggles (F55-07/08, default ON), Theme in Preferences (F55-01), session restore (multi-window tab path lists + bounds; `SessionRestorePolicy`), find relevance sort + any-word + Match case in toolbar and Find-all-open-PDFs with persisted Find options (`FindOptionsPolicy` + Preferences live-apply + multi-window broadcast / Find-all jump sync; F06-12 / F06-05 / F06-03), recent/snapshot capacity live from prefs (`Func<int>` + load trim; F55-03 / F51), annotation author/highlight/stroke defaults + crash-recovery interval live-apply across windows (F55-10/18/19/21), full `ShellMenuCatalog` File/Edit/View/Window/Help vs XAML (F02-02), Help chrome Automation Names (F02-24 / F56) + Find toolbar Names (F56-08), status chrome subtitle (no Milestone badge), page-cache `DefaultCapacity` 32 aligned with DI, crash recovery, version snapshots (+ list thumbnails), cold-start timing, background Find index (F57-05/F58-06), image Live Text overlay restore shipped in matrix
-- Third-party notices: `THIRD_PARTY_NOTICES.md` shipped with the app (About) and MSIX publish output (AGENTS.md / ADR-003); unused CommunityToolkit.Mvvm pin removed
+- Third-party notices: `THIRD_PARTY_NOTICES.md` shipped with the app (About) and MSIX publish output (AGENTS.md / ADR-003); unused CommunityToolkit.Mvvm pin removed; PDFsharp MIT (ADR-015 Accept A) listed
 - CI: push + PR for the same branch share a concurrency group (`head_ref || ref_name`) so Windows runners are not double-queued
-- MSIX: Windows CI produces test-signed `Glyph.App_*.msix` + `Glyph.CI.TestSign.cer` for **win-x64** and **win-arm64**, enables AppModelUnlock sideloading on the x64 runner, and runs `install-msix-test.ps1 -Force -ProbeUserDefaults` (manifest association probe). Operator guide: [`PACKAGING.md`](PACKAGING.md). F01-06/07 remain Deferred until Explorer UserChoice / double-click verification (ADR-012). **Blocked:** ADR-015 password-write (Needs approval, prefer Option A PdfSharp).
+- MSIX: Windows CI produces test-signed `Glyph.App_*.msix` + `Glyph.CI.TestSign.cer` for **win-x64** and **win-arm64**, enables AppModelUnlock sideloading on the x64 runner, and runs `install-msix-test.ps1 -Force -ProbeUserDefaults` (manifest association probe). Operator guide: [`PACKAGING.md`](PACKAGING.md). F01-06/07 remain Deferred until Explorer UserChoice / double-click verification (ADR-012). ADR-015 Accept A unblocks password-write (F23-02…07 / F45-09 Tested).
 - Interactive proof kit (#107): `docs/proof/README.md` + `InteractiveVerifyArtifacts` path helpers; sideload script dumps HKCU UserChoice ProgIds and can open Default apps Settings
 - Interactive verify orchestrator: `scripts/interactive-verify.ps1` downloads CI MSIX (or publishes locally), sideloads, probes UserChoice, opens Default apps, and reports `docs/proof` status; fixtures in `docs/proof/samples/` (`sample.pdf` / `sample.png`, `-OpenSamples`)
-- Recent tip: multi-tab autosave (#114), snapshot thumbs (#115), multi-window session (#116), find relevance (#117), session bounds (#118), any-word Find toolbar (#119) + Find-all (#120), Find-all Match case (#123), ROADMAP tip (#124/#125), Find options prefs (#126) + Preferences UI/live-apply (#127), tip (#128), Find options multi-window sync + Find-all jump + StatusOnly Linux + Find a11y Names (#129), tip (#130), live recent/snapshot capacity prefs (#131), tip (#132), annot defaults + crash-recovery interval live-apply (#133), tip (#134), Author button live-apply (#135)
-- Matrix audit (2026-10-06 tip `#135`): 881 rows — 862 Tested / 12 Deferred / 7 Blocked (all Blocked = ADR-015 password-write); zero Not Started / In Progress / Implemented; remaining M9 close = ADR-015 Accept + Windows INTERACTIVE_VERIFY + Store signing
+- Recent tip: multi-tab autosave (#114), snapshot thumbs (#115), multi-window session (#116), find relevance (#117), session bounds (#118), any-word Find toolbar (#119) + Find-all (#120), Find-all Match case (#123), ROADMAP tip (#124/#125), Find options prefs (#126) + Preferences UI/live-apply (#127), tip (#128), Find options multi-window sync + Find-all jump + StatusOnly Linux + Find a11y Names (#129), tip (#130), live recent/snapshot capacity prefs (#131), tip (#132), annot defaults + crash-recovery interval live-apply (#133), tip (#134), Author button live-apply (#135), ADR-015 Accept A PdfSharp password-write
+- Matrix audit (2026-10-06 ADR-015 A): 879 rows — 869 Tested / 12 Deferred / 0 Blocked; zero Not Started / In Progress / Implemented; remaining M9 close = Windows INTERACTIVE_VERIFY + Store signing
 - Interactive proof debt: Explorer UserChoice defaults, M1 shell screenshot, M2 viewer screenshots, M3 §11 cross-doc DnD recording — checklist in [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md) / [`docs/proof/`](proof/README.md)
 - Deferred catalogs unit-tested (`PackagingDeferredPolicy`, `PdfOptimizeDeferredPolicy`, `ImageAdvancedDeferredPolicy`, …)
 
@@ -423,9 +422,9 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | PDF page manipulation | §10–12 | M3 | Tested (selection/reorder/insert/merge/split/crop/DnD/clipboard unit-covered; §11 screen recording pending) |
 | PDF annotations/markup | §13–19 | M4 | Tested |
 | PDF forms | §20 | M4 | Tested (visual sig stamps; PKCS#7 crypto signing out of scope) |
-| Redaction | §21 | M7 | Tested (mark/preview/apply + sanitize + confirm copy; password-write separate) |
+| Redaction | §21 | M7 | Tested (mark/preview/apply + sanitize + confirm copy) |
 | Flattening | §22 | M4 | Tested (`FlattenAsync` / FPDFPage_Flatten) |
-| PDF security | §23 | M7 | Tested (open + info/permissions/advisory; write-protect → ADR-015) |
+| PDF security | §23 | M7 | Tested (open + Info + ADR-015 Accept A PdfSharp write-protect / permissions / remove) |
 | Optimization | §24 | M7 | Tested (presets + downsample + JPEG quality + estimate + page export/ICC; font subset/linearize → ADR-016) |
 | PDF metadata | §25 | M7 | Tested (read + edit title/author/subject/keywords/creator/producer + ModDate) |
 | Image viewing/editing | §26–35 | M5 | Tested (HDR/HEIF deferred) |
@@ -437,7 +436,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Clipboard/screenshots | §40–41 | M1, M5 | Tested (region/annot/image clipboard + Snipping Tool Ctrl+V) |
 | Scanner/webcam | §42–43 | M8 | Tested (webcam + scanner WinRT; hardware validation TBD) |
 | Printing | §44 | M8 | Tested (system Print UI + `PrintPageScopeChooser` / `PrintSheetLayout` / `PrintSystemCapabilities`) |
-| Export/share/integration | §45–48 | M5–M9 | Tested (matrix F45–F47; PDF security export → ADR-015) |
+| Export/share/integration | §45–48 | M5–M9 | Tested (matrix F45–F47; PDF security export via ADR-015 Accept A) |
 | Undo/autosave/snapshots | §49–51 | M1–M4, M9 | Tested (per-doc stacks + F50 crash-recovery UI; unified app-wide later) |
 | Shortcuts/touchpad/toolbar/prefs | §52–55 | M1, M9 | Tested (F52–F55 catalogs incl. update check; associations → ADR-012) |
 | Accessibility | §56 | M9 | Tested (`AccessibilityPolicy` + chrome automation names) |

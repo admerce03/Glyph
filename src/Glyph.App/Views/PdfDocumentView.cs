@@ -921,7 +921,11 @@ public sealed class PdfDocumentView : UserControl
         ToolTipService.SetToolTip(redact, PdfRedactionUiCopy.ToolbarTooltip);
         ToolTipService.SetToolTip(info, PdfViewerTooltips.DocumentMetadataEncryptionAndPermissions);
         ToolTipService.SetToolTip(optimizeButton, PdfViewerTooltips.DownsampleImagesShrinkPdfPresets);
-        ToolTipService.SetToolTip(protectButton, PdfSecurityWriteUiCopy.ToolbarTooltip);
+        ToolTipService.SetToolTip(
+            protectButton,
+            _security.WriteProtectSupported
+                ? PdfSecurityWriteUiCopy.ToolbarTooltip
+                : PdfSecurityWriteUiCopy.ToolbarTooltipBlocked);
         ToolTipService.SetToolTip(export, PdfViewerTooltips.ExportSelectedCurrentPageSAs);
         ToolTipService.SetToolTip(print, PdfViewerTooltips.PrintCurrentSelectedRangeOrAll);
         ToolTipService.SetToolTip(camera, PdfViewerTooltips.CaptureFromWebcamAndInsertOnto);
@@ -12866,27 +12870,141 @@ public sealed class PdfDocumentView : UserControl
             ?? App.CurrentApp.MainWindowInstance
             ?? throw new InvalidOperationException(MainWindowRequiredMessages.DocumentInfo);
 
-        var body = new TextBlock
+        if (!_security.WriteProtectSupported)
         {
-            Text = _security.WriteProtectSupported
-                ? "Password-protect is available."
-                : PdfSecurityWriteUiCopy.DialogBody(),
-            TextWrapping = TextWrapping.WrapWholeWords,
-            MaxWidth = 420,
+            var blocked = new ContentDialog
+            {
+                Title = PdfSecurityWriteUiCopy.DialogTitle,
+                Content = new TextBlock
+                {
+                    Text = PdfSecurityWriteUiCopy.DialogBodyBlocked(),
+                    TextWrapping = TextWrapping.WrapWholeWords,
+                    MaxWidth = 420,
+                },
+                CloseButtonText = PdfSecurityWriteUiCopy.CloseButton,
+                XamlRoot = window.Content.XamlRoot,
+            };
+            await blocked.ShowAsync();
+            _status.Text = PdfSecurityWriteUiCopy.StatusBlocked;
+            return;
+        }
+
+        var openBox = new PasswordBox
+        {
+            Header = PdfSecurityWriteUiCopy.OpenPasswordHeader,
+            Width = 320,
+        };
+        var ownerBox = new PasswordBox
+        {
+            Header = PdfSecurityWriteUiCopy.OwnerPasswordHeader,
+            Width = 320,
+        };
+        var restrictCopy = new CheckBox
+        {
+            Content = "Restrict copying / extraction",
+            IsChecked = false,
+        };
+        var restrictPrint = new CheckBox
+        {
+            Content = "Restrict printing",
+            IsChecked = false,
+        };
+        var restrictEdit = new CheckBox
+        {
+            Content = "Restrict editing / annotations",
+            IsChecked = false,
+        };
+
+        var panel = new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = PdfSecurityWriteUiCopy.DialogBody(),
+                    TextWrapping = TextWrapping.WrapWholeWords,
+                    MaxWidth = 420,
+                },
+                openBox,
+                ownerBox,
+                restrictCopy,
+                restrictPrint,
+                restrictEdit,
+            },
         };
 
         var dialog = new ContentDialog
         {
             Title = PdfSecurityWriteUiCopy.DialogTitle,
-            Content = body,
+            Content = panel,
+            PrimaryButtonText = PdfSecurityWriteUiCopy.ApplyOpenPassword,
             CloseButtonText = PdfSecurityWriteUiCopy.CloseButton,
+            DefaultButton = ContentDialogButton.Primary,
             XamlRoot = window.Content.XamlRoot,
         };
+        if (_document.IsEncrypted)
+        {
+            dialog.SecondaryButtonText = PdfSecurityWriteUiCopy.RemoveProtection;
+        }
 
-        await dialog.ShowAsync();
-        _status.Text = _security.WriteProtectSupported
-            ? PdfSecurityWriteUiCopy.ToolbarLabel
-            : PdfSecurityWriteUiCopy.StatusBlocked;
+        var choice = await dialog.ShowAsync();
+        if (choice == ContentDialogResult.None)
+        {
+            return;
+        }
+
+        try
+        {
+            if (choice == ContentDialogResult.Secondary)
+            {
+                var removed = await _security.RemoveProtectionAsync(_document);
+                _status.Text = removed.Succeeded
+                    ? PdfSecurityWriteUiCopy.StatusRemoved
+                    : PdfSecurityWriteUiCopy.StatusFailedPrefix + removed.Message;
+                if (removed.Succeeded)
+                {
+                    NotifyEdited();
+                }
+
+                return;
+            }
+
+            var openPassword = openBox.Password ?? string.Empty;
+            if (string.IsNullOrEmpty(openPassword))
+            {
+                _status.Text = PdfSecurityWriteUiCopy.StatusFailedPrefix + "Open password must not be empty.";
+                return;
+            }
+
+            var ownerPassword = string.IsNullOrEmpty(ownerBox.Password) ? null : ownerBox.Password;
+            var permissions = PdfSecurityPermissions.AllowAll with
+            {
+                PermitExtractContent = restrictCopy.IsChecked != true,
+                PermitPrint = restrictPrint.IsChecked != true,
+                PermitFullQualityPrint = restrictPrint.IsChecked != true,
+                PermitModifyDocument = restrictEdit.IsChecked != true,
+                PermitAnnotations = restrictEdit.IsChecked != true,
+                PermitAssembleDocument = restrictEdit.IsChecked != true,
+            };
+
+            var applied = await _security.SetOpenPasswordAsync(
+                _document,
+                openPassword,
+                ownerPassword,
+                permissions);
+            _status.Text = applied.Succeeded
+                ? PdfSecurityWriteUiCopy.StatusApplied
+                : PdfSecurityWriteUiCopy.StatusFailedPrefix + applied.Message;
+            if (applied.Succeeded)
+            {
+                NotifyEdited();
+            }
+        }
+        catch (Exception ex)
+        {
+            _status.Text = PdfSecurityWriteUiCopy.StatusFailedPrefix + ex.Message;
+        }
     }
 
     private async Task ShowOptimizeDialogAsync()
