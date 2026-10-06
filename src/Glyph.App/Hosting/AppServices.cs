@@ -39,8 +39,11 @@ internal static class AppServices
         services.AddSingleton<ISettingsStore>(_ => new JsonSettingsStore(GlyphPaths.SettingsFile));
         services.AddSingleton<IRecentFilesStore>(sp =>
         {
-            var settings = sp.GetRequiredService<ISettingsStore>().Current;
-            return new JsonRecentFilesStore(GlyphPaths.RecentFilesFile, settings.RecentFileCapacity);
+            var settings = sp.GetRequiredService<ISettingsStore>();
+            // Read capacity live so Preferences → recent file count applies without restart (F55-03).
+            return new JsonRecentFilesStore(
+                GlyphPaths.RecentFilesFile,
+                () => settings.Current.RecentFileCapacity);
         });
         services.AddSingleton<IDocumentViewStateStore>(_ =>
             new JsonDocumentViewStateStore(GlyphPaths.DocumentViewStateFile));
@@ -49,10 +52,11 @@ internal static class AppServices
             new FileCrashRecoveryStore(GlyphPaths.RecoveryDirectory));
         services.AddSingleton<IVersionSnapshotStore>(sp =>
         {
-            var settings = sp.GetRequiredService<ISettingsStore>().Current;
+            var settings = sp.GetRequiredService<ISettingsStore>();
+            // Read capacity live so Preferences → snapshot count applies without restart (F51).
             return new FileVersionSnapshotStore(
                 GlyphPaths.SnapshotsDirectory,
-                settings.VersionSnapshotCapacity);
+                () => settings.Current.VersionSnapshotCapacity);
         });
         services.AddSingleton<ISignatureLibrary>(_ => new FileSignatureLibrary(GlyphPaths.SignaturesDirectory));
         services.AddSingleton<IFormValueHistory>(_ => new JsonFormValueHistory(GlyphPaths.FormValueHistoryFile));

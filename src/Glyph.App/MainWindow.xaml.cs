@@ -3351,6 +3351,8 @@ public sealed partial class MainWindow : Window
         App.CurrentApp.ApplyShellKeyboardShortcutsToAllWindows();
         App.CurrentApp.ApplyToolbarCustomizationToAllWindows(settings);
         App.CurrentApp.ApplyFindOptionsToAllWindows(settings);
+        // Capacity providers read ISettingsStore.Current; refresh so a lower recent count trims the sidebar now.
+        RefreshRecentList();
         ConfigureRecoveryTimer();
         await PersistSessionAsync();
         StatusText.Text = AppShellStatus.PreferencesSaved;

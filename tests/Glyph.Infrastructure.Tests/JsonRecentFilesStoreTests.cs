@@ -62,6 +62,37 @@ public class JsonRecentFilesStoreTests
     }
 
     [Fact]
+    public async Task Load_trims_when_capacity_provider_shrinks()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "glyph-recent-cap-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var seed = new JsonRecentFilesStore(path, capacity: 5);
+            await seed.AddAsync(Path.Combine(Path.GetTempPath(), "a.pdf"));
+            await seed.AddAsync(Path.Combine(Path.GetTempPath(), "b.pdf"));
+            await seed.AddAsync(Path.Combine(Path.GetTempPath(), "c.pdf"));
+            seed.GetRecent().Should().HaveCount(3);
+
+            var capacity = 5;
+            var live = new JsonRecentFilesStore(path, () => capacity);
+            live.GetRecent().Should().HaveCount(3);
+
+            capacity = 1;
+            live.GetRecent().Select(e => e.DisplayName).Should().Equal("c.pdf");
+
+            var reloaded = new JsonRecentFilesStore(path, capacity: 1);
+            reloaded.GetRecent().Select(e => e.DisplayName).Should().Equal("c.pdf");
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
     public async Task ClearAsync_empties_persisted_list()
     {
         var path = Path.Combine(Path.GetTempPath(), "glyph-recent-clear-" + Guid.NewGuid().ToString("N") + ".json");

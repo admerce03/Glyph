@@ -769,7 +769,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F54-20 | Toolbar customization | compact icon mode | M1/M9 | Tested | `CompactToolbar` prefs; PDF+image spacing live-applied with F54 |
 | F55-01 | Preferences | theme | M1/M9 | Tested | Preferences Theme combo + View → Theme; `JsonSettingsStoreTests` round-trip |
 | F55-02 | Preferences | restore previous session | M1/M9 | Tested | Preferences tabs toggle; `JsonSessionStore.Windows` + `SessionRestorePolicy` (multi-window path lists + bounds) |
-| F55-03 | Preferences | recent file count | M1/M9 | Tested | Preferences NumberBox; settings round-trip unit test |
+| F55-03 | Preferences | recent file count | M1/M9 | Tested | Preferences NumberBox; `JsonRecentFilesStore` capacity provider + load trim (`Load_trims_when_capacity_provider_shrinks`); settings round-trip |
 | F55-04 | Preferences | check for updates | M1/M9 | Tested | Help → Check for updates; `AppUpdateCheckPolicy` + GitHub Releases |
 | F55-05 | Preferences | default page layout | M1/M9 | Tested | Preferences combo; `Save_and_load_round_trips_pdf_open_defaults` |
 | F55-06 | Preferences | default zoom | M1/M9 | Tested | Preferences NumberBox; `Save_and_load_round_trips_pdf_open_defaults` |
