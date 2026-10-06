@@ -14,5 +14,7 @@ public class FindAllOpenPdfsStatusTests
         FindAllOpenPdfsStatus.NoDocuments.Should().Contain("PDF");
         FindAllOpenPdfsStatus.EmptyQuery.Should().Contain("search");
         FindAllOpenPdfsStatus.QueryPlaceholder.Should().Contain("Search");
+        FindAllOpenPdfsStatus.AnyWordLabel.Should().Be("Any word");
+        FindAllOpenPdfsStatus.AnyWordTooltip.Should().Contain("any word");
     }
 }
