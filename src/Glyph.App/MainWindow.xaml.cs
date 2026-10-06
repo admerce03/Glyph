@@ -406,6 +406,7 @@ public sealed partial class MainWindow : Window
             findSettings.FindAnyWord = anyWord;
             findSettings.FindSortByRelevance = sortByRelevance;
             await _settingsStore.SaveAsync(findSettings);
+            App.CurrentApp.ApplyFindOptionsToAllWindows(findSettings);
         }
         catch (Exception ex)
         {
@@ -3347,15 +3348,15 @@ public sealed partial class MainWindow : Window
         settings.OcrLanguageTag = ocrLanguageBox.Text?.Trim() ?? string.Empty;
         await _settingsStore.SaveAsync(settings);
         App.CurrentApp.ApplyThemePreference(settings.Theme);
-        ApplyShellKeyboardShortcuts();
-        ApplyToolbarCustomizationToOpenDocuments(settings);
-        ApplyFindOptionsToOpenDocuments(settings);
+        App.CurrentApp.ApplyShellKeyboardShortcutsToAllWindows();
+        App.CurrentApp.ApplyToolbarCustomizationToAllWindows(settings);
+        App.CurrentApp.ApplyFindOptionsToAllWindows(settings);
         ConfigureRecoveryTimer();
         await PersistSessionAsync();
         StatusText.Text = AppShellStatus.PreferencesSaved;
     }
 
-    private void ApplyToolbarCustomizationToOpenDocuments(AppSettings settings)
+    public void ApplyToolbarCustomizationToOpenDocuments(AppSettings settings)
     {
         foreach (var tab in DocumentTabs.TabItems.OfType<TabViewItem>())
         {
@@ -3371,7 +3372,7 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void ApplyFindOptionsToOpenDocuments(AppSettings settings)
+    public void ApplyFindOptionsToOpenDocuments(AppSettings settings)
     {
         foreach (var tab in DocumentTabs.TabItems.OfType<TabViewItem>())
         {
@@ -3382,7 +3383,7 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void ApplyShellKeyboardShortcuts()
+    public void ApplyShellKeyboardShortcuts()
     {
         var overrides = _settingsStore.Current.ShortcutOverrides;
         (string Command, MenuFlyoutItem Item)[] targets =

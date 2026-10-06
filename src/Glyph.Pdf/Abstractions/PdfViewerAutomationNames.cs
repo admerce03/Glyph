@@ -26,4 +26,7 @@ public static class PdfViewerAutomationNames
     public const string SmallPageThumbnails = "Small page thumbnails";
     public const string MediumPageThumbnails = "Medium page thumbnails";
     public const string LargePageThumbnails = "Large page thumbnails";
+    public const string MatchCase = "Match case";
+    public const string MatchAnyWord = "Match any word";
+    public const string SortFindResults = "Sort find results";
 }

@@ -12,6 +12,9 @@ public static class ViewerToolbarAutomationNames
         "Presentation mode",
         "Sidebar mode",
         "Table of contents",
+        "Match case",
+        "Match any word",
+        "Sort find results",
     ];
 }
 

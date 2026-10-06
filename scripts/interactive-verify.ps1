@@ -41,10 +41,6 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-if (-not $IsWindows -and $env:OS -ne 'Windows_NT') {
-    throw 'interactive-verify.ps1 requires Windows (sideload + Explorer defaults).'
-}
-
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 Set-Location $repoRoot
 
@@ -118,6 +114,7 @@ function Open-SampleFiles {
     Start-Process explorer.exe -ArgumentList $png
 }
 
+# Filesystem-only proof status works on any OS (Linux CI / agents included).
 if ($StatusOnly) {
     $missing = Show-ProofStatus
     Open-SampleFiles
@@ -129,6 +126,10 @@ if ($StatusOnly) {
 
     Write-Host 'All expected docs/proof captures present.'
     exit 0
+}
+
+if (-not $IsWindows -and $env:OS -ne 'Windows_NT') {
+    throw 'interactive-verify.ps1 requires Windows for sideload / Explorer defaults (use -StatusOnly on Linux).'
 }
 
 if ([System.IO.Path]::IsPathRooted($PackageDir)) {
