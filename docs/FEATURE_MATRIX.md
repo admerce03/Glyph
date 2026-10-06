@@ -776,7 +776,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F55-07 | Preferences | remember last page | M1/M9 | Tested | Preferences toggle (default ON); `DocumentViewRestorePolicy` + `JsonDocumentViewStateStore` / settings round-trip |
 | F55-08 | Preferences | remember zoom | M1/M9 | Tested | Preferences toggle (default ON); `DocumentViewRestorePolicy` + view-state / settings round-trip |
 | F55-09 | Preferences | open PDF in tabs/windows | M1/M9 | Tested | Preferences → Open each file in a separate window; prefs round-trip |
-| F55-10 | Preferences | annotation author | M1/M9 | Tested | Preferences + PDF Author button; live-apply to open tabs via `ApplyAnnotationDefaults` |
+| F55-10 | Preferences | annotation author | M1/M9 | Tested | Preferences + PDF Author button both live-apply via `ApplyAnnotationDefaultsToAllWindows` |
 | F55-11 | Preferences | OCR behavior | M1/M9 | Tested | Preferred BCP-47 language; `Save_and_load_round_trips_ocr_language` |
 | F55-12 | Preferences | autosave behavior | M1/M9 | Tested | Auto-save to original checkbox; all dirty tabs; settings round-trip |
 | F55-13 | Preferences | open multiple images in same window or separate windows | M1/M9 | Tested | Same as F55-09 — Open each file in a separate window prefs |

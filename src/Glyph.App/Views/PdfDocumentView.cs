@@ -10595,9 +10595,7 @@ public sealed class PdfDocumentView : UserControl
             return;
         }
 
-        _annotationAuthor = string.IsNullOrWhiteSpace(box.Text)
-            ? Environment.UserName
-            : box.Text.Trim();
+        _annotationAuthor = AnnotationDefaultsPolicy.ResolveAuthor(box.Text, Environment.UserName);
         try
         {
             var store = App.Services.GetService<ISettingsStore>();
@@ -10606,6 +10604,7 @@ public sealed class PdfDocumentView : UserControl
                 var settings = store.Current;
                 settings.AnnotationAuthor = _annotationAuthor;
                 await store.SaveAsync(settings);
+                App.CurrentApp.ApplyAnnotationDefaultsToAllWindows(settings);
             }
         }
         catch
