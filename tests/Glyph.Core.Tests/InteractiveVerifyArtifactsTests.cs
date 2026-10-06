@@ -26,6 +26,13 @@ public class InteractiveVerifyArtifactsTests
         File.Exists(Path.Combine(root, InteractiveVerifyArtifacts.ProofDirectory, "README.md")).Should().BeTrue();
         File.Exists(Path.Combine(root, InteractiveVerifyArtifacts.OrchestratorScript)).Should().BeTrue();
 
+        var orchestrator = File.ReadAllText(Path.Combine(root, InteractiveVerifyArtifacts.OrchestratorScript));
+        var statusOnlyIdx = orchestrator.IndexOf("if ($StatusOnly)", StringComparison.Ordinal);
+        var windowsGateIdx = orchestrator.IndexOf("requires Windows for sideload", StringComparison.Ordinal);
+        statusOnlyIdx.Should().BeGreaterThan(0);
+        windowsGateIdx.Should().BeGreaterThan(statusOnlyIdx,
+            because: "-StatusOnly must run before the Windows-only gate so Linux agents can report proof status");
+
         InteractiveVerifyArtifacts.SampleRelativePaths.Should().Equal(
             InteractiveVerifyArtifacts.SamplePdf,
             InteractiveVerifyArtifacts.SamplePng);

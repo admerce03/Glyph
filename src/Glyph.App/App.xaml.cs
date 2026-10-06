@@ -70,6 +70,35 @@ public partial class App : Application
         }
     }
 
+    /// <summary>Re-apply Find Match-case / Any-word / sort prefs across all Glyph windows.</summary>
+    public void ApplyFindOptionsToAllWindows(AppSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        foreach (var window in _windows)
+        {
+            window.ApplyFindOptionsToOpenDocuments(settings);
+        }
+    }
+
+    /// <summary>Re-apply F54 toolbar hide/reorder prefs across all Glyph windows.</summary>
+    public void ApplyToolbarCustomizationToAllWindows(AppSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        foreach (var window in _windows)
+        {
+            window.ApplyToolbarCustomizationToOpenDocuments(settings);
+        }
+    }
+
+    /// <summary>Re-apply F52 shortcut overrides across all Glyph windows.</summary>
+    public void ApplyShellKeyboardShortcutsToAllWindows()
+    {
+        foreach (var window in _windows)
+        {
+            window.ApplyShellKeyboardShortcuts();
+        }
+    }
+
     public void CloseAllWindows()
     {
         foreach (var window in _windows.ToArray())

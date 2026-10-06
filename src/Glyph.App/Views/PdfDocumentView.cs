@@ -380,6 +380,7 @@ public sealed class PdfDocumentView : UserControl
             IsChecked = findCase,
         };
         ToolTipService.SetToolTip(_caseSensitiveBox, PdfViewerTooltips.MatchCase);
+        AutomationProperties.SetName(_caseSensitiveBox, PdfViewerAutomationNames.MatchCase);
         _caseSensitiveBox.Checked += (_, _) => _ = PersistFindOptionsAsync();
         _caseSensitiveBox.Unchecked += (_, _) => _ = PersistFindOptionsAsync();
         _anyWordBox = new CheckBox
@@ -389,6 +390,7 @@ public sealed class PdfDocumentView : UserControl
             IsChecked = findAny,
         };
         ToolTipService.SetToolTip(_anyWordBox, PdfViewerTooltips.MatchAnyWord);
+        AutomationProperties.SetName(_anyWordBox, PdfViewerAutomationNames.MatchAnyWord);
         _anyWordBox.Checked += (_, _) => _ = PersistFindOptionsAsync();
         _anyWordBox.Unchecked += (_, _) => _ = PersistFindOptionsAsync();
         _searchSortBox = new ComboBox
@@ -403,6 +405,7 @@ public sealed class PdfDocumentView : UserControl
             SelectedIndex = findSortIndex,
         };
         ToolTipService.SetToolTip(_searchSortBox, PdfViewerTooltips.SortFindResults);
+        AutomationProperties.SetName(_searchSortBox, PdfViewerAutomationNames.SortFindResults);
         _searchSortBox.SelectionChanged += async (_, _) =>
         {
             await PersistFindOptionsAsync();
@@ -10638,6 +10641,7 @@ public sealed class PdfDocumentView : UserControl
             settings.FindAnyWord = _anyWordBox.IsChecked == true;
             settings.FindSortByRelevance = FindOptionsPolicy.SortByRelevanceFromIndex(_searchSortBox.SelectedIndex);
             await store.SaveAsync(settings);
+            App.CurrentApp.ApplyFindOptionsToAllWindows(settings);
         }
         catch
         {
