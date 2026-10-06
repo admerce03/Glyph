@@ -338,16 +338,26 @@ public sealed partial class MainWindow : Window
         }
 
         var box = new TextBox { PlaceholderText = FindAllOpenPdfsStatus.QueryPlaceholder, Width = 360 };
+        var findSettings = _settingsStore.Current;
+        FindOptionsPolicy.ApplyTo(
+            findSettings.FindCaseSensitive,
+            findSettings.FindAnyWord,
+            findSettings.FindSortByRelevance,
+            out var findCase,
+            out var findAny,
+            out var findSortIndex);
         var anyWordBox = new CheckBox
         {
             Content = FindAllOpenPdfsStatus.AnyWordLabel,
             VerticalAlignment = VerticalAlignment.Center,
+            IsChecked = findAny,
         };
         ToolTipService.SetToolTip(anyWordBox, FindAllOpenPdfsStatus.AnyWordTooltip);
         var matchCaseBox = new CheckBox
         {
             Content = FindAllOpenPdfsStatus.MatchCaseLabel,
             VerticalAlignment = VerticalAlignment.Center,
+            IsChecked = findCase,
         };
         ToolTipService.SetToolTip(matchCaseBox, FindAllOpenPdfsStatus.MatchCaseTooltip);
         var sortBox = new ComboBox
@@ -358,7 +368,7 @@ public sealed partial class MainWindow : Window
                 PdfViewerChromeLabels.SortPageOrder,
                 PdfViewerChromeLabels.SortRelevance,
             },
-            SelectedIndex = 0,
+            SelectedIndex = findSortIndex,
         };
         ToolTipService.SetToolTip(sortBox, PdfViewerTooltips.SortFindResults);
         var dialogBody = new StackPanel
@@ -387,9 +397,24 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        var caseSensitive = matchCaseBox.IsChecked == true;
+        var anyWord = anyWordBox.IsChecked == true;
+        var sortByRelevance = FindOptionsPolicy.SortByRelevanceFromIndex(sortBox.SelectedIndex);
+        try
+        {
+            findSettings.FindCaseSensitive = caseSensitive;
+            findSettings.FindAnyWord = anyWord;
+            findSettings.FindSortByRelevance = sortByRelevance;
+            await _settingsStore.SaveAsync(findSettings);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to persist Find options");
+        }
+
         var options = new PdfSearchOptions(
-            CaseSensitive: matchCaseBox.IsChecked == true,
-            ExactPhrase: anyWordBox.IsChecked != true);
+            CaseSensitive: caseSensitive,
+            ExactPhrase: !anyWord);
 
         StatusText.Text = FindAllOpenPdfsStatus.Searching(pdfs.Count);
         var hits = new List<(DocumentSession Doc, PdfSearchHit Hit)>();
@@ -422,7 +447,7 @@ public sealed partial class MainWindow : Window
         }
 
         // F06-12: page order (workspace + page) or relevance across open PDFs.
-        var sortMode = sortBox.SelectedIndex == 1
+        var sortMode = sortByRelevance
             ? PdfSearchHitOrder.SortMode.Relevance
             : PdfSearchHitOrder.SortMode.PageOrder;
         var docOrder = _workspace.Documents
