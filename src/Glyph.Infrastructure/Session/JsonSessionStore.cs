@@ -65,6 +65,7 @@ public sealed class JsonSessionStore : ISessionStore
         string windowId,
         IReadOnlyList<string> paths,
         int activeIndex,
+        SessionWindowBounds? bounds = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(windowId);
@@ -89,12 +90,22 @@ public sealed class JsonSessionStore : ISessionStore
 
             if (cleaned.Count > 0)
             {
-                state.Windows.Add(new SessionWindowState
+                var window = new SessionWindowState
                 {
                     Id = windowId,
                     Paths = cleaned,
                     ActiveIndex = Math.Clamp(activeIndex, 0, cleaned.Count - 1),
-                });
+                };
+                if (bounds is not null)
+                {
+                    window.X = bounds.X;
+                    window.Y = bounds.Y;
+                    window.Width = bounds.Width;
+                    window.Height = bounds.Height;
+                    window.IsMaximized = bounds.IsMaximized;
+                }
+
+                state.Windows.Add(window);
             }
 
             SyncLegacyFlatList(state);

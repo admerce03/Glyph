@@ -12,7 +12,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F01-02 | Application and file handling | Open multiple files simultaneously. | M1/M9 | Tested | Multi-tab open + `FilterSupportedPaths` / WorkspaceState multi-open unit tests |
 | F01-03 | Application and file handling | Open multiple files: | M1/M9 | Tested | Tabs by default; `OpenFilesInSeparateWindows` prefs round-trip |
 | F01-04 | Application and file handling | Reopen recently used files. | M1/M9 | Tested | JsonRecentFilesStore covered by unit tests |
-| F01-05 | Application and file handling | Restore previously open tabs/windows after restart, optionally. | M1/M9 | Tested | Per-window tab path lists via `JsonSessionStore.Windows` + Preferences (`SessionRestorePolicy`; bounds not restored; legacy flat Paths migrates) |
+| F01-05 | Application and file handling | Restore previously open tabs/windows after restart, optionally. | M1/M9 | Tested | Per-window tab path lists + bounds via `JsonSessionStore.Windows` + Preferences (`SessionRestorePolicy`; legacy flat Paths migrates; off-screen bounds clamped) |
 | F01-06 | Application and file handling | Native Windows file associations. | M1/M9 | Deferred | ADR-012; CI sideload + manifest association probe (`install-msix-test.ps1`); Explorer UserChoice / double-click verify pending — see `docs/PACKAGING.md` / `docs/INTERACTIVE_VERIFY.md` |
 | F01-07 | Application and file handling | Configurable default associations for supported formats. | M1/M9 | Deferred | ADR-012; CI probes installed types + optional UserChoice dump; Explorer defaults unverified — see `docs/proof/` |
 | F01-08 | Application and file handling | Drag files from Explorer into an existing application window. | M1/M9 | Tested | Explorer → window drop; `ExplorerFileDropPolicy` + `FilterSupportedPaths` unit tests |
@@ -768,7 +768,7 @@ Update this file when work lands. Do not delete rows to hide scope.
 | F54-19 | Toolbar customization | reset toolbar | M1/M9 | Tested | Clear hidden list + reset order; prefs Reset; live apply via `ApplyToolbarCustomization` |
 | F54-20 | Toolbar customization | compact icon mode | M1/M9 | Tested | `CompactToolbar` prefs; PDF+image spacing live-applied with F54 |
 | F55-01 | Preferences | theme | M1/M9 | Tested | Preferences Theme combo + View → Theme; `JsonSettingsStoreTests` round-trip |
-| F55-02 | Preferences | restore previous session | M1/M9 | Tested | Preferences tabs toggle; `JsonSessionStore.Windows` + `SessionRestorePolicy` (multi-window path lists; bounds not restored) |
+| F55-02 | Preferences | restore previous session | M1/M9 | Tested | Preferences tabs toggle; `JsonSessionStore.Windows` + `SessionRestorePolicy` (multi-window path lists + bounds) |
 | F55-03 | Preferences | recent file count | M1/M9 | Tested | Preferences NumberBox; settings round-trip unit test |
 | F55-04 | Preferences | check for updates | M1/M9 | Tested | Help → Check for updates; `AppUpdateCheckPolicy` + GitHub Releases |
 | F55-05 | Preferences | default page layout | M1/M9 | Tested | Preferences combo; `Save_and_load_round_trips_pdf_open_defaults` |

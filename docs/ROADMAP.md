@@ -394,7 +394,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 ### Progress notes
 
-- Prefs, toolbar hide+↑↓ reorder (F54) on PDF **and** image viewers with live apply to open tabs (`ToolbarCommandApplicator`), toolbar show/hide persisted (`ToolbarVisible`) + Ctrl+Shift+U/B chrome shortcuts, shortcut customization (F52-23), check-for-updates (F55-04), remember last page/zoom prefs toggles (F55-07/08, default ON), Theme in Preferences (F55-01), session restore (multi-window tab path lists; `SessionRestorePolicy`; bounds not restored), full `ShellMenuCatalog` File/Edit/View/Window/Help vs XAML (F02-02), Help chrome Automation Names (F02-24 / F56), status chrome subtitle (no Milestone badge), page-cache `DefaultCapacity` 32 aligned with DI, crash recovery, version snapshots, cold-start timing, background Find index (F57-05/F58-06), image Live Text overlay restore shipped in matrix
+- Prefs, toolbar hide+↑↓ reorder (F54) on PDF **and** image viewers with live apply to open tabs (`ToolbarCommandApplicator`), toolbar show/hide persisted (`ToolbarVisible`) + Ctrl+Shift+U/B chrome shortcuts, shortcut customization (F52-23), check-for-updates (F55-04), remember last page/zoom prefs toggles (F55-07/08, default ON), Theme in Preferences (F55-01), session restore (multi-window tab path lists + bounds; `SessionRestorePolicy`), full `ShellMenuCatalog` File/Edit/View/Window/Help vs XAML (F02-02), Help chrome Automation Names (F02-24 / F56), status chrome subtitle (no Milestone badge), page-cache `DefaultCapacity` 32 aligned with DI, crash recovery, version snapshots, cold-start timing, background Find index (F57-05/F58-06), image Live Text overlay restore shipped in matrix
 - Third-party notices: `THIRD_PARTY_NOTICES.md` shipped with the app (About) and MSIX publish output (AGENTS.md / ADR-003); unused CommunityToolkit.Mvvm pin removed
 - CI: push + PR for the same branch share a concurrency group (`head_ref || ref_name`) so Windows runners are not double-queued
 - MSIX: Windows CI produces test-signed `Glyph.App_*.msix` + `Glyph.CI.TestSign.cer` for **win-x64** and **win-arm64**, enables AppModelUnlock sideloading on the x64 runner, and runs `install-msix-test.ps1 -Force -ProbeUserDefaults` (manifest association probe). Operator guide: [`PACKAGING.md`](PACKAGING.md). F01-06/07 remain Deferred until Explorer UserChoice / double-click verification (ADR-012). **Blocked:** ADR-015 password-write (Needs approval, prefer Option A PdfSharp).
@@ -410,7 +410,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 
 | Area | FEATURES.md | Milestone | Status |
 | --- | --- | --- | --- |
-| App/file handling | §1 | M1, M9 | Tested (CI test-signed x64+arm64 `.msix` + x64 sideload/association probe; Explorer UserChoice → ADR-012 interactive; session restore = multi-window tab path lists) |
+| App/file handling | §1 | M1, M9 | Tested (CI test-signed x64+arm64 `.msix` + x64 sideload/association probe; Explorer UserChoice → ADR-012 interactive; session restore = multi-window tabs + bounds) |
 | Main window/UI chrome | §2 | M1, M9 | Tested |
 | Sidebar modes | §3 | M2–M5 | Tested (mode ComboBox + panels) |
 | PDF viewing | §4 | M2 | Tested (incl. Zoom ▭ / Glass / Present) |
