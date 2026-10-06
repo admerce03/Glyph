@@ -111,11 +111,8 @@ public sealed class PdfDocumentView : UserControl
     private readonly TextBox _searchBox;
     private readonly TextBox _gotoBox;
     private readonly CheckBox _caseSensitiveBox;
-<<<<<<< HEAD
-    private readonly ComboBox _searchSortBox;
-=======
     private readonly CheckBox _anyWordBox;
->>>>>>> f0d0410 (M9: any-word find toggle in PDF toolbar (F06-05))
+    private readonly ComboBox _searchSortBox;
     private readonly ComboBox _layoutBox;
     private readonly TextBlock _status;
     private readonly Dictionary<int, IReadOnlyList<PdfTextChar>> _pageChars = new();
@@ -370,7 +367,8 @@ public sealed class PdfDocumentView : UserControl
         _searchBox.KeyDown += SearchBox_KeyDown;
         _caseSensitiveBox = new CheckBox { Content = PdfViewerChromeLabels.Aa, VerticalAlignment = VerticalAlignment.Center };
         ToolTipService.SetToolTip(_caseSensitiveBox, PdfViewerTooltips.MatchCase);
-<<<<<<< HEAD
+        _anyWordBox = new CheckBox { Content = PdfViewerChromeLabels.AnyWord, VerticalAlignment = VerticalAlignment.Center };
+        ToolTipService.SetToolTip(_anyWordBox, PdfViewerTooltips.MatchAnyWord);
         _searchSortBox = new ComboBox
         {
             Width = 120,
@@ -384,10 +382,6 @@ public sealed class PdfDocumentView : UserControl
         };
         ToolTipService.SetToolTip(_searchSortBox, PdfViewerTooltips.SortFindResults);
         _searchSortBox.SelectionChanged += async (_, _) => await ResortSearchHitsAsync();
-=======
-        _anyWordBox = new CheckBox { Content = PdfViewerChromeLabels.AnyWord, VerticalAlignment = VerticalAlignment.Center };
-        ToolTipService.SetToolTip(_anyWordBox, PdfViewerTooltips.MatchAnyWord);
->>>>>>> f0d0410 (M9: any-word find toggle in PDF toolbar (F06-05))
         var searchButton = new Button { Content = PdfViewerChromeLabels.Find };
         searchButton.Click += async (_, _) => await RunSearchAsync();
         var findSelection = new Button { Content = PdfViewerChromeLabels.FindSelection };
@@ -946,11 +940,7 @@ public sealed class PdfDocumentView : UserControl
             redact, info, optimizeButton, protectButton, export, print, share, sidebarToggle, camera, sign, formFill, ink, freeform, eraser, rect,
             roundRect, hiRect, ellipse, line, arrow, star, bubble, loupe, fullscreen, undoEdit, redoEdit,
             _layoutBox, _gotoBox,
-<<<<<<< HEAD
-            _caseSensitiveBox, _searchSortBox, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton,
-=======
-            _caseSensitiveBox, _anyWordBox, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton,
->>>>>>> f0d0410 (M9: any-word find toggle in PDF toolbar (F06-05))
+            _caseSensitiveBox, _anyWordBox, _searchSortBox, findSelection, ocrPage, _ocrCancelButton, _copyOcrButton,
             _clearOcrOverlayButton, _ocrSavePdfButton, _ocrEntitiesButton, clearSearch, prevMatch, nextMatch,
             removeAnnot, duplicateAnnot, copyAnnot, cutAnnot, pasteAnnot, editAnnot, authorAnnot,
             expandNote, collapseNote, exportNotes, underlineAnnot, colorAnnot, fillAnnot, tipAnnot,
