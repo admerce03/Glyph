@@ -400,8 +400,8 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 - MSIX: Windows CI produces test-signed `Glyph.App_*.msix` + `Glyph.CI.TestSign.cer` for **win-x64** and **win-arm64**, enables AppModelUnlock sideloading on the x64 runner, and runs `install-msix-test.ps1 -Force -ProbeUserDefaults` (manifest association probe). Operator guide: [`PACKAGING.md`](PACKAGING.md). F01-06/07 remain Deferred until Explorer UserChoice / double-click verification (ADR-012). **Blocked:** ADR-015 password-write (Needs approval, prefer Option A PdfSharp).
 - Interactive proof kit (#107): `docs/proof/README.md` + `InteractiveVerifyArtifacts` path helpers; sideload script dumps HKCU UserChoice ProgIds and can open Default apps Settings
 - Interactive verify orchestrator: `scripts/interactive-verify.ps1` downloads CI MSIX (or publishes locally), sideloads, probes UserChoice, opens Default apps, and reports `docs/proof` status; fixtures in `docs/proof/samples/` (`sample.pdf` / `sample.png`, `-OpenSamples`)
-- Recent tip: multi-tab autosave (#114), snapshot thumbs (#115), multi-window session (#116), find relevance (#117), session bounds (#118), any-word Find toolbar (#119) + Find-all (#120)
-- Matrix audit (2026-10-06 tip through #120): 881 rows — 862 Tested / 12 Deferred / 7 Blocked (all Blocked = ADR-015 password-write); zero Not Started / In Progress / Implemented
+- Recent tip: multi-tab autosave (#114), snapshot thumbs (#115), multi-window session (#116), find relevance (#117), session bounds (#118), any-word Find toolbar (#119) + Find-all (#120), Find-all Match case (#123)
+- Matrix audit (2026-10-06 tip through #123): 881 rows — 862 Tested / 12 Deferred / 7 Blocked (all Blocked = ADR-015 password-write); zero Not Started / In Progress / Implemented
 - Interactive proof debt: Explorer UserChoice defaults, M1 shell screenshot, M2 viewer screenshots, M3 §11 cross-doc DnD recording — checklist in [`INTERACTIVE_VERIFY.md`](INTERACTIVE_VERIFY.md) / [`docs/proof/`](proof/README.md)
 - Deferred catalogs unit-tested (`PackagingDeferredPolicy`, `PdfOptimizeDeferredPolicy`, `ImageAdvancedDeferredPolicy`, …)
 
@@ -416,7 +416,7 @@ M5 may proceed in parallel with M3/M4 once M1 is stable, because imaging is behi
 | Sidebar modes | §3 | M2–M5 | Tested (mode ComboBox + panels) |
 | PDF viewing | §4 | M2 | Tested (incl. Zoom ▭ / Glass / Present) |
 | PDF TOC/links | §5 | M2 | Tested |
-| PDF search | §6 | M2, M6 | Tested (page order + relevance sort; any-word toolbar + Find-all) |
+| PDF search | §6 | M2, M6 | Tested (page order + relevance sort; any-word + Match case on Find-all) |
 | PDF text interaction | §7 | M2, M6 | Tested |
 | OCR / Live Text | §8 | M6 | Tested (PRs #62–#66; offline OCR/Live Text/entities/OCR→PDF) |
 | User bookmarks | §9 | M2/M4 | Tested (app-local + export to PDF `/Outlines`) |
