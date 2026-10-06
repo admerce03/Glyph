@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentAssertions;
 using Glyph.Infrastructure.Session;
 
@@ -28,23 +29,88 @@ public class JsonSessionStoreTests
             loaded.Paths[0].Should().Be(Path.GetFullPath(fileA));
             loaded.Paths[1].Should().Be(Path.GetFullPath(fileB));
             loaded.ActiveIndex.Should().Be(1);
+            loaded.Windows.Should().HaveCount(1);
+            loaded.Windows[0].Paths.Should().Equal(loaded.Paths);
+            loaded.Windows[0].ActiveIndex.Should().Be(1);
         }
         finally
         {
-            if (File.Exists(storePath))
-            {
-                File.Delete(storePath);
-            }
+            DeleteQuietly(storePath, fileA, fileB);
+        }
+    }
 
-            if (File.Exists(fileA))
-            {
-                File.Delete(fileA);
-            }
+    [Fact]
+    public async Task Load_migrates_legacy_flat_paths_into_windows()
+    {
+        var storePath = Path.Combine(Path.GetTempPath(), "glyph-session-legacy-" + Guid.NewGuid().ToString("N") + ".json");
+        var file = Path.Combine(Path.GetTempPath(), "glyph-legacy-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            await File.WriteAllTextAsync(file, "%PDF");
+            var full = Path.GetFullPath(file);
+            // Pre-multi-window JSON shape (no windows array); same camelCase as JsonSessionStore.
+            var legacyJson = JsonSerializer.Serialize(
+                new Dictionary<string, object?>
+                {
+                    ["paths"] = new[] { full },
+                    ["activeIndex"] = 0,
+                    ["updatedAtUtc"] = "2026-01-01T00:00:00+00:00",
+                });
+            await File.WriteAllTextAsync(storePath, legacyJson);
 
-            if (File.Exists(fileB))
-            {
-                File.Delete(fileB);
-            }
+            var store = new JsonSessionStore(storePath);
+            var loaded = await store.TryLoadAsync();
+            loaded.Should().NotBeNull();
+            loaded!.Windows.Should().HaveCount(1);
+            loaded.Windows[0].Id.Should().Be("legacy");
+            loaded.Windows[0].Paths.Should().Equal(full);
+            loaded.Paths.Should().Equal(full);
+        }
+        finally
+        {
+            DeleteQuietly(storePath, file);
+        }
+    }
+
+    [Fact]
+    public async Task UpsertWindow_merges_multiple_windows_and_empty_removes()
+    {
+        var storePath = Path.Combine(Path.GetTempPath(), "glyph-session-mw-" + Guid.NewGuid().ToString("N") + ".json");
+        var fileA = Path.Combine(Path.GetTempPath(), "glyph-mw-a-" + Guid.NewGuid().ToString("N") + ".pdf");
+        var fileB = Path.Combine(Path.GetTempPath(), "glyph-mw-b-" + Guid.NewGuid().ToString("N") + ".pdf");
+        var fileC = Path.Combine(Path.GetTempPath(), "glyph-mw-c-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            await File.WriteAllTextAsync(fileA, "%PDF");
+            await File.WriteAllTextAsync(fileB, "%PDF");
+            await File.WriteAllTextAsync(fileC, "%PDF");
+            var store = new JsonSessionStore(storePath);
+
+            await store.UpsertWindowAsync("win-a", [fileA, fileB], activeIndex: 1);
+            await store.UpsertWindowAsync("win-b", [fileC], activeIndex: 0);
+
+            var loaded = await store.TryLoadAsync();
+            loaded.Should().NotBeNull();
+            loaded!.Windows.Should().HaveCount(2);
+            loaded.Windows.Select(w => w.Id).Should().BeEquivalentTo(["win-a", "win-b"]);
+            loaded.Windows.Single(w => w.Id == "win-a").ActiveIndex.Should().Be(1);
+            loaded.Windows.Single(w => w.Id == "win-a").Paths.Should().HaveCount(2);
+            loaded.Windows.Single(w => w.Id == "win-b").Paths.Should().Equal(Path.GetFullPath(fileC));
+            loaded.Paths.Should().HaveCount(3);
+
+            await store.UpsertWindowAsync("win-a", [], activeIndex: 0);
+            var afterRemove = await store.TryLoadAsync();
+            afterRemove.Should().NotBeNull();
+            afterRemove!.Windows.Should().HaveCount(1);
+            afterRemove.Windows[0].Id.Should().Be("win-b");
+
+            await store.UpsertWindowAsync("win-b", [], activeIndex: 0);
+            (await store.TryLoadAsync()).Should().BeNull();
+            File.Exists(storePath).Should().BeFalse();
+        }
+        finally
+        {
+            DeleteQuietly(storePath, fileA, fileB, fileC);
         }
     }
 
@@ -65,10 +131,7 @@ public class JsonSessionStoreTests
         }
         finally
         {
-            if (File.Exists(storePath))
-            {
-                File.Delete(storePath);
-            }
+            DeleteQuietly(storePath);
         }
     }
 
@@ -89,22 +152,47 @@ public class JsonSessionStoreTests
         }
         finally
         {
-            if (File.Exists(storePath))
-            {
-                File.Delete(storePath);
-            }
-
-            if (File.Exists(file))
-            {
-                File.Delete(file);
-            }
+            DeleteQuietly(storePath, file);
         }
     }
 
     [Fact]
-    public void SessionState_is_flat_path_list_without_window_layout()
+    public void SessionState_includes_windows_collection()
     {
         var names = typeof(SessionState).GetProperties().Select(p => p.Name).OrderBy(n => n).ToArray();
-        names.Should().Equal("ActiveIndex", "Paths", "UpdatedAtUtc");
+        names.Should().Equal("ActiveIndex", "Paths", "UpdatedAtUtc", "Windows");
+        typeof(SessionWindowState).GetProperties().Select(p => p.Name).OrderBy(n => n)
+            .Should().Equal("ActiveIndex", "Id", "Paths");
+    }
+
+    [Fact]
+    public void NormalizeInPlace_migrates_flat_paths_and_drops_empty_windows()
+    {
+        var state = new SessionState
+        {
+            Paths = [Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar)],
+            ActiveIndex = 0,
+            Windows =
+            [
+                new SessionWindowState { Id = "keep", Paths = [Path.GetTempPath()], ActiveIndex = 0 },
+                new SessionWindowState { Id = "drop", Paths = [], ActiveIndex = 0 },
+            ],
+        };
+
+        JsonSessionStore.NormalizeInPlace(state, requireExistingFiles: false);
+        state.Windows.Should().HaveCount(1);
+        state.Windows[0].Id.Should().Be("keep");
+        state.Paths.Should().NotBeEmpty();
+    }
+
+    private static void DeleteQuietly(params string[] paths)
+    {
+        foreach (var path in paths)
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
     }
 }

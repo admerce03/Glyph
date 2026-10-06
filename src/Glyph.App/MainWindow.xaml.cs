@@ -42,6 +42,7 @@ public sealed partial class MainWindow : Window
 {
     private static bool _startupSessionHandled;
 
+    private string _sessionWindowId = Guid.NewGuid().ToString("N");
     private DocumentShareHelper? _shareHelper;
     private DispatcherTimer? _recoveryTimer;
     private bool _recoveryTickRunning;
@@ -2404,6 +2405,89 @@ public sealed partial class MainWindow : Window
         };
     }
 
+    private async Task RestorePreviousSessionAsync()
+    {
+        if (!_settingsStore.Current.RestorePreviousSession)
+        {
+            return;
+        }
+
+        try
+        {
+            var state = await _sessionStore.TryLoadAsync();
+            if (state is null || state.Windows.Count == 0)
+            {
+                return;
+            }
+
+            // Drop the file before re-opening so UpsertWindowAsync does not keep stale window ids.
+            await _sessionStore.ClearAsync();
+
+            var primary = state.Windows[0];
+            AdoptSessionWindowId(primary.Id);
+            StatusText.Text = AppShellStatus.FormatRestoringTabs(
+                state.Windows.Sum(w => w.Paths.Count));
+
+            await OpenSessionWindowPathsAsync(primary.Paths, primary.ActiveIndex);
+            await PersistSessionAsync();
+
+            for (var i = 1; i < state.Windows.Count; i++)
+            {
+                var windowState = state.Windows[i];
+                var window = App.CurrentApp.OpenNewWindow();
+                window.AdoptSessionWindowId(windowState.Id);
+                await window.RestoreSessionWindowAsync(windowState.Paths, windowState.ActiveIndex);
+                await window.PersistSessionAsync();
+            }
+
+            StatusText.Text = AppShellStatus.FormatRestoredTabs(
+                state.Windows.Sum(w => w.Paths.Count));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to restore previous session");
+            StatusText.Text = AppShellStatus.SessionRestoreFailed;
+        }
+    }
+
+    internal void AdoptSessionWindowId(string windowId)
+    {
+        if (!string.IsNullOrWhiteSpace(windowId))
+        {
+            _sessionWindowId = windowId;
+        }
+    }
+
+    /// <summary>Open a saved window's path list into this shell (used for multi-window restore).</summary>
+    public async Task RestoreSessionWindowAsync(IReadOnlyList<string> paths, int activeIndex)
+    {
+        await OpenSessionWindowPathsAsync(paths, activeIndex);
+    }
+
+    private async Task OpenSessionWindowPathsAsync(IReadOnlyList<string> paths, int activeIndex)
+    {
+        string? activePath = null;
+        if (activeIndex >= 0 && activeIndex < paths.Count)
+        {
+            activePath = paths[activeIndex];
+        }
+
+        foreach (var path in paths)
+        {
+            await OpenPathAsync(path);
+        }
+
+        if (activePath is not null)
+        {
+            var existing = _workspace.FindByPath(activePath);
+            if (existing is not null)
+            {
+                _workspace.Activate(existing.Id);
+                SelectTabForActiveDocument();
+            }
+        }
+    }
+
     private async Task PersistSessionAsync()
     {
         try
@@ -2431,61 +2515,11 @@ public sealed partial class MainWindow : Window
                 }
             }
 
-            await _sessionStore.SaveAsync(new SessionState
-            {
-                Paths = paths,
-                ActiveIndex = activeIndex,
-            });
+            await _sessionStore.UpsertWindowAsync(_sessionWindowId, paths, activeIndex);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to persist session");
-        }
-    }
-
-    private async Task RestorePreviousSessionAsync()
-    {
-        if (!_settingsStore.Current.RestorePreviousSession)
-        {
-            return;
-        }
-
-        try
-        {
-            var state = await _sessionStore.TryLoadAsync();
-            if (state is null || state.Paths.Count == 0)
-            {
-                return;
-            }
-
-            StatusText.Text = AppShellStatus.FormatRestoringTabs(state.Paths.Count);
-            string? activePath = null;
-            if (state.ActiveIndex >= 0 && state.ActiveIndex < state.Paths.Count)
-            {
-                activePath = state.Paths[state.ActiveIndex];
-            }
-
-            foreach (var path in state.Paths)
-            {
-                await OpenPathAsync(path);
-            }
-
-            if (activePath is not null)
-            {
-                var existing = _workspace.FindByPath(activePath);
-                if (existing is not null)
-                {
-                    _workspace.Activate(existing.Id);
-                    SelectTabForActiveDocument();
-                }
-            }
-
-            StatusText.Text = AppShellStatus.FormatRestoredTabs(state.Paths.Count);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to restore previous session");
-            StatusText.Text = AppShellStatus.SessionRestoreFailed;
         }
     }
 
